@@ -1,0 +1,52 @@
+---
+import Base from '../layouts/Base.astro';
+import WorkCard from '../components/WorkCard.astro';
+import Picture from '../components/Picture.astro';
+import { getWorks, site, url } from '../lib/site';
+
+const works = getWorks();
+const featured = works.filter((w) => w.featured);
+const hero = featured[0] ?? works[0];
+const recent = works.filter((w) => w !== hero).slice(0, 6);
+---
+<Base image={hero && `/works/${hero.slug}/1600.jpg`}>
+  {hero ? (
+    <section class="hero">
+      <a class="hero-img" href={url(`/tvorba/${hero.slug}`)}>
+        <Picture work={hero} sizes="(max-width: 900px) 100vw, 60vw" eager />
+      </a>
+      <div class="hero-text">
+        <p class="eyebrow">{site.tagline}</p>
+        <h1>Barvy, voda <br />a trochu náhody</h1>
+        <p class="muted">
+          Maluji hlavně akvarelem — v kroužku, na plenérech a doma u stolu. Tady najdete, co mi právě
+          uschlo na papíře, i to, co už visí jinde.
+        </p>
+        <a class="btn" href={url('/tvorba')}>Prohlédnout tvorbu</a>
+      </div>
+    </section>
+  ) : (
+    <p class="muted">Zatím tu nic není — přidej první dílo (viz README).</p>
+  )}
+
+  {recent.length > 0 && (
+    <section>
+      <div class="section-head">
+        <h2>Nejnovější</h2>
+        <a href={url('/tvorba')}>Celá tvorba →</a>
+      </div>
+      <div class="grid">{recent.map((w) => <WorkCard work={w} />)}</div>
+    </section>
+  )}
+</Base>
+<style>
+  .hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: clamp(24px, 5vw, 72px); align-items: center; margin-bottom: 96px; }
+  .hero-img { display: block; }
+  .hero-img :global(picture) { box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 24px 48px -24px rgba(0,0,0,.3); }
+  .hero-text h1 { margin-top: 0.1em; }
+  .hero-text .btn { margin-top: 12px; }
+  .section-head { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: 24px; margin-bottom: 28px; }
+  .section-head h2 { margin: 0; }
+  .grid { columns: 3 300px; column-gap: 36px; }
+  @media (max-width: 900px) { .hero { grid-template-columns: 1fr; margin-bottom: 64px; } }
+</style>

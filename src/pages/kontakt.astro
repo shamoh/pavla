@@ -1,0 +1,18 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../lib/site';
+---
+<Base title="Kontakt">
+  <h1>Kontakt</h1>
+  <p>Zaujal vás obraz, chcete se zeptat na zakázku, nebo jen pozdravit? Ozvěte se.</p>
+  <ul class="contact">
+    {site.email && <li><span class="eyebrow">E-mail</span><a href={`mailto:${site.email}`}>{site.email}</a></li>}
+    {site.instagram && <li><span class="eyebrow">Instagram</span><a href={`https://www.instagram.com/${site.instagram}/`} rel="me">@{site.instagram}</a></li>}
+    {site.fler && <li><span class="eyebrow">Obchůdek</span><a href={site.fler}>Fler</a></li>}
+  </ul>
+</Base>
+<style>
+  .contact { list-style: none; padding: 0; margin: 40px 0 0; display: grid; gap: 28px; }
+  .contact li { display: flex; flex-direction: column; gap: 4px; }
+  .contact a { font-family: var(--serif); font-size: 1.7rem; text-decoration: none; }
+</style>

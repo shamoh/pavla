@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.astro/
+# Originály fotek a exporty pro sociální sítě do gitu nepatří
+masters/
+export/
+.DS_Store

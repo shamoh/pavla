@@ -1,0 +1,29 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../lib/site';
+---
+<Base title="O mně">
+  <div class="about">
+    <div>
+      <p class="eyebrow">O mně</p>
+      <h1>{site.author}</h1>
+    </div>
+    <div class="text">
+      <!-- TODO: vlastní text. Stačí pár odstavců v první osobě. -->
+      <p>
+        Maluji hlavně akvarelem. Chodím do výtvarného kroužku, jezdím na plenéry a mezi tím maluji doma —
+        krajinu, květiny, co zrovna zaujme.
+      </p>
+      <p>
+        Na akvarelu mě baví, že se nedá úplně ovládat. Voda si vždycky trochu dělá, co chce, a právě
+        to bývá na obraze nejhezčí.
+      </p>
+      <p class="muted">Časem bych ráda nabízela i kurzy a workshopy — novinky najdete tady a na Instagramu.</p>
+    </div>
+  </div>
+</Base>
+<style>
+  .about { display: grid; grid-template-columns: 1fr 1.6fr; gap: clamp(24px, 6vw, 96px); max-width: 1000px; }
+  .text { font-size: 1.08rem; padding-top: 12px; }
+  @media (max-width: 800px) { .about { grid-template-columns: 1fr; } }
+</style>

@@ -1,0 +1,30 @@
+---
+import type { Work } from '../lib/site';
+import { url } from '../lib/site';
+
+interface Props { work: Work; sizes: string; eager?: boolean; class?: string }
+const { work, sizes, eager = false, class: cls } = Astro.props;
+const { widths, width, height, dominant } = work.image;
+const base = url(`/works/${work.slug}`);
+const set = (ext: string) => widths.map((w) => `${base}/${w}.${ext} ${w}w`).join(', ');
+const fallback = `${base}/${widths.find((w) => w >= 960) ?? widths[widths.length - 1]}.jpg`;
+---
+<picture class={cls} style={`--ph:${dominant}`}>
+  <source type="image/avif" srcset={set('avif')} sizes={sizes} />
+  <source type="image/webp" srcset={set('webp')} sizes={sizes} />
+  <img
+    src={fallback}
+    srcset={set('jpg')}
+    sizes={sizes}
+    width={width}
+    height={height}
+    alt={`${work.title} — ${work.technique}`}
+    loading={eager ? 'eager' : 'lazy'}
+    decoding="async"
+    fetchpriority={eager ? 'high' : 'auto'}
+  />
+</picture>
+<style>
+  picture { display: block; background: var(--ph); }
+  img { display: block; width: 100%; height: auto; }
+</style>

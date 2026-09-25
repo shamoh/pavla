@@ -1,0 +1,30 @@
+---
+import Picture from './Picture.astro';
+import { type Work, statusLabel, formatSize, url } from '../lib/site';
+interface Props { work: Work; eager?: boolean }
+const { work, eager } = Astro.props;
+---
+<a
+  class="card"
+  href={url(`/tvorba/${work.slug}`)}
+  data-tags={work.tags.join('|')}
+  data-technique={work.technique}
+  data-status={work.status}
+  data-year={work.year}
+>
+  <Picture work={work} sizes="(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 33vw" eager={eager} />
+  <span class="meta">
+    <span class="title">{work.title}</span>
+    <span class="sub">{work.technique}{work.size_cm && ` · ${formatSize(work.size_cm)}`}</span>
+    {work.status === 'available' && <span class="badge available">{statusLabel.available}</span>}
+    {work.status === 'sold' && <span class="badge">{statusLabel.sold}</span>}
+  </span>
+</a>
+<style>
+  .card { display: block; text-decoration: none; break-inside: avoid; margin-bottom: 36px; }
+  .card :global(picture) { box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px -12px rgba(0,0,0,.18); transition: transform .25s ease; }
+  .card:hover :global(picture) { transform: translateY(-3px); }
+  .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-top: 12px; }
+  .title { font-family: var(--serif); font-size: 1.35rem; width: 100%; line-height: 1.2; }
+  .sub { font-size: 0.85rem; color: var(--ink-soft); }
+</style>

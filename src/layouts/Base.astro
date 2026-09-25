@@ -1,0 +1,123 @@
+---
+import { site, url } from '../lib/site';
+
+interface Props { title?: string; description?: string; image?: string }
+const { title, description = `${site.author} — ${site.tagline.toLowerCase()}.`, image } = Astro.props;
+const fullTitle = title ? `${title} · ${site.title}` : `${site.title} — ${site.tagline}`;
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const nav = [
+  { href: '/tvorba', label: 'Tvorba' },
+  { href: '/o-mne', label: 'O mně' },
+  { href: '/kontakt', label: 'Kontakt' },
+];
+const ogImage = image ? new URL(image, site.url).href : undefined;
+---
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={new URL(Astro.url.pathname, site.url).href} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <link rel="icon" href={url('/favicon.svg')} type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Work+Sans:wght@300;400;500&display=swap&subset=latin-ext"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href={url('/')}>
+        <span class="brand-name">{site.title}</span>
+        <span class="brand-tag">{site.tagline}</span>
+      </a>
+      <nav aria-label="Hlavní navigace">
+        {nav.map((n) => (
+          <a href={url(n.href)} aria-current={path.startsWith(n.href) ? 'page' : undefined}>{n.label}</a>
+        ))}
+      </nav>
+    </header>
+    <main><slot /></main>
+    <footer class="site-footer">
+      <span>© {new Date().getFullYear()} {site.author}</span>
+      <span class="links">
+        {site.instagram && <a href={`https://www.instagram.com/${site.instagram}/`} rel="me">Instagram</a>}
+        {site.fler && <a href={site.fler}>Fler</a>}
+      </span>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --paper: #f7f4ee;
+    --paper-2: #efeae0;
+    --ink: #2b2724;
+    --ink-soft: #6d655c;
+    --line: #ddd5c7;
+    --accent: #4f7a8a;
+    --ok: #4f7a5a;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'Work Sans', system-ui, sans-serif;
+    --gutter: clamp(16px, 4vw, 48px);
+    --max: 1320px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #1c1a18; --paper-2: #252220; --ink: #ece6dc; --ink-soft: #a89f93;
+      --line: #3a3531; --accent: #8fb7c4; --ok: #93bf9c;
+    }
+  }
+  * { box-sizing: border-box; }
+  input[type='checkbox'] { accent-color: var(--ink); }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 300 17px/1.65 var(--sans); min-height: 100vh; display: flex; flex-direction: column;
+  }
+  main { flex: 1; width: 100%; max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter) 80px; }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 400; line-height: 1.15; letter-spacing: 0.005em; }
+  h1 { font-size: clamp(2.2rem, 5vw, 3.6rem); margin: 0.2em 0 0.4em; }
+  h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
+  a { color: inherit; text-decoration-color: var(--line); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: currentColor; }
+  p { max-width: 62ch; }
+  .muted { color: var(--ink-soft); }
+  .eyebrow { font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); }
+
+  .site-header {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+    max-width: var(--max); width: 100%; margin: 0 auto; padding: 28px var(--gutter) 36px;
+  }
+  .brand { text-decoration: none; display: flex; flex-direction: column; }
+  .brand-name { font-family: var(--serif); font-size: 1.9rem; line-height: 1; }
+  .brand-tag { font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); margin-top: 6px; }
+  .site-header nav { display: flex; gap: 28px; }
+  .site-header nav a { text-decoration: none; font-size: 0.95rem; padding-bottom: 3px; border-bottom: 1px solid transparent; }
+  .site-header nav a[aria-current='page'], .site-header nav a:hover { border-color: var(--ink); }
+
+  .site-footer {
+    max-width: var(--max); width: 100%; margin: 0 auto; padding: 28px var(--gutter);
+    border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    font-size: 0.85rem; color: var(--ink-soft);
+  }
+  .site-footer .links { display: flex; gap: 20px; }
+
+  .badge {
+    display: inline-block; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 3px 9px; border: 1px solid var(--line); border-radius: 99px; color: var(--ink-soft);
+  }
+  .badge.available { color: var(--ok); border-color: currentColor; }
+  .btn {
+    display: inline-block; padding: 11px 22px; border: 1px solid var(--ink); border-radius: 2px;
+    text-decoration: none; font-size: 0.92rem; letter-spacing: 0.03em; transition: background .15s, color .15s;
+  }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+</style>

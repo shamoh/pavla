@@ -1,0 +1,16 @@
+{
+  "name": "pavla",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "images": "node scripts/process-images.mjs"
+  },
+  "dependencies": {
+    "astro": "^7.3.5",
+    "sharp": "^0.35.4",
+    "yaml": "^2.9.1"
+  }
+}
