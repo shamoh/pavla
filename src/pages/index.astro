@@ -2,17 +2,17 @@
 import Base from '../layouts/Base.astro';
 import WorkCard from '../components/WorkCard.astro';
 import Picture from '../components/Picture.astro';
-import { getWorks, site, url } from '../lib/site';
+import { getWorks, site, url, workUrl, workImagePath } from '../lib/site';
 
 const works = getWorks();
 const featured = works.filter((w) => w.featured);
 const hero = featured[0] ?? works[0];
 const recent = works.filter((w) => w !== hero).slice(0, 6);
 ---
-<Base image={hero && `/works/${hero.slug}/1600.jpg`}>
+<Base image={hero && `${workImagePath(hero)}/1600.jpg`}>
   {hero ? (
     <section class="hero">
-      <a class="hero-img" href={url(`/tvorba/${hero.slug}`)}>
+      <a class="hero-img" href={workUrl(hero)}>
         <Picture work={hero} sizes="(max-width: 900px) 100vw, 60vw" eager />
       </a>
       <div class="hero-text">

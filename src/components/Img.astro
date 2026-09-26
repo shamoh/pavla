@@ -1,0 +1,30 @@
+---
+// Responsive <picture> for any generated image set: <base>/<prefix><width>.{avif,webp,jpg}.
+import { url, type ImageSet } from '../lib/site';
+
+interface Props { base: string; prefix?: string; image: ImageSet; alt: string; sizes: string; eager?: boolean; class?: string }
+const { base, prefix = '', image, alt, sizes, eager = false, class: cls } = Astro.props;
+const { widths, width, height, dominant } = image;
+const root = `${url(base)}/${prefix}`;
+const set = (ext: string) => widths.map((w) => `${root}${w}.${ext} ${w}w`).join(', ');
+const fallback = `${root}${widths.find((w) => w >= 960) ?? widths[widths.length - 1]}.jpg`;
+---
+<picture class={cls} style={`--ph:${dominant}`}>
+  <source type="image/avif" srcset={set('avif')} sizes={sizes} />
+  <source type="image/webp" srcset={set('webp')} sizes={sizes} />
+  <img
+    src={fallback}
+    srcset={set('jpg')}
+    sizes={sizes}
+    width={width}
+    height={height}
+    alt={alt}
+    loading={eager ? 'eager' : 'lazy'}
+    decoding="async"
+    fetchpriority={eager ? 'high' : 'auto'}
+  />
+</picture>
+<style>
+  picture { display: block; background: var(--ph); }
+  img { display: block; width: 100%; height: auto; }
+</style>

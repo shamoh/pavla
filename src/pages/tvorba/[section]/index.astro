@@ -1,0 +1,36 @@
+---
+// One dynamic route for two kinds of pages under /tvorba/<section>/:
+//   /tvorba/2026/   works from one year
+//   /tvorba/k3f9a/  permanent short link of a work, redirects to its current detail URL
+import Base from '../../../layouts/Base.astro';
+import WorkGallery from '../../../components/WorkGallery.astro';
+import { getWorks, getYears, site, workUrl, type Work } from '../../../lib/site';
+
+export function getStaticPaths() {
+  const works = getWorks();
+  return [
+    ...getYears().map((year) => ({ params: { section: String(year) }, props: { year, works: works.filter((w) => w.year === year) } })),
+    ...works.map((work) => ({ params: { section: work.id }, props: { redirect: work } })),
+  ];
+}
+type Props = { year: number; works: Work[]; redirect?: undefined } | { redirect: Work; year?: undefined; works?: undefined };
+const { year, works, redirect } = Astro.props;
+const target = redirect && workUrl(redirect);
+---
+{redirect ? (
+  <html lang="cs">
+    <head>
+      <meta charset="utf-8" />
+      <title>{redirect.title}</title>
+      <meta http-equiv="refresh" content={`0; url=${target}`} />
+      <link rel="canonical" href={new URL(target!, site.url).href} />
+      <meta name="robots" content="noindex" />
+    </head>
+    <body><a href={target}>{redirect.title}</a></body>
+  </html>
+) : (
+  <Base title={`Tvorba ${year}`} description={`Akvarely a kresby z roku ${year}.`}>
+    <h1>Tvorba {year}</h1>
+    <WorkGallery works={works!} year={year} />
+  </Base>
+)}

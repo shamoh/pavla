@@ -1,0 +1,19 @@
+---
+// A photo from pavla-content/fotky/<name>.jpg. Renders nothing while the photo does not exist yet.
+import Img from './Img.astro';
+import { getPhoto } from '../lib/site';
+
+interface Props { name: string; sizes: string; eager?: boolean; class?: string; caption?: boolean }
+const { name, sizes, eager, class: cls, caption = true } = Astro.props;
+const photo = getPhoto(name);
+---
+{photo && (
+  <figure class:list={['photo', cls]}>
+    <Img base={`/photos/${name}`} image={photo} alt={photo.alt} sizes={sizes} eager={eager} />
+    {caption && photo.caption && <figcaption>{photo.caption}</figcaption>}
+  </figure>
+)}
+<style>
+  .photo { margin: 0; }
+  figcaption { margin-top: 10px; font-size: 0.85rem; color: var(--ink-soft); }
+</style>

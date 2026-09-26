@@ -1,12 +1,12 @@
 ---
 import Picture from './Picture.astro';
-import { type Work, statusLabel, formatSize, url } from '../lib/site';
+import { type Work, statusLabel, formatSize, workUrl } from '../lib/site';
 interface Props { work: Work; eager?: boolean }
 const { work, eager } = Astro.props;
 ---
 <a
   class="card"
-  href={url(`/tvorba/${work.slug}`)}
+  href={workUrl(work)}
   data-tags={work.tags.join('|')}
   data-technique={work.technique}
   data-status={work.status}

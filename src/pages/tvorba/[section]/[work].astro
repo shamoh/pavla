@@ -1,0 +1,176 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Picture from '../../../components/Picture.astro';
+import Img from '../../../components/Img.astro';
+import { getWorks, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
+
+export function getStaticPaths() {
+  const works = getWorks();
+  return works.map((work, i) => ({ params: { section: String(work.year), work: work.key }, props: { work, prev: works[i - 1], next: works[i + 1] } }));
+}
+interface Props { work: Work; prev?: Work; next?: Work }
+const { work, prev, next } = Astro.props;
+const date = work.date.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
+const mail = site.email && `mailto:${site.email}?subject=${encodeURIComponent(`Zájem o obraz „${work.title}“`)}`;
+
+// Everything the viewer can step through: the work itself, then its mockups.
+const base = workImagePath(work);
+const mockups = work.image.mockups ?? [];
+const views = [
+  { label: work.title, prefix: '', image: work.image },
+  ...mockups.map((m) => ({ label: `${work.title} · ${m.label}`, prefix: `mockup-${m.scene}-`, image: m })),
+].map((v) => ({
+  label: v.label,
+  width: v.image.width,
+  height: v.image.height,
+  src: url(`${base}/${v.prefix}${v.image.widths[v.image.widths.length - 1]}.jpg`),
+  srcset: v.image.widths.map((w) => `${url(`${base}/${v.prefix}${w}.webp`)} ${w}w`).join(', '),
+}));
+// Landscape mockups are stacked, portrait ones sit side by side.
+const mockupsWide = mockups.every((m) => m.width >= m.height);
+---
+<Base title={work.title} description={work.description?.trim() || `${work.title} — ${work.technique}`} image={`${workImagePath(work)}/1600.jpg`}>
+  <p class="back"><a href={url('/tvorba/')}>← Tvorba</a> · <a href={url(`/tvorba/${work.year}/`)}>{work.year}</a></p>
+  <article class="work">
+    <a class="zoom" href={views[0].src} data-view="0" title="Zvětšit">
+      <Picture work={work} sizes="(max-width: 900px) 100vw, 64vw" eager />
+    </a>
+    <div class="info">
+      <h1>{work.title}</h1>
+      <dl>
+        <dt>Technika</dt><dd>{work.technique}</dd>
+        {work.support && <><dt>Podklad</dt><dd>{work.support}</dd></>}
+        {work.size_cm && <><dt>Rozměr</dt><dd>{formatSize(work.size_cm)}</dd></>}
+        <dt>Vzniklo</dt><dd>{date}</dd>
+      </dl>
+      {work.description && <p class="desc">{work.description}</p>}
+      <div class="status">
+        <span class:list={['badge', { available: work.status === 'available' }]}>{statusLabel[work.status]}</span>
+        {work.status === 'available' && work.price && <span class="price">{formatPrice(work.price)}</span>}
+      </div>
+      {work.status === 'available' && (
+        <div class="actions">
+          {work.fler && <a class="btn" href={work.fler}>Koupit na Fleru</a>}
+          {mail && <a class="btn ghost" href={mail}>Napsat autorce</a>}
+        </div>
+      )}
+      {mockups.length > 0 && (
+        <section class="mockups" aria-label="Jak obraz vypadá v interiéru">
+          <p class="eyebrow">Jak by mohl vypadat u vás</p>
+          <div class:list={['mockup-grid', { wide: mockupsWide }]}>
+            {mockups.map((m, i) => (
+              <a href={views[i + 1].src} data-view={i + 1} title={`Zvětšit: ${m.label}`}>
+                <Img base={base} prefix={`mockup-${m.scene}-`} image={m} alt={`${work.title} v interiéru: ${m.label}`} sizes="(max-width: 900px) 100vw, 30vw" />
+                <span class="muted">{m.label} · skutečná velikost {formatSize(work.size_cm)}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+      {work.tags.length > 0 && (
+        <p class="tags">{work.tags.map((t) => <a href={url(`/tvorba/?tag=${encodeURIComponent(t)}`)}>#{t}</a>)}</p>
+      )}
+    </div>
+  </article>
+  <dialog class="viewer" id="viewer" aria-label="Prohlížení obrázků" data-views={JSON.stringify(views)}>
+    <figure>
+      <img id="viewer-img" alt="" />
+      <figcaption><span id="viewer-label"></span> <span class="muted" id="viewer-count"></span></figcaption>
+    </figure>
+    {views.length > 1 && (
+      <>
+        <button type="button" class="nav prev" data-step="-1" aria-label="Předchozí">‹</button>
+        <button type="button" class="nav next" data-step="1" aria-label="Další">›</button>
+      </>
+    )}
+    <button type="button" class="close" aria-label="Zavřít">×</button>
+  </dialog>
+  <nav class="pager" aria-label="Další díla">
+    {prev ? <a href={workUrl(prev)}>← {prev.title}</a> : <span />}
+    {next && <a href={workUrl(next)}>{next.title} →</a>}
+  </nav>
+</Base>
+<script>
+  // Viewer: a dialog (not fullscreen) that steps through the work and its mockups.
+  // Without JavaScript the links simply open the largest image.
+  type View = { label: string; src: string; srcset: string; width: number; height: number };
+  const dialog = document.getElementById('viewer') as HTMLDialogElement;
+  const img = document.getElementById('viewer-img') as HTMLImageElement;
+  const label = document.getElementById('viewer-label')!;
+  const count = document.getElementById('viewer-count')!;
+  const views: View[] = JSON.parse(dialog.dataset.views!);
+  let current = 0;
+
+  function show(i: number) {
+    current = (i + views.length) % views.length;
+    const v = views[current];
+    img.srcset = v.srcset;
+    img.sizes = `min(92vw, ${Math.round((v.width / v.height) * 80)}vh)`;
+    img.src = v.src;
+    img.width = v.width;
+    img.height = v.height;
+    img.alt = v.label;
+    label.textContent = v.label;
+    count.textContent = views.length > 1 ? `${current + 1} / ${views.length}` : '';
+  }
+
+  document.querySelectorAll<HTMLAnchorElement>('[data-view]').forEach((a) =>
+    a.addEventListener('click', (e) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey) return; // let "open in new tab" work
+      e.preventDefault();
+      show(Number(a.dataset.view));
+      dialog.showModal();
+    }),
+  );
+  dialog.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) => b.addEventListener('click', () => show(current + Number(b.dataset.step))));
+  dialog.querySelector('.close')!.addEventListener('click', () => dialog.close());
+  // A click on the backdrop (outside the figure) closes the viewer.
+  dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
+  dialog.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  // Swipe on touch screens.
+  let startX: number | null = null;
+  dialog.addEventListener('pointerdown', (e) => { startX = e.clientX; });
+  dialog.addEventListener('pointerup', (e) => {
+    if (startX !== null && Math.abs(e.clientX - startX) > 50) show(current + (e.clientX < startX ? 1 : -1));
+    startX = null;
+  });
+</script>
+<style>
+  .back { margin: -12px 0 24px; font-size: 0.9rem; }
+  .back a { text-decoration: none; color: var(--ink-soft); }
+  .work { display: grid; grid-template-columns: 1.8fr 1fr; gap: clamp(24px, 5vw, 64px); align-items: start; }
+  .zoom { display: block; cursor: zoom-in; }
+  .zoom :global(picture) { box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 24px 48px -24px rgba(0,0,0,.3); }
+  .info h1 { margin-top: 0; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; font-size: 0.93rem; margin: 0 0 20px; }
+  dt { color: var(--ink-soft); }
+  dd { margin: 0; }
+  .desc { white-space: pre-line; }
+  .status { display: flex; gap: 16px; align-items: center; margin: 24px 0 16px; }
+  .price { font-family: var(--serif); font-size: 1.5rem; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn.ghost { border-color: var(--line); }
+  .tags { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.9rem; margin-top: 28px; }
+  .tags a { color: var(--accent); text-decoration: none; }
+  .mockups { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .mockup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .mockup-grid.wide { grid-template-columns: 1fr; }
+  .mockup-grid a { display: flex; flex-direction: column; gap: 6px; text-decoration: none; font-size: 0.82rem; cursor: zoom-in; }
+  .viewer { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96vh; overflow: visible; }
+  .viewer::backdrop { background: rgba(30, 26, 22, .82); }
+  .viewer figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .viewer img { display: block; max-width: 92vw; max-height: 82vh; width: auto; height: auto; box-shadow: 0 24px 64px rgba(0,0,0,.45); background: var(--paper-2); }
+  .viewer figcaption { color: #f3eee6; font-size: 0.9rem; text-align: center; }
+  .viewer figcaption .muted { color: #bdb3a6; margin-left: 8px; }
+  .viewer button { position: fixed; background: rgba(0,0,0,.35); color: #fff; border: 0; cursor: pointer; font: 300 2.4rem/1 var(--sans); width: 52px; height: 52px; border-radius: 50%; }
+  .viewer button:hover { background: rgba(0,0,0,.6); }
+  .viewer .prev { left: 16px; top: 50%; transform: translateY(-50%); }
+  .viewer .next { right: 16px; top: 50%; transform: translateY(-50%); }
+  .viewer .close { right: 16px; top: 16px; font-size: 2rem; }
+  .pager { display: flex; justify-content: space-between; gap: 16px; margin-top: 72px; padding-top: 24px; border-top: 1px solid var(--line); font-family: var(--serif); font-size: 1.2rem; }
+  .pager a { text-decoration: none; }
+  @media (max-width: 900px) { .work { grid-template-columns: 1fr; } }
+</style>
