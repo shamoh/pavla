@@ -1,0 +1,122 @@
+# Scény pro mockupy („jak by obraz vypadal doma“).
+# Fotky jsou z Unsplash (licence: zdarma i komerčně, bez nutnosti uvádět autora).
+#
+# Kalibrace (souřadnice v pixelech fotky, 2400 px na šířku):
+#   pxPerCm   kolik pixelů fotky odpovídá 1 cm na stěně (odhad podle nábytku známé velikosti)
+#   anchor    x = střed obrazu, bottom = spodní hrana rámu
+#   maxCm     největší rám [šířka, výška] v cm, který se do scény vejde
+#   group     living | wall | hallway | shelf | desk – podle toho se scéna vybírá (viz scripts/lib/mockups.mjs)
+#   standing  true = rámeček stojí (opřený o stěnu na poličce/stole), má užší paspartu
+#   frame     barva rámu, frameCm šířka lišty
+#   light     jak moc obraz převezme světlo stěny (0 = vůbec, 1 = úplně)
+#   shadow    stín rámu: posun a rozmazání v cm, průhlednost
+#   occluders obdélníky fotky (v pixelech), které jsou před obrazem – po vložení obrazu se vrátí navrch
+
+- name: obyvak-vecer
+  label: Obývák večer
+  file: obyvak-vecer.jpg
+  source: https://unsplash.com/photos/sofa-with-a-floor-lamp-and-side-table-OxyKIFBAkvs
+  author: Josh Sorenson
+  group: living
+  # Dvoumístná modulová sedačka ≈ 210 cm (1718 px).
+  pxPerCm: 8.2
+  anchor: { x: 1204, bottom: 763 }
+  maxCm: [150, 85]
+  frame: "#2b2724"
+  frameCm: 2.5
+  light: 0.75
+  shadow: { dx: -1.2, dy: 1.6, blur: 2.2, opacity: 0.45 }
+
+- name: obyvak-svetly
+  label: Světlý obývák
+  file: obyvak-svetly.jpg
+  source: https://unsplash.com/photos/a-couch-with-a-plant-on-top-of-it-jCjqzVAh6PI
+  author: dada design
+  group: living
+  # Výška opěradla nad sedákem ≈ 36 cm (315 px).
+  pxPerCm: 8.8
+  anchor: { x: 850, bottom: 563 }
+  maxCm: [120, 58]
+  frame: "#2b2724"
+  frameCm: 2.5
+  light: 0.6
+  shadow: { dx: 0, dy: 1.4, blur: 1.8, opacity: 0.3 }
+
+- name: loznice
+  label: Ložnice
+  file: loznice.jpg
+  source: https://unsplash.com/photos/modern-bedroom-with-bed-pillows-and-warm-brown-wall-9MbWyxGzvD0
+  author: Clay Banks
+  group: wall
+  # Noční stolek ≈ 52 cm vysoký (345 px).
+  pxPerCm: 6.6
+  anchor: { x: 1700, bottom: 585 }
+  maxCm: [85, 80]
+  frame: "#e8e0d2"
+  frameCm: 2.5
+  light: 0.45
+  shadow: { dx: 0.6, dy: 1.4, blur: 2, opacity: 0.4 }
+
+- name: komoda
+  label: Komoda
+  file: komoda.jpg
+  source: https://unsplash.com/photos/green-plant-on-white-cabinet-HstwCJX0jT4
+  author: Liana Mikah
+  group: wall
+  # Květináč s kaktusem ≈ 20 cm v průměru (210 px).
+  pxPerCm: 10.5
+  anchor: { x: 1312, bottom: 630 }
+  maxCm: [110, 55]
+  frame: "#b89a72"
+  frameCm: 2
+  light: 0.6
+  shadow: { dx: 0.4, dy: 1.2, blur: 1.6, opacity: 0.3 }
+
+- name: police
+  label: Polička
+  file: police.jpg
+  source: https://unsplash.com/photos/a-shelf-with-two-vases-and-a-lamp-on-it-1GdYuu3cM_w
+  author: Taru Goyal
+  group: shelf
+  standing: true
+  # Stolní lampa ≈ 29 cm vysoká (318 px), kniha ≈ 27 cm.
+  pxPerCm: 11
+  anchor: { x: 1730, bottom: 1050 }
+  maxCm: [50, 60]
+  frame: "#2b2724"
+  frameCm: 1.5
+  light: 0.6
+  shadow: { dx: 1.2, dy: -0.6, blur: 1.4, opacity: 0.35 }
+
+- name: predsin
+  label: Předsíň
+  file: predsin.jpg
+  source: https://unsplash.com/photos/white-wooden-table-with-flowers-and-vase-L5JhsKIvw_U
+  author: Mitchell Luo
+  group: hallway
+  # Konzole ≈ 150 cm široká (1688 px); obraz visí nad orchidejí.
+  pxPerCm: 11
+  anchor: { x: 1396, bottom: 930 }
+  maxCm: [120, 75]
+  frame: "#2b2724"
+  frameCm: 2.5
+  light: 0.6
+  shadow: { dx: 1, dy: 1.5, blur: 2, opacity: 0.35 }
+
+- name: pracovna
+  label: Pracovna
+  file: pracovna.jpg
+  source: https://unsplash.com/photos/a-chair-and-a-table-in-a-room-_j17ktACzvY
+  author: Sanju Pandita
+  group: desk
+  standing: true
+  # Stůl ≈ 75 cm vysoký a 116 cm široký (862 px); rámeček stojí na stole za opěradlem židle.
+  pxPerCm: 7.2
+  anchor: { x: 1290, bottom: 893 }
+  maxCm: [62, 70]
+  frame: "#b89a72"
+  frameCm: 1.5
+  light: 0.5
+  shadow: { dx: 1, dy: -0.8, blur: 1.4, opacity: 0.3 }
+  occluders:
+    - { left: 1062, top: 850, width: 318, height: 130 }

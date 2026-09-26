@@ -4,5 +4,13 @@ import { url } from '../lib/site';
 ---
 <Base title="Nenalezeno">
   <h1>Tahle stránka se rozpila</h1>
-  <p class="muted">Možná byla přesunuta. <a href={url('/tvorba')}>Zpět na tvorbu</a>.</p>
+  <p class="muted">Možná byla přesunuta. <a href={url('/tvorba/')}>Zpět na tvorbu</a>.</p>
 </Base>
+<script>
+  // A renamed work keeps its ID: an old detail URL ending with "-<id>/" is sent to the permanent short link.
+  import { idFromPath } from '../../scripts/lib/works.mjs';
+  const id = idFromPath(location.pathname);
+  if (id && location.pathname.startsWith(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/tvorba/`)) {
+    location.replace(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/tvorba/${id}/`);
+  }
+</script>

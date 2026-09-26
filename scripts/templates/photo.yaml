@@ -1,0 +1,3 @@
+# Popis fotky – kostru vytvořila pipeline. Doplň a ulož.
+alt: {{alt}}             # co je na fotce (pro nevidomé a vyhledávače), např. „Pavla maluje v ateliéru“
+caption: ""              # popisek pod fotkou, nepovinné

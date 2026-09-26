@@ -11,24 +11,21 @@ site:
   fler: ""                               # URL obchůdku na Fleru, až bude
 
 images:
-  # Originály (master fotky) NEJSOU v gitu. Default: ./masters/<slug>.jpg
-  # Lze přepsat proměnnou MASTERS_DIR (třeba složka na Google Drive).
-  mastersDir: ./masters
+  # Originály fotek a popisy děl jsou v soukromém repu pavla-content (tvorba/<rok>/<slug>.yaml + fotka).
+  # Cesta je relativní k tomuto repu; lze přepsat proměnnou CONTENT_DIR.
+  contentDir: ../pavla-content
   web:
     widths: [480, 960, 1600, 2400]
     quality: 82
+  mockups:
+    widths: [480, 960, 1600]             # velikosti mockupů na webu (výběr scén: mockups/scenes.yaml)
+  photos:
+    widths: [480, 960, 1600, 2400]       # ostatní fotky webu (pavla-content/fotky/)
   instagram:
     width: 1080
     height: 1350                         # 4:5, nejvíc místa ve feedu
     background: "#f4f1ea"                # teplý papírový odstín
     padding: 0.08                        # okraj kolem obrazu (podíl šířky)
-  mockup:
-    wall: "#e9e4da"
-    wallWidthCm: 90                      # kolik cm stěny zabírá šířka záběru → drží skutečné měřítko
-    frameColor: "#2b2724"
-    frameCm: 2.0
-    matCm: 5.0                           # pasparta
-    matColor: "#fbfaf6"
   fler:
     longEdge: 2000
     quality: 90

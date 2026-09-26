@@ -1,0 +1,111 @@
+---
+import WorkCard from './WorkCard.astro';
+import { type Work, getYears, statusLabel, url } from '../lib/site';
+
+interface Props { works: Work[]; year?: number }
+// `year` set: a year page (/tvorba/2026/), the year filter is replaced by links.
+const { works, year } = Astro.props;
+const count = (vals: string[]) => {
+  const m = new Map<string, number>();
+  vals.forEach((v) => m.set(v, (m.get(v) ?? 0) + 1));
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'cs'));
+};
+const tags = count(works.flatMap((w) => w.tags));
+const techniques = count(works.map((w) => w.technique));
+const years = getYears();
+---
+<nav class="years" aria-label="Roky">
+  <a href={url('/tvorba/')} aria-current={year ? undefined : 'page'}>Vše</a>
+  {years.map((y) => <a href={url(`/tvorba/${y}/`)} aria-current={y === year ? 'page' : undefined}>{y}</a>)}
+</nav>
+
+<form class="filters" id="filters" aria-label="Filtrovat díla">
+  <div class="chips" role="group" aria-label="Témata">
+    <button type="button" data-filter="tag" data-value="" aria-pressed="true">Vše</button>
+    {tags.map(([t, n]) => <button type="button" data-filter="tag" data-value={t} aria-pressed="false">#{t} <small>{n}</small></button>)}
+  </div>
+  <div class="selects">
+    <label>Technika
+      <select name="technique"><option value="">vše</option>{techniques.map(([t]) => <option value={t}>{t}</option>)}</select>
+    </label>
+    {!year && (
+      <label>Rok
+        <select name="year"><option value="">vše</option>{years.map((y) => <option value={y}>{y}</option>)}</select>
+      </label>
+    )}
+    <label class="check"><input type="checkbox" name="available" /> jen {statusLabel.available.toLowerCase()}</label>
+    <span class="muted count" id="count" aria-live="polite">{works.length} děl</span>
+  </div>
+</form>
+
+<div class="grid" id="grid">{works.map((w, i) => <WorkCard work={w} eager={i < 3} />)}</div>
+<p class="muted empty" id="empty" hidden>Tomuhle výběru nic neodpovídá.</p>
+
+<script>
+  // Filters keep their state in the URL (?tag=krajina&year=2026), so a selection can be shared as a link.
+  const form = document.getElementById('filters') as HTMLFormElement;
+  const cards = [...document.querySelectorAll<HTMLElement>('#grid .card')];
+  const chips = [...form.querySelectorAll<HTMLButtonElement>('[data-filter="tag"]')];
+  const countEl = document.getElementById('count')!;
+  const emptyEl = document.getElementById('empty')!;
+  const q = new URLSearchParams(location.search);
+  const yearSelect = form.elements.namedItem('year') as HTMLSelectElement | null;
+  const state = { tag: q.get('tag') ?? '', technique: q.get('technique') ?? '', year: yearSelect ? q.get('year') ?? '' : '', available: q.get('available') === '1' };
+
+  const plural = (n: number) => (n === 1 ? 'dílo' : n >= 2 && n <= 4 ? 'díla' : 'děl');
+
+  function apply() {
+    let shown = 0;
+    for (const c of cards) {
+      const ok =
+        (!state.tag || c.dataset.tags!.split('|').includes(state.tag)) &&
+        (!state.technique || c.dataset.technique === state.technique) &&
+        (!state.year || c.dataset.year === state.year) &&
+        (!state.available || c.dataset.status === 'available');
+      c.hidden = !ok;
+      if (ok) shown++;
+    }
+    chips.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === state.tag)));
+    (form.elements.namedItem('technique') as HTMLSelectElement).value = state.technique;
+    if (yearSelect) yearSelect.value = state.year;
+    (form.elements.namedItem('available') as HTMLInputElement).checked = state.available;
+    countEl.textContent = `${shown} ${plural(shown)}`;
+    emptyEl.hidden = shown > 0;
+    const p = new URLSearchParams();
+    if (state.tag) p.set('tag', state.tag);
+    if (state.technique) p.set('technique', state.technique);
+    if (state.year) p.set('year', state.year);
+    if (state.available) p.set('available', '1');
+    history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
+  }
+
+  chips.forEach((b) => b.addEventListener('click', () => { state.tag = b.dataset.value!; apply(); }));
+  form.addEventListener('change', () => {
+    state.technique = (form.elements.namedItem('technique') as HTMLSelectElement).value;
+    state.year = yearSelect?.value ?? '';
+    state.available = (form.elements.namedItem('available') as HTMLInputElement).checked;
+    apply();
+  });
+  apply();
+</script>
+
+<style>
+  .years { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: -8px 0 28px; font-family: var(--serif); font-size: 1.25rem; }
+  .years a { text-decoration: none; color: var(--ink-soft); }
+  .years a[aria-current='page'] { color: var(--ink); border-bottom: 1px solid var(--ink); }
+  .filters { display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips button {
+    font: inherit; font-size: 0.88rem; color: var(--ink); background: transparent; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 99px; padding: 5px 14px;
+  }
+  .chips button small { color: var(--ink-soft); margin-left: 2px; }
+  .chips button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .chips button[aria-pressed='true'] small { color: inherit; opacity: .7; }
+  .selects { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; font-size: 0.9rem; }
+  .selects label { display: flex; gap: 8px; align-items: center; color: var(--ink-soft); }
+  .selects select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 4px 8px; border-radius: 2px; }
+  .count { margin-left: auto; }
+  .grid { columns: 3 300px; column-gap: 36px; }
+  .grid :global(.card[hidden]) { display: none; }
+</style>

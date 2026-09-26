@@ -6,7 +6,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "images": "node scripts/process-images.mjs"
+    "images": "node scripts/process-images.mjs",
+    "test": "node --test \"scripts/**/*.test.mjs\""
   },
   "dependencies": {
     "astro": "^7.3.5",

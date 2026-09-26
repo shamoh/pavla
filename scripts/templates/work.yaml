@@ -1,0 +1,16 @@
+# Nový obraz – kostru vytvořila pipeline podle fotky.
+# Doplň údaje a smaž řádek „draft: true“. Dokud tam je, obraz se na webu nezobrazí.
+id: {{id}}                   # unikátní kód obrazu, NEMĚNIT
+draft: true
+title: {{title}}
+date: {{date}}               # rok musí sedět se složkou
+technique: akvarel
+support: ""                  # např. papír Arches 300 g, nepovinné
+size_cm: [0, 0]              # šířka × výška v cm, DOPLNIT (podle toho se dělá mockup)
+tags: []                     # např. [krajina, voda, plenér]
+status: not-for-sale         # available | reserved | sold | not-for-sale
+price:                       # Kč, jen u available, nepovinné
+fler: ""                     # odkaz na Fler, až bude
+featured: false              # kandidát na úvodní stránku
+description: |
+  Pár vět o obraze.
