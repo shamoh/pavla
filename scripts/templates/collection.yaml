@@ -1,0 +1,9 @@
+# Kolekce – kostru vytvořila pipeline. Doplň a ulož.
+# Díla do kolekce patří, když mají v popisu „collection: <název tohoto souboru bez .yaml>“.
+# Úvodní fotka kolekce (nepovinná): fotka se stejným názvem vedle tohoto souboru, např. plener-sumava-2026.jpg.
+title: {{title}}
+description: |
+  Pár vět o kolekci: kde a kdy obrazy vznikly.
+cover: ""                    # úvodní obraz: id díla z kolekce (k3f9a) nebo jeho detail (k3f9a#1-kvet), bez mezer; nepovinné
+focus: [50, 50]              # úvodní obraz se ořízne na 3:2; [zleva %, shora %] = co zůstane vidět
+private_note: ""             # soukromá poznámka, na web se nedostane

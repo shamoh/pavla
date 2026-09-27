@@ -1,0 +1,33 @@
+---
+// Overview of all collections: /tvorba/kolekce/ (the one with the newest work first).
+import Base from '../../../layouts/Base.astro';
+import CollectionCover from '../../../components/CollectionCover.astro';
+import { collectionShareImage, collectionUrl, getCollections, url } from '../../../lib/site';
+
+const collections = getCollections();
+const plural = (n: number) => (n === 1 ? 'dílo' : n >= 2 && n <= 4 ? 'díla' : 'děl');
+---
+<Base title="Kolekce" description="Obrazy seskupené podle plenérů a témat." image={collections[0] && collectionShareImage(collections[0])}>
+  <p class="back"><a href={url('/tvorba/')}>← Tvorba</a></p>
+  <h1>Kolekce</h1>
+  {collections.length === 0 && <p class="muted">Zatím tu žádná kolekce není.</p>}
+  <div class="list">
+    {collections.map((c, i) => (
+      <a class="item" href={collectionUrl(c.slug)}>
+        <CollectionCover collection={c} sizes="(max-width: 700px) 100vw, 50vw" eager={i < 2} />
+        <span class="title">{c.title}</span>
+        <span class="muted">{c.works.length} {plural(c.works.length)}</span>
+        {c.description && <span class="desc">{c.description}</span>}
+      </a>
+    ))}
+  </div>
+</Base>
+<style>
+  .back { margin: -12px 0 24px; font-size: 0.9rem; }
+  .back a { text-decoration: none; color: var(--ink-soft); }
+  .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 48px 36px; }
+  .item { display: flex; flex-direction: column; gap: 6px; text-decoration: none; }
+  .item :global(.collection-cover) { margin-bottom: 8px; }
+  .title { font-family: var(--serif); font-size: 1.5rem; line-height: 1.2; }
+  .desc { font-size: 0.92rem; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+</style>

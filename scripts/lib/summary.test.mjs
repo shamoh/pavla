@@ -23,7 +23,7 @@ test('formatSummary lists new skeletons, ids, missing photos and removals', () =
     ...base, ok: false,
     created: ['2026/rano.yaml'], assigned: ['2026/rano: k3f9a'], missing: ['2026/vecer-m7q2x'], pruned: ['public/works/2025/x-p4r8t/'],
   });
-  for (const text of ['2026/rano.yaml', 'k3f9a', 'Chybí fotka', '2026/vecer-m7q2x', 'Odstraněno z webu', 'x-p4r8t']) assert.ok(s.includes(text), text);
+  for (const text of ['2026/rano.yaml', 'k3f9a', 'Chybí fotka', '2026/vecer-m7q2x', 'Odstraněno (web a exporty', 'x-p4r8t']) assert.ok(s.includes(text), text);
 });
 
 test('formatSummary reports a crash', () => {

@@ -1,5 +1,6 @@
 // Other photos of the site (portrait, studio, …) from <contentDir>/fotky/.
-// Each photo: <name>.jpg plus <name>.yaml with alt text and an optional caption.
+// Each photo: <name>.jpg plus <name>.yaml with alt text, an optional caption and an optional focus point
+// (`focus: [x, y]` in % from the left and top edge) that a cropped photo keeps in view.
 // Pages refer to a photo by its name, e.g. <Photo name="portret" />.
 
 import fs from 'node:fs/promises';
@@ -62,7 +63,31 @@ export async function preparePhotos(contentDir) {
       problems.push(`${PHOTOS_SUBDIR}/${name}.yaml: invalid YAML (${e.message.split('\n')[0]})`);
       continue;
     }
+    if (data.focus !== undefined && data.focus !== null && !isValidFocus(data.focus)) {
+      problems.push(`${PHOTOS_SUBDIR}/${name}.yaml: focus must be [x, y] in % (0–100), e.g. focus: [70, 60]`);
+      continue;
+    }
     photos.push({ name, data, masterPath: path.join(root, image.file) });
   }
   return { photos, created, problems };
+}
+
+/** Focus point of a photo: [x, y], both numbers between 0 and 100 (percent from the left and top edge). */
+export const isValidFocus = (f) => Array.isArray(f) && f.length === 2 && f.every((n) => typeof n === 'number' && n >= 0 && n <= 100);
+
+/** Focus of a photo for the site, [50, 50] (centre) when not set. */
+export const photoFocus = (data) => (isValidFocus(data?.focus) ? data.focus : [50, 50]);
+
+/**
+ * Crop box of an image (width × height) to `aspect` (width / height), placed like CSS
+ * `object-fit: cover; object-position: fx% fy%`, so a generated crop matches what the page shows.
+ */
+export function focusCrop(width, height, aspect, [fx, fy] = [50, 50]) {
+  let w = width;
+  let h = Math.round(width / aspect);
+  if (h > height) {
+    h = height;
+    w = Math.round(height * aspect);
+  }
+  return { left: Math.round(((width - w) * fx) / 100), top: Math.round(((height - h) * fy) / 100), width: w, height: h };
 }

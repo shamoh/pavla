@@ -2,14 +2,14 @@
 import Base from '../layouts/Base.astro';
 import WorkCard from '../components/WorkCard.astro';
 import Picture from '../components/Picture.astro';
-import { getWorks, site, url, workUrl, workImagePath } from '../lib/site';
+import { getWorks, site, url, workShareImage, workUrl } from '../lib/site';
 
 const works = getWorks();
 const featured = works.filter((w) => w.featured);
 const hero = featured[0] ?? works[0];
 const recent = works.filter((w) => w !== hero).slice(0, 6);
 ---
-<Base image={hero && `${workImagePath(hero)}/1600.jpg`}>
+<Base image={hero && workShareImage(hero)}>
   {hero ? (
     <section class="hero">
       <a class="hero-img" href={workUrl(hero)}>
@@ -26,7 +26,13 @@ const recent = works.filter((w) => w !== hero).slice(0, 6);
       </div>
     </section>
   ) : (
-    <p class="muted">Zatím tu nic není — přidej první dílo (viz README).</p>
+    <section class="empty">
+      <p class="eyebrow">{site.tagline}</p>
+      <p>Obrazy tu brzy přibudou.</p>
+      {site.instagram && (
+        <p class="muted">Než je sem nahraji, co právě maluji, najdete <a href={`https://www.instagram.com/${site.instagram}/`} rel="me">na Instagramu</a>.</p>
+      )}
+    </section>
   )}
 
   {recent.length > 0 && (
@@ -48,5 +54,7 @@ const recent = works.filter((w) => w !== hero).slice(0, 6);
   .section-head { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: 24px; margin-bottom: 28px; }
   .section-head h2 { margin: 0; }
   .grid { columns: 3 300px; column-gap: 36px; }
+  .empty { max-width: 36rem; padding: 48px 0 96px; }
+  .empty p:not(.eyebrow):not(.muted) { font-family: var(--serif); font-size: 1.8rem; margin: 0.2em 0; }
   @media (max-width: 900px) { .hero { grid-template-columns: 1fr; margin-bottom: 64px; } }
 </style>

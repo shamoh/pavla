@@ -1,0 +1,8 @@
+# UKÁZKOVÁ KOLEKCE – po přidání skutečných obrazů smazat
+demo: true # testovací data (pavla/demo), nikdy do pavla-content
+title: Plenér Šumava 2026
+description: |
+  Týden malování venku na Kvildě a Modravě, v mlze, na slatích i u rybníka.
+focus: [25, 50] # vlastní úvodní fotka je panorama (2400 × 1000); na stránce se ořízne na 3:2, levá část zůstane vidět
+private_note: |
+  Ubytování U Hraničáře, příště zamluvit dřív.

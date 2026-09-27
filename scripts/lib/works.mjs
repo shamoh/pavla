@@ -80,7 +80,8 @@ const dateYear = (date) => {
 };
 
 /**
- * Validates scanned works. Each work: { year, slug, id, data, yamlPath }.
+ * Validates scanned works. Each work: { year, slug, id, data, yamlPath, details? } where `details`
+ * lists the detail photos found next to the work ([{ name }]).
  * Returns a list of human-readable problems (empty when everything is fine).
  */
 export function validateWorks(works) {
@@ -99,8 +100,54 @@ export function validateWorks(works) {
     if (!w.data?.draft && w.data?.size_cm !== undefined && !validSize(w.data.size_cm)) {
       problems.push(`${where}: size_cm must be [width, height] in cm, both greater than 0`);
     }
+    if (!w.data?.draft && isOnSale(w.data?.status) && !(typeof w.data.price === 'number' && w.data.price > 0)) {
+      problems.push(`${where}: status "${w.data.status}" needs a price (price: <Kč>)`);
+    }
+    problems.push(...validateDetailCaptions(w, where));
+    if (w.data?.collection !== undefined && w.data.collection !== null && w.data.collection !== '' && !isValidSlug(w.data.collection)) {
+      problems.push(`${where}: collection "${w.data.collection}" must be the name of a file in kolekce/ (a-z, 0-9 and dashes)`);
+    }
     if (w.id && byId.has(w.id)) problems.push(`${where}: id "${w.id}" is also used by ${byId.get(w.id)}`);
     else if (w.id) byId.set(w.id, where);
+  }
+  return problems;
+}
+
+/** Statuses of works that are for sale and not sold yet: they get mockups and the "unsold" filter. */
+export const ON_SALE_STATUSES = ['available', 'reserved'];
+export const isOnSale = (status) => ON_SALE_STATUSES.includes(status);
+
+/**
+ * Fields of a work that are copied to the public site repository. Anything else (private_note,
+ * unknown keys) stays in the private content repository.
+ */
+export const PUBLIC_WORK_FIELDS = [
+  'id', 'draft', 'title', 'date', 'technique', 'support', 'size_cm', 'tags',
+  'status', 'price', 'fler', 'featured', 'collection', 'description', 'details',
+];
+
+/** Picks the public fields of `data` (in PUBLIC_WORK_FIELDS order), leaving out the rest. */
+export function publicFields(data, fields) {
+  const out = {};
+  for (const f of fields) if (data?.[f] !== undefined) out[f] = data[f];
+  return out;
+}
+
+/** Slug of a detail photo named in `details:` ("1 Mlha" and "1-mlha" both mean the file 1-mlha.jpg). */
+export const detailKey = (name) => slugify(name);
+
+/** `details:` in a work is an optional mapping "<detail file name>: <caption>". */
+function validateDetailCaptions(w, where) {
+  const captions = w.data?.details;
+  if (captions === undefined || captions === null) return [];
+  if (typeof captions !== 'object' || Array.isArray(captions)) {
+    return [`${where}: details must be a list of "<photo name>: <caption>" lines`];
+  }
+  const found = new Set((w.details ?? []).map((d) => d.name));
+  const problems = [];
+  for (const [name, caption] of Object.entries(captions)) {
+    if (!found.has(detailKey(name))) problems.push(`${where}: details: no detail photo "${name}" in the folder ${w.year}/${w.slug}/`);
+    else if (typeof caption !== 'string') problems.push(`${where}: details: the caption of "${name}" must be text`);
   }
   return problems;
 }
@@ -117,4 +164,55 @@ const formatDate = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : St
 export function planPrune(existing, wanted) {
   const keep = new Set(wanted);
   return existing.filter((p) => !keep.has(p)).sort();
+}
+
+/** Suffixes of export file names after "<slug>-<id>" (-wall is a legacy Instagram mockup, still recognised for cleanup). */
+const EXPORT_SUFFIX = '(-clean|-wall|-mockup-[a-z0-9-]+|-detail-([a-z0-9-]+))?\\.jpg';
+const ANY_EXPORT_RE = new RegExp(`^[a-z0-9]+(?:-[a-z0-9]+)*-${ID_PATTERN}${EXPORT_SUFFIX}$`);
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Matches the export files (Instagram, Fler) of the work with the given "<slug>-<id>" key; group 2 is a detail name. */
+export const exportPattern = (key) => new RegExp(`^${escapeRe(key)}${EXPORT_SUFFIX}$`);
+
+/**
+ * Decides which export files are stale: exports of works that no longer exist (deleted or renamed)
+ * and exports a current work should not have (a detail photo or mockup scene it no longer has,
+ * Fler exports of a work that is not for sale any more).
+ * `files` are "<year>/<file name>" paths inside one platform folder. `wanted` maps "<year>/<key>" of every
+ * current work to the export suffixes it may have on this platform ('' = "<key>.jpg", '-clean',
+ * '-detail-<name>', '-mockup-<scene>'), or to null when any export of the work is fine (unknown state).
+ * A plain array of "<year>/<key>" means null for all. Files that do not look like exports are never
+ * touched. Returns the paths to delete, sorted.
+ */
+export function planExportPrune(files, wanted) {
+  const byYear = new Map();
+  for (const [rel, allowed] of wanted instanceof Map ? wanted : new Map(wanted.map((w) => [w, null]))) {
+    const [year, key] = rel.split('/');
+    if (!byYear.has(year)) byYear.set(year, []);
+    byYear.get(year).push({ re: exportPattern(key), allowed: allowed ? new Set(allowed) : null });
+  }
+  const claimed = (year, name) =>
+    (byYear.get(year) ?? []).some(({ re, allowed }) => {
+      const m = re.exec(name);
+      return m !== null && (!allowed || allowed.has(m[1] ?? ''));
+    });
+  return files
+    .filter((f) => {
+      const [year, name] = f.split('/');
+      return ANY_EXPORT_RE.test(name) && !claimed(year, name);
+    })
+    .sort();
+}
+
+/**
+ * Export suffixes a work should have, per platform (see planExportPrune).
+ * Instagram: the original on paper and every detail photo, never mockups.
+ * Fler: only works on sale, the original and every mockup. `mockupScenes` null = unknown (no web images yet).
+ */
+export function expectedExports({ status, details, mockupScenes }) {
+  const onSale = isOnSale(status);
+  return {
+    instagram: ['-clean', ...details.map((d) => `-detail-${d}`)],
+    fler: !onSale ? [] : mockupScenes === null ? null : ['', ...mockupScenes.map((s) => `-mockup-${s}`)],
+  };
 }

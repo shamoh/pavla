@@ -1,0 +1,13 @@
+id: yqstk
+demo: true # testovací data (pavla/demo), nikdy do pavla-content
+title: Kočka na okně
+date: 2025-02-03
+technique: kresba tužkou
+support: skicák 160 g
+size_cm: [ 21, 29.7 ]
+tags: [ zvířata ]
+status: reserved
+price: 900
+collection: demo-kresby-2025
+description: |
+  Rychlá kresba, než kočka zase odešla.

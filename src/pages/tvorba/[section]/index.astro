@@ -4,7 +4,7 @@
 //   /tvorba/k3f9a/  permanent short link of a work, redirects to its current detail URL
 import Base from '../../../layouts/Base.astro';
 import WorkGallery from '../../../components/WorkGallery.astro';
-import { getWorks, getYears, site, workUrl, type Work } from '../../../lib/site';
+import { getWorks, getYears, site, workUrl, worksShareImage, type Work } from '../../../lib/site';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -29,7 +29,7 @@ const target = redirect && workUrl(redirect);
     <body><a href={target}>{redirect.title}</a></body>
   </html>
 ) : (
-  <Base title={`Tvorba ${year}`} description={`Akvarely a kresby z roku ${year}.`}>
+  <Base title={`Tvorba ${year}`} description={`Akvarely a kresby z roku ${year}.`} image={worksShareImage(works!)}>
     <h1>Tvorba {year}</h1>
     <WorkGallery works={works!} year={year} />
   </Base>

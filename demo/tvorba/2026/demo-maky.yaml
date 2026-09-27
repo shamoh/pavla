@@ -1,0 +1,13 @@
+id: rw4dh
+demo: true # testovací data (pavla/demo), nikdy do pavla-content
+title: Máky
+date: 2026-07-02
+technique: akvarel
+support: papír Arches 300 g
+size_cm: [ 30, 30 ]
+tags: [ květiny, léto ]
+status: available
+price: 2200
+fler: https://www.fler.cz/ # UKÁZKA: místo odkazu na produkt je jen úvodní stránka Fleru
+description: |
+  Vlčí máky u cesty za vsí. Ukázka tlačítka „Koupit na Fleru“.

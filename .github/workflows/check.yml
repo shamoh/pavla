@@ -1,0 +1,76 @@
+# Checks that nothing stopped working after a change of the code: unit tests and a full build of the site
+# from the test data (pavla/demo, `npm run demo:build`). Real content is not needed and not touched.
+# Content updates from pavla-content (content/, public/ generated data) and documentation do not trigger it.
+name: Kontrola kódu
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'content/**'
+      - 'public/works/**'
+      - 'public/photos/**'
+      - 'public/collections/**'
+      - 'public/og/**'
+      - '**/*.md'
+  pull_request:
+    paths-ignore:
+      - 'content/**'
+      - 'public/works/**'
+      - 'public/photos/**'
+      - 'public/collections/**'
+      - 'public/og/**'
+      - '**/*.md'
+  workflow_dispatch:
+
+# A newer push to the same branch cancels the running check.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      ASTRO_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      # The prepared test data only speed up the next run (the pipeline regenerates what changed);
+      # a stale cache is safe because every output carries a fingerprint of its inputs.
+      - name: Cache prepared test data
+        uses: actions/cache@v4
+        with:
+          path: .demo
+          key: demo-${{ hashFiles('demo/**', 'mockups/**', 'scripts/**', 'site.config.yaml', 'package-lock.json') }}
+          restore-keys: demo-
+
+      - name: Build the site from the test data
+        run: npm run demo:build
+
+      - name: Sanity check of the built test site
+        run: |
+          set -e
+          dist=.demo/site/dist
+          test -f "$dist/index.html"
+          test -f "$dist/tvorba/index.html"
+          test -f "$dist/tvorba/kolekce/index.html"
+          # the test site never carries the real domain
+          test ! -e "$dist/CNAME"
+          cards=$(grep -o 'class="card"' "$dist/tvorba/index.html" | wc -l)
+          echo "Works on /tvorba/: $cards"
+          test "$cards" -gt 12
