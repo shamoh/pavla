@@ -1,0 +1,11 @@
+id: dhsh5
+demo: true # testovací data (pavla/demo), nikdy do pavla-content
+title: Rozpracovaný obraz
+date: 2026-09-20
+technique: akvarel
+size_cm: [ 40, 30 ]
+tags: [ krajina ]
+status: not-for-sale
+draft: true # UKÁZKA: rozpracované dílo, na webu se nesmí objevit
+description: |
+  Ještě není hotové.

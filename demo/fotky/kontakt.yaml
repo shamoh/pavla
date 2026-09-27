@@ -1,0 +1,4 @@
+demo: true # testovací data (pavla/demo), nikdy do pavla-content
+alt: "Zástupná fotka pro stránku Kontakt (testovací data)"
+caption: ""
+focus: [50, 50]

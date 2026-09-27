@@ -3,6 +3,7 @@
 //
 // Layout:  <contentDir>/tvorba/<year>/<slug>.yaml   metadata
 //          <contentDir>/tvorba/<year>/<name>.jpg    master photo; paired with the YAML by slugify(name)
+//          <contentDir>/tvorba/<year>/<slug>/*.jpg  optional detail photos of the work (close-ups)
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -27,11 +28,19 @@ export async function readTree(worksRoot) {
     }
     const yamls = new Map();
     const images = new Map();
-    for (const file of (await fs.readdir(path.join(worksRoot, entry.name))).sort()) {
+    const details = new Map();
+    const yearDir = path.join(worksRoot, entry.name);
+    const files = (await fs.readdir(yearDir, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name));
+    for (const item of files) {
+      const file = item.name;
       if (isIgnored(file)) continue;
       const { base, ext } = splitExt(file);
       const where = `${entry.name}/${file}`;
-      if (ext === 'yaml' || ext === 'yml') {
+      if (item.isDirectory()) {
+        const found = await readDetails(path.join(yearDir, file), where);
+        problems.push(...found.problems);
+        details.set(slugify(file), { dir: file, files: found.files });
+      } else if (ext === 'yaml' || ext === 'yml') {
         if (yamls.has(base)) problems.push(`${where}: duplicate metadata for "${base}"`);
         else yamls.set(base, file);
       } else if (IMAGE_EXTENSIONS.includes(ext)) {
@@ -42,9 +51,37 @@ export async function readTree(worksRoot) {
         problems.push(`${where}: unknown file type, ignored`);
       }
     }
-    years.push({ year: entry.name, yamls, images });
+    for (const [slug, d] of details) {
+      if (!yamls.has(slug) && !images.has(slug)) {
+        problems.push(`${entry.name}/${d.dir}/: detail photos belong to a work, but there is no ${entry.name}/${slug}.yaml`);
+      }
+    }
+    years.push({ year: entry.name, yamls, images, details });
   }
   return { years: years.sort((a, b) => b.year.localeCompare(a.year)), problems };
+}
+
+/** Lists the detail photos in a work's folder: [{ name, file }] sorted by file name. */
+async function readDetails(dir, where) {
+  const files = [];
+  const problems = [];
+  const names = new Set();
+  for (const item of (await fs.readdir(dir, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
+    if (isIgnored(item.name)) continue;
+    const { base, ext } = splitExt(item.name);
+    if (!item.isFile() || !IMAGE_EXTENSIONS.includes(ext)) {
+      problems.push(`${where}/${item.name}: only photos belong into a detail folder, ignored`);
+      continue;
+    }
+    const name = slugify(base);
+    if (!name || names.has(name)) {
+      problems.push(`${where}/${item.name}: rename the photo, another detail photo already maps to "${name}"`);
+      continue;
+    }
+    names.add(name);
+    files.push({ name, file: item.name });
+  }
+  return { files, problems };
 }
 
 /** Creates the YAML text for a new work from the template. */
@@ -84,7 +121,7 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
   // Pass 1: parse every YAML and collect IDs that already exist.
   const entries = [];
   const taken = new Set();
-  for (const { year, yamls, images } of years) {
+  for (const { year, yamls, images, details } of years) {
     for (const [slug, file] of yamls) {
       const yamlPath = path.join(worksRoot, year, file);
       const text = await fs.readFile(yamlPath, 'utf8');
@@ -96,7 +133,7 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
         continue;
       }
       if (isValidId(data.id)) taken.add(data.id);
-      entries.push({ year, slug, yamlPath, text, data, image: images.get(slug) });
+      entries.push({ year, slug, yamlPath, text, data, image: images.get(slug), details: details.get(slug) });
     }
     // Pass 1b: images without metadata get a skeleton.
     for (const [slug, image] of images) {
@@ -108,7 +145,7 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
       const yamlPath = path.join(worksRoot, year, `${slug}.yaml`);
       await fs.writeFile(yamlPath, text);
       created.push(`${year}/${slug}.yaml`);
-      entries.push({ year, slug, yamlPath, text, data: YAML.parse(text), image });
+      entries.push({ year, slug, yamlPath, text, data: YAML.parse(text), image, details: details.get(slug) });
     }
   }
 
@@ -131,6 +168,7 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
     text: e.text,
     yamlPath: path.relative(contentDir, e.yamlPath),
     masterPath: e.image ? path.join(worksRoot, e.year, e.image.file) : null,
+    details: (e.details?.files ?? []).map((d) => ({ name: d.name, path: path.join(worksRoot, e.year, e.details.dir, d.file) })),
   }));
   return { works, created, assigned, problems };
 }

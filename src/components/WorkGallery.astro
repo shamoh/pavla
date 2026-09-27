@@ -1,10 +1,12 @@
 ---
 import WorkCard from './WorkCard.astro';
-import { type Work, getYears, statusLabel, url } from '../lib/site';
+import { type Work, collectionUrl, config, getCollection, getCollections, getYears, statusLabel, url } from '../lib/site';
+import { countStatuses } from '../../scripts/lib/gallery-filter.mjs';
 
-interface Props { works: Work[]; year?: number }
+interface Props { works: Work[]; year?: number; collection?: string }
 // `year` set: a year page (/tvorba/2026/), the year filter is replaced by links.
-const { works, year } = Astro.props;
+// `collection` set: a collection page, which shows one collection and has no collection filter.
+const { works, year, collection } = Astro.props;
 const count = (vals: string[]) => {
   const m = new Map<string, number>();
   vals.forEach((v) => m.set(v, (m.get(v) ?? 0) + 1));
@@ -12,12 +14,20 @@ const count = (vals: string[]) => {
 };
 const tags = count(works.flatMap((w) => w.tags));
 const techniques = count(works.map((w) => w.technique));
+const collections = count(works.flatMap((w) => (w.collection ? [w.collection] : []))).map(([slug, n]) => ({ slug, n, title: getCollection(slug)?.title ?? slug }));
+const statusCounts = countStatuses(works.map((w) => w.status));
 const years = getYears();
+// Page sizes the visitor can pick (the first is the default); the rest of the filtered list is on further
+// pages (?page=2), hidden cards load no images.
+const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
 ---
-<nav class="years" aria-label="Roky">
-  <a href={url('/tvorba/')} aria-current={year ? undefined : 'page'}>Vše</a>
-  {years.map((y) => <a href={url(`/tvorba/${y}/`)} aria-current={y === year ? 'page' : undefined}>{y}</a>)}
-</nav>
+{!collection && (
+  <nav class="years" aria-label="Roky">
+    <a href={url('/tvorba/')} aria-current={year ? undefined : 'page'}>Vše</a>
+    {years.map((y) => <a href={url(`/tvorba/${y}/`)} aria-current={y === year ? 'page' : undefined}>{y}</a>)}
+    {getCollections().length > 0 && <a class="to-collections" href={url('/tvorba/kolekce/')}>Kolekce</a>}
+  </nav>
+)}
 
 <form class="filters" id="filters" aria-label="Filtrovat díla">
   <div class="chips" role="group" aria-label="Témata">
@@ -33,58 +43,146 @@ const years = getYears();
         <select name="year"><option value="">vše</option>{years.map((y) => <option value={y}>{y}</option>)}</select>
       </label>
     )}
-    <label class="check"><input type="checkbox" name="available" /> jen {statusLabel.available.toLowerCase()}</label>
+    {!collection && collections.length > 0 && (
+      <label>Kolekce
+        <select name="collection"><option value="">vše</option>{collections.map((c) => <option value={c.slug}>{c.title} ({c.n})</option>)}</select>
+      </label>
+    )}
+    {!collection && collections.map((c) => (
+      <a class="about-collection" href={collectionUrl(c.slug)} data-collection-link={c.slug} hidden>O kolekci →</a>
+    ))}
+    <label>Stav
+      <select name="status">
+        <option value="">vše</option>
+        <option value="available">{statusLabel.available.toLowerCase()} ({statusCounts.available})</option>
+        <option value="unsold">neprodané ({statusCounts.unsold})</option>
+      </select>
+    </label>
+    {works.length > pageSizes[0] && (
+      <label>Na stránku
+        <select name="perPage">{pageSizes.map((n) => <option value={n}>{n}</option>)}</select>
+      </label>
+    )}
     <span class="muted count" id="count" aria-live="polite">{works.length} děl</span>
   </div>
 </form>
 
-<div class="grid" id="grid">{works.map((w, i) => <WorkCard work={w} eager={i < 3} />)}</div>
+<div class="grid" id="grid" data-page-sizes={JSON.stringify(pageSizes)}>{works.map((w, i) => <WorkCard work={w} eager={i < 3} />)}</div>
 <p class="muted empty" id="empty" hidden>Tomuhle výběru nic neodpovídá.</p>
+<nav class="pager" id="pager" aria-label="Stránky" hidden></nav>
 
 <script>
-  // Filters keep their state in the URL (?tag=krajina&year=2026), so a selection can be shared as a link.
+  // Every filter and the page are written to the URL right away (?tag=krajina&status=unsold&page=2), so the
+  // current selection can be copied and shared as a link and opens with the same works.
+  // Paging happens here too: the filtered list is split into pages, cards of other pages are hidden
+  // (hidden cards load no images). Without JavaScript every work is shown.
+  import {
+    ALL_PAGES, PAGE_SIZE_STORAGE_KEY, matchesFilters, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate,
+    rememberedPageSize, stateFromParams, stateToParams, withPageSize,
+  } from '../../scripts/lib/gallery-filter.mjs';
+
   const form = document.getElementById('filters') as HTMLFormElement;
   const cards = [...document.querySelectorAll<HTMLElement>('#grid .card')];
   const chips = [...form.querySelectorAll<HTMLButtonElement>('[data-filter="tag"]')];
   const countEl = document.getElementById('count')!;
   const emptyEl = document.getElementById('empty')!;
-  const q = new URLSearchParams(location.search);
-  const yearSelect = form.elements.namedItem('year') as HTMLSelectElement | null;
-  const state = { tag: q.get('tag') ?? '', technique: q.get('technique') ?? '', year: yearSelect ? q.get('year') ?? '' : '', available: q.get('available') === '1' };
+  const grid = document.getElementById('grid')!;
+  const pager = document.getElementById('pager')!;
+  const pageSizes: number[] = JSON.parse(grid.dataset.pageSizes!);
+  const perPageSelect = form.elements.namedItem('perPage') as HTMLSelectElement | null;
+  const select = (name: string) => form.elements.namedItem(name) as HTMLSelectElement | null;
+  // Filters without a select on this page (year on a year page, collection on a collection page) are off.
+  const selects = (['technique', 'year', 'collection', 'status'] as const).filter((k) => select(k));
+  const params = new URLSearchParams(location.search);
+  let state = stateFromParams(params, pageSizes);
+  // The page size the visitor picked earlier is remembered in this browser (not "Zobrazit vše", that one is
+  // one-off). It never overrides a link with perPage or page, and apply() writes it to the URL, so a copied
+  // link still shows the same works. Storage may be blocked (private mode), then nothing is remembered.
+  const storage = {
+    get: () => { try { return localStorage.getItem(PAGE_SIZE_STORAGE_KEY); } catch { return null; } },
+    set: (v: string | null) => {
+      try { v === null ? localStorage.removeItem(PAGE_SIZE_STORAGE_KEY) : localStorage.setItem(PAGE_SIZE_STORAGE_KEY, v); } catch { /* ignore */ }
+    },
+  };
+  if (perPageSelect) state.perPage = rememberedPageSize(params, storage.get(), pageSizes) ?? state.perPage;
+  for (const k of ['year', 'collection'] as const) if (!select(k)) state[k] = '';
 
   const plural = (n: number) => (n === 1 ? 'dílo' : n >= 2 && n <= 4 ? 'díla' : 'děl');
 
-  function apply() {
-    let shown = 0;
-    for (const c of cards) {
-      const ok =
-        (!state.tag || c.dataset.tags!.split('|').includes(state.tag)) &&
-        (!state.technique || c.dataset.technique === state.technique) &&
-        (!state.year || c.dataset.year === state.year) &&
-        (!state.available || c.dataset.status === 'available');
-      c.hidden = !ok;
-      if (ok) shown++;
+  const href = (page: number | typeof ALL_PAGES) => {
+    const p = stateToParams({ ...state, page });
+    return p.size ? `?${p}` : location.pathname;
+  };
+
+  // The visitor can switch paging off for this visit ("Zobrazit vše", ?page=all) and back on.
+  function renderPager(page: number | typeof ALL_PAGES, pages: number, total: number) {
+    pager.hidden = pages < 2;
+    pager.replaceChildren();
+    if (pages < 2) return;
+    const link = (label: string, page: number | typeof ALL_PAGES, attrs: Record<string, string> = {}) => {
+      const a = document.createElement('a');
+      a.href = href(page);
+      a.textContent = label;
+      a.dataset.page = String(page);
+      for (const [k, v] of Object.entries(attrs)) a.setAttribute(k, v);
+      return a;
+    };
+    const gap = () => Object.assign(document.createElement('span'), { textContent: '…', className: 'gap' });
+    if (page === ALL_PAGES) {
+      pager.append(link('Zobrazit po stránkách', 1, { class: 'mode' }));
+      return;
     }
+    if (page > 1) pager.append(link('← Předchozí', page - 1, { rel: 'prev', class: 'step' }));
+    for (const p of pageLinks(page, pages)) {
+      pager.append(p === null ? gap() : link(String(p), p, p === page ? { 'aria-current': 'page' } : { 'aria-label': `Strana ${p}` }));
+    }
+    if (page < pages) pager.append(link('Další →', page + 1, { rel: 'next', class: 'step' }));
+    pager.append(link(`Zobrazit vše (${total})`, ALL_PAGES, { class: 'mode' }));
+  }
+
+  function apply() {
+    const matching = cards.filter((c) => {
+      const d = c.dataset;
+      return matchesFilters({ tags: d.tags!.split('|'), technique: d.technique!, year: d.year!, collection: d.collection!, status: d.status! }, state);
+    });
+    const { page, pages, start, end } = paginate(matching.length, state.page, pageSizeOf(state, pageSizes));
+    state.page = page;
+    const visible = new Set(matching.slice(start, end));
+    for (const c of cards) c.hidden = !visible.has(c);
+    const shown = matching.length;
+    renderPager(page, pages, matching.length);
     chips.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === state.tag)));
-    (form.elements.namedItem('technique') as HTMLSelectElement).value = state.technique;
-    if (yearSelect) yearSelect.value = state.year;
-    (form.elements.namedItem('available') as HTMLInputElement).checked = state.available;
+    for (const k of selects) select(k)!.value = state[k];
+    if (perPageSelect) perPageSelect.value = String(pageSizeOf(state, pageSizes));
+    // "O kolekci →" next to the collection filter, only for the selected collection.
+    form.querySelectorAll<HTMLAnchorElement>('[data-collection-link]').forEach((a) => { a.hidden = a.dataset.collectionLink !== state.collection; });
     countEl.textContent = `${shown} ${plural(shown)}`;
     emptyEl.hidden = shown > 0;
-    const p = new URLSearchParams();
-    if (state.tag) p.set('tag', state.tag);
-    if (state.technique) p.set('technique', state.technique);
-    if (state.year) p.set('year', state.year);
-    if (state.available) p.set('available', '1');
+    const p = stateToParams(state);
     history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
   }
 
-  chips.forEach((b) => b.addEventListener('click', () => { state.tag = b.dataset.value!; apply(); }));
-  form.addEventListener('change', () => {
-    state.technique = (form.elements.namedItem('technique') as HTMLSelectElement).value;
-    state.year = yearSelect?.value ?? '';
-    state.available = (form.elements.namedItem('available') as HTMLInputElement).checked;
+  // A new filter starts again on the first page.
+  chips.forEach((b) => b.addEventListener('click', () => { state.tag = b.dataset.value!; state.page = pageAfterFilterChange(state.page); apply(); }));
+  form.addEventListener('change', (e) => {
+    // Picking a page size starts again on page 1 with paging on; any other change is a filter.
+    if (e.target === perPageSelect) {
+      state = withPageSize(state, Number(perPageSelect!.value), pageSizes);
+      storage.set(pageSizeToRemember(Number(perPageSelect!.value), pageSizes));
+    }
+    else {
+      for (const k of selects) state[k] = select(k)!.value;
+      state.page = pageAfterFilterChange(state.page);
+    }
     apply();
+  });
+  pager.addEventListener('click', (e) => {
+    const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[data-page]');
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return; // let "open in new tab" work
+    e.preventDefault();
+    state.page = a.dataset.page === ALL_PAGES ? ALL_PAGES : Number(a.dataset.page);
+    apply();
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   apply();
 </script>
@@ -106,6 +204,15 @@ const years = getYears();
   .selects label { display: flex; gap: 8px; align-items: center; color: var(--ink-soft); }
   .selects select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 4px 8px; border-radius: 2px; }
   .count { margin-left: auto; }
+  .pager { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 6px 14px; margin: 16px 0 8px; font-size: 0.95rem; }
+  .pager a { text-decoration: none; color: var(--ink-soft); padding: 4px 8px; border-bottom: 1px solid transparent; }
+  .pager a:hover { color: var(--ink); }
+  .pager a[aria-current='page'] { color: var(--ink); border-bottom-color: var(--ink); }
+  .pager .step { font-family: var(--serif); font-size: 1.1rem; }
+  .pager .gap { color: var(--ink-soft); }
+  .pager .mode { flex-basis: 100%; text-align: center; font-size: 0.88rem; text-decoration: underline; text-underline-offset: 3px; }
+  .about-collection { color: var(--accent); text-decoration: none; }
+  .years .to-collections { margin-left: auto; font-size: 1rem; font-family: var(--sans); align-self: center; }
   .grid { columns: 3 300px; column-gap: 36px; }
   .grid :global(.card[hidden]) { display: none; }
 </style>

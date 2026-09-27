@@ -1,0 +1,15 @@
+id: v5h8d
+demo: true # testovací data (pavla/demo), nikdy do pavla-content
+title: Jablka na stole
+date: 2025-10-12
+technique: pastel
+support: pastelový papír Canson
+size_cm: [ 40, 30 ]
+tags: [ zátiší, ovoce ]
+status: sold
+price: 1500
+collection: demo-kresby-2025
+description: |
+  Podzimní zátiší z kroužku.
+private_note: |
+  Koupila paní z kroužku, zaplaceno hotově.

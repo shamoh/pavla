@@ -1,0 +1,4 @@
+demo: true # testovací data (pavla/demo), nikdy do pavla-content
+alt: "Zástupná úvodní fotka stránky O mně (testovací data)"
+caption: "Popisek pod fotkou (testovací data)"
+focus: [70, 60]

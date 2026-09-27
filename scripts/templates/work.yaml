@@ -8,9 +8,11 @@ technique: akvarel
 support: ""                  # např. papír Arches 300 g, nepovinné
 size_cm: [0, 0]              # šířka × výška v cm, DOPLNIT (podle toho se dělá mockup)
 tags: []                     # např. [krajina, voda, plenér]
-status: not-for-sale         # available | reserved | sold | not-for-sale
+status: not-for-sale         # available | reserved | sold | not-for-sale (mockupy jen u available a reserved)
 price:                       # Kč, jen u available, nepovinné
 fler: ""                     # odkaz na Fler, až bude
 featured: false              # kandidát na úvodní stránku
+collection: ""               # kolekce, např. plener-sumava-2026 (název souboru v kolekce/), nepovinné
 description: |
   Pár vět o obraze.
+private_note: |              # soukromá poznámka, zůstane jen tady, na web se nedostane

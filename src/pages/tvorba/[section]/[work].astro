@@ -2,7 +2,8 @@
 import Base from '../../../layouts/Base.astro';
 import Picture from '../../../components/Picture.astro';
 import Img from '../../../components/Img.astro';
-import { getWorks, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
+import { collectionUrl, detailCaption, getCollection, workShareImage, getWorks, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
+import { isOnSale } from '../../../../scripts/lib/works.mjs';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -13,11 +14,16 @@ const { work, prev, next } = Astro.props;
 const date = work.date.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
 const mail = site.email && `mailto:${site.email}?subject=${encodeURIComponent(`Zájem o obraz „${work.title}“`)}`;
 
-// Everything the viewer can step through: the work itself, then its mockups.
+const collection = getCollection(work.collection);
+
+// Everything the viewer can step through: the work itself, its details, then its mockups.
 const base = workImagePath(work);
-const mockups = work.image.mockups ?? [];
+const details = (work.image.details ?? []).map((d, i) => ({ ...d, caption: detailCaption(work, d.name) || `detail ${i + 1}` }));
+// Mockups are marketing for buyers: shown only while the work is for sale and not sold.
+const mockups = isOnSale(work.status) ? work.image.mockups ?? [] : [];
 const views = [
   { label: work.title, prefix: '', image: work.image },
+  ...details.map((d) => ({ label: `${work.title} · ${d.caption}`, prefix: `detail-${d.name}-`, image: d })),
   ...mockups.map((m) => ({ label: `${work.title} · ${m.label}`, prefix: `mockup-${m.scene}-`, image: m })),
 ].map((v) => ({
   label: v.label,
@@ -29,7 +35,7 @@ const views = [
 // Landscape mockups are stacked, portrait ones sit side by side.
 const mockupsWide = mockups.every((m) => m.width >= m.height);
 ---
-<Base title={work.title} description={work.description?.trim() || `${work.title} — ${work.technique}`} image={`${workImagePath(work)}/1600.jpg`}>
+<Base title={work.title} description={work.description?.trim() || `${work.title} — ${work.technique}`} image={workShareImage(work)}>
   <p class="back"><a href={url('/tvorba/')}>← Tvorba</a> · <a href={url(`/tvorba/${work.year}/`)}>{work.year}</a></p>
   <article class="work">
     <a class="zoom" href={views[0].src} data-view="0" title="Zvětšit">
@@ -42,8 +48,19 @@ const mockupsWide = mockups.every((m) => m.width >= m.height);
         {work.support && <><dt>Podklad</dt><dd>{work.support}</dd></>}
         {work.size_cm && <><dt>Rozměr</dt><dd>{formatSize(work.size_cm)}</dd></>}
         <dt>Vzniklo</dt><dd>{date}</dd>
+        {collection && <><dt>Kolekce</dt><dd><a href={collectionUrl(collection.slug)}>{collection.title}</a></dd></>}
       </dl>
       {work.description && <p class="desc">{work.description}</p>}
+      {details.length > 0 && (
+        <section class="details" aria-label="Detaily obrazu">
+          {details.map((d, i) => (
+            <a href={views[i + 1].src} data-view={i + 1} title={`Zvětšit: ${d.caption}`}>
+              <span class="thumb"><Img base={base} prefix={`detail-${d.name}-`} image={d} alt={`${work.title}: ${d.caption}`} sizes="(max-width: 900px) 33vw, 12vw" /></span>
+              <span class="muted">{d.caption}</span>
+            </a>
+          ))}
+        </section>
+      )}
       <div class="status">
         <span class:list={['badge', { available: work.status === 'available' }]}>{statusLabel[work.status]}</span>
         {work.status === 'available' && work.price && <span class="price">{formatPrice(work.price)}</span>}
@@ -59,7 +76,7 @@ const mockupsWide = mockups.every((m) => m.width >= m.height);
           <p class="eyebrow">Jak by mohl vypadat u vás</p>
           <div class:list={['mockup-grid', { wide: mockupsWide }]}>
             {mockups.map((m, i) => (
-              <a href={views[i + 1].src} data-view={i + 1} title={`Zvětšit: ${m.label}`}>
+              <a href={views[1 + details.length + i].src} data-view={1 + details.length + i} title={`Zvětšit: ${m.label}`}>
                 <Img base={base} prefix={`mockup-${m.scene}-`} image={m} alt={`${work.title} v interiéru: ${m.label}`} sizes="(max-width: 900px) 100vw, 30vw" />
                 <span class="muted">{m.label} · skutečná velikost {formatSize(work.size_cm)}</span>
               </a>
@@ -149,6 +166,11 @@ const mockupsWide = mockups.every((m) => m.width >= m.height);
   dt { color: var(--ink-soft); }
   dd { margin: 0; }
   .desc { white-space: pre-line; }
+  .details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
+  .details a { display: flex; flex-direction: column; gap: 6px; text-decoration: none; font-size: 0.8rem; line-height: 1.3; cursor: zoom-in; }
+  .details .thumb { display: block; aspect-ratio: 1; overflow: hidden; }
+  .details :global(picture), .details :global(img) { width: 100%; height: 100%; }
+  .details :global(img) { object-fit: cover; }
   .status { display: flex; gap: 16px; align-items: center; margin: 24px 0 16px; }
   .price { font-family: var(--serif); font-size: 1.5rem; }
   .actions { display: flex; flex-wrap: wrap; gap: 12px; }

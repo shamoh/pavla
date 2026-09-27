@@ -1,7 +1,7 @@
 ---
-import { site, url } from '../lib/site';
+import { site, url, type ShareImage } from '../lib/site';
 
-interface Props { title?: string; description?: string; image?: string }
+interface Props { title?: string; description?: string; image?: ShareImage }
 const { title, description = `${site.author} — ${site.tagline.toLowerCase()}.`, image } = Astro.props;
 const fullTitle = title ? `${title} · ${site.title}` : `${site.title} — ${site.tagline}`;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
@@ -10,7 +10,7 @@ const nav = [
   { href: '/o-mne', label: 'O mně' },
   { href: '/kontakt', label: 'Kontakt' },
 ];
-const ogImage = image ? new URL(image, site.url).href : undefined;
+const ogImage = image ? new URL(image.src, site.url).href : undefined;
 ---
 <!doctype html>
 <html lang="cs">
@@ -23,7 +23,14 @@ const ogImage = image ? new URL(image, site.url).href : undefined;
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    {ogImage && <meta property="og:image" content={ogImage} />}
+    {ogImage && (
+      <>
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:width" content={String(image!.width)} />
+        <meta property="og:image:height" content={String(image!.height)} />
+        <meta name="twitter:card" content="summary_large_image" />
+      </>
+    )}
     <link rel="icon" href={url('/favicon.svg')} type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

@@ -1,3 +1,4 @@
 # Popis fotky – kostru vytvořila pipeline. Doplň a ulož.
 alt: {{alt}}             # co je na fotce (pro nevidomé a vyhledávače), např. „Pavla maluje v ateliéru“
 caption: ""              # popisek pod fotkou, nepovinné
+focus: [50, 50]          # kam se fotka vycentruje, když ji stránka ořízne: [zleva %, shora %], např. [80, 70] = vpravo dole

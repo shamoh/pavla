@@ -107,3 +107,36 @@ test('prepareContent reports invalid YAML and continues with the rest', async ()
   assert.match(r.problems[0], /zlomeny\.yaml: invalid YAML/);
   assert.deepEqual(r.works.map((w) => w.slug), ['dobry']);
 });
+
+test('readTree reads detail photos from a folder named after the work, sorted by file name', async () => {
+  await write('2026/rano.yaml', 'title: x');
+  await write('2026/rano/2-lodka.jpg');
+  await write('2026/rano/1 Květ.JPG');
+  await write('2026/rano/.DS_Store');
+  const { years, problems } = await readTree(worksDir());
+  assert.deepEqual(problems, []);
+  assert.deepEqual(years[0].details.get('rano').files, [
+    { name: '1-kvet', file: '1 Květ.JPG' },
+    { name: '2-lodka', file: '2-lodka.jpg' },
+  ]);
+});
+
+test('readTree reports detail folders without a work and non-photos inside them', async () => {
+  await write('2026/rano.yaml', 'title: x');
+  await write('2026/rano/poznamky.txt');
+  await write('2026/sirotek/detail.jpg');
+  const { problems } = await readTree(worksDir());
+  assert.equal(problems.length, 2);
+  assert.ok(problems.some((p) => p.includes('poznamky.txt')));
+  assert.ok(problems.some((p) => p.includes('2026/sirotek/') && p.includes('2026/sirotek.yaml')));
+});
+
+test('prepareContent returns detail photo paths of a work (none when there is no folder)', async () => {
+  await write('2026/rano.yaml', 'id: k3f9a\ntitle: x\ndate: 2026-01-01\n');
+  await write('2026/rano/kvet.jpg');
+  await write('2026/vecer.yaml', 'id: m4g8b\ntitle: y\ndate: 2026-01-01\n');
+  const { works } = await prepareContent(dir);
+  const bySlug = Object.fromEntries(works.map((w) => [w.slug, w]));
+  assert.deepEqual(bySlug.rano.details, [{ name: 'kvet', path: path.join(worksDir(), '2026/rano/kvet.jpg') }]);
+  assert.deepEqual(bySlug.vecer.details, []);
+});

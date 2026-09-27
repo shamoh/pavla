@@ -27,7 +27,7 @@ export function formatSummary(result, error) {
   };
   section('Nové popisy k doplnění (smaž v nich řádek draft: true, až budou hotové)', result.created);
   section('Přidělené kódy obrazů', result.assigned);
-  section('Odstraněno z webu', result.pruned);
+  section('Odstraněno (web a exporty smazaných či přejmenovaných děl)', result.pruned);
   lines.push(`Zpracováno: ${result.processed}, beze změny: ${result.skipped}.`);
   return lines.join('\n') + '\n';
 }

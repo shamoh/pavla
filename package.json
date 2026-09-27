@@ -7,7 +7,10 @@
     "build": "astro build",
     "preview": "astro preview",
     "images": "node scripts/process-images.mjs",
-    "test": "node --test \"scripts/**/*.test.mjs\""
+    "test": "node --test \"scripts/**/*.test.mjs\"",
+    "demo:prepare": "node scripts/demo.mjs",
+    "demo": "node scripts/demo.mjs && SITE_DATA_DIR=.demo/site astro dev",
+    "demo:build": "node scripts/demo.mjs && SITE_DATA_DIR=.demo/site astro build"
   },
   "dependencies": {
     "astro": "^7.3.5",

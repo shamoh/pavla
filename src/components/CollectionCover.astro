@@ -1,0 +1,23 @@
+---
+// Cover of a collection, always cropped to 3:2 around the collection's `focus`:
+// its own photo, a detail photo of a work (`cover: <id>#<detail>`) or a whole work.
+import Img from './Img.astro';
+import { type Collection, workImagePath } from '../lib/site';
+
+interface Props { collection: Collection; sizes: string; eager?: boolean }
+const { collection: c, sizes, eager } = Astro.props;
+const [fx, fy] = c.focus;
+const image = c.cover
+  ? { base: `/collections/${c.slug}`, prefix: '', set: c.cover, alt: c.cover.alt || c.title }
+  : c.coverDetail
+    ? { base: workImagePath(c.coverWork), prefix: `detail-${c.coverDetail.name}-`, set: c.coverDetail, alt: `${c.coverWork.title}, detail` }
+    : { base: workImagePath(c.coverWork), prefix: '', set: c.coverWork.image, alt: `${c.coverWork.title} — ${c.coverWork.technique}` };
+---
+<div class="collection-cover" style={`--focus: ${fx}% ${fy}%`}>
+  <Img base={image.base} prefix={image.prefix} image={image.set} alt={image.alt} sizes={sizes} eager={eager} />
+</div>
+<style>
+  .collection-cover { aspect-ratio: 3 / 2; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 12px 32px -16px rgba(0,0,0,.25); }
+  .collection-cover :global(picture) { height: 100%; }
+  .collection-cover :global(img) { height: 100%; object-fit: cover; object-position: var(--focus); }
+</style>
