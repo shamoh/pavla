@@ -29,3 +29,14 @@ test('formatSummary lists new skeletons, ids, missing photos and removals', () =
 test('formatSummary reports a crash', () => {
   assert.match(formatSummary(null, new Error('Content not found')), /Zpracování selhalo[\s\S]*Content not found/);
 });
+
+test('formatSummary of a branch run (prepare only) asks to fill in the new descriptions', () => {
+  const s = formatSummary({ ...base, prepared: true, created: ['2026/rano.yaml'], assigned: ['2026/rano: k3f9a'] });
+  assert.match(s, /^## ✓ Připraveno k doplnění/);
+  assert.match(s, /doplň skutečné hodnoty/);
+  assert.match(s, /až po sloučení větve do main/);
+  assert.ok(s.includes('2026/rano.yaml'));
+  assert.doesNotMatch(s, /Zpracováno:/);
+  // problems on a branch look the same as on main
+  assert.match(formatSummary({ ...base, prepared: true, ok: false, problems: ['x'] }), /^## ✗ Je potřeba něco opravit/);
+});

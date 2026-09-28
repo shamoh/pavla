@@ -17,7 +17,7 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
   bez komentářů. `private_note` a neznámá pole nesmí nikdy do repa `pavla` (je veřejné). Nové veřejné pole = přidat do seznamu.
 - Stav prodeje: `isOnSale` = `available` | `reserved` a musí mít `price` (kontrola v pipeline). Jen tato díla
   mají mockupy, Fler exporty a filtr „neprodané“; `not-for-sale` a `sold` nikdy.
-- Exporty: Instagram vždy originál (`-clean`) + detailní fotky, nikdy mockupy. Fler jen díla na prodej:
+- Exporty: Instagram jen u díla s `instagram: true` (výchozí false), originál (`-clean`) + detailní fotky, nikdy mockupy. Fler jen díla na prodej:
   originál + mockupy, vše s vodoznakem. Při přegenerování se staré exporty díla mažou (`clearExports`),
   plný běh navíc porovná `export/` s `expectedExports` a smaže vše navíc (`planExportPrune`), i bez přegenerování.
 - Kolekce: `pavla-content/kolekce/<slug>.yaml` (+ volitelná úvodní `<slug>.jpg`), dílo `collection: <slug>` (max. jedna).
@@ -40,6 +40,7 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
   `aspect` ořízne na poměr stran kolem `focus: [x, y]` (%) z yaml fotky. O mně: `o-mne-uvod` (2:1) a `portret`.
 - Automatika: workflow v `pavla-content/.github/workflows/publish.yml` spouští pipeline a otevírá PR
   do tohoto repa (větev `obsah/aktualizace`, secret `PAVLA_TOKEN`). Souhrn běhu: `scripts/lib/summary.mjs`.
+  Na ostatních větvích `pavla-content` jen `--prepare-only` (kostry, id, kontroly) s commitem zpět do větve.
   Týdenní kontrola (token, selhané běhy, nasazení, čekající PR): `health-check.yml` + `scripts/check-health.mjs` (`scripts/lib/health.mjs`).
 - Deploy workflow tohoto repa obrázky negeneruje, jen staví web z toho, co je commitnuté.
 - „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` `npm test` + `npm run demo:build`.

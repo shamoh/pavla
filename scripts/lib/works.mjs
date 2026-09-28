@@ -104,6 +104,9 @@ export function validateWorks(works) {
       problems.push(`${where}: status "${w.data.status}" needs a price (price: <Kč>)`);
     }
     problems.push(...validateDetailCaptions(w, where));
+    if (w.data?.instagram !== undefined && w.data.instagram !== null && typeof w.data.instagram !== 'boolean') {
+      problems.push(`${where}: instagram must be true or false`);
+    }
     if (w.data?.collection !== undefined && w.data.collection !== null && w.data.collection !== '' && !isValidSlug(w.data.collection)) {
       problems.push(`${where}: collection "${w.data.collection}" must be the name of a file in kolekce/ (a-z, 0-9 and dashes)`);
     }
@@ -204,15 +207,18 @@ export function planExportPrune(files, wanted) {
     .sort();
 }
 
+/** True when the author asked for Instagram exports of a work (`instagram: true`). */
+export const wantsInstagram = (data) => data?.instagram === true;
+
 /**
  * Export suffixes a work should have, per platform (see planExportPrune).
- * Instagram: the original on paper and every detail photo, never mockups.
+ * Instagram: only works with `instagram: true`, the original on paper and every detail photo, never mockups.
  * Fler: only works on sale, the original and every mockup. `mockupScenes` null = unknown (no web images yet).
  */
-export function expectedExports({ status, details, mockupScenes }) {
+export function expectedExports({ status, details, mockupScenes, instagram = false }) {
   const onSale = isOnSale(status);
   return {
-    instagram: ['-clean', ...details.map((d) => `-detail-${d}`)],
+    instagram: instagram ? ['-clean', ...details.map((d) => `-detail-${d}`)] : [],
     fler: !onSale ? [] : mockupScenes === null ? null : ['', ...mockupScenes.map((s) => `-mockup-${s}`)],
   };
 }

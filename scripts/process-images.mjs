@@ -10,8 +10,9 @@
 //   public/collections/<slug>/<width>.{avif,webp,jpg}, info.json          cover photo of a collection (commit)
 //   public/og/collections/<slug>.jpg                                     share image (og:image) of a collection: its cover
 //                                                                        cropped to 3:2 around `focus`, as on the page (commit)
-//   <contentDir>/export/instagram/<year>/<key>-clean.jpg          Instagram, the original on paper, 4:5 (always)
+//   <contentDir>/export/instagram/<year>/<key>-clean.jpg          Instagram, the original on paper, 4:5
 //   <contentDir>/export/instagram/<year>/<key>-detail-<name>.jpg  Instagram, a detail photo cropped to 4:5 (never mockups)
+//   (Instagram exports only for works with `instagram: true`; otherwise they are removed)
 //
 // Copies for the public site repository contain only public fields: private_note never leaves pavla-content.
 //   <contentDir>/export/fler/<year>/<key>.jpg                     Fler, the original with the author's name as watermark
@@ -20,6 +21,8 @@
 //
 // Usage:  npm run images             (only works whose outputs are missing or older than the master)
 //         npm run images -- --force  (regenerate everything)
+//         npm run images -- --prepare-only  (only skeletons, ids and checks of the content; no images, site or
+//                                            exports; used by the automation on branches of pavla-content)
 //         npm run images -- <slug>   (a single work; skips pruning)
 // Content location: images.contentDir in site.config.yaml, overridable by CONTENT_DIR.
 
@@ -36,7 +39,7 @@ import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { focusCrop, photoFocus, preparePhotos } from './lib/photos.mjs';
 import { formatSummary } from './lib/summary.mjs';
 import {
-  PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, isValidSlug, planExportPrune, planPrune, publicFields, validateWorks, workKey,
+  PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, wantsInstagram, isValidSlug, planExportPrune, planPrune, publicFields, validateWorks, workKey,
 } from './lib/works.mjs';
 
 /** Bump when the output format changes, so every work is regenerated once. */
@@ -240,7 +243,8 @@ async function removeEmptyYearDirs(root) {
 
 /**
  * Runs the whole pipeline. Returns a summary; throws on configuration errors.
- * Options: contentDir, siteDir, config, force, only (slugs), log, today, random, dataset.
+ * Options: contentDir, siteDir, config, force, only (slugs), log, today, random, dataset, prepareOnly.
+ * `prepareOnly` stops after skeletons, ids and checks: nothing is written to the site or the exports.
  * `dataset` 'real' (default) forbids test data in the content, 'demo' requires every item to be test data
  * (see scripts/lib/demo.mjs; test data are processed by `npm run demo` into .demo/, never into this repo).
  */
@@ -255,6 +259,7 @@ export async function run({
   today,
   random,
   dataset = 'real',
+  prepareOnly = false,
 } = {}) {
   config ??= YAML.parse(await fs.readFile(path.join(siteDir, 'site.config.yaml'), 'utf8'));
   const img = config.images;
@@ -277,8 +282,9 @@ export async function run({
     ...demoProblems({ works, collections: collections.collections, photos: photos.photos }, dataset),
   ];
   if (problems.length) {
-    return { ok: false, problems, created, assigned, processed: 0, skipped: 0, missing: [], pruned: [] };
+    return { ok: false, problems, created, assigned, processed: 0, skipped: 0, missing: [], pruned: [], prepared: prepareOnly };
   }
+  if (prepareOnly) return { ok: true, problems: [], created, assigned, processed: 0, skipped: 0, missing: [], pruned: [], prepared: true };
   const { scenes, text: scenesText } = await loadScenes(scenesDir);
 
   const metaRoot = path.join(siteDir, 'content/works');
@@ -305,9 +311,10 @@ export async function run({
     // (mockups are for works on sale only) and the detail photos; not on price or description.
     const master = await fs.readFile(w.masterPath);
     const onSale = isOnSale(w.data.status);
+    const instagram = wantsInstagram(w.data);
     const details = await Promise.all(w.details.map(async (d) => ({ name: d.name, buf: await fs.readFile(d.path) })));
     const fingerprint = sha1(
-      String(PIPELINE_VERSION), master, JSON.stringify(w.data.size_cm ?? null), scenesText, String(onSale),
+      String(PIPELINE_VERSION), master, JSON.stringify(w.data.size_cm ?? null), scenesText, String(onSale), String(instagram),
       ...details.flatMap((d) => [d.name, d.buf]),
     );
     const upToDate = (await readJson(path.join(webDir, 'info.json')))?.fingerprint === fingerprint;
@@ -320,13 +327,15 @@ export async function run({
     if (onSale && !picked.length) log(`  ! no mockup scene is big enough for ${rel} (see mockups/scenes.yaml maxCm)`);
     const mockups = await web(webDir, m, img, { work: w.data, picked, details, fingerprint });
 
-    // Exports. Instagram: the original and the detail photos, never mockups.
+    // Exports. Instagram: only when asked for (instagram: true), the original and the detail photos, never mockups.
     // Fler: only works on sale, the original and the mockups, all with the watermark.
     await clearExports(exportRoot, w.year, key);
-    const insta = path.join(exportRoot, 'instagram', w.year);
-    await fs.mkdir(insta, { recursive: true });
-    await instagramClean(path.join(insta, `${key}-clean.jpg`), m, img);
-    for (const d of details) await instagramDetail(path.join(insta, `${key}-detail-${d.name}.jpg`), d.buf, img);
+    if (instagram) {
+      const insta = path.join(exportRoot, 'instagram', w.year);
+      await fs.mkdir(insta, { recursive: true });
+      await instagramClean(path.join(insta, `${key}-clean.jpg`), m, img);
+      for (const d of details) await instagramDetail(path.join(insta, `${key}-detail-${d.name}.jpg`), d.buf, img);
+    }
     if (onSale) {
       const flerDir = path.join(exportRoot, 'fler', w.year);
       await fs.mkdir(flerDir, { recursive: true });
@@ -356,7 +365,7 @@ export async function run({
       const rel = `${w.year}/${workKey(w.slug, w.id)}`;
       const info = await readJson(path.join(webRoot, rel, 'info.json'));
       const mockupScenes = info ? (info.mockups ?? []).map((m) => m.scene) : null;
-      expected.set(rel, expectedExports({ status: w.data.status, details: w.details.map((d) => d.name), mockupScenes }));
+      expected.set(rel, expectedExports({ status: w.data.status, details: w.details.map((d) => d.name), mockupScenes, instagram: wantsInstagram(w.data) }));
     }
     for (const sub of ['instagram', 'fler']) {
       const root = path.join(exportRoot, sub);
@@ -452,9 +461,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   // On GitHub Actions the result is also written to the run page.
   const summary = (r, e) => process.env.GITHUB_STEP_SUMMARY && fs.appendFile(process.env.GITHUB_STEP_SUMMARY, formatSummary(r, e));
   try {
-    const r = await run({ force: args.includes('--force'), only: args.filter((a) => !a.startsWith('--')) });
+    const r = await run({ force: args.includes('--force'), prepareOnly: args.includes('--prepare-only'), only: args.filter((a) => !a.startsWith('--')) });
     r.problems.forEach((p) => console.error(`✗ ${p}`));
-    if (r.problems.length === 0) console.log(`Done: ${r.processed} processed, ${r.skipped} unchanged.`);
+    if (r.problems.length === 0) console.log(r.prepared ? 'Prepared: skeletons, ids and checks only.' : `Done: ${r.processed} processed, ${r.skipped} unchanged.`);
     if (r.missing.length) console.error(`Missing master photo for: ${r.missing.join(', ')}`);
     await summary(r);
     if (!r.ok) process.exitCode = 1;

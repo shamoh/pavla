@@ -16,7 +16,7 @@ pavla-content/                              (soukromé repo, zdroj obsahu)
   kolekce/<slug>.yaml                       popis kolekce (např. jednoho plenéru)
   kolekce/<slug>.jpg                        úvodní fotka kolekce (nepovinné)
   fotky/<název>.jpg + <název>.yaml          ostatní fotky webu (O mně, Kontakt)
-  export/instagram/<rok>/…                  pro Instagram: originál a detaily (generuje pipeline)
+  export/instagram/<rok>/…                  pro Instagram: originál a detaily, jen díla s instagram: true (generuje pipeline)
   export/fler/<rok>/…                       pro Fler: originál a mockupy s vodoznakem, jen díla na prodej
 
 pavla/                                      (toto repo, veřejné)
@@ -197,6 +197,7 @@ tags: [krajina, voda, plenér]
 status: available             # available | reserved | sold | not-for-sale
 price: 3200                   # Kč; zobrazí se jen u available
 fler: https://www.fler.cz/... # tlačítko „Koupit na Fleru“
+instagram: true               # připravit fotky pro Instagram (výchozí false)
 featured: true                # kandidát na úvodní stránku
 collection: plener-sumava-2026 # slug kolekce (soubor kolekce/<slug>.yaml), nepovinné
 draft: true                   # rozpracované, na webu se nezobrazí
@@ -212,10 +213,15 @@ private_note: |               # SOUKROMÉ: zůstane jen v pavla-content
 
 | `status` | Na webu | Mockupy | Export Fler | Export Instagram |
 |---|---|---|---|---|
-| `available` | K prodeji, cena a tlačítka | ano | originál + mockupy | originál + detaily |
-| `reserved` | Rezervováno | ano | originál + mockupy | originál + detaily |
-| `sold` | Prodáno, bez ceny | ne | nic | originál + detaily |
-| `not-for-sale` (výchozí) | Není na prodej | ne | nic | originál + detaily |
+| `available` | K prodeji, cena a tlačítka | ano | originál + mockupy | jen s `instagram: true` |
+| `reserved` | Rezervováno | ano | originál + mockupy | jen s `instagram: true` |
+| `sold` | Prodáno, bez ceny | ne | nic | jen s `instagram: true` |
+| `not-for-sale` (výchozí) | Není na prodej | ne | nic | jen s `instagram: true` |
+
+**Instagram na vyžádání:** fotky pro Instagram (originál a detaily) vzniknou jen
+u díla s `instagram: true`. Výchozí je `false` (kostra ho tak zapisuje). Přepnutí
+dílo přegeneruje, vypnutí jeho exporty pro Instagram smaže. Jiná hodnota než
+`true`/`false` je chyba. Pole zůstává jen v `pavla-content`, na web se nekopíruje.
 
 Obrazy na prodej jsou `available` a `reserved`: jen ty mají mockupy, Fler exporty
 a jen ty ukazuje filtr „neprodané“. **Musí mít cenu** (`price`, kladné číslo
@@ -245,6 +251,7 @@ v `demo/`, zobrazené přes `npm run demo`.
 | tagy | krajina, voda, plenér, hory, květiny, zátiší, ovoce, zvířata, zima, město, déšť, mlha, léto (i kombinace) |
 | `featured` (úvodní stránka) | Ráno u rybníka, Šumava v mlze |
 | tlačítko „Koupit na Fleru“ | Máky |
+| export pro Instagram (`instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail), Kytice z louky (+ 1 detail, není na prodej), Máky; ostatní díla žádný |
 | mockupy malého díla (≤ 35 cm) / většího | Kočka na okně / Zimní sad |
 | detailní fotky | Ráno u rybníka (2, s popisky), Kytice z louky (1, bez popisku), Pivoňky (1 široký) |
 | kolekce: vlastní úvodní fotka (panorama + `focus`) | Plenér Šumava 2026 |
@@ -260,6 +267,7 @@ v `demo/`, zobrazené přes `npm run demo`.
 - rok v `date` sedí se složkou, `title` a `date` nechybí,
 - `id` je platné a unikátní, `size_cm` jsou dvě kladná čísla (u publikovaných děl),
 - dílo `available` nebo `reserved` má `price` (kladné číslo),
+- `instagram` je `true` nebo `false`,
 - `collection` je slug (malá písmena, číslice, pomlčky), kolekce má `title`,
 - `cover` kolekce je `id` publikovaného díla této kolekce (případně `#` a jeho existující detail) a kolekce nemá zároveň vlastní úvodní fotku, `focus` kolekce je `[x, y]` 0–100,
 - `focus` fotky je `[x, y]` v rozsahu 0–100,
@@ -325,6 +333,7 @@ se dílo v tomto běhu přegenerovalo. Smaže:
 - exporty detailních fotek, které dílo už nemá,
 - Fler exporty mockupů scén, které dílo už nemá (podle `info.json`),
 - všechny Fler exporty díla, které není na prodej,
+- exporty pro Instagram díla, které nemá `instagram: true`,
 - mockupy na Instagramu (včetně starých `-wall.jpg`).
 
 Export se pozná podle názvu `<slug>-<id>…jpg`. Soubory, které nevypadají jako export (např.
@@ -334,7 +343,7 @@ na GitHubu. Logika: `planExportPrune` v `scripts/lib/works.mjs`.
 
 | Platforma | Kdy | Soubory |
 |---|---|---|
-| Instagram | vždy | `<slug>-<id>-clean.jpg` (originál na papírovém pozadí, 4:5), `<slug>-<id>-detail-<jméno>.jpg` (každý detail, 4:5). **Nikdy mockupy.** |
+| Instagram | jen dílo s `instagram: true` | `<slug>-<id>-clean.jpg` (originál na papírovém pozadí, 4:5), `<slug>-<id>-detail-<jméno>.jpg` (každý detail, 4:5). **Nikdy mockupy.** |
 | Fler | jen `available` a `reserved` | `<slug>-<id>.jpg` (originál), `<slug>-<id>-mockup-<scéna>.jpg` (každý mockup). Vše s vodoznakem. |
 
 Vodoznak je jen jméno autorky (`images.fler.watermark`), nikdy odkaz ani @handle
@@ -491,7 +500,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | rozpracované dílo | „Rozpracovaný obraz“ nesmí být v galerii, v roce 2026 ani na adrese `/tvorba/dhsh5/` |
 | web bez děl | `mkdir -p /tmp/prazdny/public && cp public/favicon.svg /tmp/prazdny/public/ && SITE_DATA_DIR=/tmp/prazdny npx astro build`: úvodní stránka ukáže „Obrazy tu brzy přibudou.“ a odkaz na Instagram (bez `site.instagram` jen první větu) |
 | stav a mockupy | v yaml změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, na detailu zmizí mockupy, z `export/fler` zmizí všechny soubory díla |
-| exporty | `ls ../pavla-content/export/*/*/`: Instagram má u každého díla `-clean` (+ `-detail-*`), Fler jen díla `available`/`reserved` (originál + `-mockup-*`) |
+| exporty | `ls .demo/content/export/*/*/`: Instagram jen Ráno u rybníka, Pivoňky, Kytice z louky a Máky (`instagram: true`) s `-clean` a `-detail-*`, Fler jen díla `available`/`reserved`; smaž `instagram: true` u Máků v `demo/`, `npm run demo:prepare`, jejich export zmizí (originál + `-mockup-*`) |
 | cena | smaž `price` u díla `available`: `npm run images` skončí chybou „needs a price“ |
 | úklid exportů | přejmenuj dílo (yaml, fotku i složku detailů), `npm run images`: v logu `- removed export/…` se starým názvem, v `export/` zůstanou jen soubory s novým názvem; totéž po smazání díla. Nebo nakopíruj do `export/fler/<rok>/` cizí soubor `<slug>-<id>-mockup-xyz.jpg` existujícího díla: další běh ho smaže, i když nic nepřegeneruje. |
 | kolekce | `/tvorba/kolekce/` (přehled), `/tvorba/kolekce/demo-plener-sumava-2026/` (s úvodní fotkou), `/tvorba/kolekce/demo-zahrada-2025/` (bez ní), výběr „Kolekce“ a „O kolekci →“ v galerii, řádek „Kolekce“ na detailu díla |
@@ -512,10 +521,28 @@ Pavla (ani nikdo jiný) nepotřebuje terminál: stačí nahrát fotku nebo uprav
 yaml v `pavla-content` přes web GitHubu. Workflow `pavla-content/.github/workflows/publish.yml`
 („Zpracování obsahu“) pak:
 
-1. spustí stejnou pipeline jako `npm run images` (kód bere z tohoto repa),
-2. commitne do `pavla-content` nové kostry popisů, přidělená ID a exporty pro Fler a Instagram,
-3. otevře (nebo aktualizuje) v tomto repu pull request z větve `obsah/aktualizace`
-   s webovými obrázky a kopiemi popisů. Po sloučení se web nasadí.
+- **na `main`**:
+  1. spustí stejnou pipeline jako `npm run images` (kód bere z tohoto repa),
+  2. commitne do `pavla-content` nové kostry popisů, přidělená ID a exporty pro Fler a Instagram,
+  3. otevře (nebo aktualizuje) v tomto repu pull request z větve `obsah/aktualizace`
+     s webovými obrázky a kopiemi popisů. Po sloučení se web nasadí.
+- **na jakékoli jiné větvi** (např. `nove-obrazy`) jen připravuje, nic nezveřejní:
+  1. spustí `npm run images -- --prepare-only`: k novým fotkám založí kostru
+     popisu s výchozími hodnotami (`draft: true`, název z názvu souboru,
+     datum dnešek nebo 1. 1. roku složky, `status: not-for-sale`,
+     `instagram: false`…), doplní chybějící `id` a zkontroluje všechny popisy,
+  2. commitne kostry a ID **zpět do stejné větve** („Pipeline: metadata
+     skeletons and ids to fill in“),
+  3. souhrn běhu je „Připraveno k doplnění“ se seznamem popisů k vyplnění.
+     Obrázky, exporty ani pull request do tohoto repa nevznikají.
+
+**Postup s větví:** nová větev s fotkami → push → automatika doplní kostry
+(je potřeba si je stáhnout: `git pull`) → vyplnit skutečné hodnoty a smazat
+`draft: true` → push do větve (automatika znovu zkontroluje, chyba = červený
+běh) → pull request do `main` a sloučení → zpracování jako na `main`. Na webu
+GitHubu jde totéž: při nahrání fotek zvolit *Create a new branch for this commit*,
+po doběhnutí automatiky upravit yaml ve větvi a nakonec pull request sloučit.
+Týdenní kontrola automatiky hlídá jen běhy na `main`.
 
 Výsledek běhu (co se zpracovalo, co je potřeba opravit) je česky na stránce běhu
 v záložce *Actions* repa `pavla-content`. Při chybě v popisu se nic nezveřejní.

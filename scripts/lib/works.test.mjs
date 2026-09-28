@@ -210,14 +210,16 @@ test('planExportPrune: a detail export is kept when another reading of its name 
   assert.deepEqual(planExportPrune(file, new Map([['2026/rano-k3f9a', ['-detail-ab']]])), file);
 });
 
-test('expectedExports: Instagram always original and details, Fler only on sale with original and mockups', () => {
+test('expectedExports: Instagram (when asked for) original and details, Fler only on sale with original and mockups', () => {
   const details = ['kvet'];
   const mockupScenes = ['police', 'pracovna'];
-  assert.deepEqual(expectedExports({ status: 'available', details, mockupScenes }), {
+  assert.deepEqual(expectedExports({ status: 'available', details, mockupScenes, instagram: true }), {
     instagram: ['-clean', '-detail-kvet'],
     fler: ['', '-mockup-police', '-mockup-pracovna'],
   });
-  assert.deepEqual(expectedExports({ status: 'reserved', details: [], mockupScenes: [] }), { instagram: ['-clean'], fler: [''] });
+  assert.deepEqual(expectedExports({ status: 'reserved', details: [], mockupScenes: [], instagram: true }), { instagram: ['-clean'], fler: [''] });
+  // Instagram only when asked for
+  assert.deepEqual(expectedExports({ status: 'available', details, mockupScenes }).instagram, []);
   for (const status of ['sold', 'not-for-sale', undefined]) {
     assert.deepEqual(expectedExports({ status, details, mockupScenes }).fler, [], String(status));
   }

@@ -8,7 +8,11 @@ export function formatSummary(result, error) {
     return lines.join('\n') + '\n';
   }
   const ok = result.ok;
-  lines.push(ok ? '## ✓ Zpracováno' : '## ✗ Je potřeba něco opravit', '');
+  // prepared: a run on a branch (--prepare-only), which only adds descriptions and checks them.
+  lines.push(ok ? (result.prepared ? '## ✓ Připraveno k doplnění' : '## ✓ Zpracováno') : '## ✗ Je potřeba něco opravit', '');
+  if (result.prepared && ok) {
+    lines.push('Ve větvi jsou doplněné popisy (yaml) a kódy obrazů. Stáhni si je, doplň skutečné hodnoty a nahraj zpět do větve.', 'Fotky pro web, Instagram a Fler vzniknou až po sloučení větve do main.', '');
+  }
   if (result.problems.length) {
     lines.push('Nic nebylo zveřejněno. Oprav prosím tyto soubory a nahraj je znovu:', '');
     result.problems.forEach((p) => lines.push(`- ${p}`));
@@ -28,6 +32,6 @@ export function formatSummary(result, error) {
   section('Nové popisy k doplnění (smaž v nich řádek draft: true, až budou hotové)', result.created);
   section('Přidělené kódy obrazů', result.assigned);
   section('Odstraněno (web a exporty smazaných či přejmenovaných děl)', result.pruned);
-  lines.push(`Zpracováno: ${result.processed}, beze změny: ${result.skipped}.`);
+  if (!result.prepared) lines.push(`Zpracováno: ${result.processed}, beze změny: ${result.skipped}.`);
   return lines.join('\n') + '\n';
 }

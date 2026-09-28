@@ -11,6 +11,7 @@ tags: []                     # např. [krajina, voda, plenér]
 status: not-for-sale         # available | reserved | sold | not-for-sale (mockupy jen u available a reserved)
 price:                       # Kč, jen u available, nepovinné
 fler: ""                     # odkaz na Fler, až bude
+instagram: false             # true = připravit fotky pro Instagram (export/instagram: originál a detaily)
 featured: false              # kandidát na úvodní stránku
 collection: ""               # kolekce, např. plener-sumava-2026 (název souboru v kolekce/), nepovinné
 description: |
