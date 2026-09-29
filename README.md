@@ -656,12 +656,13 @@ kalendářní verzování (CalVer): verze **je** čas, kdy se web sestavil, ve f
 
 - `npm test`: testy pipeline a filtrů (`node:test`). Každý modul v `scripts/lib/` má svůj `*.test.mjs`.
 - **Automatická kontrola** (`.github/workflows/check.yml`, „Kontrola kódu“): při každém pull requestu
-  a pushi do `main` spustí `npm test` a `npm run demo:build` (celý web z testovacích dat) a ověří, že
-  vznikla úvodní stránka, Tvorba i přehled kolekcí, že Tvorba má víc než 12 děl a že testovací web
-  nenese doménu (`CNAME`). Skutečná data nepotřebuje. Nespouští se pro aktualizace obsahu
-  z `pavla-content` (`content/`, vygenerované `public/…`) ani pro změny dokumentace (`*.md`);
-  ručně jde spustit v *Actions → Kontrola kódu → Run workflow*. Připravená testovací data se
-  ukládají do cache GitHubu, takže další běhy přegenerují jen změny.
+  a pushi do `main` spustí `npm test` a `npm run build` (web z commitnutých dat, zkompiluje i všechny
+  šablony stránek). Trvá asi minutu. Nespouští se pro aktualizace obsahu z `pavla-content`
+  (`content/`, vygenerované `public/…`) ani pro změny dokumentace (`*.md`); ručně jde spustit
+  v *Actions → Kontrola kódu → Run workflow*.
+- **Web z testovacích dat se na GitHubu nestaví:** nikde se nezveřejňuje a na runneru GitHubu
+  trvá kvůli mockupům několik minut. Změny webu a pipeline proto před commitem ověř lokálně:
+  `npm run demo:build` (případně `npm run demo` a proklikat).
 - `npm run build`: musí projít před každým commitem.
 - Kód, komentáře a názvy v kódu jsou anglicky; texty webu, URL a dokumentace česky.
 - README obou rep udržujeme průběžně aktuální s každou změnou pipeline, struktury nebo webu.

@@ -58,8 +58,9 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
   S okrajem zapíše do JPEGu polohu listu (XMP `pavla:sheet`, `scripts/lib/sheet-box.mjs`); pipeline podle ní
   pro mockupy (web i Fler) ořízne master na holý papír, jinde okraj zůstává.
 - Patička nese verzi buildu `vRR.MMDD.HHMM` (pražský čas) s bublinou (datum, commit): `scripts/lib/build-version.mjs`.
-- „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` `npm test` + `npm run demo:build`.
-  Když přidáš funkci, která potřebuje ověřit ve výsledném webu, přidej kontrolu i do jeho posledního kroku.
+- „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` jen `npm test` + `npm run build` (rychlé).
+  Web z testovacích dat se na GitHubu nestaví (pomalé, nikde se nezveřejňuje): před commitem změn webu nebo pipeline
+  vždy lokálně `npm run demo:build` (a výsledek zkontrolovat).
 
 ## Testovací a skutečná data
 - Testovací (demo) data žijí **jen** v `pavla/demo/` (yaml + recept `demo/images.yaml`) a zpracovávají se přes
@@ -78,7 +79,7 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
 - Minimalistický design: papírové tóny, serif nadpisy (Cormorant Garamond), Work Sans text. Obraz má vždy přednost před UI.
 - Vodoznak pro Fler: jen jméno, nikdy URL ani @handle (pravidla Fleru).
 - Mockupy musí držet reálné měřítko podle `size_cm`.
-- Před commitem: `npm test` a `npm run build` musí projít.
+- Před commitem: `npm test`, `npm run build` a `npm run demo:build` musí projít.
 - README obou rep (`pavla` technicky, `pavla-content` pro Pavlu) musí **vždy obsahovat kompletní popis všech
   vlastností**: celou strukturu, každou schopnost webu i pipeline (včetně voleb, parametrů v URL, kontrol a chyb),
   jak ji nastavit a jak ji lokálně vyzkoušet. Nic, co web nebo pipeline umí, nesmí v README chybět.

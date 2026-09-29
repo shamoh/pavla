@@ -1,5 +1,6 @@
-# Checks that nothing stopped working after a change of the code: unit tests and a full build of the site
-# from the test data (pavla/demo, `npm run demo:build`). Real content is not needed and not touched.
+# Checks that nothing stopped working after a change of the code: unit tests and a build of the site from
+# the committed data (it also compiles every page template). The site from the test data (`npm run demo:build`)
+# is not built here: it takes minutes on a GitHub runner and is never published; build it locally instead.
 # Content updates from pavla-content (content/, public/ generated data) and documentation do not trigger it.
 name: Kontrola kódu
 
@@ -50,27 +51,5 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      # The prepared test data only speed up the next run (the pipeline regenerates what changed);
-      # a stale cache is safe because every output carries a fingerprint of its inputs.
-      - name: Cache prepared test data
-        uses: actions/cache@v4
-        with:
-          path: .demo
-          key: demo-${{ hashFiles('demo/**', 'mockups/**', 'scripts/**', 'site.config.yaml', 'package-lock.json') }}
-          restore-keys: demo-
-
-      - name: Build the site from the test data
-        run: npm run demo:build
-
-      - name: Sanity check of the built test site
-        run: |
-          set -e
-          dist=.demo/site/dist
-          test -f "$dist/index.html"
-          test -f "$dist/tvorba/index.html"
-          test -f "$dist/tvorba/kolekce/index.html"
-          # the test site never carries the real domain
-          test ! -e "$dist/CNAME"
-          cards=$(grep -o 'class="card"' "$dist/tvorba/index.html" | wc -l)
-          echo "Works on /tvorba/: $cards"
-          test "$cards" -gt 12
+      - name: Build the site
+        run: npm run build
