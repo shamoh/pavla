@@ -32,7 +32,8 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
   web `getCollections` a `/tvorba/kolekce/<slug>/`.
   Úvodní obrázek: vlastní fotka > `cover: <id>` nebo `cover: <id>#<detail>` > nejnovější dílo; vždy ořez 3:2 kolem `focus`
   (`src/components/CollectionCover.astro`); `og:image` kolekce je týž výřez, `public/og/collections/<slug>.jpg`
-  (`coverSource` + `focusCrop`). `public/og` musí být v add-paths workflow `publish.yml`.
+  (`coverSource` + `focusCrop`). Každá výstupní složka pipeline v tomto repu (i `public/og`) musí být v `OUTPUT_PATHS` workflow `publish.yml`
+  (do PR jdou jen ty z nich, které existují nebo je git zná).
 - Detailní fotky díla: `pavla-content/tvorba/[<kolekce>/]<slug>/*.jpg` → `detail-<název>-<šířka>.*` a `info.json#details`;
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
 - Filtry galerie (`scripts/lib/gallery-filter.mjs`): všechny se kombinují a každá změna se hned zapisuje do URL,

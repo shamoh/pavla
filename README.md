@@ -583,6 +583,12 @@ yaml v `pavla-content` přes web GitHubu. Workflow `pavla-content/.github/workfl
   2. commitne do `pavla-content` nové kostry popisů, přidělená ID a exporty pro Fler a Instagram,
   3. otevře (nebo aktualizuje) v tomto repu pull request z větve `obsah/aktualizace`
      s webovými obrázky a kopiemi popisů. Po sloučení se web nasadí.
+     Do pull requestu jdou jen výstupní složky z `OUTPUT_PATHS` v `publish.yml`
+     (`content/works`, `public/works`, `public/photos`, `content/collections`,
+     `public/collections`, `public/og`), a to jen ty, které existují nebo je git
+     zná (smazaná složka). Chybějící složku (např. `public/collections`, dokud
+     žádná kolekce nemá `_uvod.jpg`) přeskočí, jinak by `git add` selhal a pull
+     request by nevznikl. Nová výstupní složka pipeline = doplnit do `OUTPUT_PATHS`.
 - **na jakékoli jiné větvi** (např. `nove-obrazy`) jen připravuje, nic nezveřejní:
   1. spustí `npm run images -- --prepare-only`: k novým fotkám založí kostru
      popisu s výchozími hodnotami (`draft: true`, název z názvu souboru,
