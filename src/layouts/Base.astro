@@ -1,5 +1,6 @@
 ---
-import { site, url, version, type ShareImage } from '../lib/site';
+import { analyticsId, site, url, version, type ShareImage } from '../lib/site';
+import { gtagConfigScript, gtagSrc } from '../../scripts/lib/analytics.mjs';
 
 interface Props { title?: string; description?: string; image?: ShareImage }
 const { title, description = `${site.author} — ${site.tagline.toLowerCase()}.`, image } = Astro.props;
@@ -38,6 +39,13 @@ const ogImage = image ? new URL(image.src, site.url).href : undefined;
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Work+Sans:wght@300;400;500&display=swap&subset=latin-ext"
       rel="stylesheet"
     />
+    {analyticsId && (
+      <>
+        <!-- Visitor statistics (Google Analytics 4), production build only: scripts/lib/analytics.mjs -->
+        <script is:inline async src={gtagSrc(analyticsId)}></script>
+        <script is:inline set:html={gtagConfigScript(analyticsId)} />
+      </>
+    )}
   </head>
   <body>
     <header class="site-header">

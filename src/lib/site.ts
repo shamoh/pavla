@@ -4,6 +4,7 @@ import YAML from 'yaml';
 import { detailKey, parseWorkKey } from '../../scripts/lib/works.mjs';
 import { parseCoverRef } from '../../scripts/lib/collections.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
+import { measurementIdFor } from '../../scripts/lib/analytics.mjs';
 import { execSync } from 'node:child_process';
 
 const root = process.cwd();
@@ -185,6 +186,9 @@ function currentCommit(): string {
 
 /** Version of this build for the footer (CalVer from the build time, see scripts/lib/build-version.mjs). */
 export const version = buildVersion(new Date(), currentCommit());
+
+/** Google Analytics measurement ID for this build, null when it must not measure (dev server, test data). */
+export const analyticsId = measurementIdFor(config.analytics, { production: import.meta.env.PROD, demo: Boolean(process.env.SITE_DATA_DIR) });
 
 /** Years that have at least one published work, newest first. */
 export const getYears = () => [...new Set(getWorks().map((w) => w.year))].sort((a, b) => b - a);

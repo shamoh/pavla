@@ -662,6 +662,34 @@ na kopii repa (skutečné výstupy v `content/` a `public/` by přepsal):
 `git clone . /tmp/zkusebni && cd /tmp/zkusebni && npm ci && node scripts/demo.mjs --content-only`, pak
 `CONTENT_DIR=$PWD/.demo/content npm run images -- --demo` a `node scripts/pull-request.mjs /tmp/popis.md`.
 
+## Návštěvnost (Google Analytics)
+
+Návštěvnost měří Google Analytics 4, služba `pavla.kramolis.cz` (ID `G-HPZNHYZ2MQ`, přehledy na
+<https://analytics.google.com>). Nastavení je v `site.config.yaml`:
+
+```yaml
+analytics:
+  googleMeasurementId: G-HPZNHYZ2MQ   # prázdné = bez statistik
+```
+
+- Značka Google (`gtag.js`) je v `<head>` každé stránky (`src/layouts/Base.astro`), stejná jako v návodu
+  Google Analytics. Adresa jde do GA celá, i s parametry filtrů a stránkování (`?status=…&page=2`).
+  V přehledech (*Přehledy → Zapojení → Stránky a obrazovky*) pak dimenze *Cesta ke stránce a řetězec
+  dotazu* ukáže každou kombinaci filtrů zvlášť, *Cesta ke stránce a třída obrazovky* je sečte pod `/tvorba/`.
+- Měří **jen produkční build skutečného webu** (`npm run build`, deploy). `npm run dev`, `npm run demo`
+  ani `npm run demo:build` značku nevloží, aby se nepočítaly návštěvy při vývoji. Krátké adresy
+  `/tvorba/<id>/` jsou okamžité přesměrování bez značky, měří se až cílová stránka.
+- GA ukládá své cookies (`_ga`, `_ga_<id>`), takže rozpozná vracející se návštěvníky. Lišta se souhlasem
+  na webu není (vědomé rozhodnutí, stejně jako na music.kramolis.cz).
+- Neplatné ID (např. `UA-…` nebo překlep) zastaví build chybou, aby statistiky potichu nevypadly.
+- Kód: `scripts/lib/analytics.mjs` (kdy měřit, obsah značky, kontrola ID), `analyticsId` v `src/lib/site.ts`.
+- Vyzkoušení: `npm run build`, pak `grep -c googletagmanager dist/index.html` (1 = značka je tam);
+  po `npm run demo:build` `grep -rl googletagmanager .demo/site/dist` nesmí nic najít. Na nasazeném webu:
+  Google Analytics → *Přehledy → V reálném čase* ukáže vlastní návštěvu do minuty.
+- Filtry galerie mění URL bez načtení stránky. GA je započítá jako zobrazení s novou adresou jen se zapnutým
+  *Vylepšené měření → Změny stránky na základě událostí historie prohlížeče* (výchozí stav streamu,
+  *Administrátor → Datové streamy → Web*); vypnutím by se počítala jen skutečná načtení stránek.
+
 ## Verze v patičce
 
 V patičce každé stránky je nenápadně verze webu, např. `v26.0928.1423`. Je to

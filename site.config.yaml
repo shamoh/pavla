@@ -10,6 +10,11 @@ site:
   instagram: pavla.kramolisova
   fler: ""                               # URL obchůdku na Fleru, až bude
 
+analytics:
+  # Google Analytics 4 (služba pavla.kramolis.cz), měří jen produkční build skutečného webu,
+  # ne `npm run dev` ani web z testovacích dat. Prázdné = bez statistik. Ukládá cookies _ga.
+  googleMeasurementId: G-HPZNHYZ2MQ
+
 gallery:
   pageSizes: [12, 24, 48]                # počty děl na stránku, které si návštěvník může vybrat; první je výchozí
 
