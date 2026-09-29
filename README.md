@@ -10,11 +10,12 @@ poznámky) sem nikdy nejdou.
 
 ```
 pavla-content/                              (soukromé repo, zdroj obsahu)
-  tvorba/<rok>/<slug>.yaml                  popis díla, vč. unikátního id a soukromé poznámky
-  tvorba/<rok>/<slug>.jpg                   master fotka díla
-  tvorba/<rok>/<slug>/*.jpg                 detailní fotky díla (nepovinné)
-  kolekce/<slug>.yaml                       popis kolekce (např. jednoho plenéru)
-  kolekce/<slug>.jpg                        úvodní fotka kolekce (nepovinné)
+  tvorba/<slug>.yaml + <slug>.jpg           dílo bez kolekce: popis (vč. id a soukromé poznámky) a master fotka
+  tvorba/<slug>/*.jpg                       detailní fotky díla (nepovinné, složka jménem díla vedle něj)
+  tvorba/<kolekce>/                         kolekce: každá jiná složka v tvorba/, např. 2026-plener-sumava/
+  tvorba/<kolekce>/_kolekce.yaml            popis kolekce
+  tvorba/<kolekce>/_uvod.jpg                úvodní fotka kolekce (nepovinné)
+  tvorba/<kolekce>/<slug>.yaml + .jpg       díla kolekce (a jejich detaily v <slug>/)
   fotky/<název>.jpg + <název>.yaml          ostatní fotky webu (O mně, Kontakt)
   export/instagram/<rok>/…                  pro Instagram: originál a detaily, jen díla s instagram: true (generuje pipeline)
   export/fler/<rok>/…                       pro Fler: originál a mockupy s vodoznakem, jen díla na prodej
@@ -156,19 +157,21 @@ data, jen s výstupem do `.demo/site/`. Web pak běží s `SITE_DATA_DIR=.demo/s
 které pipeline doplní, se zapíšou zpět do `demo/`, aby zůstaly stálé. První
 příprava trvá kolem 1,5 minuty, další jen přegenerují změny.
 
-**Nové testovací dílo:** yaml do `demo/tvorba/<rok>/demo-<slug>.yaml` (s `demo: true`)
+**Nové testovací dílo:** yaml do `demo/tvorba/demo-<slug>.yaml` nebo do složky testovací
+kolekce `demo/tvorba/demo-<kolekce>/` (s `demo: true`)
 a řádek do `demo/images.yaml` (`size`, `palette`, `seed`; detailní fotka jako
 `from` + `crop`). Pak `npm run demo`, pipeline doplní `id`.
 
 ## Přidání nového díla
 
-1. Do `pavla-content/tvorba/<rok>/` ulož master fotku, ideálně pod krátkým
+1. Do `pavla-content/tvorba/` (nebo do složky kolekce, např. `tvorba/2026-plener-sumava/`)
+   ulož master fotku, ideálně pod krátkým
    názvem bez diakritiky (`rano-u-rybnika.jpg`). Jiný název nevadí:
    `Ráno u rybníka.jpg` se spáruje s `rano-u-rybnika.yaml`.
 2. `npm run images` (v tomto repu):
    - k fotce bez popisu vytvoří kostru `rano-u-rybnika.yaml` s `draft: true`,
    - každému popisu bez `id` ho přidělí,
-   - k neexistující kolekci, na kterou dílo odkazuje, založí kostru `kolekce/<slug>.yaml`,
+   - k nové složce kolekce založí kostru `_kolekce.yaml`,
    - zkontroluje popisy (viz *Kontroly* níže); při chybě nic nezapíše na web,
    - vygeneruje web i exporty (jen pro nová či změněná díla),
    - smaže vygenerované soubory děl, kolekcí a fotek, které z `pavla-content` zmizely nebo se přejmenovaly,
@@ -189,7 +192,7 @@ jména, nic nemaže), jiná cesta k obsahu: `CONTENT_DIR=~/cesta/k/pavla-content
 ```yaml
 id: k3f9a                     # doplní pipeline, NEMĚNIT
 title: Ráno u rybníka
-date: 2026-06-14              # určuje řazení; rok musí sedět se složkou
+date: 2026-06-14              # den vzniku: určuje řazení i rok díla (stránky roků, adresa, složky v pavla)
 technique: akvarel
 support: papír Arches 300 g   # nepovinné
 size_cm: [40, 30]             # šířka × výška; drží měřítko mockupu na stěně
@@ -199,7 +202,6 @@ price: 3200                   # Kč; zobrazí se jen u available
 fler: https://www.fler.cz/... # tlačítko „Koupit na Fleru“
 instagram: true               # připravit fotky pro Instagram (výchozí false)
 featured: true                # kandidát na úvodní stránku
-collection: plener-sumava-2026 # slug kolekce (soubor kolekce/<slug>.yaml), nepovinné
 draft: true                   # rozpracované, na webu se nezobrazí
 description: |                # veřejný popis na webu
   Pár vět o obraze.
@@ -257,14 +259,16 @@ v `demo/`, zobrazené přes `npm run demo`.
 | kolekce: vlastní úvodní fotka (panorama + `focus`) | Plenér Šumava 2026 |
 | kolekce: `cover: <id>#<detail>` + `focus` | Ze zahrady 2025 (detail Pivoněk) |
 | kolekce: `cover: <id>` (celé dílo) | Město 2026 (Město v dešti, ne nejnovější Náměstí v mlze) |
-| kolekce bez `cover` = nejnovější dílo | Kresby, pastely a kvaš 2025 (Rybník v zimě) |
+| kolekce bez `cover` = nejnovější dílo | Kresby, pastely a kvaš 2025–2026 (Nádraží) |
+| kolekce přes víc let a přelom roku | `demo-kresby-2025-2026/`: Kočka na okně, Jablka na stole (2025), Rybník v zimě (prosinec 2025), Nádraží (únor 2026) |
 | díla bez kolekce | Zimní sad, Slunečnice, Máky, Bouřka nad polem |
 | soukromá poznámka | Ráno u rybníka, Jablka na stole, kolekce Plenér Šumava 2026 |
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
 
 ### Kontroly (pipeline při chybě nic nezveřejní)
 
-- rok v `date` sedí se složkou, `title` a `date` nechybí,
+- `title` nechybí a `date` je den (`2026-06-14`); rok díla se bere z něj,
+- dílo nemá pole `collection:` (kolekci určuje složka),
 - `id` je platné a unikátní, `size_cm` jsou dvě kladná čísla (u publikovaných děl),
 - dílo `available` nebo `reserved` má `price` (kladné číslo),
 - `instagram` je `true` nebo `false`,
@@ -283,10 +287,10 @@ na detailu díla pod popisem a stavem (mockupy jsou až pod nimi) a jdou i na In
 **Kam je dát:** do podsložky vedle master fotky, pojmenované přesně jako dílo:
 
 ```
-pavla-content/tvorba/2026/rano-u-rybnika.jpg        master
-pavla-content/tvorba/2026/rano-u-rybnika.yaml       popis
-pavla-content/tvorba/2026/rano-u-rybnika/1-mlha.jpg detail 1
-pavla-content/tvorba/2026/rano-u-rybnika/2-rakos.jpg detail 2
+pavla-content/tvorba/2026-plener-sumava/rano-u-rybnika.jpg        master
+pavla-content/tvorba/2026-plener-sumava/rano-u-rybnika.yaml       popis
+pavla-content/tvorba/2026-plener-sumava/rano-u-rybnika/1-mlha.jpg detail 1
+pavla-content/tvorba/2026-plener-sumava/rano-u-rybnika/2-rakos.jpg detail 2
 ```
 
 - Název složky = název yaml díla (bez `.yaml`). Složka bez díla je chyba.
@@ -373,11 +377,39 @@ změnou fotky). Dokud neexistuje, stránka sdílí největší webovou velikost 
 
 ## Kolekce
 
-Kolekce seskupuje díla, např. z jednoho plenéru. Dílo patří nejvýš do jedné
-kolekce (`collection: <slug>` v jeho yaml).
+Kolekce seskupuje díla, např. z jednoho plenéru nebo průřezové téma přes víc let.
+**Kolekce je složka v `pavla-content/tvorba/`** a díla do ní patří tím, že v ní
+leží (dílo je nejvýš v jedné kolekci). Díla přímo v `tvorba/` jsou bez kolekce.
+Složky roků nejsou: rok díla je rok jeho `date`, kolekce může trvat i přes přelom
+roku nebo víc let.
+
+```
+tvorba/2026-plener-sumava/            ← kolekce, adresa /tvorba/kolekce/2026-plener-sumava/
+  _kolekce.yaml                       ← popis kolekce
+  _uvod.jpg                           ← vlastní úvodní fotka (nepovinné)
+  tetrivci-slat.jpg + .yaml           ← díla kolekce
+  tetrivci-slat/                      ← detailní fotky díla
+tvorba/2025-2026-ovce/                ← kolekce přes víc let
+tvorba/zatisi-s-jablky.jpg + .yaml    ← dílo bez kolekce
+```
+
+- **Adresa** kolekce je název složky převedený na malá písmena bez diakritiky
+  (`2026 Plenér Šumava` → `2026-plener-sumava`). Rok je jen část názvu, pipeline
+  ho nijak nevykládá; doporučená je předpona s rokem. Dvě složky se stejnou
+  adresou jsou chyba.
+- **Složka se stejným jménem jako dílo vedle ní** jsou jeho detailní fotky,
+  každá jiná složka v `tvorba/` je kolekce. Kolekce v kolekci nejde (chyba).
+  Soubory začínající `_` nejsou díla.
+- Do veřejné kopie popisu díla (`content/works/…`) doplní pipeline `collection`
+  podle složky. V yaml díla pole `collection:` být nesmí (chyba). Stará kořenová
+  složka `kolekce/` je chyba (kolekce patří do `tvorba/`).
+- Kostru `_kolekce.yaml` založí pipeline pro každou složku bez ní, s titulkem
+  z názvu složky a rokem přesunutým na konec (`2026-plener-sumava` → „Plener
+  sumava 2026“, `2025-2026 Ovce` → „Ovce 2025–2026“); titulek je potřeba opravit
+  (diakritika).
 
 ```yaml
-# pavla-content/kolekce/plener-sumava-2026.yaml
+# pavla-content/tvorba/2026-plener-sumava/_kolekce.yaml
 title: Plenér Šumava 2026
 description: |
   Týden malování venku na Kvildě a Modravě.
@@ -388,8 +420,8 @@ private_note: ""    # soukromé, na web se nedostane
 
 - **Úvodní obrázek** kolekce (na její stránce, v přehledu i jako náhled při
   sdílení), v tomto pořadí:
-  1. vlastní fotka `kolekce/plener-sumava-2026.jpg`,
-  2. `cover: <id>`: celé dílo (musí být v této kolekci a publikované),
+  1. vlastní fotka `_uvod.jpg` ve složce kolekce,
+  2. `cover: <id>`: celé dílo (musí být v této kolekci a publikované, ne `draft`),
   3. `cover: <id>#<detail>`: jedna z detailních fotek toho díla (jméno jako
      v `details:`, tj. název souboru bez přípony; bez mezer kolem `#`, jinak
      by YAML bral zbytek jako komentář),
@@ -409,13 +441,11 @@ private_note: ""    # soukromé, na web se nedostane
   Vyrábí se při každém běhu, zapíše se jen při změně. Zmizí se smazanou
   kolekcí. Dokud neexistuje, stránka sdílí neoříznutý obrázek. Když ořez nestačí, je lepší připravit široký
   detail a použít `cover: <id>#<detail>`. Komponenta `src/components/CollectionCover.astro`.
-- Kostru yaml založí pipeline sama, když na kolekci odkáže dílo nebo když do
-  `kolekce/` přibude fotka bez popisu.
 - Stránka `/tvorba/kolekce/<slug>/` vznikne jen pro kolekci s aspoň jedním
   publikovaným dílem. Vedou na ni: přehled `/tvorba/kolekce/`, řádek „Kolekce“
   u každého jejího díla a odkaz „O kolekci →“ v galerii při vybrané kolekci.
 - V galerii je výběr „Kolekce“ s počty děl.
-- Kód: `scripts/lib/collections.mjs` (pipeline), `src/lib/site.ts#getCollections`
+- Kód: `scripts/lib/content.mjs` (čtení složek), `scripts/lib/collections.mjs` (popisy kolekcí), `src/lib/site.ts#getCollections`
   a `src/pages/tvorba/kolekce/` (přehled `index.astro`, stránka `[collection].astro`).
 
 ## Mockupy
@@ -515,11 +545,11 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | kolekce | `/tvorba/kolekce/` (přehled), `/tvorba/kolekce/demo-plener-sumava-2026/` (s úvodní fotkou), `/tvorba/kolekce/demo-zahrada-2025/` (bez ní), výběr „Kolekce“ a „O kolekci →“ v galerii, řádek „Kolekce“ na detailu díla |
 | detailní fotky | `/tvorba/2026/demo-rano-u-rybnika-pf7ru/` (2 detaily s popisky), `/tvorba/2025/demo-kytice-z-louky-q6bn6/` (1 detail bez popisku): náhledy pod popisem, prohlížečka; v `export/instagram` soubory `-detail-*` |
 | soukromá poznámka | `grep -r private_note .demo/site/content/` nesmí nic najít; `demo-rano-u-rybnika` a `demo-jablka-na-stole` ji v `demo/` mají |
-| oddělení testovacích dat | zkopíruj `demo/tvorba/2026/demo-maky.yaml` do `../pavla-content/tvorba/2026/` a spusť `npm run images`: skončí chybou „test data do not belong in the real content“ a nic nezapíše (pak soubor smaž). Obráceně: yaml bez `demo: true` v `demo/` zastaví `npm run demo`. |
+| oddělení testovacích dat | zkopíruj `demo/tvorba/demo-maky.yaml` do `../pavla-content/tvorba/` a spusť `npm run images`: skončí chybou „test data do not belong in the real content“ a nic nezapíše (pak soubor smaž). Obráceně: yaml bez `demo: true` v `demo/` zastaví `npm run demo`. |
 | fotky stránek | `/o-mne/` (`o-mne-uvod` nahoře oříznutá na 2:1, `portret` vedle textu; bez kterékoli z nich se rozložení přizpůsobí); změň `focus` v `fotky/o-mne-uvod.yaml` (např. `[10, 10]`), `npm run images`, výřez se posune |
 | úvodní obraz kolekce | `/tvorba/kolekce/` a `/tvorba/kolekce/demo-zahrada-2025/`: „Ze zahrady 2025“ ukazuje široký detail Pivoněk (`cover: vjr39#1-kvety-nahore`). Zkus `cover: vjr39` (celé Pivoňky oříznuté na 3:2 kolem `focus`), pak řádek smaž (nejnovější Kytice z louky). „Plenér Šumava 2026“ má vlastní fotku jako panorama 2400 × 1000 s `focus: [25, 50]`: ořízne se na 3:2, zůstane levá část. |
 | obrázek pro sdílení kolekce | po `npm run images` otevři `public/og/collections/*.jpg` (1200 × 800, stejný výřez jako na stránce); změň `focus` kolekce, `npm run images`, v logu `→ og kolekce/…` a výřez se posune. Na stránce kolekce je v `<meta property="og:image">`. |
-| chyby v popisu | např. špatný rok v `date`, `collection: Velká Písmena`, popisek v `details:` k neexistující fotce, `cover` s dílem z jiné kolekce nebo `focus: [120, 50]`: `npm run images` skončí chybou a nic nezapíše |
+| chyby v popisu | např. `date: 14. 6. 2026`, `collection: plener` v popisu díla, podsložka v kolekci bez díla, dvě složky se stejnou adresou, popisek v `details:` k neexistující fotce, `cover` s dílem z jiné kolekce nebo `focus: [120, 50]`: `npm run images` skončí chybou a nic nezapíše |
 
 Pozn.: když Astro při buildu padá na zápisu telemetrie (sandbox, CI bez domovského
 adresáře), pomůže `ASTRO_TELEMETRY_DISABLED=1`.
@@ -538,7 +568,7 @@ yaml v `pavla-content` přes web GitHubu. Workflow `pavla-content/.github/workfl
 - **na jakékoli jiné větvi** (např. `nove-obrazy`) jen připravuje, nic nezveřejní:
   1. spustí `npm run images -- --prepare-only`: k novým fotkám založí kostru
      popisu s výchozími hodnotami (`draft: true`, název z názvu souboru,
-     datum dnešek nebo 1. 1. roku složky, `status: not-for-sale`,
+     datum dnešek, `status: not-for-sale`,
      `instagram: false`…), doplní chybějící `id` a zkontroluje všechny popisy,
   2. commitne kostry a ID **zpět do stejné větve** („Pipeline: metadata
      skeletons and ids to fill in“),
@@ -625,7 +655,7 @@ najde list papíru, opraví perspektivu na obdélník a ořízne fotku tak, že 
 listu nechá **úzký okraj podkladu**, aby byly vidět celé okraje papíru (i nerovné
 nebo natržené). **Originály
 nemění**, výsledky ukládá do nové složky. Výsledek je pak master fotka pro
-`pavla-content/tvorba/<rok>/`.
+`pavla-content/tvorba/` (nebo do složky kolekce).
 
 ```
 npm run straighten -- "../pavla-content/tmp/2026 Plenér Šumava"            # všechny fotky ve složce

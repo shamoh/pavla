@@ -1,0 +1,31 @@
+{
+  "width": 3082,
+  "height": 1870,
+  "widths": [
+    480,
+    960,
+    1600,
+    2400
+  ],
+  "dominant": "rgb(184,184,168)",
+  "mockups": [],
+  "details": [
+    {
+      "name": "tiskova-deska",
+      "width": 1861,
+      "height": 625,
+      "widths": [
+        480,
+        960,
+        1600,
+        1861
+      ],
+      "dominant": "rgb(104,104,104)"
+    }
+  ],
+  "og": {
+    "width": 1200,
+    "height": 800
+  },
+  "fingerprint": "2e29fc73e6b14e4e"
+}

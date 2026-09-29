@@ -1,0 +1,6 @@
+demo: true # testovací data (pavla/demo), nikdy do pavla-content
+title: Město 2026
+description: |
+  Ulice, náměstí a nádraží. Úvodní obraz je celé dílo vybrané přes cover (Město v dešti), ne nejnovější Náměstí v mlze.
+cover: kdnth # Město v dešti, celý obraz
+focus: [50, 35]

@@ -1,85 +1,85 @@
-// Collections of works (e.g. one plein-air trip) from <contentDir>/kolekce/.
-// Each collection: <slug>.yaml (title, description, optional `cover` and `focus`) plus an optional cover photo <slug>.jpg.
+// Collections of works (e.g. one plein-air trip, or a theme across years): every folder in <contentDir>/tvorba/
+// is a collection, its works lie in it (see scripts/lib/content.mjs). Its slug (the web address) is slugify(folder
+// name), e.g. "2026-plener-sumava"; the year is just a part of the name, a collection may span several years.
+//   tvorba/<collection>/_kolekce.yaml   title, description, optional `cover` and `focus` (private_note stays private)
+//   tvorba/<collection>/_uvod.jpg       optional cover photo
 // Cover of a collection: its own photo, otherwise `cover: <work id>` (the work) or `cover: <work id>#<detail>`
 // (one of its detail photos), otherwise its newest work. The cover is shown cropped to 3:2 around `focus: [x, y]` (%).
-// A work joins a collection with `collection: <slug>` in its YAML.
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
+import { COLLECTION_META, WORKS_SUBDIR } from './content.mjs';
 import { isValidFocus } from './photos.mjs';
-import { IMAGE_EXTENSIONS, detailKey, isValidSlug, slugify, splitExt, titleFromName } from './works.mjs';
+import { detailKey, isValidSlug, titleFromName } from './works.mjs';
 
-export const COLLECTIONS_SUBDIR = 'kolekce';
+/** Former home of collections; now they are folders in tvorba/. */
+export const LEGACY_COLLECTIONS_SUBDIR = 'kolekce';
 
 /** Fields of a collection copied to the public site repository (private_note stays private). */
 export const PUBLIC_COLLECTION_FIELDS = ['title', 'description', 'cover', 'focus'];
 
 const templatePath = new URL('../templates/collection.yaml', import.meta.url);
 
-async function skeleton(title) {
-  const template = await fs.readFile(templatePath, 'utf8');
-  return template.replace('{{title}}', JSON.stringify(title));
+/**
+ * Title of a new collection from its folder name, with a leading year moved to the end:
+ * "2026-plener-sumava" → "Plener sumava 2026", "2026 Plenér Šumava" → "Plenér Šumava 2026",
+ * "2025-2026 Ovce" → "Ovce 2025–2026". Only a starting point, the author writes the real title.
+ */
+export function titleFromFolder(name) {
+  const m = /^(\d{4})(?:[-–](\d{4}))?[-_ ]+(.+)$/.exec(String(name).trim());
+  if (!m) return titleFromName(name);
+  return `${titleFromName(m[3])} ${m[2] ? `${m[1]}–${m[2]}` : m[1]}`;
 }
 
+/** Path of a collection's description relative to the content repository. */
+export const collectionMetaPath = (dir) => path.join(WORKS_SUBDIR, dir, COLLECTION_META);
+
 /**
- * Scans the collections folder and returns { collections, created, problems }.
- * Writes a skeleton YAML for a cover photo without one and for every slug in `referenced`
- * (collections named by works) that does not exist yet.
+ * Reads the collections (folders from prepareContent) and returns { collections, created, problems }.
+ * A folder without _kolekce.yaml gets a skeleton. Collection: { slug, dir, data, coverPath, yamlPath }.
  */
-export async function prepareCollections(contentDir, referenced = new Set()) {
-  const root = path.join(contentDir, COLLECTIONS_SUBDIR);
+export async function prepareCollections(contentDir, folders = []) {
   const collections = [];
   const created = [];
   const problems = [];
-  let files = [];
   try {
-    files = (await fs.readdir(root, { withFileTypes: true })).filter((e) => e.isFile()).map((e) => e.name).sort();
+    if ((await fs.stat(path.join(contentDir, LEGACY_COLLECTIONS_SUBDIR))).isDirectory()) {
+      problems.push(`${LEGACY_COLLECTIONS_SUBDIR}/: collections are folders in ${WORKS_SUBDIR}/ now (${WORKS_SUBDIR}/<collection>/${COLLECTION_META}); move them there`);
+    }
   } catch {
-    // the folder is optional until the first collection
+    // no legacy folder, fine
   }
-
-  const yamls = new Map();
-  const images = new Map();
-  for (const file of files) {
-    if (file.startsWith('.')) continue;
-    const { base, ext } = splitExt(file);
-    if (ext === 'yaml' || ext === 'yml') yamls.set(base, file);
-    else if (IMAGE_EXTENSIONS.includes(ext)) {
-      const slug = slugify(base);
-      if (images.has(slug)) problems.push(`${COLLECTIONS_SUBDIR}/${file}: another cover photo already maps to "${slug}"`);
-      else images.set(slug, file);
-    } else problems.push(`${COLLECTIONS_SUBDIR}/${file}: unknown file type, ignored`);
-  }
-
-  const wanted = new Map();
-  for (const slug of yamls.keys()) wanted.set(slug, null);
-  for (const [slug, file] of images) if (!wanted.has(slug)) wanted.set(slug, titleFromName(splitExt(file).base));
-  for (const slug of referenced) if (!wanted.has(slug)) wanted.set(slug, titleFromName(slug));
-
-  for (const [slug, newTitle] of [...wanted].sort(([a], [b]) => a.localeCompare(b))) {
-    if (!isValidSlug(slug)) {
-      problems.push(`${COLLECTIONS_SUBDIR}/${yamls.get(slug) ?? images.get(slug)}: rename to letters, digits and dashes`);
+  const bySlug = new Map();
+  for (const f of [...folders].sort((a, b) => a.dir.localeCompare(b.dir))) {
+    const yamlPath = collectionMetaPath(f.dir);
+    if (!isValidSlug(f.slug)) {
+      problems.push(`${WORKS_SUBDIR}/${f.dir}/: rename the folder, its name needs letters or digits`);
       continue;
     }
+    if (bySlug.has(f.slug)) {
+      problems.push(`${WORKS_SUBDIR}/${f.dir}/: gives the same web address "${f.slug}" as ${WORKS_SUBDIR}/${bySlug.get(f.slug)}/, rename one of them`);
+      continue;
+    }
+    bySlug.set(f.slug, f.dir);
     let text;
-    if (yamls.has(slug)) {
-      text = await fs.readFile(path.join(root, yamls.get(slug)), 'utf8');
+    if (f.metaPath) {
+      text = await fs.readFile(f.metaPath, 'utf8');
     } else {
-      text = await skeleton(newTitle);
-      await fs.mkdir(root, { recursive: true });
-      await fs.writeFile(path.join(root, `${slug}.yaml`), text);
-      created.push(`${COLLECTIONS_SUBDIR}/${slug}.yaml`);
+      const template = await fs.readFile(templatePath, 'utf8');
+      text = template.replace('{{title}}', JSON.stringify(titleFromFolder(f.dir)));
+      await fs.writeFile(path.join(contentDir, yamlPath), text);
+      created.push(yamlPath);
     }
     let data;
     try {
       data = YAML.parse(text) ?? {};
     } catch (e) {
-      problems.push(`${COLLECTIONS_SUBDIR}/${slug}.yaml: invalid YAML (${e.message.split('\n')[0]})`);
+      problems.push(`${yamlPath}: invalid YAML (${e.message.split('\n')[0]})`);
       continue;
     }
-    if (!data.title) problems.push(`${COLLECTIONS_SUBDIR}/${slug}.yaml: missing title`);
-    collections.push({ slug, data, coverPath: images.has(slug) ? path.join(root, images.get(slug)) : null });
+    if (!data.title) problems.push(`${yamlPath}: missing title`);
+    collections.push({ slug: f.slug, dir: f.dir, data, coverPath: f.coverPath, yamlPath });
   }
   return { collections, created, problems };
 }
@@ -98,7 +98,7 @@ export function parseCoverRef(cover) {
 export function validateCollectionCovers(collections, works) {
   const problems = [];
   for (const c of collections) {
-    const where = `${COLLECTIONS_SUBDIR}/${c.slug}.yaml`;
+    const where = c.yamlPath ?? collectionMetaPath(c.dir ?? c.slug);
     if (c.data?.focus !== undefined && c.data.focus !== null && !isValidFocus(c.data.focus)) {
       problems.push(`${where}: focus must be [x, y] in % (0–100), e.g. focus: [50, 30]`);
     }
@@ -108,10 +108,10 @@ export function validateCollectionCovers(collections, works) {
     const work = works.find((w) => w.id === id);
     if (c.coverPath) problems.push(`${where}: cover ${cover} and the cover photo ${path.basename(c.coverPath)} both set, keep one`);
     else if (!work) problems.push(`${where}: cover ${cover}: ${id} is not the id of any work`);
-    else if (work.data.collection !== c.slug) problems.push(`${where}: cover ${cover} (${work.data.title}) is not in this collection`);
+    else if (work.collection !== c.slug) problems.push(`${where}: cover ${cover} (${work.data.title}) is not in this collection`);
     else if (work.data.draft) problems.push(`${where}: cover ${cover} (${work.data.title}) is a draft, it is not on the web`);
     else if (detail !== null && !(work.details ?? []).some((d) => d.name === detail)) {
-      problems.push(`${where}: cover ${cover}: ${work.data.title} has no detail photo "${detail}" (folder ${work.year}/${work.slug}/)`);
+      problems.push(`${where}: cover ${cover}: ${work.data.title} has no detail photo "${detail}" (folder ${WORKS_SUBDIR}/${work.dir ? `${work.dir}/` : ''}${work.slug}/)`);
     }
   }
   return problems;
@@ -125,7 +125,7 @@ export function validateCollectionCovers(collections, works) {
 export function coverSource(collection, works) {
   if (collection.coverPath) return collection.coverPath;
   const members = works
-    .filter((w) => w.data.collection === collection.slug && !w.data.draft)
+    .filter((w) => w.collection === collection.slug && !w.data.draft)
     .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
   const ref = collection.data?.cover ? parseCoverRef(collection.data.cover) : null;
   const work = ref ? members.find((w) => w.id === ref.id) : members[0];

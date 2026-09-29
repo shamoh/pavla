@@ -1,0 +1,6 @@
+demo: true # testovací data (pavla/demo), nikdy do pavla-content
+title: Ze zahrady 2025
+description: |
+  Květiny ze zahrady a z louky za domem. Úvodní obraz je široký detail Pivoněk.
+cover: vjr39#1-kvety-nahore # detail Pivoněk; jen "vjr39" = celý obraz; bez řádku = nejnovější obraz (Kytice z louky)
+focus: [50, 40]             # úvodní obraz se ořízne na 3:2, tohle místo zůstane vidět

@@ -12,28 +12,28 @@ palettes:
   slunce: ['#f2c14e', '#e38b29', '#6b8f3e', '#8a5a2b']
   plener: ['#7ea08a', '#b8a36a', '#6f94b3', '#d9c89e']
 images:
-  tvorba/2025/demo-kytice-z-louky.jpg: { size: [2400, 2400], palette: kvetiny, seed: 41 }
-  tvorba/2025/demo-kytice-z-louky/kvet-zblizka.jpg: { from: tvorba/2025/demo-kytice-z-louky.jpg, crop: [700, 600, 900, 900], width: 1600 }
-  tvorba/2025/demo-pivonky.jpg: { size: [1800, 2400], palette: kvetiny, seed: 11 }
-  tvorba/2025/demo-pivonky/1-kvety-nahore.jpg: { from: tvorba/2025/demo-pivonky.jpg, crop: [0, 250, 1800, 900] }
-  tvorba/2025/demo-jablka-na-stole.jpg: { size: [2400, 1800], palette: ovoce, seed: 12 }
-  tvorba/2025/demo-kocka-na-okne.jpg: { size: [1800, 2400], palette: sediva, seed: 13 }
-  tvorba/2025/demo-zimni-sad.jpg: { size: [2400, 1680], palette: zima, seed: 14 }
-  tvorba/2025/demo-rybnik-v-zime.jpg: { size: [2000, 1500], palette: zima, seed: 31 }
-  tvorba/2026/demo-rano-u-rybnika.jpg: { size: [2400, 1800], palette: voda, seed: 42 }
-  tvorba/2026/demo-rano-u-rybnika/1-mlha-nad-hladinou.jpg: { from: tvorba/2026/demo-rano-u-rybnika.jpg, crop: [300, 400, 700, 700], width: 1600 }
-  tvorba/2026/demo-rano-u-rybnika/2-rakos.jpg: { from: tvorba/2026/demo-rano-u-rybnika.jpg, crop: [1400, 900, 800, 600], width: 1600 }
-  tvorba/2026/demo-sumava-v-mlze.jpg: { size: [2400, 3200], palette: zima, seed: 43 }
-  tvorba/2026/demo-modravske-slate.jpg: { size: [2400, 1600], palette: voda, seed: 15 }
-  tvorba/2026/demo-kvilda-skica.jpg: { size: [2400, 1800], palette: sediva, seed: 16 }
-  tvorba/2026/demo-mesto-v-desti.jpg: { size: [1800, 2400], palette: mesto, seed: 17 }
-  tvorba/2026/demo-slunecnice.jpg: { size: [2000, 2000], palette: slunce, seed: 18 }
-  tvorba/2026/demo-namesti-v-mlze.jpg: { size: [1600, 2000], palette: mesto, seed: 21 }
-  tvorba/2026/demo-nadrazi.jpg: { size: [2000, 1400], palette: sediva, seed: 22 }
-  tvorba/2026/demo-maky.jpg: { size: [1600, 1600], palette: ovoce, seed: 23 }
-  tvorba/2026/demo-rozpracovane.jpg: { size: [1600, 1200], palette: voda, seed: 24 }
-  tvorba/2026/demo-bourka-nad-polem.jpg: { size: [2400, 1600], palette: voda, seed: 32 }
-  kolekce/demo-plener-sumava-2026.jpg: { size: [2400, 1000], palette: plener, seed: 19 }
+  tvorba/demo-zahrada-2025/demo-kytice-z-louky.jpg: { size: [2400, 2400], palette: kvetiny, seed: 41 }
+  tvorba/demo-zahrada-2025/demo-kytice-z-louky/kvet-zblizka.jpg: { from: tvorba/demo-zahrada-2025/demo-kytice-z-louky.jpg, crop: [700, 600, 900, 900], width: 1600 }
+  tvorba/demo-zahrada-2025/demo-pivonky.jpg: { size: [1800, 2400], palette: kvetiny, seed: 11 }
+  tvorba/demo-zahrada-2025/demo-pivonky/1-kvety-nahore.jpg: { from: tvorba/demo-zahrada-2025/demo-pivonky.jpg, crop: [0, 250, 1800, 900] }
+  tvorba/demo-kresby-2025-2026/demo-jablka-na-stole.jpg: { size: [2400, 1800], palette: ovoce, seed: 12 }
+  tvorba/demo-kresby-2025-2026/demo-kocka-na-okne.jpg: { size: [1800, 2400], palette: sediva, seed: 13 }
+  tvorba/demo-zimni-sad.jpg: { size: [2400, 1680], palette: zima, seed: 14 }
+  tvorba/demo-kresby-2025-2026/demo-rybnik-v-zime.jpg: { size: [2000, 1500], palette: zima, seed: 31 }
+  tvorba/demo-plener-sumava-2026/demo-rano-u-rybnika.jpg: { size: [2400, 1800], palette: voda, seed: 42 }
+  tvorba/demo-plener-sumava-2026/demo-rano-u-rybnika/1-mlha-nad-hladinou.jpg: { from: tvorba/demo-plener-sumava-2026/demo-rano-u-rybnika.jpg, crop: [300, 400, 700, 700], width: 1600 }
+  tvorba/demo-plener-sumava-2026/demo-rano-u-rybnika/2-rakos.jpg: { from: tvorba/demo-plener-sumava-2026/demo-rano-u-rybnika.jpg, crop: [1400, 900, 800, 600], width: 1600 }
+  tvorba/demo-plener-sumava-2026/demo-sumava-v-mlze.jpg: { size: [2400, 3200], palette: zima, seed: 43 }
+  tvorba/demo-plener-sumava-2026/demo-modravske-slate.jpg: { size: [2400, 1600], palette: voda, seed: 15 }
+  tvorba/demo-plener-sumava-2026/demo-kvilda-skica.jpg: { size: [2400, 1800], palette: sediva, seed: 16 }
+  tvorba/demo-mesto-2026/demo-mesto-v-desti.jpg: { size: [1800, 2400], palette: mesto, seed: 17 }
+  tvorba/demo-slunecnice.jpg: { size: [2000, 2000], palette: slunce, seed: 18 }
+  tvorba/demo-mesto-2026/demo-namesti-v-mlze.jpg: { size: [1600, 2000], palette: mesto, seed: 21 }
+  tvorba/demo-kresby-2025-2026/demo-nadrazi.jpg: { size: [2000, 1400], palette: sediva, seed: 22 }
+  tvorba/demo-maky.jpg: { size: [1600, 1600], palette: ovoce, seed: 23 }
+  tvorba/demo-rozpracovane.jpg: { size: [1600, 1200], palette: voda, seed: 24 }
+  tvorba/demo-bourka-nad-polem.jpg: { size: [2400, 1600], palette: voda, seed: 32 }
+  tvorba/demo-plener-sumava-2026/_uvod.jpg: { size: [2400, 1000], palette: plener, seed: 19 }
   fotky/portret.jpg: { size: [1500, 2000], palette: plener, seed: 51 }
   fotky/o-mne-uvod.jpg: { size: [2400, 1800], palette: plener, seed: 52 }
   fotky/kontakt.jpg: { size: [1600, 2000], palette: kvetiny, seed: 53 }

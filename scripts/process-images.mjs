@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Image pipeline. Reads works from the content repository (pavla-content) and produces:
+// (<year> is the year of the work's date; the content repository has no year folders, see scripts/lib/content.mjs)
 //   content/works/<year>/<slug>-<id>.yaml              copy of the metadata for the site build (commit)
 //   public/works/<year>/<slug>-<id>/<width>.{avif,webp,jpg}, info.json   web images (commit)
 //   public/works/<year>/<slug>-<id>/mockup-<scene>-<width>.*              the work in an interior, only for works on sale (commit);
@@ -41,7 +42,7 @@ import { focusCrop, photoFocus, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
 import { formatSummary } from './lib/summary.mjs';
 import {
-  PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, wantsInstagram, isValidSlug, planExportPrune, planPrune, publicFields, validateWorks, workKey,
+  PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, wantsInstagram, planExportPrune, planPrune, publicFields, validateWorks, workKey,
 } from './lib/works.mjs';
 
 /** Bump when the output format changes, so every work is regenerated once. */
@@ -277,11 +278,10 @@ export async function run({
     throw new Error(`Content not found: ${path.join(contentDir, 'tvorba')} (set images.contentDir or CONTENT_DIR)`);
   }
 
-  const { works, created, assigned, problems: scanProblems } = await prepareContent(contentDir, { today, random });
+  const { works, collectionFolders, created, assigned, problems: scanProblems } = await prepareContent(contentDir, { today, random });
   const photos = await preparePhotos(contentDir);
   created.push(...photos.created);
-  const referenced = new Set(works.map((w) => w.data.collection).filter((c) => c && isValidSlug(c)));
-  const collections = await prepareCollections(contentDir, referenced);
+  const collections = await prepareCollections(contentDir, collectionFolders);
   created.push(...collections.created);
   created.forEach((p) => log(`+ new metadata skeleton: ${p}`));
   assigned.forEach((p) => log(`+ id assigned: ${p}`));
@@ -308,7 +308,8 @@ export async function run({
     const rel = `${w.year}/${key}`;
 
     // Metadata copy for the site build, public fields only.
-    await writeIfChanged(path.join(metaRoot, `${rel}.yaml`), publicCopy(w.data, PUBLIC_WORK_FIELDS));
+    // the collection comes from the folder of the work, the site reads it from the copy
+    await writeIfChanged(path.join(metaRoot, `${rel}.yaml`), publicCopy({ ...w.data, collection: w.collection ?? undefined }, PUBLIC_WORK_FIELDS));
 
     const webDir = path.join(webRoot, rel);
     if (!w.masterPath) {

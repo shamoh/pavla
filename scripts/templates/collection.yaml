@@ -1,6 +1,6 @@
-# Kolekce – kostru vytvořila pipeline. Doplň a ulož.
-# Díla do kolekce patří, když mají v popisu „collection: <název tohoto souboru bez .yaml>“.
-# Úvodní fotka kolekce (nepovinná): fotka se stejným názvem vedle tohoto souboru, např. plener-sumava-2026.jpg.
+# Kolekce – kostru vytvořila pipeline pro tuto složku. Doplň a ulož.
+# Obrazy kolekce jsou soubory v této složce. Adresa kolekce na webu je název složky (bez diakritiky).
+# Úvodní fotka kolekce (nepovinná): _uvod.jpg vedle tohoto souboru.
 title: {{title}}
 description: |
   Pár vět o kolekci: kde a kdy obrazy vznikly.

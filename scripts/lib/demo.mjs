@@ -18,7 +18,7 @@ export const isDemo = (name, data) => String(name).startsWith(DEMO_PREFIX) || da
 export function demoProblems({ works = [], collections = [], photos = [] }, dataset) {
   const items = [
     ...works.map((w) => ({ where: w.yamlPath ?? `tvorba/${w.year}/${w.slug}.yaml`, name: w.slug, data: w.data, named: true })),
-    ...collections.map((c) => ({ where: `kolekce/${c.slug}.yaml`, name: c.slug, data: c.data, named: true })),
+    ...collections.map((c) => ({ where: c.yamlPath ?? `tvorba/${c.dir ?? c.slug}/_kolekce.yaml`, name: c.slug, data: c.data, named: true })),
     ...photos.map((p) => ({ where: `fotky/${p.name}.yaml`, name: p.name, data: p.data, named: false })),
   ];
   const problems = [];

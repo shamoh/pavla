@@ -32,111 +32,137 @@ test('withId rejects metadata that is not a mapping', () => {
   assert.throws(() => withId('- a\n- b\n', 'k3f9a'), /mapping/);
 });
 
+const group = (groups, dir) => groups.find((g) => g.dir === dir);
+
 test('readTree pairs images with metadata by slug and reports stray files', async () => {
-  await write('2026/rano-u-rybnika.yaml', 'title: x');
-  await write('2026/Ráno u rybníka.JPG');
-  await write('2026/notes.txt');
-  await write('2026/.DS_Store');
-  await write('volny-soubor.jpg');
-  const { years, problems } = await readTree(worksDir());
-  assert.equal(years.length, 1);
-  assert.deepEqual([...years[0].yamls.keys()], ['rano-u-rybnika']);
-  assert.equal(years[0].images.get('rano-u-rybnika').file, 'Ráno u rybníka.JPG');
-  assert.equal(problems.length, 2);
-  assert.ok(problems.some((p) => p.includes('notes.txt')));
-  assert.ok(problems.some((p) => p.includes('volny-soubor.jpg')));
+  await write('rano-u-rybnika.yaml', 'title: x');
+  await write('Ráno u rybníka.JPG');
+  await write('notes.txt');
+  await write('.DS_Store');
+  await write('_poznamka.jpg');
+  const { groups, problems } = await readTree(worksDir());
+  assert.equal(groups.length, 1, 'no collections');
+  assert.deepEqual([...groups[0].yamls.keys()], ['rano-u-rybnika']);
+  assert.equal(groups[0].images.get('rano-u-rybnika').file, 'Ráno u rybníka.JPG');
+  assert.equal(groups[0].images.size, 1, 'files starting with _ or . are no works');
+  assert.deepEqual(problems, ['tvorba/notes.txt: unknown file type, ignored']);
 });
 
 test('readTree reports two images mapping to the same slug', async () => {
-  await write('2026/rano.jpg');
-  await write('2026/Ráno.png');
+  await write('rano.jpg');
+  await write('Ráno.png');
   const { problems } = await readTree(worksDir());
   assert.equal(problems.length, 1);
   assert.match(problems[0], /already maps to "rano"/);
 });
 
-test('prepareContent creates a draft skeleton for a new image', async () => {
-  await write('2026/Ráno u rybníka.jpg');
+test('readTree: a folder named like a work holds its details, any other folder is a collection', async () => {
+  await write('rano.yaml', 'title: x');
+  await write('rano/2-lodka.jpg');
+  await write('rano/1 Květ.JPG');
+  await write('rano/.DS_Store');
+  await write('2026 Plenér Šumava/_kolekce.yaml', 'title: Plenér');
+  await write('2026 Plenér Šumava/_uvod.jpg');
+  await write('2026 Plenér Šumava/slat.jpg');
+  await write('2026 Plenér Šumava/slat/detail.jpg');
+  const { groups, problems } = await readTree(worksDir());
+  assert.deepEqual(problems, []);
+  assert.deepEqual(group(groups, '').details.get('rano').files, [
+    { name: '1-kvet', file: '1 Květ.JPG' },
+    { name: '2-lodka', file: '2-lodka.jpg' },
+  ]);
+  const plener = group(groups, '2026 Plenér Šumava');
+  assert.equal(plener.meta, '_kolekce.yaml');
+  assert.equal(plener.cover, '_uvod.jpg');
+  assert.deepEqual([...plener.images.keys()], ['slat'], 'the cover photo is no work');
+  assert.deepEqual(plener.details.get('slat').files, [{ name: 'detail', file: 'detail.jpg' }]);
+});
+
+test('readTree reports non-photos in detail folders and folders nested in a collection', async () => {
+  await write('rano.yaml', 'title: x');
+  await write('rano/poznamky.txt');
+  await write('plener/slat.jpg');
+  await write('plener/podkolekce/x.jpg');
+  const { problems } = await readTree(worksDir());
+  assert.equal(problems.length, 2);
+  assert.ok(problems.some((p) => p.includes('tvorba/rano/poznamky.txt')));
+  assert.ok(problems.some((p) => p.startsWith('tvorba/plener/podkolekce/:') && p.includes('collections cannot be nested')));
+});
+
+test('prepareContent creates a draft skeleton for a new image, dated today', async () => {
+  await write('Ráno u rybníka.jpg');
   const r = await prepareContent(dir, { today: new Date('2026-07-01T12:00:00Z') });
-  assert.deepEqual(r.created, ['2026/rano-u-rybnika.yaml']);
-  const data = YAML.parse(await read('2026/rano-u-rybnika.yaml'));
+  assert.deepEqual(r.created, ['tvorba/rano-u-rybnika.yaml']);
+  const data = YAML.parse(await read('rano-u-rybnika.yaml'));
   assert.ok(isValidId(data.id));
   assert.equal(data.draft, true);
   assert.equal(data.title, 'Ráno u rybníka');
   assert.equal(String(data.date), '2026-07-01');
-  assert.equal(r.works[0].masterPath, path.join(worksDir(), '2026', 'Ráno u rybníka.jpg'));
+  const [w] = r.works;
+  assert.equal(w.masterPath, path.join(worksDir(), 'Ráno u rybníka.jpg'));
+  assert.equal(w.year, '2026');
+  assert.equal(w.collection, null);
+  assert.equal(w.dir, '');
 });
 
-test('prepareContent dates a skeleton in an older year folder to 1 January', async () => {
-  await write('2024/stary.jpg');
-  await prepareContent(dir, { today: new Date('2026-07-01') });
-  assert.equal(String(YAML.parse(await read('2024/stary.yaml')).date), '2024-01-01');
+test('prepareContent: works of a collection folder, their collection and years come from folder and date', async () => {
+  await write('2025-2026 Zima/prosinec.yaml', 'id: k3f9a\ntitle: P\ndate: 2025-12-30\n');
+  await write('2025-2026 Zima/leden.jpg');
+  await write('2025-2026 Zima/_uvod.jpg');
+  await write('sam.yaml', 'id: m4g8b\ntitle: S\ndate: nevím\n');
+  const r = await prepareContent(dir, { today: new Date('2026-01-02T12:00:00Z') });
+  assert.deepEqual(r.created, ['tvorba/2025-2026 Zima/leden.yaml']);
+  const bySlug = Object.fromEntries(r.works.map((w) => [w.slug, w]));
+  assert.deepEqual([bySlug.prosinec.collection, bySlug.prosinec.dir, bySlug.prosinec.year], ['2025-2026-zima', '2025-2026 Zima', '2025']);
+  assert.deepEqual([bySlug.leden.collection, bySlug.leden.year], ['2025-2026-zima', '2026']);
+  assert.equal(bySlug.sam.year, null, 'no valid date, no year');
+  assert.deepEqual(r.collectionFolders, [{
+    slug: '2025-2026-zima', dir: '2025-2026 Zima', metaPath: null, coverPath: path.join(worksDir(), '2025-2026 Zima', '_uvod.jpg'),
+  }]);
 });
 
 test('prepareContent assigns missing ids and is idempotent', async () => {
-  await write('2026/rano.yaml', '# Popis\ntitle: Ráno\ndate: 2026-06-14\n');
-  await write('2026/vecer.yaml', 'id: m7q2x\ntitle: Večer\ndate: 2026-06-15\n');
+  await write('rano.yaml', '# Popis\ntitle: Ráno\ndate: 2026-06-14\n');
+  await write('plener/vecer.yaml', 'id: m7q2x\ntitle: Večer\ndate: 2026-06-15\n');
   const first = await prepareContent(dir);
   assert.equal(first.assigned.length, 1);
-  const id = YAML.parse(await read('2026/rano.yaml')).id;
+  assert.match(first.assigned[0], /^tvorba\/rano: /);
+  const id = YAML.parse(await read('rano.yaml')).id;
   assert.ok(isValidId(id));
   assert.notEqual(id, 'm7q2x');
-  assert.match(await read('2026/rano.yaml'), /^# Popis\nid: /);
+  assert.match(await read('rano.yaml'), /^# Popis\nid: /);
 
   const second = await prepareContent(dir);
   assert.deepEqual(second.assigned, []);
   assert.deepEqual(second.created, []);
-  assert.equal(YAML.parse(await read('2026/rano.yaml')).id, id);
+  assert.equal(YAML.parse(await read('rano.yaml')).id, id);
 });
 
-test('prepareContent never hands out an id that already exists', async () => {
-  await write('2026/a.yaml', 'id: a2222\ntitle: A\ndate: 2026-01-01\n');
-  await write('2026/b.yaml', 'title: B\ndate: 2026-01-01\n');
+test('prepareContent never hands out an id that already exists, also across collections', async () => {
+  await write('plener/a.yaml', 'id: a2222\ntitle: A\ndate: 2026-01-01\n');
+  await write('b.yaml', 'title: B\ndate: 2026-01-01\n');
   // The injected random first yields "a2222", which is taken, then "zzzzz".
   const seq = [0, 0, 0, 0, 0, 0.999, 0.999, 0.999, 0.999, 0.999];
   let i = 0;
   await prepareContent(dir, { random: () => seq[i++] });
-  assert.equal(YAML.parse(await read('2026/b.yaml')).id, 'zzzzz');
+  assert.equal(YAML.parse(await read('b.yaml')).id, 'zzzzz');
 });
 
 test('prepareContent reports invalid YAML and continues with the rest', async () => {
-  await write('2026/zlomeny.yaml', 'title: [neuzavřeno\n');
-  await write('2026/dobry.yaml', 'title: Dobrý\ndate: 2026-01-01\n');
+  await write('zlomeny.yaml', 'title: [neuzavřeno\n');
+  await write('dobry.yaml', 'title: Dobrý\ndate: 2026-01-01\n');
   const r = await prepareContent(dir);
   assert.equal(r.problems.length, 1);
-  assert.match(r.problems[0], /zlomeny\.yaml: invalid YAML/);
+  assert.match(r.problems[0], /^tvorba\/zlomeny\.yaml: invalid YAML/);
   assert.deepEqual(r.works.map((w) => w.slug), ['dobry']);
 });
 
-test('readTree reads detail photos from a folder named after the work, sorted by file name', async () => {
-  await write('2026/rano.yaml', 'title: x');
-  await write('2026/rano/2-lodka.jpg');
-  await write('2026/rano/1 Květ.JPG');
-  await write('2026/rano/.DS_Store');
-  const { years, problems } = await readTree(worksDir());
-  assert.deepEqual(problems, []);
-  assert.deepEqual(years[0].details.get('rano').files, [
-    { name: '1-kvet', file: '1 Květ.JPG' },
-    { name: '2-lodka', file: '2-lodka.jpg' },
-  ]);
-});
-
-test('readTree reports detail folders without a work and non-photos inside them', async () => {
-  await write('2026/rano.yaml', 'title: x');
-  await write('2026/rano/poznamky.txt');
-  await write('2026/sirotek/detail.jpg');
-  const { problems } = await readTree(worksDir());
-  assert.equal(problems.length, 2);
-  assert.ok(problems.some((p) => p.includes('poznamky.txt')));
-  assert.ok(problems.some((p) => p.includes('2026/sirotek/') && p.includes('2026/sirotek.yaml')));
-});
-
 test('prepareContent returns detail photo paths of a work (none when there is no folder)', async () => {
-  await write('2026/rano.yaml', 'id: k3f9a\ntitle: x\ndate: 2026-01-01\n');
-  await write('2026/rano/kvet.jpg');
-  await write('2026/vecer.yaml', 'id: m4g8b\ntitle: y\ndate: 2026-01-01\n');
+  await write('plener/rano.yaml', 'id: k3f9a\ntitle: x\ndate: 2026-01-01\n');
+  await write('plener/rano/kvet.jpg');
+  await write('vecer.yaml', 'id: m4g8b\ntitle: y\ndate: 2026-01-01\n');
   const { works } = await prepareContent(dir);
   const bySlug = Object.fromEntries(works.map((w) => [w.slug, w]));
-  assert.deepEqual(bySlug.rano.details, [{ name: 'kvet', path: path.join(worksDir(), '2026/rano/kvet.jpg') }]);
+  assert.deepEqual(bySlug.rano.details, [{ name: 'kvet', path: path.join(worksDir(), 'plener/rano/kvet.jpg') }]);
   assert.deepEqual(bySlug.vecer.details, []);
 });

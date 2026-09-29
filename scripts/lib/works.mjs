@@ -73,29 +73,29 @@ export function idFromPath(pathname) {
   return m ? m[1] : null;
 }
 
-const dateYear = (date) => {
+/** Year of a work date ("2026-06-14" or a Date); NaN when there is none. The year of a work is always its date's. */
+export const dateYear = (date) => {
   if (date instanceof Date) return date.getFullYear();
   const m = /^(\d{4})/.exec(String(date ?? ''));
   return m ? Number(m[1]) : NaN;
 };
 
 /**
- * Validates scanned works. Each work: { year, slug, id, data, yamlPath, details? } where `details`
- * lists the detail photos found next to the work ([{ name }]).
+ * Validates scanned works. Each work: { slug, dir, id, data, yamlPath, details? } where `dir` is its folder
+ * in tvorba/ ('' without a collection) and `details` lists the detail photos next to it ([{ name }]).
  * Returns a list of human-readable problems (empty when everything is fine).
  */
 export function validateWorks(works) {
   const problems = [];
   const byId = new Map();
   for (const w of works) {
-    const where = w.yamlPath ?? `${w.year}/${w.slug}`;
-    if (!isValidYear(w.year)) problems.push(`${where}: folder "${w.year}" is not a year`);
+    const where = w.yamlPath ?? `tvorba/${w.dir ? `${w.dir}/` : ''}${w.slug}.yaml`;
     if (!isValidSlug(w.slug)) problems.push(`${where}: "${w.slug}" is not a valid slug (use a-z, 0-9 and dashes)`);
     if (!isValidId(w.id)) problems.push(`${where}: invalid id "${w.id}"`);
     if (!w.data?.title) problems.push(`${where}: missing title`);
     if (!w.data?.date) problems.push(`${where}: missing date`);
-    else if (dateYear(w.data.date) !== Number(w.year)) {
-      problems.push(`${where}: date ${formatDate(w.data.date)} does not match year folder ${w.year}`);
+    else if (!isValidYear(String(dateYear(w.data.date))) || !/^\d{4}-\d{2}-\d{2}/.test(formatDate(w.data.date))) {
+      problems.push(`${where}: date must be a day like 2026-06-14 (the year of the work comes from it), not "${formatDate(w.data.date)}"`);
     }
     if (!w.data?.draft && w.data?.size_cm !== undefined && !validSize(w.data.size_cm)) {
       problems.push(`${where}: size_cm must be [width, height] in cm, both greater than 0`);
@@ -107,8 +107,8 @@ export function validateWorks(works) {
     if (w.data?.instagram !== undefined && w.data.instagram !== null && typeof w.data.instagram !== 'boolean') {
       problems.push(`${where}: instagram must be true or false`);
     }
-    if (w.data?.collection !== undefined && w.data.collection !== null && w.data.collection !== '' && !isValidSlug(w.data.collection)) {
-      problems.push(`${where}: collection "${w.data.collection}" must be the name of a file in kolekce/ (a-z, 0-9 and dashes)`);
+    if (w.data?.collection !== undefined && w.data.collection !== null && w.data.collection !== '') {
+      problems.push(`${where}: "collection:" is not used any more, a work belongs to a collection by lying in its folder (tvorba/<collection>/)`);
     }
     if (w.id && byId.has(w.id)) problems.push(`${where}: id "${w.id}" is also used by ${byId.get(w.id)}`);
     else if (w.id) byId.set(w.id, where);
@@ -149,7 +149,7 @@ function validateDetailCaptions(w, where) {
   const found = new Set((w.details ?? []).map((d) => d.name));
   const problems = [];
   for (const [name, caption] of Object.entries(captions)) {
-    if (!found.has(detailKey(name))) problems.push(`${where}: details: no detail photo "${name}" in the folder ${w.year}/${w.slug}/`);
+    if (!found.has(detailKey(name))) problems.push(`${where}: details: no detail photo "${name}" in the folder tvorba/${w.dir ? `${w.dir}/` : ''}${w.slug}/`);
     else if (typeof caption !== 'string') problems.push(`${where}: details: the caption of "${name}" must be text`);
   }
   return problems;

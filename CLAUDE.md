@@ -8,7 +8,8 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
 - Deploy: GitHub Actions → GitHub Pages, doména v `public/CNAME`.
 
 ## Data
-- Zdroj obsahu je soukromé repo `pavla-content` (vedle tohoto repa): `tvorba/<rok>/<slug>.yaml` + master fotka.
+- Zdroj obsahu je soukromé repo `pavla-content` (vedle tohoto repa): `tvorba/[<kolekce>/]<slug>.yaml` + master fotka,
+  bez složek roků; rok díla = rok jeho `date` (`scripts/lib/content.mjs`). V tomto repu jsou výstupy dál podle roků.
 - `npm run images` (`scripts/process-images.mjs`) z něj generuje `content/works/<rok>/<slug>-<id>.yaml`
   (kopie, needitovat) a `public/works/<rok>/<slug>-<id>/`; exporty pro Instagram a Fler jdou do `pavla-content/export/`.
 - Každé dílo má trvalé 5znakové `id` (začíná písmenem, viz `scripts/lib/works.mjs`). URL: `/tvorba/<rok>/<slug>-<id>/`.
@@ -20,12 +21,14 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
 - Exporty: Instagram jen u díla s `instagram: true` (výchozí false), originál (`-clean`) + detailní fotky, nikdy mockupy. Fler jen díla na prodej:
   originál + mockupy, vše s vodoznakem. Při přegenerování se staré exporty díla mažou (`clearExports`),
   plný běh navíc porovná `export/` s `expectedExports` a smaže vše navíc (`planExportPrune`), i bez přegenerování.
-- Kolekce: `pavla-content/kolekce/<slug>.yaml` (+ volitelná úvodní `<slug>.jpg`), dílo `collection: <slug>` (max. jedna).
-  Pipeline `scripts/lib/collections.mjs`, web `getCollections` a `/tvorba/kolekce/<slug>/`.
+- Kolekce = složka `pavla-content/tvorba/<kolekce>/` (slug = slugify názvu, např. `2026-plener-sumava`, i přes víc let)
+  s `_kolekce.yaml` a volitelnou `_uvod.jpg`; dílo do ní patří umístěním (max. jedna), `collection:` v yaml díla je chyba,
+  do veřejné kopie ho doplní pipeline. Složka jménem díla vedle něj = detailní fotky. Pipeline `scripts/lib/collections.mjs`,
+  web `getCollections` a `/tvorba/kolekce/<slug>/`.
   Úvodní obrázek: vlastní fotka > `cover: <id>` nebo `cover: <id>#<detail>` > nejnovější dílo; vždy ořez 3:2 kolem `focus`
   (`src/components/CollectionCover.astro`); `og:image` kolekce je týž výřez, `public/og/collections/<slug>.jpg`
   (`coverSource` + `focusCrop`). `public/og` musí být v add-paths workflow `publish.yml`.
-- Detailní fotky díla: `pavla-content/tvorba/<rok>/<slug>/*.jpg` → `detail-<název>-<šířka>.*` a `info.json#details`;
+- Detailní fotky díla: `pavla-content/tvorba/[<kolekce>/]<slug>/*.jpg` → `detail-<název>-<šířka>.*` a `info.json#details`;
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
 - Filtry galerie (`scripts/lib/gallery-filter.mjs`): všechny se kombinují a každá změna se hned zapisuje do URL,
   aby šel odkaz poslat dál. Platí vždy, i pro každý nový filtr a pro stránku (`page`, i `page=all`).

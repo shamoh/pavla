@@ -11,7 +11,7 @@ test('isDemo: marked by the "demo-" name or by demo: true', () => {
 });
 
 const set = {
-  works: [{ slug: 'demo-rano', data: { demo: true }, yamlPath: 'tvorba/2026/demo-rano.yaml' }],
+  works: [{ slug: 'demo-rano', data: { demo: true }, yamlPath: 'tvorba/demo-rano.yaml' }],
   collections: [{ slug: 'demo-plener', data: { demo: true } }],
   photos: [{ name: 'portret', data: { demo: true } }],
 };
@@ -20,8 +20,8 @@ test('demoProblems: a fully marked test set is fine as demo and refused as real 
   assert.deepEqual(demoProblems(set, 'demo'), []);
   const real = demoProblems(set, 'real');
   assert.equal(real.length, 3);
-  assert.match(real[0], /^tvorba\/2026\/demo-rano\.yaml: test data do not belong in the real content/);
-  assert.match(real[1], /^kolekce\/demo-plener\.yaml/);
+  assert.match(real[0], /^tvorba\/demo-rano\.yaml: test data do not belong in the real content/);
+  assert.match(real[1], /^tvorba\/demo-plener\/_kolekce\.yaml/);
   assert.match(real[2], /^fotky\/portret\.yaml/);
 });
 

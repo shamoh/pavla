@@ -30,16 +30,16 @@ beforeEach(async () => {
   await write(path.join(siteDir, 'public/works/2026/x/info.json'), '{}'); // real generated data, must not be copied
   await write(path.join(demoDir, 'images.yaml'), YAML.stringify({
     palettes: { voda: ['#6f94b3'] },
-    images: { 'tvorba/2026/demo-rano.jpg': { size: [80, 60], palette: 'voda', seed: 3 } },
+    images: { 'tvorba/demo-rano.jpg': { size: [80, 60], palette: 'voda', seed: 3 } },
   }));
-  await write(path.join(demoDir, 'tvorba/2026/demo-rano.yaml'), 'demo: true\ntitle: Ráno\ndate: 2026-06-14\n');
+  await write(path.join(demoDir, 'tvorba/demo-rano.yaml'), 'demo: true\ntitle: Ráno\ndate: 2026-06-14\n');
 });
 afterEach(() => fs.rm(tmp, { recursive: true, force: true }));
 
 test('prepareDemo builds the test data into .demo/ only and writes the assigned id back to demo/', async () => {
   const r = await prepareDemo(opts());
   assert.equal(r.ok, true, r.problems.join('\n'));
-  const id = YAML.parse(await fs.readFile(path.join(demoDir, 'tvorba/2026/demo-rano.yaml'), 'utf8')).id;
+  const id = YAML.parse(await fs.readFile(path.join(demoDir, 'tvorba/demo-rano.yaml'), 'utf8')).id;
   assert.ok(id, 'id written back to demo/');
   assert.ok(await exists(path.join(outDir, 'site/content/works/2026', `demo-rano-${id}.yaml`)));
   assert.ok(await exists(path.join(outDir, 'site/public/works/2026', `demo-rano-${id}`, 'og.jpg')));
@@ -52,17 +52,17 @@ test('prepareDemo builds the test data into .demo/ only and writes the assigned 
   // second run: nothing to regenerate, the id stays
   const again = await prepareDemo(opts());
   assert.equal(again.processed, 0);
-  assert.equal(YAML.parse(await fs.readFile(path.join(demoDir, 'tvorba/2026/demo-rano.yaml'), 'utf8')).id, id);
+  assert.equal(YAML.parse(await fs.readFile(path.join(demoDir, 'tvorba/demo-rano.yaml'), 'utf8')).id, id);
 });
 
 test('prepareDemo refuses unmarked items and a broken recipe', async () => {
-  await write(path.join(demoDir, 'tvorba/2026/vecer.yaml'), 'title: Večer\ndate: 2026-06-14\n');
+  await write(path.join(demoDir, 'tvorba/vecer.yaml'), 'title: Večer\ndate: 2026-06-14\n');
   let r = await prepareDemo(opts());
   assert.equal(r.ok, false);
   assert.match(r.problems.join('\n'), /vecer\.yaml: every item of the test data needs "demo: true"/);
 
-  await fs.rm(path.join(demoDir, 'tvorba/2026/vecer.yaml'));
-  await write(path.join(demoDir, 'images.yaml'), YAML.stringify({ palettes: {}, images: { 'tvorba/2026/demo-rano.jpg': { size: [80, 60], palette: 'x', seed: 3 } } }));
+  await fs.rm(path.join(demoDir, 'tvorba/vecer.yaml'));
+  await write(path.join(demoDir, 'images.yaml'), YAML.stringify({ palettes: {}, images: { 'tvorba/demo-rano.jpg': { size: [80, 60], palette: 'x', seed: 3 } } }));
   r = await prepareDemo(opts());
   assert.equal(r.ok, false);
   assert.match(r.problems.join('\n'), /unknown palette "x"/);

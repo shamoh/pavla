@@ -27,15 +27,25 @@ const exists = (p) => fs.access(p).then(() => true, () => false);
 const quiet = () => {};
 const opts = (over = {}) => ({ contentDir, siteDir, config, log: quiet, ...over });
 
-async function addWork(year, slug, yaml, { image = true } = {}) {
-  const dir = path.join(contentDir, 'tvorba', year);
+// The content repository has no year folders: `year` only documents the date of the work.
+async function addWork(year, slug, yaml, { image = true, collection = '' } = {}) {
+  const dir = path.join(contentDir, 'tvorba', collection);
   await fs.mkdir(dir, { recursive: true });
   if (yaml !== undefined) await fs.writeFile(path.join(dir, `${slug}.yaml`), yaml);
   if (image) {
     await sharp({ create: { width: 64, height: 48, channels: 3, background: '#88aacc' } }).jpeg().toFile(path.join(dir, `${slug}.jpg`));
   }
 }
-const idOf = async (year, slug) => YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba', year, `${slug}.yaml`), 'utf8')).id;
+/** Folder of the work with this slug: tvorba/ or its collection folder. */
+async function workFolder(slug) {
+  const root = path.join(contentDir, 'tvorba');
+  if (await exists(path.join(root, `${slug}.yaml`))) return root;
+  for (const e of await fs.readdir(root, { withFileTypes: true })) {
+    if (e.isDirectory() && (await exists(path.join(root, e.name, `${slug}.yaml`)))) return path.join(root, e.name);
+  }
+  return root;
+}
+const idOf = async (year, slug) => YAML.parse(await fs.readFile(path.join(await workFolder(slug), `${slug}.yaml`), 'utf8')).id;
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-pipeline-'));
@@ -80,7 +90,7 @@ test('second run skips unchanged works; --force regenerates', async () => {
 test('a new image without metadata becomes a draft with generated outputs', async () => {
   await addWork('2026', 'novy', undefined);
   const r = await run(opts({ today: new Date('2026-05-01') }));
-  assert.deepEqual(r.created, ['2026/novy.yaml']);
+  assert.deepEqual(r.created, ['tvorba/novy.yaml']);
   const key = `novy-${await idOf('2026', 'novy')}`;
   assert.equal(YAML.parse(await fs.readFile(path.join(siteDir, 'content/works/2026', `${key}.yaml`), 'utf8')).draft, true);
   assert.ok(await exists(path.join(siteDir, 'public/works/2026', key, 'info.json')));
@@ -90,7 +100,7 @@ test('renaming a work keeps its id and removes the old outputs', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ninstagram: true\n');
   await run(opts());
   const id = await idOf('2026', 'rano');
-  const dir = path.join(contentDir, 'tvorba/2026');
+  const dir = path.join(contentDir, 'tvorba');
   await fs.rename(path.join(dir, 'rano.yaml'), path.join(dir, 'rano-u-rybnika.yaml'));
   await fs.rename(path.join(dir, 'rano.jpg'), path.join(dir, 'rano-u-rybnika.jpg'));
 
@@ -106,7 +116,7 @@ test('deleting the last work of a year removes the empty year folders', async ()
   await addWork('2025', 'stary', 'title: Starý\ndate: 2025-03-01\n');
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n');
   await run(opts());
-  await fs.rm(path.join(contentDir, 'tvorba/2025'), { recursive: true });
+  for (const f of ['stary.yaml', 'stary.jpg']) await fs.rm(path.join(contentDir, 'tvorba', f));
   await run(opts());
   assert.ok(!(await exists(path.join(siteDir, 'public/works/2025'))));
   assert.ok(!(await exists(path.join(siteDir, 'content/works/2025'))));
@@ -115,7 +125,7 @@ test('deleting the last work of a year removes the empty year folders', async ()
 test('a work without master keeps existing outputs and reports missing ones', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n');
   await run(opts());
-  await fs.rm(path.join(contentDir, 'tvorba/2026/rano.jpg'));
+  await fs.rm(path.join(contentDir, 'tvorba/rano.jpg'));
   const kept = await run(opts());
   assert.equal(kept.ok, true);
   assert.deepEqual(kept.pruned, []);
@@ -127,10 +137,10 @@ test('a work without master keeps existing outputs and reports missing ones', as
 });
 
 test('validation problems stop the run before anything is written to the site', async () => {
-  await addWork('2026', 'spatny-rok', 'title: Špatný rok\ndate: 2025-06-14\n');
+  await addWork('2026', 'spatne-datum', 'title: Špatné datum\ndate: 14. 6. 2026\n');
   const r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems[0], /does not match year folder 2026/);
+  assert.match(r.problems[0], /tvorba\/spatne-datum\.yaml: date must be a day like 2026-06-14/);
   assert.ok(!(await exists(path.join(siteDir, 'public/works'))));
   assert.ok(!(await exists(path.join(siteDir, 'content/works'))));
 });
@@ -147,7 +157,7 @@ test('no works (before the first real work) is fine and removes all generated wo
   assert.equal((await run(opts())).ok, true);
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n');
   await run(opts());
-  await fs.rm(path.join(contentDir, 'tvorba/2026'), { recursive: true });
+  for (const f of ['rano.yaml', 'rano.jpg']) await fs.rm(path.join(contentDir, 'tvorba', f));
   const r = await run(opts());
   assert.equal(r.ok, true);
   assert.ok(!(await exists(path.join(siteDir, 'public/works/2026'))));
@@ -160,7 +170,7 @@ test('fails clearly when the content repository is missing', async () => {
 
 const infoOf = async (year, slug) =>
   JSON.parse(await fs.readFile(path.join(siteDir, 'public/works', year, `${slug}-${await idOf(year, slug)}`, 'info.json'), 'utf8'));
-const setYaml = (year, slug, text) => fs.writeFile(path.join(contentDir, 'tvorba', year, `${slug}.yaml`), text);
+const setYaml = async (year, slug, text) => fs.writeFile(path.join(await workFolder(slug), `${slug}.yaml`), text);
 
 test('generates three mockups and lists them in info.json', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
@@ -299,7 +309,7 @@ test('mockups: selling a work removes its mockups and Fler exports', async () =>
 });
 
 async function addDetail(year, slug, file, color = '#aa6644') {
-  const dir = path.join(contentDir, 'tvorba', year, slug);
+  const dir = path.join(await workFolder(slug), slug);
   await fs.mkdir(dir, { recursive: true });
   await sharp({ create: { width: 40, height: 40, channels: 3, background: color } }).jpeg().toFile(path.join(dir, file));
 }
@@ -327,7 +337,7 @@ test('details: adding, changing or removing a detail photo regenerates the work'
   await addDetail('2026', 'rano', 'kvet.jpg', '#113355');
   assert.equal((await run(opts())).processed, 1);
 
-  await fs.rm(path.join(contentDir, 'tvorba/2026/rano'), { recursive: true });
+  await fs.rm(path.join(contentDir, 'tvorba/rano'), { recursive: true });
   assert.equal((await run(opts())).processed, 1);
   assert.deepEqual((await infoOf('2026', 'rano')).details, []);
   assert.ok(!(await fs.readdir(await workDir('2026', 'rano'))).some((f) => f.startsWith('detail-')));
@@ -350,74 +360,109 @@ test('private note: never reaches the site repository, not even through comments
   assert.doesNotMatch(copy, /Soukromá|private_note|teta|vymyšlené/);
   assert.deepEqual(YAML.parse(copy), { id: key.slice(-5), title: 'Ráno', date: '2026-06-14', description: 'Veřejný popis.' });
   // the private repository keeps the note
-  assert.match(await fs.readFile(path.join(contentDir, 'tvorba/2026/rano.yaml'), 'utf8'), /Soukromá poznámka/);
+  assert.match(await fs.readFile(path.join(contentDir, 'tvorba/rano.yaml'), 'utf8'), /Soukromá poznámka/);
 });
 
-const collectionFile = (name) => path.join(contentDir, 'kolekce', name);
-async function addCover(slug) {
-  await fs.mkdir(path.join(contentDir, 'kolekce'), { recursive: true });
-  await sharp({ create: { width: 60, height: 40, channels: 3, background: '#557744' } }).jpeg().toFile(collectionFile(`${slug}.jpg`));
+/** A file of a collection folder (tvorba/<collection>/). */
+const collFile = (coll, name) => path.join(contentDir, 'tvorba', coll, name);
+const setCollection = async (coll, text) => {
+  await fs.mkdir(path.join(contentDir, 'tvorba', coll), { recursive: true });
+  await fs.writeFile(collFile(coll, '_kolekce.yaml'), text);
+};
+async function addCover(coll) {
+  await fs.mkdir(path.join(contentDir, 'tvorba', coll), { recursive: true });
+  await sharp({ create: { width: 60, height: 40, channels: 3, background: '#557744' } }).jpeg().toFile(collFile(coll, '_uvod.jpg'));
 }
 
-test('collections: a collection named by a work gets a skeleton and a public copy', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ncollection: plener-sumava-2026\n');
+test('collections: a folder in tvorba/ is a collection, gets a skeleton titled after it and a public copy', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: '2026-plener-sumava' });
+  await addWork('2025', 'kvet', 'title: Květ\ndate: 2025-05-01\n', { collection: '2025 Jaro na zahradě' });
+  await addWork('2026', 'sam', 'title: Sám\ndate: 2026-01-01\n');
   const r = await run(opts());
-  assert.equal(r.ok, true);
-  assert.ok(r.created.includes('kolekce/plener-sumava-2026.yaml'));
-  const skeleton = YAML.parse(await fs.readFile(collectionFile('plener-sumava-2026.yaml'), 'utf8'));
-  assert.equal(skeleton.title, 'Plener sumava 2026');
+  assert.equal(r.ok, true, r.problems.join('\n'));
+  assert.ok(r.created.includes('tvorba/2026-plener-sumava/_kolekce.yaml'));
+  // a leading year moves to the end of the title, the slug comes from the folder name
+  assert.equal(YAML.parse(await fs.readFile(collFile('2026-plener-sumava', '_kolekce.yaml'), 'utf8')).title, 'Plener sumava 2026');
+  assert.equal(YAML.parse(await fs.readFile(collFile('2025 Jaro na zahradě', '_kolekce.yaml'), 'utf8')).title, 'Jaro na zahradě 2025');
+  assert.ok(await exists(path.join(siteDir, 'content/collections/2025-jaro-na-zahrade.yaml')));
+  // the collection of a work comes from its folder; a work in tvorba/ has none
+  const copyOf = async (year, slug) => YAML.parse(await fs.readFile(path.join(siteDir, 'content/works', year, `${slug}-${await idOf(year, slug)}.yaml`), 'utf8'));
+  assert.equal((await copyOf('2026', 'rano')).collection, '2026-plener-sumava');
+  assert.equal((await copyOf('2026', 'sam')).collection, undefined);
 
-  await fs.writeFile(collectionFile('plener-sumava-2026.yaml'), 'title: Plenér Šumava 2026\ndescription: Týden na Kvildě.\nprivate_note: tajné\n');
+  await setCollection('2026-plener-sumava', 'title: Plenér Šumava 2026\ndescription: Týden na Kvildě.\nprivate_note: tajné\n');
   await run(opts());
-  const copy = await fs.readFile(path.join(siteDir, 'content/collections/plener-sumava-2026.yaml'), 'utf8');
+  const copy = await fs.readFile(path.join(siteDir, 'content/collections/2026-plener-sumava.yaml'), 'utf8');
   assert.deepEqual(YAML.parse(copy), { title: 'Plenér Šumava 2026', description: 'Týden na Kvildě.' });
   assert.doesNotMatch(copy, /tajné/);
   // no cover photo, no cover folder
-  assert.ok(!(await exists(path.join(siteDir, 'public/collections/plener-sumava-2026'))));
+  assert.ok(!(await exists(path.join(siteDir, 'public/collections/2026-plener-sumava'))));
 });
 
-test('collections: a cover photo gets web sizes; removing it or the collection cleans up', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n');
+test('collections: a collection may span years, its works keep their own years', async () => {
+  await addWork('2025', 'prosinec', 'title: Prosinec\ndate: 2025-12-30\n', { collection: '2025-2026-zima' });
+  await addWork('2026', 'leden', 'title: Leden\ndate: 2026-01-02\n', { collection: '2025-2026-zima' });
+  assert.equal((await run(opts())).ok, true);
+  assert.equal(YAML.parse(await fs.readFile(collFile('2025-2026-zima', '_kolekce.yaml'), 'utf8')).title, 'Zima 2025–2026');
+  assert.ok(await exists(path.join(siteDir, 'content/works/2025', `prosinec-${await idOf('2025', 'prosinec')}.yaml`)));
+  assert.ok(await exists(path.join(siteDir, 'content/works/2026', `leden-${await idOf('2026', 'leden')}.yaml`)));
+});
+
+test('collections: a cover photo (_uvod.jpg) gets web sizes; removing it or the collection cleans up', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: 'plener' });
   await addCover('plener');
-  await fs.writeFile(collectionFile('plener.yaml'), 'title: Plenér\n');
+  await setCollection('plener', 'title: Plenér\n');
   await run(opts());
   const info = JSON.parse(await fs.readFile(path.join(siteDir, 'public/collections/plener/info.json'), 'utf8'));
   assert.equal(info.alt, 'Plenér');
   assert.deepEqual(info.widths, [40]);
   assert.equal((await run(opts())).processed, 0);
 
-  await fs.rm(collectionFile('plener.jpg'));
+  await fs.rm(collFile('plener', '_uvod.jpg'));
   await run(opts());
   assert.ok(!(await exists(path.join(siteDir, 'public/collections/plener'))));
   assert.ok(await exists(path.join(siteDir, 'content/collections/plener.yaml')));
 
-  await fs.rm(collectionFile('plener.yaml'));
+  await fs.rm(path.join(contentDir, 'tvorba/plener'), { recursive: true });
   const r = await run(opts());
   assert.ok(r.pruned.includes('content/collections/plener.yaml'));
   assert.ok(!(await exists(path.join(siteDir, 'content/collections'))));
 });
 
-test('collections: a cover photo without description gets a skeleton titled after the file', async () => {
+test('collections: a folder with just a cover photo is a collection with a skeleton too', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n');
   await addCover('jaro-na-zahrade');
   const r = await run(opts());
-  assert.ok(r.created.includes('kolekce/jaro-na-zahrade.yaml'));
-  assert.equal(YAML.parse(await fs.readFile(collectionFile('jaro-na-zahrade.yaml'), 'utf8')).title, 'Jaro na zahrade');
+  assert.ok(r.created.includes('tvorba/jaro-na-zahrade/_kolekce.yaml'));
+  assert.equal(YAML.parse(await fs.readFile(collFile('jaro-na-zahrade', '_kolekce.yaml'), 'utf8')).title, 'Jaro na zahrade');
 });
 
-test('collections: an invalid collection name or a missing title stops the run', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ncollection: Plenér Šumava\n');
-  let r = await run(opts());
-  assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /collection "Plenér Šumava"/);
+test('collections: collection:, a missing title, nested collections, clashing names and kolekce/ stop the run', async () => {
+  const problemsOf = async () => {
+    const r = await run(opts());
+    assert.equal(r.ok, false);
+    return r.problems.join('\n');
+  };
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ncollection: plener\n');
+  assert.match(await problemsOf(), /tvorba\/rano\.yaml: "collection:" is not used any more, a work belongs to a collection by lying in its folder/);
+  await setYaml('2026', 'rano', `id: ${await idOf('2026', 'rano')}\ntitle: Ráno\ndate: 2026-06-14\n`);
 
-  await setYaml('2026', 'rano', `id: ${await idOf('2026', 'rano')}\ntitle: Ráno\ndate: 2026-06-14\ncollection: plener\n`);
-  await fs.mkdir(path.join(contentDir, 'kolekce'), { recursive: true });
-  await fs.writeFile(collectionFile('plener.yaml'), 'description: bez názvu\n');
-  r = await run(opts());
-  assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /kolekce\/plener\.yaml: missing title/);
-  assert.ok(!(await exists(path.join(siteDir, 'content/works'))));
+  await setCollection('plener', 'description: bez názvu\n');
+  assert.match(await problemsOf(), /tvorba\/plener\/_kolekce\.yaml: missing title/);
+  await setCollection('plener', 'title: Plenér\n');
+
+  await addWork('2026', 'vnoreny', 'title: V\ndate: 2026-06-14\n', { collection: 'plener/podkolekce' });
+  assert.match(await problemsOf(), /tvorba\/plener\/podkolekce\/: .*collections cannot be nested/);
+  await fs.rm(path.join(contentDir, 'tvorba/plener/podkolekce'), { recursive: true });
+
+  await setCollection('Plenér', 'title: Druhý plenér\n');
+  assert.match(await problemsOf(), /gives the same web address "plener"/);
+  await fs.rm(path.join(contentDir, 'tvorba/Plenér'), { recursive: true });
+
+  await fs.mkdir(path.join(contentDir, 'kolekce'));
+  assert.match(await problemsOf(), /kolekce\/: collections are folders in tvorba\/ now/);
+  await fs.rm(path.join(contentDir, 'kolekce'), { recursive: true });
+  assert.equal((await run(opts())).ok, true);
 });
 
 test('exports: Instagram gets the original on paper and the detail photos in 4:5, never mockups', async () => {
@@ -444,7 +489,7 @@ test('exports: Fler gets the original and every mockup with the watermark, only 
   const key = `volny-${await idOf('2026', 'volny')}`;
   const flerFile = path.join(contentDir, 'export/fler/2026', `${key}.jpg`);
   const { width, height } = await sharp(flerFile).metadata();
-  const plain = await sharp(path.join(contentDir, 'tvorba/2026/volny.jpg')).resize(width, height).raw().toBuffer();
+  const plain = await sharp(path.join(contentDir, 'tvorba/volny.jpg')).resize(width, height).raw().toBuffer();
   const signed = await sharp(flerFile).raw().toBuffer();
   assert.notDeepEqual(signed, plain);
   // a work that is not for sale has Instagram exports only
@@ -456,7 +501,7 @@ test('exports: removing a detail photo removes its Instagram export', async () =
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ninstagram: true\n');
   await addDetail('2026', 'rano', 'kvet.jpg');
   await run(opts());
-  await fs.rm(path.join(contentDir, 'tvorba/2026/rano'), { recursive: true });
+  await fs.rm(path.join(contentDir, 'tvorba/rano'), { recursive: true });
   await run(opts());
   assert.deepEqual(await exportsOf('instagram', '2026', 'rano'), ['-clean.jpg']);
 });
@@ -496,12 +541,12 @@ test('exports: renaming or deleting a work removes its old exports on both platf
   assert.equal(stareFler.length, 4);
 
   // rename: same id, new slug (the detail folder moves with it)
-  const dir = path.join(contentDir, 'tvorba/2026');
+  const dir = path.join(contentDir, 'tvorba');
   for (const [from, to] of [['rano.yaml', 'rano-u-rybnika.yaml'], ['rano.jpg', 'rano-u-rybnika.jpg'], ['rano', 'rano-u-rybnika']]) {
     await fs.rename(path.join(dir, from), path.join(dir, to));
   }
-  // delete: the whole year folder
-  await fs.rm(path.join(contentDir, 'tvorba/2025'), { recursive: true });
+  // delete: the work of 2025
+  for (const f of ['stary.yaml', 'stary.jpg']) await fs.rm(path.join(contentDir, 'tvorba', f));
 
   const r = await run(opts());
   const exportsPruned = r.pruned.filter((p) => p.startsWith('export/')).sort();
@@ -528,8 +573,8 @@ test('exports: only=<slug> never prunes exports, unknown files in export/ are le
   await run(opts());
   const vecerId = await idOf('2026', 'vecer');
   await fs.writeFile(path.join(contentDir, 'export/instagram/2026/poznamky.txt'), 'x');
-  await fs.rm(path.join(contentDir, 'tvorba/2026/vecer.yaml'));
-  await fs.rm(path.join(contentDir, 'tvorba/2026/vecer.jpg'));
+  await fs.rm(path.join(contentDir, 'tvorba/vecer.yaml'));
+  await fs.rm(path.join(contentDir, 'tvorba/vecer.jpg'));
 
   await run(opts({ only: ['rano'] }));
   assert.ok(await exists(path.join(contentDir, 'export/instagram/2026', `vecer-${vecerId}-clean.jpg`)));
@@ -584,13 +629,13 @@ test('exports: stale Fler exports are removed even when the work is not regenera
 });
 
 test('collections: cover names a published work of the collection and reaches the public copy', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ncollection: plener\n');
-  await addWork('2026', 'vecer', 'title: Večer\ndate: 2026-06-20\ncollection: plener\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: 'plener' });
+  await addWork('2026', 'vecer', 'title: Večer\ndate: 2026-06-20\n', { collection: 'plener' });
   await addWork('2026', 'jinde', 'title: Jinde\ndate: 2026-06-21\n');
-  await addWork('2026', 'skica', 'title: Skica\ndate: 2026-06-22\ncollection: plener\ndraft: true\n');
+  await addWork('2026', 'skica', 'title: Skica\ndate: 2026-06-22\ndraft: true\n', { collection: 'plener' });
   await run(opts());
   const [rano, jinde, skica] = await Promise.all(['rano', 'jinde', 'skica'].map((s) => idOf('2026', s)));
-  const setCover = (cover) => fs.writeFile(collectionFile('plener.yaml'), `title: Plenér\ncover: ${cover}\n`);
+  const setCover = (cover) => setCollection('plener', `title: Plenér\ncover: ${cover}\n`);
 
   await setCover(rano);
   assert.equal((await run(opts())).ok, true);
@@ -608,7 +653,7 @@ test('collections: cover names a published work of the collection and reaches th
 
   await setCover(rano);
   await addCover('plener');
-  assert.match((await run(opts())).problems.join('\n'), /cover .* and the cover photo plener\.jpg both set/);
+  assert.match((await run(opts())).problems.join('\n'), /cover .* and the cover photo _uvod\.jpg both set/);
 });
 
 test('photos: focus goes to info.json (centre by default), an invalid focus stops the run', async () => {
@@ -629,35 +674,34 @@ test('photos: focus goes to info.json (centre by default), an invalid focus stop
 });
 
 test('collections: cover can be a detail photo of a work; focus reaches the public copy', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ncollection: plener\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: 'plener' });
   await addDetail('2026', 'rano', '1 Květy.jpg');
   await run(opts());
   const id = await idOf('2026', 'rano');
-  await fs.writeFile(collectionFile('plener.yaml'), `title: Plenér\ncover: ${id}#1-kvety\nfocus: [30, 70]\n`);
+  await setCollection('plener', `title: Plenér\ncover: ${id}#1-kvety\nfocus: [30, 70]\n`);
   assert.equal((await run(opts())).ok, true);
   const copy = YAML.parse(await fs.readFile(path.join(siteDir, 'content/collections/plener.yaml'), 'utf8'));
   assert.deepEqual(copy, { title: 'Plenér', cover: `${id}#1-kvety`, focus: [30, 70] });
 
-  await fs.writeFile(collectionFile('plener.yaml'), `title: Plenér\ncover: ${id}#lodka\n`);
+  await setCollection('plener', `title: Plenér\ncover: ${id}#lodka\n`);
   let r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /Ráno has no detail photo "lodka" \(folder 2026\/rano\/\)/);
+  assert.match(r.problems.join('\n'), /Ráno has no detail photo "lodka" \(folder tvorba\/plener\/rano\/\)/);
 
-  await fs.writeFile(collectionFile('plener.yaml'), 'title: Plenér\nfocus: [50, 150]\n');
+  await setCollection('plener', 'title: Plenér\nfocus: [50, 150]\n');
   r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /kolekce\/plener\.yaml: focus must be \[x, y\]/);
+  assert.match(r.problems.join('\n'), /tvorba\/plener\/_kolekce\.yaml: focus must be \[x, y\]/);
 });
 
 test('collections: the share image is the cover cropped to 3:2 around focus, like the page', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ncollection: plener\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: 'plener' });
   // panorama 90 × 30: left third red, middle green, right third blue
-  await fs.mkdir(path.join(contentDir, 'kolekce'), { recursive: true });
   const third = (c) => sharp({ create: { width: 30, height: 30, channels: 3, background: c } }).png().toBuffer();
   const panorama = await sharp({ create: { width: 90, height: 30, channels: 3, background: '#000' } })
     .composite([{ input: await third('#ff0000'), left: 0, top: 0 }, { input: await third('#00ff00'), left: 30, top: 0 }, { input: await third('#0000ff'), left: 60, top: 0 }])
     .jpeg({ quality: 100 }).toBuffer();
-  await fs.writeFile(collectionFile('plener.jpg'), panorama);
+  await fs.writeFile(collFile('plener', '_uvod.jpg'), panorama);
   const og = path.join(siteDir, 'public/og/collections/plener.jpg');
   const dominant = async () => {
     // read the bytes: sharp caches files by path, the same path would return the old image
@@ -665,7 +709,7 @@ test('collections: the share image is the cover cropped to 3:2 around focus, lik
     return channels.slice(0, 3).map((ch) => Math.round(ch.mean));
   };
 
-  await fs.writeFile(collectionFile('plener.yaml'), 'title: Plenér\nfocus: [0, 50]\n');
+  await setCollection('plener', 'title: Plenér\nfocus: [0, 50]\n');
   await run(opts());
   const { width, height } = await sharp(await fs.readFile(og)).metadata();
   assert.deepEqual([width, height], [config.images.og.width, config.images.og.height]);
@@ -677,24 +721,23 @@ test('collections: the share image is the cover cropped to 3:2 around focus, lik
   await run(opts());
   assert.equal((await fs.stat(og)).mtimeMs, mtime);
 
-  await fs.writeFile(collectionFile('plener.yaml'), 'title: Plenér\nfocus: [100, 50]\n');
+  await setCollection('plener', 'title: Plenér\nfocus: [100, 50]\n');
   await run(opts());
   const [r2, , b2] = await dominant();
   assert.ok(b2 > 150 && r2 < 100, `right crop is mostly blue: ${await dominant()}`);
 
   // collection gone → share image and the empty og folders are removed
-  await fs.rm(path.join(contentDir, 'kolekce'), { recursive: true });
-  await setYaml('2026', 'rano', `id: ${await idOf('2026', 'rano')}\ntitle: Ráno\ndate: 2026-06-14\n`);
+  await fs.rm(path.join(contentDir, 'tvorba/plener'), { recursive: true });
   const r3 = await run(opts());
   assert.ok(r3.pruned.includes('public/og/collections/plener.jpg'));
   assert.ok(!(await exists(path.join(siteDir, 'public/og'))));
 });
 
 test('collections: without its own photo the share image comes from the cover work or detail', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ncollection: plener\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: 'plener' });
   await addDetail('2026', 'rano', 'kvet.jpg', '#113355');
   await run(opts());
-  await fs.writeFile(collectionFile('plener.yaml'), `title: Plenér\ncover: ${await idOf('2026', 'rano')}#kvet\n`);
+  await setCollection('plener', `title: Plenér\ncover: ${await idOf('2026', 'rano')}#kvet\n`);
   await run(opts());
   const { channels } = await sharp(path.join(siteDir, 'public/og/collections/plener.jpg')).stats();
   // the detail is #113355 (dark blue), the work master #88aacc (light blue)
@@ -703,7 +746,7 @@ test('collections: without its own photo the share image comes from the cover wo
 
 test('share image: every work gets og.jpg, the whole work on paper in 3:2, listed in info.json', async () => {
   // a tall work (addWork makes wide masters)
-  const dir = path.join(contentDir, 'tvorba/2026');
+  const dir = path.join(contentDir, 'tvorba');
   await fs.mkdir(dir, { recursive: true });
   await sharp({ create: { width: 300, height: 600, channels: 3, background: '#223344' } }).jpeg().toFile(path.join(dir, 'vysoky.jpg'));
   await fs.writeFile(path.join(dir, 'vysoky.yaml'), 'title: Vysoký\ndate: 2026-06-14\n');
@@ -729,16 +772,15 @@ test('test data: the real content refuses test works, collections and photos; no
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n');
   await addWork('2026', 'demo-kytice', 'title: Kytice\ndate: 2026-06-14\n');
   await addWork('2026', 'vecer', 'title: Večer\ndate: 2026-06-14\ndemo: true\n');
-  await fs.mkdir(path.join(contentDir, 'kolekce'), { recursive: true });
-  await fs.writeFile(collectionFile('demo-plener.yaml'), 'title: Plenér\n');
+  await setCollection('demo-plener', 'title: Plenér\n');
   await addPhoto('portret', 'alt: x\ndemo: true\n');
   const r = await run(opts());
   assert.equal(r.ok, false);
   const text = r.problems.join('\n');
-  for (const where of ['tvorba/2026/demo-kytice.yaml', 'tvorba/2026/vecer.yaml', 'kolekce/demo-plener.yaml', 'fotky/portret.yaml']) {
+  for (const where of ['tvorba/demo-kytice.yaml', 'tvorba/vecer.yaml', 'tvorba/demo-plener/_kolekce.yaml', 'fotky/portret.yaml']) {
     assert.match(text, new RegExp(`${where.replace(/[./]/g, '\\$&')}: test data do not belong in the real content`), where);
   }
-  assert.ok(!text.includes('tvorba/2026/rano.yaml'));
+  assert.ok(!text.includes('tvorba/rano.yaml'));
   assert.ok(!(await exists(path.join(siteDir, 'public/works'))));
 });
 
@@ -785,9 +827,10 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   const r = await run(opts({ prepareOnly: true, today: new Date('2026-05-01') }));
   assert.equal(r.ok, true);
   assert.equal(r.prepared, true);
-  assert.deepEqual(r.created, ['2026/novy.yaml']);
+  assert.deepEqual(r.created, ['tvorba/novy.yaml']);
   assert.equal(r.assigned.length, 1);
-  const skeleton = YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/2026/novy.yaml'), 'utf8'));
+  const skeleton = YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/novy.yaml'), 'utf8'));
+  assert.equal(skeleton.date, '2026-05-01', 'a new work is dated today');
   assert.equal(skeleton.draft, true);
   assert.equal(skeleton.title, 'Novy');
   assert.equal(skeleton.instagram, false);
@@ -811,7 +854,7 @@ test('mockups: a master with surroundings (sheet box in XMP) is framed without t
     if (withBox) img = img.withXmp(sheetXmp([0.1, 0.125, 0.9, 0.875]));
     await img.jpeg({ quality: 95 }).toFile(file);
   };
-  const dir = path.join(contentDir, 'tvorba/2026');
+  const dir = path.join(contentDir, 'tvorba');
   await fs.mkdir(dir, { recursive: true });
   await master(path.join(dir, 'oriznuty.jpg'), true);
   await master(path.join(dir, 'celek.jpg'), false);

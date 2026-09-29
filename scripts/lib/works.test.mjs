@@ -80,7 +80,7 @@ test('validSize accepts two positive numbers only', () => {
 });
 
 const work = (over = {}) => ({
-  year: '2026', slug: 'rano', id: 'k3f9a', yamlPath: 'tvorba/2026/rano.yaml',
+  dir: '', slug: 'rano', id: 'k3f9a', yamlPath: 'tvorba/rano.yaml',
   ...over,
   data: { title: 'Ráno', date: '2026-06-14', ...over.data },
 });
@@ -93,20 +93,23 @@ test('validateWorks accepts dates parsed by YAML as Date objects', () => {
   assert.deepEqual(validateWorks([work({ data: { date: new Date('2026-06-14') } })]), []);
 });
 
-test('validateWorks reports a date outside the year folder', () => {
-  const [p] = validateWorks([work({ data: { date: '2025-12-31' } })]);
-  assert.match(p, /does not match year folder 2026/);
+test('validateWorks: the year comes from the date, so any day is fine, anything else is reported', () => {
+  assert.deepEqual(validateWorks([work({ data: { date: '2025-12-31' } })]), []);
+  for (const date of ['14. 6. 2026', '2026', 'nevím', 26]) {
+    const [p] = validateWorks([work({ data: { date } })]);
+    assert.match(p, /date must be a day like 2026-06-14/, String(date));
+  }
 });
 
 test('validateWorks reports duplicate ids with both locations', () => {
-  const problems = validateWorks([work(), work({ slug: 'vecer', yamlPath: 'tvorba/2026/vecer.yaml' })]);
+  const problems = validateWorks([work(), work({ slug: 'vecer', yamlPath: 'tvorba/plener/vecer.yaml' })]);
   assert.equal(problems.length, 1);
-  assert.match(problems[0], /vecer\.yaml.*also used by tvorba\/2026\/rano\.yaml/);
+  assert.match(problems[0], /tvorba\/plener\/vecer\.yaml.*also used by tvorba\/rano\.yaml/);
 });
 
-test('validateWorks reports bad folder, slug, id and missing fields', () => {
-  const problems = validateWorks([work({ year: 'stare', slug: 'Ráno', id: 'X', data: { title: '', date: '' } })]);
-  assert.equal(problems.length, 5);
+test('validateWorks reports bad slug, id and missing fields', () => {
+  const problems = validateWorks([work({ slug: 'Ráno', id: 'X', data: { title: '', date: '' } })]);
+  assert.equal(problems.length, 4);
 });
 
 test('validateWorks checks size only for published works', () => {
@@ -121,10 +124,10 @@ test('planPrune returns generated entries that are no longer wanted', () => {
   assert.deepEqual(planPrune(wanted, wanted), []);
 });
 
-test('validateWorks accepts a collection slug and reports anything else', () => {
-  assert.deepEqual(validateWorks([work({ data: { collection: 'plener-sumava-2026' } }), work({ slug: 'b', id: 'm7q2x', data: { collection: '' } })]), []);
-  const [p] = validateWorks([work({ data: { collection: 'Plenér Šumava' } })]);
-  assert.match(p, /collection "Plenér Šumava" must be the name of a file in kolekce\//);
+test('validateWorks: "collection:" is not used any more (the folder decides), an empty one is fine', () => {
+  assert.deepEqual(validateWorks([work({ data: { collection: '' } }), work({ slug: 'b', id: 'm7q2x', data: { collection: null } })]), []);
+  const [p] = validateWorks([work({ data: { collection: 'plener-sumava-2026' } })]);
+  assert.match(p, /tvorba\/rano\.yaml: "collection:" is not used any more, a work belongs to a collection by lying in its folder/);
 });
 
 test('isOnSale is true for available and reserved works only', () => {
@@ -154,7 +157,8 @@ test('validateWorks checks detail captions against the detail photos of the work
   const details = [{ name: '1-kvet' }, { name: 'lodka' }];
   assert.deepEqual(validateWorks([work({ details, data: { details: { '1 Květ': 'Květ', lodka: 'Loďka' } } })]), []);
   assert.deepEqual(validateWorks([work({ details, data: { details: null } })]), []);
-  assert.match(validateWorks([work({ details, data: { details: { vesta: 'x' } } })])[0], /no detail photo "vesta" in the folder 2026\/rano\//);
+  assert.match(validateWorks([work({ details, data: { details: { vesta: 'x' } } })])[0], /no detail photo "vesta" in the folder tvorba\/rano\//);
+  assert.match(validateWorks([work({ dir: 'plener', details, data: { details: { vesta: 'x' } } })])[0], /in the folder tvorba\/plener\/rano\//);
   assert.match(validateWorks([work({ details, data: { details: { lodka: 5 } } })])[0], /caption of "lodka" must be text/);
   assert.match(validateWorks([work({ details, data: { details: ['Květ'] } })])[0], /details must be a list/);
 });

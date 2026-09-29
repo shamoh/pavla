@@ -18,7 +18,7 @@ import { recipeProblems, renderDemoImages } from './lib/demo-images.mjs';
 import { run } from './process-images.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const CONTENT_SUBDIRS = ['tvorba', 'kolekce', 'fotky'];
+const CONTENT_SUBDIRS = ['tvorba', 'fotky'];
 /** Generated folders of public/ that belong to the data, not to the site itself. */
 const GENERATED_PUBLIC = new Set(['works', 'photos', 'collections', 'og']);
 
@@ -54,7 +54,8 @@ export async function prepareDemo({
   const dataDir = path.join(outDir, 'site');
 
   // 1. content: fresh copies of the YAML files and the rendered images (exports stay, the pipeline prunes them)
-  for (const sub of CONTENT_SUBDIRS) await fs.rm(path.join(contentDir, sub), { recursive: true, force: true });
+  // (kolekce/ is the former home of collections, left over from older runs)
+  for (const sub of [...CONTENT_SUBDIRS, 'kolekce']) await fs.rm(path.join(contentDir, sub), { recursive: true, force: true });
   await fs.mkdir(path.join(contentDir, 'tvorba'), { recursive: true });
   const yamls = (await listYaml(demoDir)).filter((f) => CONTENT_SUBDIRS.includes(f.split(path.sep)[0]));
   for (const f of yamls) {

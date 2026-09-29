@@ -3,7 +3,7 @@
 id: {{id}}                   # unikátní kód obrazu, NEMĚNIT
 draft: true
 title: {{title}}
-date: {{date}}               # rok musí sedět se složkou
+date: {{date}}               # den vzniku; rok z něj určuje rok obrazu na webu (stránky roků, adresa)
 technique: akvarel
 support: ""                  # např. papír Arches 300 g, nepovinné
 size_cm: [0, 0]              # šířka × výška v cm, DOPLNIT (podle toho se dělá mockup)
@@ -13,7 +13,6 @@ price:                       # Kč, jen u available, nepovinné
 fler: ""                     # odkaz na Fler, až bude
 instagram: false             # true = připravit fotky pro Instagram (export/instagram: originál a detaily)
 featured: false              # kandidát na úvodní stránku
-collection: ""               # kolekce, např. plener-sumava-2026 (název souboru v kolekce/), nepovinné
 description: |
   Pár vět o obraze.
 private_note: |              # soukromá poznámka, zůstane jen tady, na web se nedostane
