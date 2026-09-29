@@ -8,11 +8,48 @@
     2400
   ],
   "dominant": "rgb(168,168,168)",
-  "mockups": [],
+  "mockups": [
+    {
+      "scene": "obyvak-vecer",
+      "label": "Obývák večer",
+      "width": 1891,
+      "height": 1261,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(88,56,8)"
+    },
+    {
+      "scene": "loznice",
+      "label": "Ložnice",
+      "width": 1522,
+      "height": 1015,
+      "widths": [
+        480,
+        960,
+        1522
+      ],
+      "dominant": "rgb(56,40,8)"
+    },
+    {
+      "scene": "predsin",
+      "label": "Předsíň",
+      "width": 2400,
+      "height": 1578,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(216,216,200)"
+    }
+  ],
   "details": [],
   "og": {
     "width": 1200,
     "height": 800
   },
-  "fingerprint": "99550969620c97ab"
+  "fingerprint": "6e802b3398df64ff"
 }
