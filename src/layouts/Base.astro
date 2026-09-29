@@ -1,5 +1,5 @@
 ---
-import { site, url, type ShareImage } from '../lib/site';
+import { site, url, version, type ShareImage } from '../lib/site';
 
 interface Props { title?: string; description?: string; image?: ShareImage }
 const { title, description = `${site.author} — ${site.tagline.toLowerCase()}.`, image } = Astro.props;
@@ -53,7 +53,11 @@ const ogImage = image ? new URL(image.src, site.url).href : undefined;
     </header>
     <main><slot /></main>
     <footer class="site-footer">
-      <span>© {new Date().getFullYear()} {site.author}</span>
+      <span>
+        © {new Date().getFullYear()} {site.author}
+        <!-- Build version: calendar versioning, the version is the build time (YY.MMDD.HHMM, Prague time). -->
+        <span class="version">· <time datetime={version.iso} title={version.title}>{version.label}</time></span>
+      </span>
       <span class="links">
         {site.instagram && <a href={`https://www.instagram.com/${site.instagram}/`} rel="me">Instagram</a>}
         {site.fler && <a href={site.fler}>Fler</a>}
@@ -116,6 +120,8 @@ const ogImage = image ? new URL(image.src, site.url).href : undefined;
     font-size: 0.85rem; color: var(--ink-soft);
   }
   .site-footer .links { display: flex; gap: 20px; }
+  .site-footer .version { opacity: 0.6; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+  .site-footer .version time { cursor: help; }
 
   .badge {
     display: inline-block; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;

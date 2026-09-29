@@ -3,6 +3,8 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { detailKey, parseWorkKey } from '../../scripts/lib/works.mjs';
 import { parseCoverRef } from '../../scripts/lib/collections.mjs';
+import { buildVersion } from '../../scripts/lib/build-version.mjs';
+import { execSync } from 'node:child_process';
 
 const root = process.cwd();
 // Generated data (content/ and public/): this repo for the real site, .demo/site for the test data (npm run demo).
@@ -168,6 +170,19 @@ export function getPhoto(name: string): Photo | null {
   }
   return photoCache.get(name)!;
 }
+
+/** Commit the site is built from: GITHUB_SHA on GitHub Actions, otherwise the local checkout; '' when unknown. */
+function currentCommit(): string {
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA;
+  try {
+    return execSync('git rev-parse --short HEAD', { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch {
+    return '';
+  }
+}
+
+/** Version of this build for the footer (CalVer from the build time, see scripts/lib/build-version.mjs). */
+export const version = buildVersion(new Date(), currentCommit());
 
 /** Years that have at least one published work, newest first. */
 export const getYears = () => [...new Set(getWorks().map((w) => w.year))].sort((a, b) => b - a);

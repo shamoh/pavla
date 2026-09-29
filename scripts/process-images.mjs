@@ -2,7 +2,8 @@
 // Image pipeline. Reads works from the content repository (pavla-content) and produces:
 //   content/works/<year>/<slug>-<id>.yaml              copy of the metadata for the site build (commit)
 //   public/works/<year>/<slug>-<id>/<width>.{avif,webp,jpg}, info.json   web images (commit)
-//   public/works/<year>/<slug>-<id>/mockup-<scene>-<width>.*              the work in an interior, only for works on sale (commit)
+//   public/works/<year>/<slug>-<id>/mockup-<scene>-<width>.*              the work in an interior, only for works on sale (commit);
+//                                                                        from the bare sheet when the master shows surroundings
 //   public/works/<year>/<slug>-<id>/detail-<name>-<width>.*               detail photos of the work (commit)
 //   public/works/<year>/<slug>-<id>/og.jpg                                share image (og:image): the whole work on paper, 3:2 (commit)
 //   public/photos/<name>/<width>.{avif,webp,jpg}, info.json                other photos of the site (commit)
@@ -37,6 +38,7 @@ import { prepareContent } from './lib/content.mjs';
 import { demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { focusCrop, photoFocus, preparePhotos } from './lib/photos.mjs';
+import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
 import { formatSummary } from './lib/summary.mjs';
 import {
   PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, wantsInstagram, isValidSlug, planExportPrune, planPrune, publicFields, validateWorks, workKey,
@@ -69,11 +71,17 @@ async function writeIfChanged(file, text) {
 }
 
 // Load the master once: convert to sRGB and apply EXIF rotation. Metadata (EXIF, GPS) is not copied to outputs.
+// `sheet`: where the bare paper lies when the master also shows its surroundings (XMP written by
+// `npm run straighten`, see scripts/lib/sheet-box.mjs); null for a master that is the sheet itself.
 async function loadMaster(input) {
   const buf = await sharp(input).rotate().toColorspace('srgb').toBuffer();
   const meta = await sharp(buf).metadata();
-  return { buf, width: meta.width, height: meta.height };
+  const sheet = parseSheetXmp((await sharp(input).metadata()).xmp);
+  return { buf, width: meta.width, height: meta.height, sheet };
 }
+
+/** The master for the mockups: cropped to the bare sheet, a framed work never shows the floor around it. */
+const mockupSource = (m) => (m.sheet ? sharp(m.buf).extract(boxRegion(m.sheet, m.width, m.height)).toBuffer() : m.buf);
 
 /** Writes <prefix><width>.{avif,webp,jpg} for every width that does not upscale; returns the widths. */
 async function responsive(buf, srcWidth, dir, prefix, widths, quality) {
@@ -102,8 +110,9 @@ async function web(dir, m, img, { work, picked, details, fingerprint }) {
   const widths = await responsive(m.buf, m.width, dir, '', img.web.widths, img.web.quality);
   const mockups = [];
   const rendered = [];
+  const framed = picked.length ? await mockupSource(m) : null;
   for (const scene of picked) {
-    const buf = await renderMockup(m.buf, work.size_cm, scene);
+    const buf = await renderMockup(framed, work.size_cm, scene);
     rendered.push({ scene: scene.name, buf });
     const { width, height } = await sharp(buf).metadata();
     const mw = await responsive(buf, width, dir, `mockup-${scene.name}-`, img.mockups.widths, img.web.quality);

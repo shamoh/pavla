@@ -6,6 +6,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
 import { run } from './process-images.mjs';
+import { sheetXmp } from './lib/sheet-box.mjs';
 
 const siteConfig = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
 // Small web widths keep the test fast.
@@ -799,4 +800,41 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   const bad = await run(opts({ prepareOnly: true }));
   assert.equal(bad.ok, false);
   assert.match(bad.problems.join('\n'), /needs a price/);
+});
+
+test('mockups: a master with surroundings (sheet box in XMP) is framed without them; the web image keeps them', async () => {
+  // blue sheet with a magenta margin around it (a colour that no interior scene has), as `npm run straighten` produces with --margin
+  const master = async (file, withBox) => {
+    let img = sharp({ create: { width: 100, height: 80, channels: 3, background: '#ff00ff' } })
+      .composite([{ input: await sharp({ create: { width: 80, height: 60, channels: 3, background: '#2040a0' } }).png().toBuffer(), left: 10, top: 10 }]);
+    img = sharp(await img.png().toBuffer());
+    if (withBox) img = img.withXmp(sheetXmp([0.1, 0.125, 0.9, 0.875]));
+    await img.jpeg({ quality: 95 }).toFile(file);
+  };
+  const dir = path.join(contentDir, 'tvorba/2026');
+  await fs.mkdir(dir, { recursive: true });
+  await master(path.join(dir, 'oriznuty.jpg'), true);
+  await master(path.join(dir, 'celek.jpg'), false);
+  for (const slug of ['oriznuty', 'celek']) {
+    await fs.writeFile(path.join(dir, `${slug}.yaml`), `title: ${slug}\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n`);
+  }
+  assert.equal((await run(opts())).ok, true);
+  // magenta pixels, also after the mockup's light and shadow: red and blue clearly above green
+  const magenta = async (file) => {
+    const { data } = await sharp(await fs.readFile(file)).raw().toBuffer({ resolveWithObject: true });
+    let n = 0;
+    for (let i = 0; i < data.length; i += 3) if (data[i] - data[i + 1] > 70 && data[i + 2] - data[i + 1] > 70) n++;
+    return n;
+  };
+  const mockupFiles = async (slug) => {
+    const d = await workDir('2026', slug);
+    return (await fs.readdir(d)).filter((f) => f.startsWith('mockup-') && f.endsWith('.jpg')).map((f) => path.join(d, f));
+  };
+  assert.ok((await mockupFiles('oriznuty')).length > 0);
+  for (const f of await mockupFiles('oriznuty')) assert.equal(await magenta(f), 0, `no margin in ${path.basename(f)}`);
+  let control = 0;
+  for (const f of await mockupFiles('celek')) control += await magenta(f);
+  assert.ok(control > 0, 'without the box the margin is framed as part of the work');
+  // the web image of the work keeps the surroundings
+  assert.ok((await magenta(path.join(await workDir('2026', 'oriznuty'), '40.jpg'))) > 0);
 });

@@ -14,7 +14,8 @@ import { site } from '../lib/site';
         {site.fler && <li><span class="eyebrow">Obchůdek</span><a href={site.fler}>Fler</a></li>}
       </ul>
     </div>
-    <Photo name="kontakt" sizes="(max-width: 800px) 100vw, 40vw" class="contact-photo" />
+    <!-- Landscape 4:3 crop around the photo's focus, so it does not tower over the short text next to it. -->
+    <Photo name="kontakt" sizes="(max-width: 800px) 100vw, 40vw" class="contact-photo" aspect="4 / 3" />
   </div>
 </Base>
 <style>

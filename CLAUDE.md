@@ -43,6 +43,11 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
   Na ostatních větvích `pavla-content` jen `--prepare-only` (kostry, id, kontroly) s commitem zpět do větve.
   Týdenní kontrola (token, selhané běhy, nasazení, čekající PR): `health-check.yml` + `scripts/check-health.mjs` (`scripts/lib/health.mjs`).
 - Deploy workflow tohoto repa obrázky negeneruje, jen staví web z toho, co je commitnuté.
+- Srovnání fotek obrazů (perspektiva, ořez podkladu): `npm run straighten -- <fotka|složka>` (`scripts/straighten.mjs`),
+  originály nikdy nepřepisuje, výstup do `upravene/`; ruční rohy a další výřezy v `<fotka>.orez.yaml`, `--white-balance`, `--width`, `--margin` (výchozí okraj podkladu kolem listu, aby byly vidět okraje papíru).
+  S okrajem zapíše do JPEGu polohu listu (XMP `pavla:sheet`, `scripts/lib/sheet-box.mjs`); pipeline podle ní
+  pro mockupy (web i Fler) ořízne master na holý papír, jinde okraj zůstává.
+- Patička nese verzi buildu `vRR.MMDD.HHMM` (pražský čas) s bublinou (datum, commit): `scripts/lib/build-version.mjs`.
 - „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` `npm test` + `npm run demo:build`.
   Když přidáš funkci, která potřebuje ověřit ve výsledném webu, přidej kontrolu i do jeho posledního kroku.
 

@@ -429,7 +429,15 @@ nic nepřegeneruje. Web navíc mockupy u jiných stavů neukáže, ani kdyby sou
 zůstaly.
 
 Dílo na prodej dostane na stránce tři mockupy ve skutečném měřítku podle
-`size_cm`. Klik na obraz, detail nebo mockup otevře prohlížečku, ve které se dá
+`size_cm`.
+
+**Mockup je vždy jen holý papír.** Master srovnaný přes `npm run straighten`
+ukazuje kolem listu úzký okraj podkladu, aby byly vidět okraje papíru. V rámu na
+zdi by ale okraj nepatřil a měřítko podle `size_cm` by nesedělo. Pipeline proto
+pro mockupy (na webu i pro Fler) master ořízne na list podle údaje v jeho
+metadatech (`pavla:sheet`, viz *Srovnání fotek obrazů*). Webové obrázky díla,
+exporty pro Instagram a originál pro Fler okraj ponechají. Master bez tohoto
+údaje (sken, fotka upravená jinde) jde do mockupu celý jako dosud. Klik na obraz, detail nebo mockup otevře prohlížečku, ve které se dá
 šipkami (i swipem) přepínat mezi originálem, detaily a mockupy.
 
 - Malá díla (delší strana do 35 cm): stěna (komoda, ložnice), rámeček na poličce
@@ -458,7 +466,7 @@ používají tyto názvy; dokud fotka neexistuje, na stránce prostě chybí:
 |---|---|
 | `o-mne-uvod.jpg` | O mně, nahoře pod jménem přes celou šířku, oříznutá na 2:1 podle `focus` |
 | `portret.jpg` | O mně, vedle textu, úzký sloupec (ideálně fotka na výšku) |
-| `kontakt.jpg` | Kontakt, vedle kontaktů |
+| `kontakt.jpg` | Kontakt, vedle kontaktů, oříznutá na šířku 4:3 podle `focus` |
 
 Přípona může být i `.jpeg`, `.png` apod. Další fotku lze na libovolnou stránku
 přidat komponentou `<Photo name="…" />`.
@@ -499,6 +507,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | náhledy pro sdílení | `grep -o '<meta property="og:image[^>]*>' dist/tvorba/2026/*/index.html` po `npm run build`; soubory `public/works/*/*/og.jpg` a `public/og/collections/*.jpg`. Online: po nasazení vlož odkaz do <https://www.opengraph.xyz/> nebo do Facebook Sharing Debuggeru. |
 | rozpracované dílo | „Rozpracovaný obraz“ nesmí být v galerii, v roce 2026 ani na adrese `/tvorba/dhsh5/` |
 | web bez děl | `mkdir -p /tmp/prazdny/public && cp public/favicon.svg /tmp/prazdny/public/ && SITE_DATA_DIR=/tmp/prazdny npx astro build`: úvodní stránka ukáže „Obrazy tu brzy přibudou.“ a odkaz na Instagram (bez `site.instagram` jen první větu) |
+| mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla na prodej do testovacích dat nebo `pavla-content`, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
 | stav a mockupy | v yaml změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, na detailu zmizí mockupy, z `export/fler` zmizí všechny soubory díla |
 | exporty | `ls .demo/content/export/*/*/`: Instagram jen Ráno u rybníka, Pivoňky, Kytice z louky a Máky (`instagram: true`) s `-clean` a `-detail-*`, Fler jen díla `available`/`reserved`; smaž `instagram: true` u Máků v `demo/`, `npm run demo:prepare`, jejich export zmizí (originál + `-mockup-*`) |
 | cena | smaž `price` u díla `available`: `npm run images` skončí chybou „needs a price“ |
@@ -577,6 +586,24 @@ Když je něco špatně, běh selže a v `pavla-content` se otevře issue „Aut
 Další týden se k otevřenému issue jen přidá komentář. Když je vše zase v pořádku, issue se samo zavře.
 Logika je v `scripts/lib/health.mjs`, volání API v `scripts/check-health.mjs`.
 
+## Verze v patičce
+
+V patičce každé stránky je nenápadně verze webu, např. `v26.0928.1423`. Je to
+kalendářní verzování (CalVer): verze **je** čas, kdy se web sestavil, ve formátu
+`vRR.MMDD.HHMM` v pražském čase (letní i zimní čas). Po najetí myší ukáže bublina
+„Web vygenerován 28. 9. 2026 ve 14:23 · commit 6031b4d“, v HTML je to
+`<time datetime="2026-09-28T14:23+02:00">`.
+
+- Čas je okamžik sestavení (`npm run build`, na GitHubu deploy), takže se změní
+  s každým nasazením, ať kvůli kódu, nebo obsahu. Všechny stránky jednoho buildu
+  mají stejnou verzi.
+- Commit se bere z `GITHUB_SHA` (GitHub Actions), lokálně z `git rev-parse`;
+  když není k dispozici, v bublině chybí.
+- Kód: `scripts/lib/build-version.mjs` (formát, časové pásmo, předložka „v/ve“),
+  `version` v `src/lib/site.ts`, patička v `src/layouts/Base.astro`.
+- Vyzkoušení: `npm run build`, pak `grep -o '<time datetime[^<]*' dist/index.html`
+  (nebo najeď myší na verzi v `npm run dev`).
+
 ## Vývoj
 
 - `npm test`: testy pipeline a filtrů (`node:test`). Každý modul v `scripts/lib/` má svůj `*.test.mjs`.
@@ -590,6 +617,85 @@ Logika je v `scripts/lib/health.mjs`, volání API v `scripts/check-health.mjs`.
 - `npm run build`: musí projít před každým commitem.
 - Kód, komentáře a názvy v kódu jsou anglicky; texty webu, URL a dokumentace česky.
 - README obou rep udržujeme průběžně aktuální s každou změnou pipeline, struktury nebo webu.
+
+## Srovnání fotek obrazů (`npm run straighten`)
+
+Obraz vyfocený na podlaze nebo stole (trochu šikmo, kolem dřevo) nástroj srovná:
+najde list papíru, opraví perspektivu na obdélník a ořízne fotku tak, že kolem
+listu nechá **úzký okraj podkladu**, aby byly vidět celé okraje papíru (i nerovné
+nebo natržené). **Originály
+nemění**, výsledky ukládá do nové složky. Výsledek je pak master fotka pro
+`pavla-content/tvorba/<rok>/`.
+
+```
+npm run straighten -- "../pavla-content/tmp/2026 Plenér Šumava"            # všechny fotky ve složce
+npm run straighten -- "../pavla-content/tmp/2026 Plenér Šumava" --preview  # + náhledy s nalezeným listem
+npm run straighten -- "../pavla-content/tmp/2026 Plenér Šumava" --white-balance   # + papír neutrálně bílý
+npm run straighten -- "../pavla-content/tmp/2026 Plenér Šumava" --width 3000      # + nejvýš 3000 px na šířku
+npm run straighten -- foto.jpg --corners 0.02,0.03,0.97,0.01,0.98,0.76,0.01,0.78   # rohy ručně (uloží se)
+npm run straighten -- foto.jpg --rotate -90                                          # list vyfocený bokem (uloží se)
+npm run straighten -- foto.jpg --extra deska --corners 0.2,0.79,0.75,0.8,0.75,0.98,0.2,0.98   # další výřez
+```
+
+| Volba | Význam |
+|---|---|
+| `<fotka nebo složka>` | jedna fotka, nebo všechny fotky (jpg, jpeg, png, webp, tif) přímo ve složce (ne v podsložkách) |
+| `--out <složka>` | kam uložit; výchozí `upravene/` vedle fotek (u složky uvnitř ní) |
+| `--preview` | do `upravene/nahledy/` uloží `<název>.nahled.jpg` s vyznačeným nalezeným listem (fialově) |
+| `--margin <podíl>` | okraj podkladu kolem listu jako podíl jeho delší strany, stejně široký ze všech stran (výchozí `0.02`, tedy u listu 3000 px asi 60 px). Větší hodnota nechá víc okolí (pro výřez, který musí být určitě celý, např. `0.05`), `0` ořízne přesně na hranu, záporná ořízne dovnitř listu. Povolené −0,2 až 0,5. Kde okraj sahá za hranu fotky, doplní se barvou podkladu (průměr okraje fotky). |
+| `--width <px>` | zmenší výsledek na nejvýš tuto šířku (po otočení, poměr stran zůstane, nikdy nezvětšuje). Pro master fotku stačí `3000`: web potřebuje nejvýš 2400 px, zbytek je rezerva. Bez volby zůstane plné rozlišení srovnané fotky (u telefonu až ~3500 px). |
+| `--white-balance` | vyvážení bílé podle papíru: změří barvu nepomalovaného papíru (medián nejsvětlejších šedých míst) a přepočítá kanály tak, aby papír vyšel neutrálně bílý (240). Odstraní teplý i šedý nádech fotky z telefonu; papír tím i zesvětlí. Zesílení je omezené na ×0,7–1,6 a vypíše se v logu. Když ve výřezu není papír (nejsvětlejší šedá je tmavší než 150, např. kovová tisková deska), vyvážení se přeskočí. |
+| `--corners x,y,…` | jen pro jednu fotku: rohy listu ručně, pořadí levý horní, pravý horní, pravý dolní, levý dolní, jako podíl šířky a výšky fotky (0–1); **uloží se** do souboru s ořezem |
+| `--rotate <stupně>` | jen pro jednu fotku: otočení výsledku (`90`, `-90`, `180`); **uloží se** do souboru s ořezem |
+| `--extra <název>` | jen pro jednu fotku, s `--corners`: **další výřez** z téže fotky (např. detail), výsledek `<fotka>-<název>.jpg`; uloží se do souboru s ořezem |
+
+**Soubor s ořezem `<fotka>.orez.yaml`** leží vedle původní fotky. Zapíše ho nástroj
+při `--corners`, `--rotate` nebo `--extra` (ostatní výřezy v něm zůstanou) a dá se
+upravit ručně. Každé další zpracování složky ho použije, takže celou složku jde
+kdykoli zpracovat znovu jedním příkazem se stejným výsledkem:
+
+```yaml
+corners: [ 0.0225, 0.026, 0.965, 0.008, 0.982, 0.762, 0.012, 0.78 ]  # hlavní ořez; bez něj automatika
+rotate: -90                                                           # nepovinné
+margin: 0.02                                                          # nepovinné, jako --margin jen pro tuto fotku
+whiteBalance: true                                                    # nepovinné, jako --white-balance jen pro tuto fotku
+width: 3000                                                           # nepovinné, jako --width jen pro tuto fotku
+extra:                                                                # nepovinné další výřezy
+  - name: deska                                                       # → <fotka>-deska.jpg
+    corners: [ 0.205, 0.786, 0.748, 0.798, 0.752, 0.978, 0.205, 0.982 ]
+    margin: 0.05                                                      # větší okraj, ať je deska určitě celá
+    whiteBalance: false                                               # výřez bez papíru
+```
+
+Volby z příkazové řádky (`--width`, `--margin`) mají přednost před souborem,
+další výřez bez vlastního `margin` převezme ten z hlavního ořezu,
+`--white-balance` ho zapne pro všechny fotky. Neplatný soubor (rohy nejsou 8 čísel
+0–1, další výřez bez názvu nebo rohů, `width` není celé kladné číslo, `margin`
+mimo −0,2 až 0,5) nástroj
+ohlásí a nic nezpracuje.
+
+**Údaj o listu pro mockupy:** když výsledek obsahuje okraj podkladu (`--margin` > 0),
+nástroj do JPEGu zapíše, kde přesně leží list (metadata XMP, `pavla:sheet` =
+levý, horní, pravý a dolní okraj listu jako podíl 0–1, po otočení přepočítané).
+Údaj zůstane v souboru i po přejmenování a nahrání přes GitHub. Pipeline podle
+něj pro **mockupy** master ořízne na holý papír (viz *Mockupy*). Web, Instagram
+a originál pro Fler dostanou fotku i s okrajem. Kód: `scripts/lib/sheet-box.mjs`.
+
+**Když list nekončí hranou papíru** (např. spodní část zakrývá jiný předmět a
+rohy jsou zvolené uprostřed papíru), okraj by pod ním ukázal i ten předmět.
+Posuň pak rohy na té straně o velikost okraje dovnitř listu.
+
+**Jak hledá list:** papír je světlý a skoro šedý, podklad (dřevo) barevný a tmavší.
+Podklad je všechno nepapírové spojené s okrajem fotky, takže barvy uvnitř obrazu
+nevadí. Rohy jsou krajní body listu po úhlopříčkách. Funguje pro list vyfocený
+zhruba shora. **Selže**, když je roh listu zaoblený nebo natržený, když list
+částečně zakrývá jiný předmět nebo když vedle leží další světlý papír: pak je
+v logu nesmyslný roh a na náhledu fialový čtyřúhelník nesedí. Rohy pak odečti
+z náhledu (souřadnice vypisuje i log, `corners (detected) …`) a spusť fotku znovu
+s `--corners` (uloží se). Výstup je JPEG v kvalitě 95; barvy se mění jen s vyvážením bílé.
+
+Kód: `scripts/lib/straighten.mjs` (hledání listu, homografie, převzorkování, testy
+`straighten.test.mjs`), příkazová řádka `scripts/straighten.mjs`.
 
 ## Jak fotit (nebo skenovat) akvarely
 
