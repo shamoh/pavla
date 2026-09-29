@@ -5,6 +5,7 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
 ## Stack
 - Astro (statický výstup), žádný UI framework, vanilla JS jen pro filtry v galerii.
 - `sharp` + `yaml` pro obrázkovou pipeline (`scripts/process-images.mjs`).
+- Node.js ≥ 24 (`engines`); workflow na GitHubu `node-version: 24` ve všech workflow obou rep, držet je stejně.
 - Deploy: GitHub Actions → GitHub Pages, doména v `public/CNAME`.
 
 ## Data

@@ -654,6 +654,9 @@ kalendářní verzování (CalVer): verze **je** čas, kdy se web sestavil, ve f
 
 ## Vývoj
 
+- **Node.js 24 nebo novější** (`engines` v `package.json`). Workflow na GitHubu běží na Node 24
+  (aktuální LTS, `node-version` ve všech workflow obou rep), lokálně funguje i novější (např. 26).
+  Až se Node 26 stane LTS (konec října 2026), dá se `node-version` zvednout na 26.
 - `npm test`: testy pipeline a filtrů (`node:test`). Každý modul v `scripts/lib/` má svůj `*.test.mjs`.
 - **Automatická kontrola** (`.github/workflows/check.yml`, „Kontrola kódu“): při každém pull requestu
   a pushi do `main` spustí `npm test` a `npm run build` (web z commitnutých dat, zkompiluje i všechny
