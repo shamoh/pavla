@@ -219,7 +219,7 @@ private_note: |               # SOUKROMÉ: zůstane jen v pavla-content
 | `available` | K prodeji, cena a tlačítka | originál + mockupy (má-li je) | jen s `mockups: true` | jen s `instagram: true` |
 | `reserved` | Rezervováno | originál + mockupy (má-li je) | jen s `mockups: true` | jen s `instagram: true` |
 | `sold` | Prodáno, bez ceny | nic | jen s `mockups: true` | jen s `instagram: true` |
-| `not-for-sale` (výchozí) | Není na prodej | nic | jen s `mockups: true` | jen s `instagram: true` |
+| `not-for-sale` (výchozí) | bez stavu (žádný štítek ani cena) | nic | jen s `mockups: true` | jen s `instagram: true` |
 
 **Instagram na vyžádání:** fotky pro Instagram (originál a detaily) vzniknou jen
 u díla s `instagram: true`. Výchozí je `false` (kostra ho tak zapisuje). Přepnutí
