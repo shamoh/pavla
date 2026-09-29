@@ -1,6 +1,7 @@
 // Weekly health check of the automation around pavla-content:
 //   - PAVLA_TOKEN (used by the "Zpracování obsahu" workflow) works and does not expire soon,
 //   - the latest run of "Zpracování obsahu" did not fail,
+//   - the latest weekly dry run of that workflow on the test data ("Zkušební běh zpracování", pavla) did not fail,
 //   - the latest commit on pavla/main was deployed,
 //   - the content pull request (obsah/aktualizace) does not wait for a merge too long.
 // Pure functions; the GitHub API calls live in scripts/check-health.mjs.
@@ -36,25 +37,36 @@ export function evaluateToken({ status, expiration, now = new Date(), warnDays =
 
 const FAILED = new Set(['failure', 'timed_out', 'startup_failure']);
 
+export const CONTENT_RUNS = {
+  name: 'Zpracování obsahu',
+  never: 'Zpracování obsahu zatím neproběhlo.',
+  consequence: 'Na stránce běhu je nahoře napsané proč. Dokud se to neopraví, nové obrazy se na web nedostanou.',
+};
+export const DRY_RUNS = {
+  name: 'Zkušební běh zpracování',
+  never: 'Zkušební běh zpracování na testovacích datech zatím neproběhl.',
+  consequence: 'Zpracování selhalo na testovacích datech, skutečný obsah by nejspíš selhal stejně. Opravit dřív, než Pavla nahraje nové obrazy.',
+};
+
 /**
  * `runs`: workflow runs from the GitHub API (newest first), fields status, conclusion, created_at, html_url.
  * Not ok when the latest finished run failed. Failures within `days` that a later run fixed are only mentioned.
+ * `workflow`: texts for the workflow (CONTENT_RUNS by default, DRY_RUNS for the dry run).
  */
-export function evaluateRuns(runs, { now = new Date(), days = 7 } = {}) {
+export function evaluateRuns(runs, { now = new Date(), days = 7, workflow = CONTENT_RUNS } = {}) {
   const finished = runs.filter((r) => r.status === 'completed' && r.conclusion !== 'cancelled' && r.conclusion !== 'skipped');
-  if (!finished.length) return { ok: true, message: 'Zpracování obsahu zatím neproběhlo.' };
+  if (!finished.length) return { ok: true, message: workflow.never };
   const latest = finished[0];
   if (FAILED.has(latest.conclusion)) {
     return {
       ok: false,
-      message: `Poslední běh „Zpracování obsahu“ (${day(latest.created_at)}) selhal: ${latest.html_url}\n`
-        + 'Na stránce běhu je nahoře napsané proč. Dokud se to neopraví, nové obrazy se na web nedostanou.',
+      message: `Poslední běh „${workflow.name}“ (${day(latest.created_at)}) selhal: ${latest.html_url}\n${workflow.consequence}`,
     };
   }
   const since = now.getTime() - days * DAY;
   const recentFailures = finished.filter((r) => FAILED.has(r.conclusion) && new Date(r.created_at).getTime() >= since);
   const tail = recentFailures.length ? ` Za posledních ${days} dní selhalo ${recentFailures.length}×, ale pozdější běh už prošel.` : '';
-  return { ok: true, message: `Poslední běh „Zpracování obsahu“ (${day(latest.created_at)}) prošel.${tail}` };
+  return { ok: true, message: `Poslední běh „${workflow.name}“ (${day(latest.created_at)}) prošel.${tail}` };
 }
 
 const day = (iso) => String(iso).slice(0, 10);

@@ -1,0 +1,81 @@
+# Dry run of "Zpracování obsahu" (pavla-content/.github/workflows/publish.yml) on the test data (demo/):
+#   1. the test content is built from demo/ into .demo/content (like a checkout of pavla-content),
+#   2. the pipeline runs on it as on a branch (--prepare-only) and as on main, writing into this checkout,
+#   3. the pull request is prepared by the same script as in publish.yml (scripts/pull-request.mjs) and its
+#      paths are added and committed the way peter-evans/create-pull-request does it,
+#   in two rounds: first without the cover photos of collections (so public/collections does not exist, like
+#   before the first real cover photo), then with them (the folder appears).
+# Everything stays in the runner: nothing is pushed, no pull request is opened, pavla-content is not needed.
+# It runs weekly, so a broken step shows up before real content hits it; the Monday health check
+# ("Kontrola automatiky" in pavla-content) reports a failed dry run by e-mail.
+name: Zkušební běh zpracování
+
+on:
+  schedule:
+    - cron: '23 5 * * 0'   # Sundays 05:23 UTC, the day before the health check
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/process-images.mjs'
+      - 'scripts/pull-request.mjs'
+      - 'scripts/lib/pull-request.mjs'
+      - 'scripts/demo.mjs'
+      - '.github/workflows/dry-run.yml'
+      - '.github/dry-run-commit.sh'
+  workflow_dispatch:
+
+concurrency:
+  group: dry-run
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    env:
+      CONTENT_DIR: ${{ github.workspace }}/.demo/content
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Test content (demo/ into .demo/content)
+        run: node scripts/demo.mjs --content-only
+
+      - name: Set the cover photos of collections aside
+        run: |
+          mkdir -p "$RUNNER_TEMP/covers"
+          cd "$CONTENT_DIR"
+          find tvorba -name '_uvod.*' -print0 | while IFS= read -r -d '' f; do
+            mkdir -p "$RUNNER_TEMP/covers/$(dirname "$f")"
+            mv "$f" "$RUNNER_TEMP/covers/$f"
+          done
+
+      - name: Pipeline as on a branch (prepare only)
+        run: npm run images -- --demo --prepare-only
+
+      - name: Pipeline as on main
+        run: npm run images -- --demo
+
+      - name: Pull request without collection cover photos (not opened)
+        run: |
+          node scripts/pull-request.mjs "$RUNNER_TEMP/pr-body.md"
+          .github/dry-run-commit.sh "$RUNNER_TEMP/pr-body.md"
+
+      - name: Cover photos back, pipeline as on main again
+        run: |
+          cp -R "$RUNNER_TEMP/covers/tvorba/." "$CONTENT_DIR/tvorba/"
+          npm run images -- --demo
+
+      - name: Pull request with collection cover photos (not opened)
+        run: |
+          node scripts/pull-request.mjs "$RUNNER_TEMP/pr-body.md"
+          .github/dry-run-commit.sh "$RUNNER_TEMP/pr-body.md"

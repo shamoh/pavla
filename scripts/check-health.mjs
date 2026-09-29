@@ -4,7 +4,7 @@
 // Exit code 1 when something needs attention; the report goes to stdout, the run page and the step output.
 
 import fs from 'node:fs/promises';
-import { evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, formatReport } from './lib/health.mjs';
+import { DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, formatReport } from './lib/health.mjs';
 
 const SITE_REPO = 'shamoh/pavla';
 const PR_BRANCH = 'obsah/aktualizace';
@@ -42,6 +42,12 @@ const runs = await guarded('běhy „Zpracování obsahu“', async () => {
   return evaluateRuns(data.workflow_runs, { days: arg('--run-days', 7) });
 });
 
+// The weekly dry run of the workflow on the test data runs in the public pavla repo (.github/workflows/dry-run.yml).
+const dryRun = await guarded('zkušební běhy zpracování', async () => {
+  const data = await json(`/repos/${SITE_REPO}/actions/workflows/dry-run.yml/runs?branch=main&per_page=30`);
+  return evaluateRuns(data.workflow_runs, { days: arg('--run-days', 7), workflow: DRY_RUNS });
+});
+
 const deploy = await guarded('stav nasazení webu', async () => {
   const head = await json(`/repos/${SITE_REPO}/commits/main`);
   const data = await json(`/repos/${SITE_REPO}/actions/workflows/deploy.yml/runs?branch=main&per_page=30`);
@@ -54,7 +60,7 @@ const pr = await guarded('pull requesty webu', async () => {
   return evaluatePullRequest(pulls, { days: arg('--pr-days', 7) });
 });
 
-const report = formatReport(token, runs, deploy, pr);
+const report = formatReport(token, runs, dryRun, deploy, pr);
 console.log(report.text);
 if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, report.text);
 if (process.env.GITHUB_OUTPUT) await fs.appendFile(process.env.GITHUB_OUTPUT, `report<<EOF\n${report.text}EOF\n`);

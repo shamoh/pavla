@@ -1,5 +1,5 @@
 # Checks that nothing stopped working after a change of the code: unit tests and a build of the site from
-# the committed data (it also compiles every page template). The site from the test data (`npm run demo:build`)
+# the committed data (it also compiles every page template), and the workflows themselves (actionlint). The site from the test data (`npm run demo:build`)
 # is not built here: it takes minutes on a GitHub runner and is never published; build it locally instead.
 # Content updates from pavla-content (content/, public/ generated data) and documentation do not trigger it.
 name: Kontrola kódu
@@ -53,3 +53,18 @@ jobs:
 
       - name: Build the site
         run: npm run build
+
+  # Syntax, expressions, action inputs and shell scripts (shellcheck) of every workflow in this repo.
+  # pavla-content checks its own workflows the same way (its "Kontrola workflow").
+  workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: actionlint
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color
+
+      - name: shellcheck of the helper scripts
+        run: shellcheck .github/*.sh

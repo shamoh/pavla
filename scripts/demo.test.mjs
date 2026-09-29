@@ -3,8 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import YAML from 'yaml';
 import { prepareDemo } from './demo.mjs';
+import { pullRequestPaths } from './lib/pull-request.mjs';
+import { run } from './process-images.mjs';
 
 const siteConfig = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
 const config = {
@@ -53,6 +57,28 @@ test('prepareDemo builds the test data into .demo/ only and writes the assigned 
   const again = await prepareDemo(opts());
   assert.equal(again.processed, 0);
   assert.equal(YAML.parse(await fs.readFile(path.join(demoDir, 'tvorba/demo-rano.yaml'), 'utf8')).id, id);
+});
+
+test('dry run: content only, then the pipeline on the test data into a site repo, then the pull request paths', async () => {
+  const r = await prepareDemo({ ...opts(), contentOnly: true });
+  assert.equal(r.ok, true);
+  assert.ok(await exists(path.join(outDir, 'content/tvorba/demo-rano.jpg')));
+  assert.ok(!(await exists(path.join(outDir, 'site'))), 'no pipeline run');
+
+  // like .github/workflows/dry-run.yml: `npm run images -- --demo` writes into the checkout of this repo
+  const git = (...args) => promisify(execFile)('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: siteDir });
+  await git('init', '-q');
+  await git('add', '-A');
+  await git('commit', '-q', '-m', 'site with real data');
+  assert.equal((await run({ contentDir: r.contentDir, siteDir, config, log: () => {}, dataset: 'demo' })).ok, true);
+  assert.equal((await run({ contentDir: r.contentDir, siteDir, config, log: () => {} })).ok, false, 'the real data set refuses test data');
+
+  const paths = await pullRequestPaths(siteDir);
+  assert.ok(!paths.includes('public/collections'), 'no collection cover in this test data');
+  await git('add', '--', ...paths);
+  const { stdout } = await git('status', '--porcelain');
+  assert.match(stdout, /^A {2}content\/works\/2026\/demo-rano-/m);
+  assert.match(stdout, /^D {2}public\/works\/2026\/x\/info\.json$/m, 'the real work is pruned');
 });
 
 test('prepareDemo refuses unmarked items and a broken recipe', async () => {

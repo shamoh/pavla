@@ -7,6 +7,8 @@
 // The real content (pavla-content) and this repo's content/ and public/ are never touched.
 //
 // Usage:  npm run demo:prepare   prepare .demo/ only
+//         node scripts/demo.mjs --content-only   only .demo/content (no pipeline run), for the dry run of the
+//                                                content workflow (.github/workflows/dry-run.yml)
 //         npm run demo           prepare and start the dev server on the test data
 //         npm run demo:build     prepare and build the site from the test data (.demo/site/dist)
 
@@ -36,7 +38,8 @@ async function listYaml(dir, rel = '') {
 
 /**
  * Prepares the test data and runs the pipeline on them. Returns the pipeline result
- * ({ ok: false, problems } when the recipe is broken). Options: demoDir, outDir, siteDir (this repo), config, log.
+ * ({ ok: false, problems } when the recipe is broken). Options: demoDir, outDir, siteDir (this repo), config, log,
+ * contentOnly (only build .demo/content, do not run the pipeline; returns { ok: true, contentDir }).
  */
 export async function prepareDemo({
   demoDir = path.join(siteRoot, 'demo'),
@@ -44,6 +47,7 @@ export async function prepareDemo({
   siteDir = siteRoot,
   config,
   log = console.log,
+  contentOnly = false,
 } = {}) {
   config ??= YAML.parse(await fs.readFile(path.join(siteDir, 'site.config.yaml'), 'utf8'));
   const recipe = YAML.parse(await fs.readFile(path.join(demoDir, 'images.yaml'), 'utf8')) ?? {};
@@ -63,6 +67,7 @@ export async function prepareDemo({
     await fs.copyFile(path.join(demoDir, f), path.join(contentDir, f));
   }
   await renderDemoImages(recipe, contentDir);
+  if (contentOnly) return { ok: true, problems: [], contentDir };
 
   // 2. static files of the site (favicon …) next to the generated test data; not the domain (CNAME)
   const publicDir = path.join(dataDir, 'public');
@@ -90,9 +95,11 @@ export async function prepareDemo({
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    const r = await prepareDemo();
+    const contentOnly = process.argv.includes('--content-only');
+    const r = await prepareDemo({ contentOnly });
     r.problems.forEach((p) => console.error(`✗ ${p}`));
-    if (r.ok) console.log(`Test data ready in .demo/ (${r.processed} processed, ${r.skipped} unchanged).`);
+    if (r.ok && contentOnly) console.log(`Test content ready in ${path.relative(process.cwd(), r.contentDir)}/.`);
+    else if (r.ok) console.log(`Test data ready in .demo/ (${r.processed} processed, ${r.skipped} unchanged).`);
     else process.exitCode = 1;
   } catch (e) {
     console.error(`✗ ${e.message}`);

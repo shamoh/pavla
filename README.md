@@ -583,12 +583,13 @@ yaml v `pavla-content` přes web GitHubu. Workflow `pavla-content/.github/workfl
   2. commitne do `pavla-content` nové kostry popisů, přidělená ID a exporty pro Fler a Instagram,
   3. otevře (nebo aktualizuje) v tomto repu pull request z větve `obsah/aktualizace`
      s webovými obrázky a kopiemi popisů. Po sloučení se web nasadí.
-     Do pull requestu jdou jen výstupní složky z `OUTPUT_PATHS` v `publish.yml`
-     (`content/works`, `public/works`, `public/photos`, `content/collections`,
-     `public/collections`, `public/og`), a to jen ty, které existují nebo je git
-     zná (smazaná složka). Chybějící složku (např. `public/collections`, dokud
-     žádná kolekce nemá `_uvod.jpg`) přeskočí, jinak by `git add` selhal a pull
-     request by nevznikl. Nová výstupní složka pipeline = doplnit do `OUTPUT_PATHS`.
+     Pull request připraví `node scripts/pull-request.mjs <soubor-popisu>` (`scripts/lib/pull-request.mjs`):
+     do `add-paths` dá jen výstupní složky z `OUTPUT_PATHS` (`content/works`, `public/works`,
+     `public/photos`, `content/collections`, `public/collections`, `public/og`), a to jen ty, které
+     existují nebo je git zná (smazaná složka). Chybějící složku (např. `public/collections`, dokud
+     žádná kolekce nemá `_uvod.jpg`) přeskočí, jinak by `git add` selhal a pull request by nevznikl;
+     bez jediné složky se pull request přeskočí. Do popisu napíše odkaz na běh a seznam změněných děl,
+     kolekcí a fotek. Nová výstupní složka pipeline = doplnit do `OUTPUT_PATHS`.
 - **na jakékoli jiné větvi** (např. `nove-obrazy`) jen připravuje, nic nezveřejní:
   1. spustí `npm run images -- --prepare-only`: k novým fotkám založí kostru
      popisu s výchozími hodnotami (`draft: true`, název z názvu souboru,
@@ -639,6 +640,27 @@ Když je něco špatně, běh selže a v `pavla-content` se otevře issue „Aut
 (přiřazené tobě, takže přijde e-mail) s popisem a odkazem na selhaný běh, u tokenu i s návodem na obnovení.
 Další týden se k otevřenému issue jen přidá komentář. Když je vše zase v pořádku, issue se samo zavře.
 Logika je v `scripts/lib/health.mjs`, volání API v `scripts/check-health.mjs`.
+Kontrola hlídá i poslední „Zkušební běh zpracování“ (viz níže): když selhal, přijde stejné issue.
+
+**Zkušební běh zpracování** (`.github/workflows/dry-run.yml` v tomto repu): každou neděli (den před
+kontrolou automatiky), po změně pipeline (`scripts/process-images.mjs`, `scripts/pull-request.mjs`,
+`scripts/lib/pull-request.mjs`, `scripts/demo.mjs`, samotného workflow) a ručně (*Actions → Zkušební běh
+zpracování → Run workflow*) projde celé „Zpracování obsahu“ na testovacích datech, aby se chyba ukázala dřív,
+než na ni narazí skutečný obsah:
+
+1. `node scripts/demo.mjs --content-only` postaví z `demo/` testovací obsah do `.demo/content` (bez pipeline),
+2. pipeline jako na větvi (`npm run images -- --demo --prepare-only`) a jako na `main` (`npm run images -- --demo`;
+   `--demo` = obsah musí být testovací), výstupy jdou do checkoutu tohoto repa jako při skutečném běhu,
+3. pull request připraví stejný `scripts/pull-request.mjs` jako `publish.yml` a `.github/dry-run-commit.sh`
+   s jeho složkami udělá totéž co `peter-evans/create-pull-request`: `git add` a commit, **nic nepushne**
+   a žádný pull request neotevře (souhrn běhu ukáže, jak by vypadal),
+4. dvakrát: nejdřív bez úvodních fotek kolekcí (`public/collections` neexistuje, jako teď u skutečného obsahu),
+   pak s nimi (složka vznikne).
+
+Nekontroluje pushe do `pavla-content` ani `PAVLA_TOKEN` (to hlídá kontrola automatiky). Lokálně jde projít totéž
+na kopii repa (skutečné výstupy v `content/` a `public/` by přepsal):
+`git clone . /tmp/zkusebni && cd /tmp/zkusebni && npm ci && node scripts/demo.mjs --content-only`, pak
+`CONTENT_DIR=$PWD/.demo/content npm run images -- --demo` a `node scripts/pull-request.mjs /tmp/popis.md`.
 
 ## Verze v patičce
 
@@ -675,6 +697,12 @@ kalendářní verzování (CalVer): verze **je** čas, kdy se web sestavil, ve f
   šablony stránek). Trvá asi minutu. Nespouští se pro aktualizace obsahu z `pavla-content`
   (`content/`, vygenerované `public/…`) ani pro změny dokumentace (`*.md`); ručně jde spustit
   v *Actions → Kontrola kódu → Run workflow*.
+- **Kontrola workflow** (job `workflows` v „Kontrola kódu“): `actionlint` (verze 1.7.12, se shellcheckem) projde
+  všechna workflow tohoto repa (syntaxe, výrazy `${{ }}`, vstupy akcí, skripty v `run:`) a `shellcheck`
+  pomocné skripty `.github/*.sh`. `pavla-content` má totéž jako „Kontrola workflow“ (`check-workflows.yml`,
+  spouští se při změně `.github/workflows/`). Chyby, které vzniknou až za běhu (chybějící složka apod.),
+  actionlint nenajde, na ty je zkušební běh zpracování. Lokálně: `brew install actionlint` a v kořeni repa
+  `actionlint` (shellcheck použije, když je nainstalovaný: `brew install shellcheck`).
 - **Web z testovacích dat se na GitHubu nestaví:** nikde se nezveřejňuje a na runneru GitHubu
   trvá kvůli mockupům několik minut. Změny webu a pipeline proto před commitem ověř lokálně:
   `npm run demo:build` (případně `npm run demo` a proklikat).

@@ -32,8 +32,8 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
   web `getCollections` a `/tvorba/kolekce/<slug>/`.
   Úvodní obrázek: vlastní fotka > `cover: <id>` nebo `cover: <id>#<detail>` > nejnovější dílo; vždy ořez 3:2 kolem `focus`
   (`src/components/CollectionCover.astro`); `og:image` kolekce je týž výřez, `public/og/collections/<slug>.jpg`
-  (`coverSource` + `focusCrop`). Každá výstupní složka pipeline v tomto repu (i `public/og`) musí být v `OUTPUT_PATHS` workflow `publish.yml`
-  (do PR jdou jen ty z nich, které existují nebo je git zná).
+  (`coverSource` + `focusCrop`). Každá výstupní složka pipeline v tomto repu (i `public/og`) musí být v `OUTPUT_PATHS` (`scripts/lib/pull-request.mjs`;
+  do PR jdou jen ty z nich, které existují nebo je git zná).
 - Detailní fotky díla: `pavla-content/tvorba/[<kolekce>/]<slug>/*.jpg` → `detail-<název>-<šířka>.*` a `info.json#details`;
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
 - Filtry galerie (`scripts/lib/gallery-filter.mjs`): všechny se kombinují a každá změna se hned zapisuje do URL,
@@ -55,7 +55,12 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
 - Automatika: workflow v `pavla-content/.github/workflows/publish.yml` spouští pipeline a otevírá PR
   do tohoto repa (větev `obsah/aktualizace`, secret `PAVLA_TOKEN`). Souhrn běhu: `scripts/lib/summary.mjs`.
   Na ostatních větvích `pavla-content` jen `--prepare-only` (kostry, id, kontroly) s commitem zpět do větve.
-  Týdenní kontrola (token, selhané běhy, nasazení, čekající PR): `health-check.yml` + `scripts/check-health.mjs` (`scripts/lib/health.mjs`).
+  Týdenní kontrola (token, selhané běhy, zkušební běh, nasazení, čekající PR): `health-check.yml` + `scripts/check-health.mjs` (`scripts/lib/health.mjs`).
+  Pull request připravuje `scripts/pull-request.mjs` (`scripts/lib/pull-request.mjs`, `OUTPUT_PATHS`), totéž v `publish.yml`
+  i ve „Zkušebním běhu zpracování“ (`.github/workflows/dry-run.yml`, každou neděli na testovacích datech, nic nepushne).
+  Změna kroků `publish.yml` = stejná změna ve `dry-run.yml`, ať zkušební běh zkouší opravdu totéž.
+  Workflow obou rep kontroluje `actionlint` (job `workflows` v `check.yml`, v `pavla-content` `check-workflows.yml`);
+  po každé úpravě workflow ho spusť i lokálně.
 - Deploy workflow tohoto repa obrázky negeneruje, jen staví web z toho, co je commitnuté.
 - Srovnání fotek obrazů (perspektiva, ořez podkladu): `npm run straighten -- <fotka|složka>` (`scripts/straighten.mjs`),
   originály nikdy nepřepisuje, výstup do `upravene/`; ruční rohy a další výřezy v `<fotka>.orez.yaml`, `--white-balance`, `--width`, `--margin` (výchozí okraj podkladu kolem listu, aby byly vidět okraje papíru).

@@ -472,7 +472,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   // On GitHub Actions the result is also written to the run page.
   const summary = (r, e) => process.env.GITHUB_STEP_SUMMARY && fs.appendFile(process.env.GITHUB_STEP_SUMMARY, formatSummary(r, e));
   try {
-    const r = await run({ force: args.includes('--force'), prepareOnly: args.includes('--prepare-only'), only: args.filter((a) => !a.startsWith('--')) });
+    // --demo: the content is the test data (dry run of the workflow on GitHub, see .github/workflows/dry-run.yml)
+    const r = await run({
+      force: args.includes('--force'),
+      prepareOnly: args.includes('--prepare-only'),
+      dataset: args.includes('--demo') ? 'demo' : 'real',
+      only: args.filter((a) => !a.startsWith('--')),
+    });
     r.problems.forEach((p) => console.error(`✗ ${p}`));
     if (r.problems.length === 0) console.log(r.prepared ? 'Prepared: skeletons, ids and checks only.' : `Done: ${r.processed} processed, ${r.skipped} unchanged.`);
     if (r.missing.length) console.error(`Missing master photo for: ${r.missing.join(', ')}`);

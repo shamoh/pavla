@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, formatReport, parseExpiration } from './health.mjs';
+import { DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, formatReport, parseExpiration } from './health.mjs';
 
 const now = new Date('2026-09-27T10:00:00Z');
 const run = (conclusion, created_at, status = 'completed') => ({ status, conclusion, created_at, html_url: `https://example.test/${created_at}` });
@@ -57,6 +57,16 @@ test('runs: in-progress and cancelled runs are ignored; no runs at all is fine',
 test('runs: timed out and startup failures count as failures', () => {
   assert.equal(evaluateRuns([run('timed_out', '2026-09-26T08:00:00Z')], { now }).ok, false);
   assert.equal(evaluateRuns([run('startup_failure', '2026-09-26T08:00:00Z')], { now }).ok, false);
+});
+
+test('runs: the dry run on the test data has its own name and says what its failure means', () => {
+  const failed = evaluateRuns([run('failure', '2026-09-27T05:00:00Z')], { now, workflow: DRY_RUNS });
+  assert.equal(failed.ok, false);
+  assert.match(failed.message, /^Poslední běh „Zkušební běh zpracování“ \(2026-09-27\) selhal: /);
+  assert.match(failed.message, /na testovacích datech/);
+  assert.match(evaluateRuns([run('success', '2026-09-27T05:00:00Z')], { now, workflow: DRY_RUNS }).message, /„Zkušební běh zpracování“ .* prošel/);
+  assert.match(evaluateRuns([], { now, workflow: DRY_RUNS }).message, /zatím neproběhl/);
+  assert.match(evaluateRuns([run('failure', '2026-09-27T05:00:00Z')], { now }).message, /„Zpracování obsahu“/);
 });
 
 test('formatReport combines both checks and adds renew steps only for a token problem', () => {
