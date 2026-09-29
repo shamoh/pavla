@@ -20,5 +20,9 @@
   },
   "engines": {
     "node": ">=24"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "fsevents": false
   }
 }
