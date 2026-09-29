@@ -8,11 +8,48 @@
     2400
   ],
   "dominant": "rgb(184,184,168)",
-  "mockups": [],
+  "mockups": [
+    {
+      "scene": "loznice",
+      "label": "Ložnice",
+      "width": 1320,
+      "height": 880,
+      "widths": [
+        480,
+        960,
+        1320
+      ],
+      "dominant": "rgb(56,40,8)"
+    },
+    {
+      "scene": "police",
+      "label": "Polička",
+      "width": 1742,
+      "height": 1161,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(216,216,216)"
+    },
+    {
+      "scene": "pracovna",
+      "label": "Pracovna",
+      "width": 1320,
+      "height": 880,
+      "widths": [
+        480,
+        960,
+        1320
+      ],
+      "dominant": "rgb(232,232,232)"
+    }
+  ],
   "details": [],
   "og": {
     "width": 1200,
     "height": 800
   },
-  "fingerprint": "135d35b430514181"
+  "fingerprint": "9f040bcde0e2e2cc"
 }
