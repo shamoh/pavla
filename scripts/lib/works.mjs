@@ -104,8 +104,10 @@ export function validateWorks(works) {
       problems.push(`${where}: status "${w.data.status}" needs a price (price: <Kč>)`);
     }
     problems.push(...validateDetailCaptions(w, where));
-    if (w.data?.instagram !== undefined && w.data.instagram !== null && typeof w.data.instagram !== 'boolean') {
-      problems.push(`${where}: instagram must be true or false`);
+    for (const flag of ['instagram', 'mockups']) {
+      if (w.data?.[flag] !== undefined && w.data[flag] !== null && typeof w.data[flag] !== 'boolean') {
+        problems.push(`${where}: ${flag} must be true or false`);
+      }
     }
     if (w.data?.collection !== undefined && w.data.collection !== null && w.data.collection !== '') {
       problems.push(`${where}: "collection:" is not used any more, a work belongs to a collection by lying in its folder (tvorba/<collection>/)`);
@@ -116,7 +118,7 @@ export function validateWorks(works) {
   return problems;
 }
 
-/** Statuses of works that are for sale and not sold yet: they get mockups and the "unsold" filter. */
+/** Statuses of works that are for sale and not sold yet: they get Fler exports and the "unsold" filter. */
 export const ON_SALE_STATUSES = ['available', 'reserved'];
 export const isOnSale = (status) => ON_SALE_STATUSES.includes(status);
 
@@ -126,8 +128,15 @@ export const isOnSale = (status) => ON_SALE_STATUSES.includes(status);
  */
 export const PUBLIC_WORK_FIELDS = [
   'id', 'draft', 'title', 'date', 'technique', 'support', 'size_cm', 'tags',
-  'status', 'price', 'fler', 'featured', 'collection', 'description', 'details',
+  'status', 'price', 'fler', 'featured', 'collection', 'description', 'details', 'mockups',
 ];
+
+/**
+ * Every attribute a work's YAML supports: the public ones (except `collection`, which comes from the folder)
+ * plus those that stay private. The skeleton of a new work (scripts/templates/work.yaml) must contain all of
+ * them, a test checks it: a new attribute goes here, into PUBLIC_WORK_FIELDS if public, and into the template.
+ */
+export const WORK_FIELDS = [...PUBLIC_WORK_FIELDS.filter((f) => f !== 'collection'), 'instagram', 'private_note'];
 
 /** Picks the public fields of `data` (in PUBLIC_WORK_FIELDS order), leaving out the rest. */
 export function publicFields(data, fields) {
@@ -206,6 +215,9 @@ export function planExportPrune(files, wanted) {
     })
     .sort();
 }
+
+/** True when the author asked for mockups of a work (`mockups: true`), independent of whether it is for sale. */
+export const wantsMockups = (data) => data?.mockups === true;
 
 /** True when the author asked for Instagram exports of a work (`instagram: true`). */
 export const wantsInstagram = (data) => data?.instagram === true;

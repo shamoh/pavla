@@ -1,5 +1,6 @@
 id: bja33
 demo: true # testovací data (pavla/demo), nikdy do pavla-content
+mockups: false # testovací data: mockupy vypnuté výslovně
 title: Modravské slatě
 date: 2026-06-15
 technique: akvarel

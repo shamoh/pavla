@@ -1,5 +1,6 @@
 id: ddp86
 demo: true # testovací data (pavla/demo), nikdy do pavla-content
+mockups: false # testovací data: mockupy vypnuté výslovně
 title: Kvilda, skica
 date: 2026-06-16
 technique: kresba tužkou

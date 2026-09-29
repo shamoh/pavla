@@ -8,11 +8,14 @@ technique: akvarel
 support: ""                  # např. papír Arches 300 g, nepovinné
 size_cm: [0, 0]              # šířka × výška v cm, DOPLNIT (podle toho se dělá mockup)
 tags: []                     # např. [krajina, voda, plenér]
-status: not-for-sale         # available | reserved | sold | not-for-sale (mockupy jen u available a reserved)
+status: not-for-sale         # available | reserved | sold | not-for-sale
 price:                       # Kč, jen u available, nepovinné
 fler: ""                     # odkaz na Fler, až bude
 instagram: false             # true = připravit fotky pro Instagram (export/instagram: originál a detaily)
+mockups: false               # true = mockupy (obraz v rámu na zdi) na webu, u obrazu na prodej i pro Fler
 featured: false              # kandidát na úvodní stránku
 description: |
   Pár vět o obraze.
+details:                     # popisky detailních fotek ze složky se jménem obrazu, nepovinné, např.:
+                             #   1-mlha: Mlha nad hladinou
 private_note: |              # soukromá poznámka, zůstane jen tady, na web se nedostane

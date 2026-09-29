@@ -3,7 +3,7 @@
 // (<year> is the year of the work's date; the content repository has no year folders, see scripts/lib/content.mjs)
 //   content/works/<year>/<slug>-<id>.yaml              copy of the metadata for the site build (commit)
 //   public/works/<year>/<slug>-<id>/<width>.{avif,webp,jpg}, info.json   web images (commit)
-//   public/works/<year>/<slug>-<id>/mockup-<scene>-<width>.*              the work in an interior, only for works on sale (commit);
+//   public/works/<year>/<slug>-<id>/mockup-<scene>-<width>.*              the work in an interior, only with `mockups: true` (commit);
 //                                                                        from the bare sheet when the master shows surroundings
 //   public/works/<year>/<slug>-<id>/detail-<name>-<width>.*               detail photos of the work (commit)
 //   public/works/<year>/<slug>-<id>/og.jpg                                share image (og:image): the whole work on paper, 3:2 (commit)
@@ -42,7 +42,7 @@ import { focusCrop, photoFocus, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
 import { formatSummary } from './lib/summary.mjs';
 import {
-  PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, wantsInstagram, planExportPrune, planPrune, publicFields, validateWorks, workKey,
+  PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, wantsInstagram, wantsMockups, planExportPrune, planPrune, publicFields, validateWorks, workKey,
 } from './lib/works.mjs';
 
 /** Bump when the output format changes, so every work is regenerated once. */
@@ -318,13 +318,14 @@ export async function run({
       continue;
     }
     // Outputs depend on the master, the size (mockup scale), the scenes, whether the work is on sale
-    // (mockups are for works on sale only) and the detail photos; not on price or description.
+    // (Fler exports), `mockups`, `instagram` and the detail photos; not on price or description.
     const master = await fs.readFile(w.masterPath);
     const onSale = isOnSale(w.data.status);
     const instagram = wantsInstagram(w.data);
+    const mockupsOn = wantsMockups(w.data);
     const details = await Promise.all(w.details.map(async (d) => ({ name: d.name, buf: await fs.readFile(d.path) })));
     const fingerprint = sha1(
-      String(PIPELINE_VERSION), master, JSON.stringify(w.data.size_cm ?? null), scenesText, String(onSale), String(instagram),
+      String(PIPELINE_VERSION), master, JSON.stringify(w.data.size_cm ?? null), scenesText, String(onSale), String(instagram), String(mockupsOn),
       ...details.flatMap((d) => [d.name, d.buf]),
     );
     const upToDate = (await readJson(path.join(webDir, 'info.json')))?.fingerprint === fingerprint;
@@ -332,9 +333,9 @@ export async function run({
 
     log(`→ ${rel}`);
     const m = await loadMaster(master);
-    // Mockups are marketing for buyers: only works for sale that are not sold yet get them.
-    const picked = onSale ? pickScenes(w.data.size_cm, w.id, scenes) : [];
-    if (onSale && !picked.length) log(`  ! no mockup scene is big enough for ${rel} (see mockups/scenes.yaml maxCm)`);
+    // Mockups only when the author asks for them (mockups: true), whether or not the work is for sale.
+    const picked = mockupsOn ? pickScenes(w.data.size_cm, w.id, scenes) : [];
+    if (mockupsOn && !picked.length) log(`  ! no mockup scene is big enough for ${rel} (see mockups/scenes.yaml maxCm)`);
     const mockups = await web(webDir, m, img, { work: w.data, picked, details, fingerprint });
 
     // Exports. Instagram: only when asked for (instagram: true), the original and the detail photos, never mockups.

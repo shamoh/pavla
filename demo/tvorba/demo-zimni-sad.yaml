@@ -1,5 +1,6 @@
 id: w2urm
 demo: true # testovací data (pavla/demo), nikdy do pavla-content
+mockups: true # testovací data: mockupy zapnuté výslovně
 title: Zimní sad
 date: 2025-01-18
 technique: akvarel

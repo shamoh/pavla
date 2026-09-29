@@ -1,5 +1,6 @@
 id: v56rz
 demo: true # testovací data (pavla/demo), nikdy do pavla-content
+mockups: false # testovací data: mockupy vypnuté výslovně
 title: Bouřka nad polem
 date: 2026-08-09
 technique: akvarel

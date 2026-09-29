@@ -1,5 +1,6 @@
 id: kaa3x
 demo: true # testovací data (pavla/demo), nikdy do pavla-content
+mockups: true # testovací data: mockupy zapnuté výslovně
 title: Rybník v zimě
 date: 2025-12-14
 technique: kvaš

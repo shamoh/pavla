@@ -3,7 +3,7 @@ import Base from '../../../layouts/Base.astro';
 import Picture from '../../../components/Picture.astro';
 import Img from '../../../components/Img.astro';
 import { collectionUrl, detailCaption, getCollection, workShareImage, getWorks, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
-import { isOnSale } from '../../../../scripts/lib/works.mjs';
+import { isOnSale, wantsMockups } from '../../../../scripts/lib/works.mjs';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -19,8 +19,9 @@ const collection = getCollection(work.collection);
 // Everything the viewer can step through: the work itself, its details, then its mockups.
 const base = workImagePath(work);
 const details = (work.image.details ?? []).map((d, i) => ({ ...d, caption: detailCaption(work, d.name) || `detail ${i + 1}` }));
-// Mockups are marketing for buyers: shown only while the work is for sale and not sold.
-const mockups = isOnSale(work.status) ? work.image.mockups ?? [] : [];
+// Mockups only when the author asked for them (mockups: true), whether or not the work is for sale.
+const mockups = wantsMockups(work) ? work.image.mockups ?? [] : [];
+const mockupsHeading = isOnSale(work.status) ? 'Jak by mohl vypadat u vás' : 'Jak vypadá na zdi';
 const views = [
   { label: work.title, prefix: '', image: work.image },
   ...details.map((d) => ({ label: `${work.title} · ${d.caption}`, prefix: `detail-${d.name}-`, image: d })),
@@ -73,7 +74,7 @@ const mockupsWide = mockups.every((m) => m.width >= m.height);
       )}
       {mockups.length > 0 && (
         <section class="mockups" aria-label="Jak obraz vypadá v interiéru">
-          <p class="eyebrow">Jak by mohl vypadat u vás</p>
+          <p class="eyebrow">{mockupsHeading}</p>
           <div class:list={['mockup-grid', { wide: mockupsWide }]}>
             {mockups.map((m, i) => (
               <a href={views[1 + details.length + i].src} data-view={1 + details.length + i} title={`Zvětšit: ${m.label}`}>

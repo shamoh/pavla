@@ -201,6 +201,7 @@ status: available             # available | reserved | sold | not-for-sale
 price: 3200                   # Kč; zobrazí se jen u available
 fler: https://www.fler.cz/... # tlačítko „Koupit na Fleru“
 instagram: true               # připravit fotky pro Instagram (výchozí false)
+mockups: true                 # mockupy (obraz v rámu na zdi), nezávisle na prodeji (výchozí false)
 featured: true                # kandidát na úvodní stránku
 draft: true                   # rozpracované, na webu se nezobrazí
 description: |                # veřejný popis na webu
@@ -213,21 +214,29 @@ private_note: |               # SOUKROMÉ: zůstane jen v pavla-content
 
 **Stavy:**
 
-| `status` | Na webu | Mockupy | Export Fler | Export Instagram |
+| `status` | Na webu | Export Fler | Mockupy | Export Instagram |
 |---|---|---|---|---|
-| `available` | K prodeji, cena a tlačítka | ano | originál + mockupy | jen s `instagram: true` |
-| `reserved` | Rezervováno | ano | originál + mockupy | jen s `instagram: true` |
-| `sold` | Prodáno, bez ceny | ne | nic | jen s `instagram: true` |
-| `not-for-sale` (výchozí) | Není na prodej | ne | nic | jen s `instagram: true` |
+| `available` | K prodeji, cena a tlačítka | originál + mockupy (má-li je) | jen s `mockups: true` | jen s `instagram: true` |
+| `reserved` | Rezervováno | originál + mockupy (má-li je) | jen s `mockups: true` | jen s `instagram: true` |
+| `sold` | Prodáno, bez ceny | nic | jen s `mockups: true` | jen s `instagram: true` |
+| `not-for-sale` (výchozí) | Není na prodej | nic | jen s `mockups: true` | jen s `instagram: true` |
 
 **Instagram na vyžádání:** fotky pro Instagram (originál a detaily) vzniknou jen
 u díla s `instagram: true`. Výchozí je `false` (kostra ho tak zapisuje). Přepnutí
 dílo přegeneruje, vypnutí jeho exporty pro Instagram smaže. Jiná hodnota než
 `true`/`false` je chyba. Pole zůstává jen v `pavla-content`, na web se nekopíruje.
 
-Obrazy na prodej jsou `available` a `reserved`: jen ty mají mockupy, Fler exporty
-a jen ty ukazuje filtr „neprodané“. **Musí mít cenu** (`price`, kladné číslo
+Obrazy na prodej jsou `available` a `reserved`: jen ty mají Fler exporty a jen ty
+ukazuje filtr „neprodané“. Mockupy na stavu nezávisí (viz *Mockupy*). **Musí mít cenu** (`price`, kladné číslo
 v Kč), jinak pipeline skončí chybou.
+
+**Kostry popisů:** k nové fotce obrazu, nové složce kolekce a nové fotce stránky
+založí pipeline popis se **všemi podporovanými atributy** a jejich výchozími
+hodnotami (šablony `scripts/templates/work.yaml`, `collection.yaml`, `photo.yaml`).
+Výčty atributů jsou `WORK_FIELDS` (`scripts/lib/works.mjs`), `COLLECTION_FIELDS`
+(`scripts/lib/collections.mjs`) a `PHOTO_FIELDS` (`scripts/lib/photos.mjs`). Test
+ověřuje, že vygenerovaná kostra obsahuje každý z nich, takže nový atribut bez
+úpravy šablony neprojde.
 
 **Soukromá poznámka a veřejná kopie:** do `content/works/` (veřejné repo) se
 kopírují jen pole z `PUBLIC_WORK_FIELDS` v `scripts/lib/works.mjs`, a to bez
@@ -254,6 +263,10 @@ v `demo/`, zobrazené přes `npm run demo`.
 | `featured` (úvodní stránka) | Ráno u rybníka, Šumava v mlze |
 | tlačítko „Koupit na Fleru“ | Máky |
 | export pro Instagram (`instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail), Kytice z louky (+ 1 detail, není na prodej), Máky; ostatní díla žádný |
+| `mockups: true`, na prodej | Ráno u rybníka (+ detaily), Zimní sad, Město v dešti, Náměstí v mlze, Kočka na okně, Rybník v zimě |
+| `mockups: true`, ne na prodej | Kytice z louky (+ detail), Slunečnice, Šumava v mlze (prodáno) |
+| `mockups: false` | Pivoňky (na prodej, + detail), Bouřka nad polem, Modravské slatě (na prodej), Kvilda skica, Nádraží (prodáno) |
+| bez pole `mockups` (= false) | Máky (na prodej), Jablka na stole (prodáno), Rozpracovaný obraz |
 | mockupy malého díla (≤ 35 cm) / většího | Kočka na okně / Zimní sad |
 | detailní fotky | Ráno u rybníka (2, s popisky), Kytice z louky (1, bez popisku), Pivoňky (1 široký) |
 | kolekce: vlastní úvodní fotka (panorama + `focus`) | Plenér Šumava 2026 |
@@ -450,16 +463,21 @@ private_note: ""    # soukromé, na web se nedostane
 
 ## Mockupy
 
-Mockupy („jak by mohl vypadat u vás“) jsou marketing pro kupující, proto je
-dostanou **jen díla na prodej, která ještě nejsou prodaná** (`available`,
-`reserved`). Na webu a ve Fler exportech (s vodoznakem), nikdy na Instagramu.
-Změna stavu na `sold` nebo `not-for-sale` dílo přegeneruje a jeho mockupy
-i Fler exporty smaže. Změna mezi `available` a `reserved`
-nic nepřegeneruje. Web navíc mockupy u jiných stavů neukáže, ani kdyby soubory
-zůstaly.
+Mockupy (obraz v rámu na zdi) se **zapínají v popisu díla: `mockups: true`**,
+nezávisle na tom, jestli se dílo prodává. Výchozí je `false` (kostra ho tak
+zapisuje), jiná hodnota než `true`/`false` je chyba.
 
-Dílo na prodej dostane na stránce tři mockupy ve skutečném měřítku podle
-`size_cm`.
+- Dílo s `mockups: true` dostane na stránce tři mockupy ve skutečném měřítku
+  podle `size_cm`. Nadpis sekce se řídí stavem: u díla na prodej „Jak by mohl
+  vypadat u vás“, jinak „Jak vypadá na zdi“.
+- Fler exporty mockupů vzniknou jen u díla na prodej, které mockupy má. Na
+  Instagram mockupy nejdou nikdy.
+- Přepnutí `mockups` dílo přegeneruje, `false` jeho mockupy (i ve Fler exportech)
+  smaže. Prodej díla (`sold`) mockupy nechá a smaže jen Fler exporty. Změna mezi
+  `available` a `reserved` nic nepřegeneruje. Web mockupy bez `mockups: true`
+  neukáže, ani kdyby soubory zůstaly.
+- Pole jde i do veřejné kopie popisu (web ho čte), kód `wantsMockups` v
+  `scripts/lib/works.mjs`.
 
 **Mockup je vždy jen holý papír.** Master srovnaný přes `npm run straighten`
 ukazuje kolem listu úzký okraj podkladu, aby byly vidět okraje papíru. V rámu na
@@ -537,8 +555,8 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | náhledy pro sdílení | `grep -o '<meta property="og:image[^>]*>' dist/tvorba/2026/*/index.html` po `npm run build`; soubory `public/works/*/*/og.jpg` a `public/og/collections/*.jpg`. Online: po nasazení vlož odkaz do <https://www.opengraph.xyz/> nebo do Facebook Sharing Debuggeru. |
 | rozpracované dílo | „Rozpracovaný obraz“ nesmí být v galerii, v roce 2026 ani na adrese `/tvorba/dhsh5/` |
 | web bez děl | `mkdir -p /tmp/prazdny/public && cp public/favicon.svg /tmp/prazdny/public/ && SITE_DATA_DIR=/tmp/prazdny npx astro build`: úvodní stránka ukáže „Obrazy tu brzy přibudou.“ a odkaz na Instagram (bez `site.instagram` jen první větu) |
-| mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla na prodej do testovacích dat nebo `pavla-content`, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
-| stav a mockupy | v yaml změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, na detailu zmizí mockupy, z `export/fler` zmizí všechny soubory díla |
+| mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla s `mockups: true` do testovacích dat nebo `pavla-content`, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
+| stav a mockupy | v yaml díla s `mockups: true` změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, mockupy na detailu zůstanou (nadpis „Jak vypadá na zdi“), z `export/fler` zmizí; pak `mockups: false`: mockupy zmizí i z webu. Testovací data: Ráno u rybníka (na prodej) × Slunečnice, Šumava v mlze (ne) × Pivoňky (vypnuté) |
 | exporty | `ls .demo/content/export/*/*/`: Instagram jen Ráno u rybníka, Pivoňky, Kytice z louky a Máky (`instagram: true`) s `-clean` a `-detail-*`, Fler jen díla `available`/`reserved`; smaž `instagram: true` u Máků v `demo/`, `npm run demo:prepare`, jejich export zmizí (originál + `-mockup-*`) |
 | cena | smaž `price` u díla `available`: `npm run images` skončí chybou „needs a price“ |
 | úklid exportů | přejmenuj dílo (yaml, fotku i složku detailů), `npm run images`: v logu `- removed export/…` se starým názvem, v `export/` zůstanou jen soubory s novým názvem; totéž po smazání díla. Nebo nakopíruj do `export/fler/<rok>/` cizí soubor `<slug>-<id>-mockup-xyz.jpg` existujícího díla: další běh ho smaže, i když nic nepřegeneruje. |

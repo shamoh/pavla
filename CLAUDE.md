@@ -17,7 +17,9 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
 - Veřejná kopie yaml obsahuje jen pole z `PUBLIC_WORK_FIELDS` (`scripts/lib/works.mjs`) / `PUBLIC_COLLECTION_FIELDS`,
   bez komentářů. `private_note` a neznámá pole nesmí nikdy do repa `pavla` (je veřejné). Nové veřejné pole = přidat do seznamu.
 - Stav prodeje: `isOnSale` = `available` | `reserved` a musí mít `price` (kontrola v pipeline). Jen tato díla
-  mají mockupy, Fler exporty a filtr „neprodané“; `not-for-sale` a `sold` nikdy.
+  mají Fler exporty a filtr „neprodané“; `not-for-sale` a `sold` nikdy.
+- Mockupy jen s `mockups: true` v popisu díla (výchozí false), nezávisle na stavu prodeje (`wantsMockups`);
+  Fler mockupy jen u díla na prodej, které mockupy má.
 - Exporty: Instagram jen u díla s `instagram: true` (výchozí false), originál (`-clean`) + detailní fotky, nikdy mockupy. Fler jen díla na prodej:
   originál + mockupy, vše s vodoznakem. Při přegenerování se staré exporty díla mažou (`clearExports`),
   plný běh navíc porovná `export/` s `expectedExports` a smaže vše navíc (`planExportPrune`), i bez přegenerování.
@@ -35,6 +37,11 @@ Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pom
 - Každý výpis děl se stránkuje, v prohlížeči nad vyfiltrovaným seznamem (`paginate`); návštěvník volí počet
   na stránku (`gallery.pageSizes`, `?perPage=`, pamatuje se v `localStorage`, ale odkaz s `perPage`/`page` má vždy
   přednost) a může stránkování jednorázově vypnout („Zobrazit vše“, `?page=all`, nepamatuje se).
+- **Kostry popisů musí vždy obsahovat všechny podporované atributy.** Nový atribut díla, kolekce nebo fotky
+  = ve stejné změně doplnit šablonu (`scripts/templates/work.yaml`, `collection.yaml`, `photo.yaml`) s komentářem
+  a výchozí hodnotou, výčet `WORK_FIELDS` / `COLLECTION_FIELDS` / `PHOTO_FIELDS` (veřejné pole i do
+  `PUBLIC_*_FIELDS`), tabulku „Co automatika vyplní sama“ v README `pavla-content` a testovací data.
+  Test „skeletons contain every supported attribute“ to hlídá.
 - Testovacích děl (`pavla/demo/`) musí být vždy víc, než je nejmenší počet na stránku (aspoň 15 při 12).
 - Náhledy pro sdílení (`og:image` + rozměry): dílo = `og.jpg` celý obraz na papíře (nikdy neořezávat),
   kolekce = ořez 3:2 kolem `focus`; helpery `*ShareImage` v `src/lib/site.ts`.

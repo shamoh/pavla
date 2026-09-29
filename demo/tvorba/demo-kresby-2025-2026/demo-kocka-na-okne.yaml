@@ -1,5 +1,6 @@
 id: yqstk
 demo: true # testovací data (pavla/demo), nikdy do pavla-content
+mockups: true # testovací data: mockupy zapnuté výslovně
 title: Kočka na okně
 date: 2025-02-03
 technique: kresba tužkou

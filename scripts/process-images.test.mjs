@@ -7,6 +7,9 @@ import sharp from 'sharp';
 import YAML from 'yaml';
 import { run } from './process-images.mjs';
 import { sheetXmp } from './lib/sheet-box.mjs';
+import { WORK_FIELDS } from './lib/works.mjs';
+import { COLLECTION_FIELDS } from './lib/collections.mjs';
+import { PHOTO_FIELDS } from './lib/photos.mjs';
 
 const siteConfig = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
 // Small web widths keep the test fast.
@@ -57,7 +60,7 @@ beforeEach(async () => {
 afterEach(() => fs.rm(tmp, { recursive: true, force: true }));
 
 test('generates web images, metadata copy and exports under <year>/<slug>-<id>', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   const r = await run(opts());
   assert.equal(r.ok, true);
   assert.equal(r.processed, 1);
@@ -173,7 +176,7 @@ const infoOf = async (year, slug) =>
 const setYaml = async (year, slug, text) => fs.writeFile(path.join(await workFolder(slug), `${slug}.yaml`), text);
 
 test('generates three mockups and lists them in info.json', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
   const info = await infoOf('2026', 'rano');
   assert.equal(info.mockups.length, 3);
@@ -186,15 +189,15 @@ test('generates three mockups and lists them in info.json', async () => {
 });
 
 test('changing size_cm regenerates the work, changing the price does not', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
   const id = await idOf('2026', 'rano');
   const before = (await infoOf('2026', 'rano')).fingerprint;
 
-  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nsize_cm: [40, 30]\nprice: 3200\n`);
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nsize_cm: [40, 30]\nmockups: true\nprice: 3200\n`);
   assert.equal((await run(opts())).processed, 0);
 
-  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nsize_cm: [20, 15]\nprice: 3200\n`);
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nsize_cm: [20, 15]\nmockups: true\nprice: 3200\n`);
   const r = await run(opts());
   assert.equal(r.processed, 1);
   const after = await infoOf('2026', 'rano');
@@ -204,12 +207,12 @@ test('changing size_cm regenerates the work, changing the price does not', async
 });
 
 test('regeneration removes mockups of scenes that are no longer picked', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [56, 38]\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [56, 38]\nmockups: true\n');
   await run(opts());
   const id = await idOf('2026', 'rano');
   const dir = path.join(siteDir, 'public/works/2026', `rano-${id}`);
   const old = (await infoOf('2026', 'rano')).mockups.map((m) => m.scene);
-  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [20, 15]\n`);
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [20, 15]\nmockups: true\n`);
   await run(opts());
   const now = (await infoOf('2026', 'rano')).mockups.map((m) => m.scene);
   for (const scene of old.filter((s) => !now.includes(s))) {
@@ -270,42 +273,59 @@ const exportsOf = async (sub, year, slug) => {
   return (await fs.readdir(dir)).filter((f) => f.startsWith(key)).map((f) => f.slice(key.length)).sort();
 };
 
-test('mockups: only works for sale (available, reserved) get them', async () => {
-  await addWork('2026', 'volny', 'title: Volný\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
-  await addWork('2026', 'rezervace', 'title: Rezervace\ndate: 2026-06-14\nstatus: reserved\nprice: 1000\nsize_cm: [40, 30]\n');
-  await addWork('2026', 'prodany', 'title: Prodaný\ndate: 2026-06-14\nstatus: sold\nsize_cm: [40, 30]\n');
-  await addWork('2026', 'neprodejny', 'title: Neprodejný\ndate: 2026-06-14\nstatus: not-for-sale\nsize_cm: [40, 30]\n');
-  await addWork('2026', 'bez-stavu', 'title: Bez stavu\ndate: 2026-06-14\nsize_cm: [40, 30]\n');
+test('mockups: only works with mockups: true get them, whatever their status', async () => {
+  const yaml = (title, status, extra) => `title: ${title}\ndate: 2026-06-14\nstatus: ${status}\n${status === 'available' || status === 'reserved' ? 'price: 1000\n' : ''}size_cm: [40, 30]\n${extra}`;
+  await addWork('2026', 'volny', yaml('Volný', 'available', 'mockups: true\n'));
+  await addWork('2026', 'volny-bez', yaml('Volný bez', 'available', 'mockups: false\n'));
+  await addWork('2026', 'doma', yaml('Doma', 'not-for-sale', 'mockups: true\n'));
+  await addWork('2026', 'prodany', yaml('Prodaný', 'sold', 'mockups: true\n'));
+  await addWork('2026', 'bez-pole', yaml('Bez pole', 'reserved', ''));
   assert.equal((await run(opts())).ok, true);
-  for (const slug of ['volny', 'rezervace']) {
-    assert.equal((await infoOf('2026', slug)).mockups.length, 3, slug);
-    assert.equal((await exportsOf('fler', '2026', slug)).length, 4, slug);
-  }
-  for (const slug of ['prodany', 'neprodejny', 'bez-stavu']) {
+  for (const slug of ['volny', 'doma', 'prodany']) assert.equal((await infoOf('2026', slug)).mockups.length, 3, slug);
+  for (const slug of ['volny-bez', 'bez-pole']) {
     assert.deepEqual((await infoOf('2026', slug)).mockups, [], slug);
-    assert.deepEqual(await exportsOf('fler', '2026', slug), [], slug);
     assert.ok(!(await fs.readdir(await workDir('2026', slug))).some((f) => f.startsWith('mockup-')), slug);
   }
+  // Fler follows the status: works on sale get the original and their mockups, others nothing
+  assert.equal((await exportsOf('fler', '2026', 'volny')).length, 4);
+  assert.deepEqual(await exportsOf('fler', '2026', 'volny-bez'), ['.jpg']);
+  assert.deepEqual(await exportsOf('fler', '2026', 'bez-pole'), ['.jpg']);
+  for (const slug of ['doma', 'prodany']) assert.deepEqual(await exportsOf('fler', '2026', slug), [], slug);
+  // the public copy carries the flag, the page reads it
+  const copy = YAML.parse(await fs.readFile(path.join(siteDir, 'content/works/2026', `doma-${await idOf('2026', 'doma')}.yaml`), 'utf8'));
+  assert.equal(copy.mockups, true);
 });
 
-test('mockups: selling a work removes its mockups and Fler exports', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
+test('mockups: selling a work removes its Fler exports but keeps its mockups; mockups: false removes them', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
   const id = await idOf('2026', 'rano');
   assert.equal((await infoOf('2026', 'rano')).mockups.length, 3);
+  assert.equal((await exportsOf('fler', '2026', 'rano')).length, 4);
 
-  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: sold\nsize_cm: [40, 30]\n`);
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: sold\nsize_cm: [40, 30]\nmockups: true\n`);
   assert.equal((await run(opts())).processed, 1);
-  assert.deepEqual((await infoOf('2026', 'rano')).mockups, []);
-  assert.ok(!(await fs.readdir(await workDir('2026', 'rano'))).some((f) => f.startsWith('mockup-')));
+  assert.equal((await infoOf('2026', 'rano')).mockups.length, 3, 'a sold work keeps its mockups');
   assert.deepEqual(await exportsOf('fler', '2026', 'rano'), []);
   assert.ok(await exists(path.join(contentDir, 'export/instagram/2026', `rano-${id}-clean.jpg`)));
 
-  // available → reserved keeps the mockups without regenerating anything
-  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n`);
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: sold\nsize_cm: [40, 30]\nmockups: false\n`);
+  assert.equal((await run(opts())).processed, 1);
+  assert.deepEqual((await infoOf('2026', 'rano')).mockups, []);
+  assert.ok(!(await fs.readdir(await workDir('2026', 'rano'))).some((f) => f.startsWith('mockup-')));
+
+  // available → reserved changes nothing that is generated
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n`);
   await run(opts());
-  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: reserved\nprice: 1000\nsize_cm: [40, 30]\n`);
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: reserved\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n`);
   assert.equal((await run(opts())).processed, 0);
+});
+
+test('validation: mockups must be true or false', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmockups: ano\n');
+  const r = await run(opts());
+  assert.equal(r.ok, false);
+  assert.match(r.problems.join('\n'), /mockups must be true or false/);
 });
 
 async function addDetail(year, slug, file, color = '#aa6644') {
@@ -466,7 +486,7 @@ test('collections: collection:, a missing title, nested collections, clashing na
 });
 
 test('exports: Instagram gets the original on paper and the detail photos in 4:5, never mockups', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await addDetail('2026', 'rano', '1-kvet.jpg');
   await addDetail('2026', 'rano', '2-lodka.jpg');
   await run(opts());
@@ -479,9 +499,9 @@ test('exports: Instagram gets the original on paper and the detail photos in 4:5
 });
 
 test('exports: Fler gets the original and every mockup with the watermark, only for works on sale', async () => {
-  await addWork('2026', 'volny', 'title: Volný\ndate: 2026-06-14\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
+  await addWork('2026', 'volny', 'title: Volný\ndate: 2026-06-14\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await addDetail('2026', 'volny', 'kvet.jpg');
-  await addWork('2026', 'doma', 'title: Doma\ndate: 2026-06-14\ninstagram: true\nstatus: not-for-sale\nsize_cm: [40, 30]\n');
+  await addWork('2026', 'doma', 'title: Doma\ndate: 2026-06-14\ninstagram: true\nstatus: not-for-sale\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
   const scenes = (await infoOf('2026', 'volny')).mockups.map((m) => `-mockup-${m.scene}.jpg`);
   assert.deepEqual(await exportsOf('fler', '2026', 'volny'), ['.jpg', ...scenes].sort());
@@ -529,9 +549,9 @@ test('detail captions: a caption for a missing detail photo stops the run, valid
 });
 
 test('exports: renaming or deleting a work removes its old exports on both platforms', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await addDetail('2026', 'rano', 'kvet.jpg');
-  await addWork('2025', 'stary', 'title: Starý\ndate: 2025-03-01\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
+  await addWork('2025', 'stary', 'title: Starý\ndate: 2025-03-01\ninstagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
   const id = await idOf('2026', 'rano');
   const oldId = await idOf('2025', 'stary');
@@ -601,8 +621,8 @@ test('exports: a stale detail export is removed even when the work is not regene
 });
 
 test('exports: stale Fler exports are removed even when the work is not regenerated', async () => {
-  await addWork('2026', 'volny', 'title: Volný\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
-  await addWork('2026', 'doma', 'title: Doma\ndate: 2026-06-14\nstatus: not-for-sale\nsize_cm: [40, 30]\n');
+  await addWork('2026', 'volny', 'title: Volný\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
+  await addWork('2026', 'doma', 'title: Doma\ndate: 2026-06-14\nstatus: not-for-sale\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
   const flerDir = path.join(contentDir, 'export/fler/2026');
   const volny = `volny-${await idOf('2026', 'volny')}`;
@@ -859,7 +879,7 @@ test('mockups: a master with surroundings (sheet box in XMP) is framed without t
   await master(path.join(dir, 'oriznuty.jpg'), true);
   await master(path.join(dir, 'celek.jpg'), false);
   for (const slug of ['oriznuty', 'celek']) {
-    await fs.writeFile(path.join(dir, `${slug}.yaml`), `title: ${slug}\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n`);
+    await fs.writeFile(path.join(dir, `${slug}.yaml`), `title: ${slug}\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n`);
   }
   assert.equal((await run(opts())).ok, true);
   // magenta pixels, also after the mockup's light and shadow: red and blue clearly above green
@@ -880,4 +900,17 @@ test('mockups: a master with surroundings (sheet box in XMP) is framed without t
   assert.ok(control > 0, 'without the box the margin is framed as part of the work');
   // the web image of the work keeps the surroundings
   assert.ok((await magenta(path.join(await workDir('2026', 'oriznuty'), '40.jpg'))) > 0);
+});
+
+test('skeletons contain every supported attribute (work, collection, photo) and pass the checks', async () => {
+  await addWork('2026', 'novy', undefined, { collection: 'nova-kolekce' });
+  await addPhoto('kontakt');
+  const r = await run(opts({ today: new Date('2026-05-01') }));
+  assert.equal(r.ok, true, r.problems.join('\n'));
+  const keysOf = async (...p) => Object.keys(YAML.parse(await fs.readFile(path.join(contentDir, ...p), 'utf8')));
+  const missing = (fields, keys) => fields.filter((f) => !keys.includes(f));
+  // a new attribute must also go into the template in scripts/templates/, see WORK_FIELDS etc.
+  assert.deepEqual(missing(WORK_FIELDS, await keysOf('tvorba/nova-kolekce/novy.yaml')), [], 'scripts/templates/work.yaml');
+  assert.deepEqual(missing(COLLECTION_FIELDS, await keysOf('tvorba/nova-kolekce/_kolekce.yaml')), [], 'scripts/templates/collection.yaml');
+  assert.deepEqual(missing(PHOTO_FIELDS, await keysOf('fotky/kontakt.yaml')), [], 'scripts/templates/photo.yaml');
 });

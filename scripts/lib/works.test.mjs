@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ID_LENGTH, PUBLIC_WORK_FIELDS, expectedExports, exportPattern, generateId, idFromPath, isOnSale, isValidId, parseWorkKey, planExportPrune, planPrune,
-  publicFields, slugify, splitExt, titleFromName, validSize, validateWorks, workKey,
+  publicFields, slugify, wantsMockups, splitExt, titleFromName, validSize, validateWorks, workKey,
 } from './works.mjs';
 
 /** Deterministic "random" returning the given values in a loop. */
@@ -229,4 +229,13 @@ test('expectedExports: Instagram (when asked for) original and details, Fler onl
   }
   // web images not generated yet: Fler exports of a work on sale are left alone
   assert.equal(expectedExports({ status: 'available', details, mockupScenes: null }).fler, null);
+});
+
+test('wantsMockups: only an explicit mockups: true, independent of the status; the flag is public', () => {
+  assert.equal(wantsMockups({ mockups: true, status: 'not-for-sale' }), true);
+  for (const data of [{ mockups: false, status: 'available' }, { status: 'available' }, { mockups: 'true' }, null]) {
+    assert.equal(wantsMockups(data), false, JSON.stringify(data));
+  }
+  assert.ok(PUBLIC_WORK_FIELDS.includes('mockups'));
+  assert.match(validateWorks([work({ data: { mockups: 'ano' } })])[0], /mockups must be true or false/);
 });

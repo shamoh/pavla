@@ -1,5 +1,6 @@
 id: ndq7b
 demo: true # testovací data (pavla/demo), nikdy do pavla-content
+mockups: true # testovací data: mockupy zapnuté výslovně
 title: Slunečnice
 date: 2026-08-22
 technique: kvaš

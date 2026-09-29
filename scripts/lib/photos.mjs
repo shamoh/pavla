@@ -9,6 +9,8 @@ import YAML from 'yaml';
 import { IMAGE_EXTENSIONS, isValidSlug, slugify, splitExt, titleFromName } from './works.mjs';
 
 export const PHOTOS_SUBDIR = 'fotky';
+/** Every attribute of a photo's YAML; the skeleton (scripts/templates/photo.yaml) must contain all of them. */
+export const PHOTO_FIELDS = ['alt', 'caption', 'focus'];
 
 const templatePath = new URL('../templates/photo.yaml', import.meta.url);
 

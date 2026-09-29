@@ -1,5 +1,6 @@
 id: kdnth
 demo: true # testovací data (pavla/demo), nikdy do pavla-content
+mockups: true # testovací data: mockupy zapnuté výslovně
 title: Město v dešti
 date: 2026-04-09
 technique: akvarel a tuš

@@ -18,6 +18,8 @@ export const LEGACY_COLLECTIONS_SUBDIR = 'kolekce';
 
 /** Fields of a collection copied to the public site repository (private_note stays private). */
 export const PUBLIC_COLLECTION_FIELDS = ['title', 'description', 'cover', 'focus'];
+/** Every attribute of _kolekce.yaml; the skeleton (scripts/templates/collection.yaml) must contain all of them. */
+export const COLLECTION_FIELDS = [...PUBLIC_COLLECTION_FIELDS, 'private_note'];
 
 const templatePath = new URL('../templates/collection.yaml', import.meta.url);
 

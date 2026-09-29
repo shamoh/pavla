@@ -48,6 +48,8 @@ export interface Work {
   price?: number;
   fler?: string;
   featured?: boolean;
+  /** Mockups (the work in a frame on a wall) shown on the page, independent of the status. */
+  mockups?: boolean;
   /** Captions of detail photos: "<detail photo name>: <caption>" (keys match via detailKey). */
   details?: Record<string, string>;
   /** Slug of the collection (content/collections/<slug>.yaml), if the work belongs to one. */

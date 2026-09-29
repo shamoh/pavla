@@ -1,5 +1,6 @@
 id: td3f6
 demo: true # testovací data (pavla/demo), nikdy do pavla-content
+mockups: false # testovací data: mockupy vypnuté výslovně
 title: Nádraží
 date: 2026-02-11
 technique: kresba tužkou

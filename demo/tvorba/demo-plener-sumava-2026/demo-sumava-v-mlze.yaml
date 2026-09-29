@@ -1,5 +1,6 @@
 id: t7efz
 demo: true # testovací data (pavla/demo), nikdy do pavla-content
+mockups: true # testovací data: mockupy zapnuté výslovně
 title: Šumava v mlze
 date: 2026-03-02
 technique: akvarel
