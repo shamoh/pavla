@@ -61,7 +61,7 @@ const deploy = await guarded('stav nasazení webu', async () => {
 const pr = await guarded('pull requesty webu', async () => {
   const owner = SITE_REPO.split('/')[0];
   const pulls = await json(`/repos/${SITE_REPO}/pulls?state=open&head=${owner}:${encodeURIComponent(PR_BRANCH)}`);
-  return evaluatePullRequest(pulls, { days: arg('--pr-days', 7) });
+  return evaluatePullRequest(pulls, { days: arg('--pr-days', 1) });
 });
 
 const unknown = process.env.CONTENT_DIR

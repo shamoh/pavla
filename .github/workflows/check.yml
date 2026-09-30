@@ -1,7 +1,9 @@
 # Checks that nothing stopped working after a change of the code: unit tests and a build of the site from
 # the committed data (it also compiles every page template), and the workflows themselves (actionlint). The site from the test data (`npm run demo:build`)
 # is not built here: it takes minutes on a GitHub runner and is never published; build it locally instead.
-# Content updates (content/, public/ generated data) and documentation do not trigger it.
+# A push of content updates (content/, public/ generated data) or documentation to main does not trigger it,
+# but every pull request does: it is the required check of the ruleset on main, so a content pull request (auto-merge)
+# is merged only when the site still builds.
 name: Kontrola kódu
 
 on:
@@ -15,13 +17,6 @@ on:
       - 'public/og/**'
       - '**/*.md'
   pull_request:
-    paths-ignore:
-      - 'content/**'
-      - 'public/works/**'
-      - 'public/photos/**'
-      - 'public/collections/**'
-      - 'public/og/**'
-      - '**/*.md'
   workflow_dispatch:
 
 # A newer push to the same branch cancels the running check.

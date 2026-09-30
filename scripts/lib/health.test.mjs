@@ -107,20 +107,22 @@ test('deploy: running or fresh is fine, missing deploy of an older commit is not
   assert.match(r.message, /se na web nenasadil/);
 });
 
-test('pull request: none open, waiting shortly, waiting too long', () => {
+test('pull request: none open, waiting shortly, stuck (auto-merge did not happen)', () => {
   assert.equal(evaluatePullRequest([], { now }).ok, true);
-  const fresh = evaluatePullRequest([{ created_at: '2026-09-24T10:00:00Z', html_url: 'https://example.test/pr/1' }], { now });
+  const fresh = evaluatePullRequest([{ created_at: '2026-09-26T10:00:00Z', html_url: 'https://example.test/pr/1' }], { now });
   assert.equal(fresh.ok, true);
-  assert.match(fresh.message, /3 dní/);
+  assert.match(fresh.message, /1 dní/);
   const old = evaluatePullRequest([{ created_at: '2026-09-15T10:00:00Z', html_url: 'https://example.test/pr/1' }], { now });
   assert.equal(old.ok, false);
-  assert.match(old.message, /už 12 dní: https:\/\/example\.test\/pr\/1/);
+  assert.match(old.message, /nesloučila sama ani za 12 dní: https:\/\/example\.test\/pr\/1/);
+  assert.match(old.message, /Kontrola kódu/);
 });
 
-test('pull request: exactly the limit is still fine, the limit is configurable', () => {
-  const pulls = [{ created_at: '2026-09-20T10:00:00Z', html_url: 'x' }];
+test('pull request: exactly the limit is still fine, the limit is configurable (default one day)', () => {
+  const pulls = [{ created_at: '2026-09-26T10:00:00Z', html_url: 'x' }];
   assert.equal(evaluatePullRequest(pulls, { now }).ok, true);
-  assert.equal(evaluatePullRequest(pulls, { now, days: 6 }).ok, false);
+  assert.equal(evaluatePullRequest([{ created_at: '2026-09-25T10:00:00Z', html_url: 'x' }], { now }).ok, false);
+  assert.equal(evaluatePullRequest([{ created_at: '2026-09-20T10:00:00Z', html_url: 'x' }], { now, days: 7 }).ok, true);
 });
 
 test('formatReport lists any number of checks', () => {

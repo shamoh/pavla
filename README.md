@@ -625,7 +625,10 @@ Obsah se na web dostává automaticky: workflow **obsahového repa** (je soukrom
 dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z pohledu tohoto repa:
 
 - **plný běh** (`npm run images` s `CONTENT_DIR` = checkout obsahového repa): vygeneruje `content/` a
-  `public/…` a otevře do tohoto repa pull request z větve `obsah/aktualizace`. Po sloučení se web nasadí.
+  `public/…` a otevře do tohoto repa pull request z větve `obsah/aktualizace` se zapnutým **auto-merge**:
+  sloučí se sám, jakmile projde povinná „Kontrola kódu“ (ruleset na `main`), větev se pak smaže a web se nasadí.
+  Nastavení repa: *Allow auto-merge*, *Automatically delete head branches* a ruleset pro výchozí větev
+  s *Require status checks to pass* (`check`) a výjimkou pro správce (přímé pushe do `main`).
   Pull request připraví `node scripts/pull-request.mjs <soubor-popisu>` (`scripts/lib/pull-request.mjs`):
   - do `add-paths` dá jen výstupní složky z `OUTPUT_PATHS` (`content/works`, `public/works`,
     `public/photos`, `content/collections`, `public/collections`, `public/og`), a to jen ty, které existují
@@ -650,7 +653,8 @@ nepovinný). Kontroluje:
 - že poslední dokončený běh zpracování obsahu neselhal (selhání opravené pozdějším během jen zmíní),
 - že poslední „Zkušební běh zpracování“ (níže) neselhal,
 - že se poslední commit v `main` tohoto repa nasadil,
-- že pull request `obsah/aktualizace` nečeká na sloučení déle než 7 dní (`--pr-days`),
+- že pull request `obsah/aktualizace` není otevřený déle než den (`--pr-days`, výchozí 1): slučuje se sám (auto-merge),
+  takže otevřený déle = zaseknutý (neprošla „Kontrola kódu“ nebo auto-merge není zapnutý),
 - že žádný popis nemá neznámý atribut (`NEZNÁMÝ`, `findUnknownAttributes` v `scripts/lib/content.mjs`;
   bez `CONTENT_DIR` se tahle kontrola přeskočí).
 
@@ -758,8 +762,9 @@ kalendářní verzování (CalVer): verze **je** čas, kdy se web sestavil, ve f
 - `npm test`: testy pipeline a filtrů (`node:test`). Každý modul v `scripts/lib/` má svůj `*.test.mjs`.
 - **Automatická kontrola** (`.github/workflows/check.yml`, „Kontrola kódu“): při každém pull requestu
   a pushi do `main` spustí `npm test` a `npm run build` (web z commitnutých dat, zkompiluje i všechny
-  šablony stránek). Trvá asi minutu. Nespouští se pro aktualizace obsahu
-  (`content/`, vygenerované `public/…`) ani pro změny dokumentace (`*.md`); ručně jde spustit
+  šablony stránek). Trvá asi minutu. U pushe do `main` se nespouští pro aktualizace obsahu
+  (`content/`, vygenerované `public/…`) ani pro změny dokumentace (`*.md`); u pull requestu běží vždy,
+  protože je to povinná kontrola rulesetu na `main` (auto-merge aktualizací obsahu čeká na ni). Ručně jde spustit
   v *Actions → Kontrola kódu → Run workflow*.
 - **Kontrola workflow** (job `workflows` v „Kontrola kódu“): `actionlint` (verze 1.7.12, se shellcheckem) projde
   všechna workflow tohoto repa (syntaxe, výrazy `${{ }}`, vstupy akcí, skripty v `run:`) a `shellcheck`

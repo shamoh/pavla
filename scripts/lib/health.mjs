@@ -94,14 +94,18 @@ Web ukazuje starší verzi.` };
   return { ok: false, message: `Poslední commit ${short} (${day(commit.date)}) se na web nenasadil, žádný úspěšný běh deploye pro něj není.` };
 }
 
-/** `pulls`: open pull requests from the obsah/aktualizace branch. Not ok when one is open longer than `days`. */
-export function evaluatePullRequest(pulls, { now = new Date(), days = 7 } = {}) {
+/**
+ * `pulls`: open pull requests from the obsah/aktualizace branch. They merge themselves (auto-merge) once
+ * "Kontrola kódu" passes, so one open longer than `days` is stuck. Not ok then.
+ */
+export function evaluatePullRequest(pulls, { now = new Date(), days = 1 } = {}) {
   const pr = pulls[0];
   if (!pr) return { ok: true, message: 'Žádná aktualizace obsahu nečeká na sloučení.' };
   const age = Math.floor((now.getTime() - new Date(pr.created_at).getTime()) / DAY);
   if (age > days) {
-    return { ok: false, message: `Aktualizace obsahu čeká na sloučení už ${age} dní: ${pr.html_url}
-Nové obrazy nejsou na webu, dokud ji nesloučíš.` };
+    return { ok: false, message: `Aktualizace obsahu se nesloučila sama ani za ${age} dní: ${pr.html_url}
+Nejspíš neprošla „Kontrola kódu“ (červený křížek v pull requestu) nebo auto-merge není zapnutý.
+Nové obrazy nejsou na webu, dokud se nesloučí.` };
   }
   return { ok: true, message: `Aktualizace obsahu čeká na sloučení ${age} dní: ${pr.html_url}` };
 }
