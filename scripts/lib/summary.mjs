@@ -29,7 +29,7 @@ export function formatSummary(result, error) {
     items.forEach((i) => lines.push(`- ${i}`));
     lines.push('');
   };
-  section('Nové popisy k doplnění (doplň hodnoty s DOPLNIT, pak draft: false)', result.created);
+  section('Nové popisy k doplnění (doplň hodnoty s DOPLNIT, u obrazu pak draft: false)', result.created);
   section('Přidělené kódy obrazů', result.assigned);
   section('Srovnané popisy (nové atributy mají u komentáře DOPLNIT, neznámé NEZNÁMÝ)', result.updated ?? []);
   section('Zveřejněné obrazy, kterým zůstal DOPLNIT (hodnotu zkontroluj, pak slovo DOPLNIT smaž)', result.pending ?? []);
