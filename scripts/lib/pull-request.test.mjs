@@ -81,16 +81,17 @@ test('changedItems names each work, collection and photo once', () => {
   assert.deepEqual(items, ['2025/vecer-m7q2x', '2026/rano-k3f9a', 'fotka portret', 'kolekce 2026-plener-sumava']);
 });
 
-test('pullRequestBody links the run, or says it was made by hand; lists the items', () => {
+test('pullRequestBody names the run, never the (private) content repository; lists the items', () => {
   const run = runFromEnv({
-    GITHUB_SERVER_URL: 'https://github.com', GITHUB_REPOSITORY: 'shamoh/pavla-content', GITHUB_RUN_NUMBER: '7', GITHUB_RUN_ID: '123',
+    GITHUB_SERVER_URL: 'https://github.com', GITHUB_REPOSITORY: 'shamoh/obsah', GITHUB_RUN_NUMBER: '7', GITHUB_RUN_ID: '123',
   });
   const body = pullRequestBody(['2026/rano-k3f9a', 'kolekce plener'], run);
-  assert.match(body, /^Automaticky z \[pavla-content\]\(https:\/\/github\.com\/shamoh\/pavla-content\), \[běh 7\]\(https:\/\/github\.com\/shamoh\/pavla-content\/actions\/runs\/123\)\./);
+  assert.match(body, /^Automatická aktualizace obsahu \(běh 7\)\./);
+  assert.doesNotMatch(body, /obsah\]|github\.com|shamoh/);
   assert.match(body, /\n- 2026\/rano-k3f9a\n- kolekce plener\n/);
   assert.match(body, /Po sloučení se web sám nasadí\./);
   assert.equal(runFromEnv({}), null);
-  assert.match(pullRequestBody([], null), /^Ručně, mimo GitHub Actions\.[\s\S]*- \(nic\)/);
+  assert.match(pullRequestBody([], null), /^Aktualizace obsahu, ručně mimo GitHub Actions\.[\s\S]*- \(nic\)/);
 });
 
 test('stepOutput writes a multi-line step output, empty when there is nothing', () => {

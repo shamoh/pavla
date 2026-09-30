@@ -1,6 +1,21 @@
-demo: true # testovací data (pavla/demo), nikdy do pavla-content
+# Jen testovací data (repo pavla, složka demo/): true = testovací položka. Ve skutečném obsahu být nesmí.
+demo: true
+
+# Název kolekce na webu, např. Plenér Šumava 2026.
 title: Město 2026
+
+# Pár vět o kolekci: kde a kdy obrazy vznikly. Víc řádků pod sebou, odsazených dvěma mezerami.
 description: |
   Ulice, náměstí a nádraží. Úvodní obraz je celé dílo vybrané přes cover (Město v dešti), ne nejnovější Náměstí v mlze.
-cover: kdnth # Město v dešti, celý obraz
+
+# Město v dešti, celý obraz
+# Úvodní obraz: id díla z kolekce (např. k3f9a) nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer.
+# Nepovinné: bez něj vlastní fotka _uvod.jpg, jinak nejnovější dílo. Dílo s draft: true nejde.
+cover: kdnth
+
+# Úvodní obraz se ořízne na 3:2; [zleva %, shora %] = co zůstane vidět,
+# např. [50, 50] = střed, [80, 30] = vpravo nahoře.
 focus: [50, 35]
+
+# Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+private_note: ""

@@ -1,10 +1,14 @@
 #!/usr/bin/env node
-// Health check of the pavla-content automation, run weekly by pavla-content/.github/workflows/health-check.yml.
-// Env: TOKEN (the PAVLA_TOKEN secret), RUNS_TOKEN + REPO (token with actions:read on pavla-content, e.g. github.token).
+// Health check of the content automation, run weekly by a workflow of the content repository.
+// Env: TOKEN (the PAVLA_TOKEN secret), RUNS_TOKEN + REPO (token with actions:read on the content repository and its
+// name, e.g. github.token and github.repository), CONTENT_DIR (a checkout of the content repository, optional).
 // Exit code 1 when something needs attention; the report goes to stdout, the run page and the step output.
 
 import fs from 'node:fs/promises';
-import { DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, formatReport } from './lib/health.mjs';
+import { findUnknownAttributes } from './lib/content.mjs';
+import {
+  DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, formatReport,
+} from './lib/health.mjs';
 
 const SITE_REPO = 'shamoh/pavla';
 const PR_BRANCH = 'obsah/aktualizace';
@@ -60,7 +64,11 @@ const pr = await guarded('pull requesty webu', async () => {
   return evaluatePullRequest(pulls, { days: arg('--pr-days', 7) });
 });
 
-const report = formatReport(token, runs, dryRun, deploy, pr);
+const unknown = process.env.CONTENT_DIR
+  ? await guarded('popisy obrazů', async () => evaluateUnknownAttributes(await findUnknownAttributes(process.env.CONTENT_DIR)))
+  : evaluateUnknownAttributes(null);
+
+const report = formatReport(token, runs, dryRun, deploy, pr, unknown);
 console.log(report.text);
 if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, report.text);
 if (process.env.GITHUB_OUTPUT) await fs.appendFile(process.env.GITHUB_OUTPUT, `report<<EOF\n${report.text}EOF\n`);

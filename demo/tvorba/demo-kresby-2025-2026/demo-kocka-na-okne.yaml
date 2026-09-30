@@ -1,13 +1,61 @@
+# Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
+# Generuje ho pipeline, NIKDY neměnit. Hodí se napsat tužkou na zadní stranu obrazu.
 id: yqstk
-demo: true # testovací data (pavla/demo), nikdy do pavla-content
-mockups: true # testovací data: mockupy zapnuté výslovně
+
+# Jen testovací data (repo pavla, složka demo/): true = testovací položka. Ve skutečném obsahu být nesmí.
+demo: true
+
+# true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.
+draft: false
+
+# Název obrazu, jak ho uvidí návštěvníci webu.
 title: Kočka na okně
+
+# Den vzniku ve tvaru 2026-06-14. Rok z něj určuje rok obrazu na webu (stránka roku, adresa).
 date: 2025-02-03
+
+# Technika, např. akvarel, kresba tužkou, linoryt, kombinovaná technika. Podle ní se filtruje v galerii.
 technique: kresba tužkou
+
+# Podklad, např. papír Arches 300 g. Nepovinné, prázdné = na webu se nezobrazí.
 support: skicák 160 g
-size_cm: [ 21, 29.7 ]
-tags: [ zvířata ]
+
+# Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu:
+# podle rozměrů se dělají mockupy ve skutečné velikosti.
+size_cm: [21, 29.7]
+
+# Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
+tags: [zvířata]
+
+# Stav prodeje: available (k prodeji) | reserved (rezervováno) | sold (prodáno)
+# | not-for-sale (není na prodej, na webu bez štítku).
 status: reserved
+
+# Cena v Kč, např. 2500. Povinná u available a reserved, jinak nech prázdné.
 price: 900
+
+# Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
+fler: ""
+
+# true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.
+instagram: false
+
+# testovací data: mockupy zapnuté výslovně
+# true = mockupy (obraz v rámu v interiéru) na webu, u obrazu na prodej i pro Fler; false = žádné.
+mockups: true
+
+# true = obraz může být na úvodní stránce webu (velký obraz nahoře, vybere se nejnovější z označených)
+# a náhled pro sdílení stránky jeho roku; false = ne. Bez označeného obrazu se použije nejnovější.
+featured: false
+
+# Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.
 description: |
   Rychlá kresba, než kočka zase odešla.
+
+# Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru), nepovinné. Např.:
+# details:
+#   1-mlha: Mlha nad hladinou
+details:
+
+# Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+private_note: ""

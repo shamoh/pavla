@@ -1,14 +1,62 @@
+# Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
+# Generuje ho pipeline, NIKDY neměnit. Hodí se napsat tužkou na zadní stranu obrazu.
 id: rw4dh
-demo: true # testovací data (pavla/demo), nikdy do pavla-content
-instagram: true # testovací data: exporty pro Instagram (originál a detaily)
+
+# Jen testovací data (repo pavla, složka demo/): true = testovací položka. Ve skutečném obsahu být nesmí.
+demo: true
+
+# true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.
+draft: false
+
+# Název obrazu, jak ho uvidí návštěvníci webu.
 title: Máky
+
+# Den vzniku ve tvaru 2026-06-14. Rok z něj určuje rok obrazu na webu (stránka roku, adresa).
 date: 2026-07-02
+
+# Technika, např. akvarel, kresba tužkou, linoryt, kombinovaná technika. Podle ní se filtruje v galerii.
 technique: akvarel
+
+# Podklad, např. papír Arches 300 g. Nepovinné, prázdné = na webu se nezobrazí.
 support: papír Arches 300 g
-size_cm: [ 30, 30 ]
-tags: [ květiny, léto ]
+
+# Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu:
+# podle rozměrů se dělají mockupy ve skutečné velikosti.
+size_cm: [30, 30]
+
+# Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
+tags: [květiny, léto]
+
+# Stav prodeje: available (k prodeji) | reserved (rezervováno) | sold (prodáno)
+# | not-for-sale (není na prodej, na webu bez štítku).
 status: available
+
+# Cena v Kč, např. 2500. Povinná u available a reserved, jinak nech prázdné.
 price: 2200
-fler: https://www.fler.cz/ # UKÁZKA: místo odkazu na produkt je jen úvodní stránka Fleru
+
+# UKÁZKA: místo odkazu na produkt je jen úvodní stránka Fleru
+# Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
+fler: https://www.fler.cz/
+
+# testovací data: exporty pro Instagram (originál a detaily)
+# true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.
+instagram: true
+
+# true = mockupy (obraz v rámu v interiéru) na webu, u obrazu na prodej i pro Fler; false = žádné.
+mockups: false
+
+# true = obraz může být na úvodní stránce webu (velký obraz nahoře, vybere se nejnovější z označených)
+# a náhled pro sdílení stránky jeho roku; false = ne. Bez označeného obrazu se použije nejnovější.
+featured: false
+
+# Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.
 description: |
   Vlčí máky u cesty za vsí. Ukázka tlačítka „Koupit na Fleru“.
+
+# Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru), nepovinné. Např.:
+# details:
+#   1-mlha: Mlha nad hladinou
+details:
+
+# Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+private_note: ""

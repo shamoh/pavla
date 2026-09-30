@@ -1,5 +1,5 @@
 // Test (demo) data are kept strictly apart from the real content:
-//   real content  pavla-content/         what the public site is built from, never contains test data
+//   real content  content repository     what the public site is built from, never contains test data
 //   test data     pavla/demo/            used by `npm run demo`, every item is marked as test data
 // A test item is marked by its name (works and collections: "demo-…") and by `demo: true` in its YAML
 // (photos have fixed names, so for them only the field counts). The pipeline checks both directions,

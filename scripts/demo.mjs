@@ -4,7 +4,7 @@
 //   demo/                       source: YAML of works, collections, photos + images.yaml (recipe of the images)
 //   .demo/content/              a content repository built from demo/ (YAML copies + rendered images)
 //   .demo/site/                 generated site data (content/, public/) and the built site (dist/)
-// The real content (pavla-content) and this repo's content/ and public/ are never touched.
+// The real content (the content repository) and this repo's content/ and public/ are never touched.
 //
 // Usage:  npm run demo:prepare   prepare .demo/ only
 //         node scripts/demo.mjs --content-only   only .demo/content (no pipeline run), for the dry run of the

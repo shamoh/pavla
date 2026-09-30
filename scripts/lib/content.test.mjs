@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
-import { prepareContent, readTree, withId } from './content.mjs';
+import { findUnknownAttributes, prepareContent, readTree, withId } from './content.mjs';
 import { isValidId } from './works.mjs';
 
 let dir;
@@ -16,7 +16,7 @@ const write = async (rel, text = '') => {
 };
 const read = (rel) => fs.readFile(path.join(worksDir(), rel), 'utf8');
 
-beforeEach(async () => { dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-content-')); await fs.mkdir(worksDir()); });
+beforeEach(async () => { dir = await fs.mkdtemp(path.join(os.tmpdir(), 'content-')); await fs.mkdir(worksDir()); });
 afterEach(() => fs.rm(dir, { recursive: true, force: true }));
 
 test('withId puts the id first and keeps the rest of the file byte for byte', () => {
@@ -130,7 +130,8 @@ test('prepareContent assigns missing ids and is idempotent', async () => {
   const id = YAML.parse(await read('rano.yaml')).id;
   assert.ok(isValidId(id));
   assert.notEqual(id, 'm7q2x');
-  assert.match(await read('rano.yaml'), /^# Popis\nid: /);
+  // the comment on top stays the file's comment, the id gets its technical comment right above it
+  assert.match(await read('rano.yaml'), /^# Popis\n\n# Trvalý kód obrazu[^\n]*\n# [^\n]*\nid: /);
 
   const second = await prepareContent(dir);
   assert.deepEqual(second.assigned, []);
@@ -165,4 +166,15 @@ test('prepareContent returns detail photo paths of a work (none when there is no
   const bySlug = Object.fromEntries(works.map((w) => [w.slug, w]));
   assert.deepEqual(bySlug.rano.details, [{ name: 'kvet', path: path.join(worksDir(), 'plener/rano/kvet.jpg') }]);
   assert.deepEqual(bySlug.vecer.details, []);
+});
+
+test('findUnknownAttributes lists typos in works, collections and photos, changes nothing', async () => {
+  await write('rano.yaml', 'id: k3f9a\ntitle: Ráno\nmockup: true\n');
+  await write('plener/_kolekce.yaml', 'title: Plenér\nkryt: k3f9a\n');
+  await write('plener/vecer.yaml', 'id: m7q2x\ntitle: Večer\n');
+  await fs.mkdir(path.join(dir, 'fotky'));
+  await fs.writeFile(path.join(dir, 'fotky/portret.yaml'), 'alt: Pavla\npopis: x\n');
+  const before = await read('rano.yaml');
+  assert.deepEqual(await findUnknownAttributes(dir), ['tvorba/rano.yaml: mockup', 'tvorba/plener/_kolekce.yaml: kryt', 'fotky/portret.yaml: popis']);
+  assert.equal(await read('rano.yaml'), before);
 });

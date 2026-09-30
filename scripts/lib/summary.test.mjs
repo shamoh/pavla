@@ -40,3 +40,15 @@ test('formatSummary of a branch run (prepare only) asks to fill in the new descr
   // problems on a branch look the same as on main
   assert.match(formatSummary({ ...base, prepared: true, ok: false, problems: ['x'] }), /^## ✗ Je potřeba něco opravit/);
 });
+
+test('formatSummary lists files brought in line with the schema', () => {
+  const s = formatSummary({ ...base, updated: ['tvorba/rano.yaml: doplněno fler (DOPLNIT)'] });
+  assert.match(s, /\*\*Srovnané popisy[^*]*\*\*\n\n- tvorba\/rano\.yaml: doplněno fler \(DOPLNIT\)/);
+  assert.doesNotMatch(formatSummary(base), /Srovnané popisy/);
+});
+
+test('formatSummary lists published works that still have DOPLNIT', () => {
+  const s = formatSummary({ ...base, pending: ['tvorba/rano.yaml: support, details'] });
+  assert.match(s, /\*\*Zveřejněné obrazy, kterým zůstal DOPLNIT[^*]*\*\*\n\n- tvorba\/rano\.yaml: support, details/);
+  assert.doesNotMatch(formatSummary(base), /zůstal DOPLNIT/);
+});

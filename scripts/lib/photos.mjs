@@ -6,25 +6,31 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
+import { keepInLine } from './content.mjs';
+import { skeleton } from './metadata-yaml.mjs';
+import { PHOTO_SCHEMA, fieldKeys } from './schema.mjs';
 import { IMAGE_EXTENSIONS, isValidSlug, slugify, splitExt, titleFromName } from './works.mjs';
 
 export const PHOTOS_SUBDIR = 'fotky';
-/** Every attribute of a photo's YAML; the skeleton (scripts/templates/photo.yaml) must contain all of them. */
-export const PHOTO_FIELDS = ['alt', 'caption', 'focus'];
+/** Every attribute of a photo's YAML (PHOTO_SCHEMA in scripts/lib/schema.mjs). */
+export const PHOTO_FIELDS = fieldKeys(PHOTO_SCHEMA);
 
-const templatePath = new URL('../templates/photo.yaml', import.meta.url);
 
-/** Scans the photos folder, writes skeleton YAML for new photos and returns { photos, created, problems }. */
+/**
+ * Scans the photos folder, writes skeleton YAML for new photos, brings every photo's YAML in line with
+ * PHOTO_SCHEMA and returns { photos, created, updated, problems }.
+ */
 export async function preparePhotos(contentDir) {
   const root = path.join(contentDir, PHOTOS_SUBDIR);
   const photos = [];
   const created = [];
+  const updated = [];
   const problems = [];
   let files;
   try {
     files = (await fs.readdir(root, { withFileTypes: true })).filter((e) => e.isFile()).map((e) => e.name).sort();
   } catch {
-    return { photos, created, problems }; // the folder is optional
+    return { photos, created, updated, problems }; // the folder is optional
   }
 
   const yamls = new Map();
@@ -51,10 +57,11 @@ export async function preparePhotos(contentDir) {
     const yamlPath = path.join(root, `${name}.yaml`);
     let text;
     if (yamls.has(name)) {
-      text = await fs.readFile(path.join(root, yamls.get(name)), 'utf8');
+      const file = path.join(root, yamls.get(name));
+      text = await fs.readFile(file, 'utf8');
+      text = await keepInLine(text, PHOTO_SCHEMA, `${PHOTOS_SUBDIR}/${yamls.get(name)}`, file, updated, problems);
     } else {
-      const template = await fs.readFile(templatePath, 'utf8');
-      text = template.replace('{{alt}}', JSON.stringify(titleFromName(image.base)));
+      text = skeleton(PHOTO_SCHEMA, { alt: titleFromName(image.base) });
       await fs.writeFile(yamlPath, text);
       created.push(`${PHOTOS_SUBDIR}/${name}.yaml`);
     }
@@ -71,7 +78,7 @@ export async function preparePhotos(contentDir) {
     }
     photos.push({ name, data, masterPath: path.join(root, image.file) });
   }
-  return { photos, created, problems };
+  return { photos, created, updated, problems };
 }
 
 /** Focus point of a photo: [x, y], both numbers between 0 and 100 (percent from the left and top edge). */

@@ -164,11 +164,11 @@ export const getCollection = (slug?: string) => (slug ? getCollections().find((c
 
 const photoCache = new Map<string, Photo | null>();
 
-/** A photo from public/photos/<name>/ (source: pavla-content/fotky/), or null while it does not exist. */
+/** A photo from public/photos/<name>/ (source: fotky/ of the content repository), or null while it does not exist. */
 export function getPhoto(name: string): Photo | null {
   if (!photoCache.has(name)) {
     const infoPath = path.join(dataRoot, 'public/photos', name, 'info.json');
-    if (!fs.existsSync(infoPath)) console.warn(`[photos] ${name}: not found, add pavla-content/fotky/${name}.jpg and run "npm run images"`);
+    if (!fs.existsSync(infoPath)) console.warn(`[photos] ${name}: not found, add fotky/${name}.jpg to the content repository and run "npm run images"`);
     photoCache.set(name, fs.existsSync(infoPath) ? JSON.parse(fs.readFileSync(infoPath, 'utf8')) : null);
   }
   return photoCache.get(name)!;

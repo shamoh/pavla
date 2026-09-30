@@ -3,7 +3,7 @@
 //   - step output `paths`: the output folders for add-paths of peter-evans/create-pull-request
 //     (empty when there is none: the workflow then skips the pull request),
 //   - <body-file>: its Czech description.
-// Run from this repo's root. Used by pavla-content/.github/workflows/publish.yml and .github/workflows/dry-run.yml.
+// Run from this repo's root. Used by the content workflow and by .github/workflows/dry-run.yml.
 //
 // Usage: node scripts/pull-request.mjs <body-file>
 

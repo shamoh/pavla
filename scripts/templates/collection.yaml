@@ -1,9 +1,0 @@
-# Kolekce – kostru vytvořila pipeline pro tuto složku. Doplň a ulož.
-# Obrazy kolekce jsou soubory v této složce. Adresa kolekce na webu je název složky (bez diakritiky).
-# Úvodní fotka kolekce (nepovinná): _uvod.jpg vedle tohoto souboru.
-title: {{title}}
-description: |
-  Pár vět o kolekci: kde a kdy obrazy vznikly.
-cover: ""                    # úvodní obraz: id díla z kolekce (k3f9a) nebo jeho detail (k3f9a#1-kvet), bez mezer; nepovinné
-focus: [50, 50]              # úvodní obraz se ořízne na 3:2; [zleva %, shora %] = co zůstane vidět
-private_note: ""             # soukromá poznámka, na web se nedostane

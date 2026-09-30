@@ -3,13 +3,14 @@
 Osobní web s tvorbou (Astro, statický, GitHub Pages) a obrázková pipeline,
 která z jedné fotky každého díla připraví výstupy pro web, Instagram a Fler.
 
-Obsah (originály fotek a popisy děl) žije v soukromém repu **`pavla-content`**,
-které má být naklonované vedle tohoto repa. Tohle repo je **veřejné**: obsahuje kód
-webu a to, co z obsahu vygeneruje pipeline. Soukromé věci (originály, soukromé
-poznámky) sem nikdy nejdou.
+Obsah (originály fotek a popisy děl) žije v odděleném soukromém **obsahovém repu**;
+cestu k jeho kopii zná pipeline z proměnné `CONTENT_DIR` (lokálně v souboru `.env`, mimo git,
+např. `CONTENT_DIR=../obsah`). Tohle repo je **veřejné**: obsahuje kód webu a to, co z obsahu
+vygeneruje pipeline. Soukromé věci (originály, soukromé poznámky, ani název obsahového repa) sem
+nikdy nejdou.
 
 ```
-pavla-content/                              (soukromé repo, zdroj obsahu)
+<obsahové repo>/                            (soukromé, zdroj obsahu)
   tvorba/<slug>.yaml + <slug>.jpg           dílo bez kolekce: popis (vč. id a soukromé poznámky) a master fotka
   tvorba/<slug>/*.jpg                       detailní fotky díla (nepovinné, složka jménem díla vedle něj)
   tvorba/<kolekce>/                         kolekce: každá jiná složka v tvorba/, např. 2026-plener-sumava/
@@ -32,7 +33,7 @@ pavla/                                      (toto repo, veřejné)
   mockups/                                  scény pro mockupy a jejich kalibrace (scenes.yaml)
   scripts/process-images.mjs                pipeline (npm run images)
   scripts/lib/                              logika pipeline a filtrů, každý modul má *.test.mjs
-  scripts/templates/                        kostry yaml, které pipeline zakládá
+  scripts/lib/schema.mjs                    atributy popisů (díla, kolekce, fotky): pořadí, výchozí hodnoty, komentáře
   src/                                      web (Astro stránky a komponenty)
   site.config.yaml                          jméno, kontakty, doména, nastavení pipeline
 ```
@@ -47,7 +48,7 @@ pavla/                                      (toto repo, veřejné)
 | `/tvorba/kolekce/plener-sumava-2026/` | kolekce: název, popis, úvodní fotka a její díla s filtry |
 | `/tvorba/2026/rano-u-rybnika-k3f9a/` | detail díla |
 | `/tvorba/k3f9a/` | trvalý krátký odkaz, přesměruje na detail |
-| `/o-mne/`, `/kontakt/` | stránky s fotkami z `pavla-content/fotky/` |
+| `/o-mne/`, `/kontakt/` | stránky s fotkami z `fotky/` obsahového repa |
 
 **ID díla** (např. `k3f9a`) vygeneruje pipeline při prvním zpracování a zapíše
 ho do yaml. Už se nemění: díky němu fungují staré odkazy i po přejmenování díla
@@ -132,9 +133,9 @@ zatím prázdná.
 
 | | Skutečná data | Testovací data |
 |---|---|---|
-| zdroj | `pavla-content/` (soukromé) | `pavla/demo/` (toto repo) |
-| obrázky | fotky v gitu `pavla-content` | negenerují se do gitu: `demo/images.yaml` je recept, obrázky vzniknou vždy stejně při `npm run demo` |
-| zpracování | `npm run images` → `content/`, `public/` tohoto repa, exporty do `pavla-content/export/` | `npm run demo` → `.demo/content/` (obsah), `.demo/site/` (data webu), vše mimo git |
+| zdroj | obsahové repo (soukromé) | `pavla/demo/` (toto repo) |
+| obrázky | fotky v gitu obsahového repa | negenerují se do gitu: `demo/images.yaml` je recept, obrázky vzniknou vždy stejně při `npm run demo` |
+| zpracování | `npm run images` → `content/`, `public/` tohoto repa, exporty do `export/` obsahového repa | `npm run demo` → `.demo/content/` (obsah), `.demo/site/` (data webu), vše mimo git |
 | web | `npm run dev` / `npm run build` / GitHub Pages | `npm run demo` (dev server), `npm run demo:build` (`.demo/site/dist`) |
 | označení | nic, testovací data jsou zakázaná | každá položka: jméno `demo-…` (díla, kolekce) a `demo: true` (vše, i fotky) |
 
@@ -146,7 +147,7 @@ zatím prázdná.
 - `npm run demo` naopak odmítne položku bez úplného označení, takže každý
   soubor zkopírovaný z testovacích dat do skutečných se pozná.
 - Pravidlo pro Claude Code v CLAUDE.md: testovací data se tvoří jen v `pavla/demo/`,
-  nikdy v `pavla-content`.
+  nikdy v obsahovém repu.
 
 **Jak `npm run demo` funguje** (`scripts/demo.mjs`): zkopíruje yaml z `demo/`
 do `.demo/content/`, vykreslí obrázky podle receptu (`scripts/lib/demo-images.mjs`:
@@ -164,52 +165,68 @@ a řádek do `demo/images.yaml` (`size`, `palette`, `seed`; detailní fotka jako
 
 ## Přidání nového díla
 
-1. Do `pavla-content/tvorba/` (nebo do složky kolekce, např. `tvorba/2026-plener-sumava/`)
+1. Do `tvorba/` obsahového repa (nebo do složky kolekce, např. `tvorba/2026-plener-sumava/`)
    ulož master fotku, ideálně pod krátkým
    názvem bez diakritiky (`rano-u-rybnika.jpg`). Jiný název nevadí:
    `Ráno u rybníka.jpg` se spáruje s `rano-u-rybnika.yaml`.
 2. `npm run images` (v tomto repu):
    - k fotce bez popisu vytvoří kostru `rano-u-rybnika.yaml` s `draft: true`,
    - každému popisu bez `id` ho přidělí,
+   - každý popis (dílo, kolekce, fotka) srovná podle schématu (viz *Udržování popisů*),
    - k nové složce kolekce založí kostru `_kolekce.yaml`,
    - zkontroluje popisy (viz *Kontroly* níže); při chybě nic nezapíše na web,
    - vygeneruje web i exporty (jen pro nová či změněná díla),
-   - smaže vygenerované soubory děl, kolekcí a fotek, které z `pavla-content` zmizely nebo se přejmenovaly,
+   - smaže vygenerované soubory děl, kolekcí a fotek, které z obsahového repa zmizely nebo se přejmenovaly,
      včetně jejich exportů v `export/instagram` a `export/fler`.
-3. Doplň yaml v `pavla-content` a smaž řádek `draft: true`, jinak se dílo na
+3. Doplň yaml v obsahovém repu (hodnoty s `DOPLNIT`) a přepni `draft: true` na `false`, jinak se dílo na
    webu nezobrazí. Pak znovu `npm run images`.
 4. Zkontroluj lokálně (viz *Lokální vyzkoušení*).
-5. Commit a push v obou repech: `pavla-content` (fotka, yaml, exporty)
+5. Commit a push v obou repech: obsahové repo (fotka, yaml, exporty)
    a `pavla` (`content/` a `public/`). Web se po pushi do `main` nasadí sám.
 6. `export/instagram` a `export/fler` nahraj ručně na Instagram a Fler (viz *Exporty*).
 
 Užitečné varianty: `npm run images -- --force` (přegeneruje vše),
 `npm run images -- rano-u-rybnika` (jen jedno dílo, kolekce nebo fotka daného
-jména, nic nemaže), jiná cesta k obsahu: `CONTENT_DIR=~/cesta/k/pavla-content npm run images`.
+jména, nic nemaže), jiná cesta k obsahu jednorázově: `CONTENT_DIR=~/cesta/k/obsahu npm run images` (má přednost před `.env`).
 
 ### Popis díla (yaml)
 
+Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné znění komentářů, výchozí hodnoty:
+`WORK_SCHEMA` v `scripts/lib/schema.mjs`):
+
+| Atribut | Význam |
+|---|---|
+| `id` | trvalý kód, doplní pipeline, NEMĚNIT |
+| `draft` | `true` = rozpracované, na webu se nezobrazí |
+| `title` | název |
+| `date` | den vzniku (`2026-06-14`): určuje řazení i rok díla (stránky roků, adresa, složky v `pavla`) |
+| `technique` | technika (filtr v galerii) |
+| `support` | podklad, nepovinné |
+| `size_cm` | `[šířka, výška]` v cm; drží měřítko mockupu na stěně |
+| `tags` | štítky (filtr v galerii) |
+| `status` | `available` \| `reserved` \| `sold` \| `not-for-sale` |
+| `price` | Kč, povinná u `available` a `reserved` |
+| `fler` | odkaz na Fler, tlačítko „Koupit na Fleru“ |
+| `instagram` | `true` = exporty pro Instagram (výchozí `false`) |
+| `mockups` | `true` = mockupy, nezávisle na prodeji (výchozí `false`) |
+| `featured` | `true` = kandidát na úvodní stránku (hlavní obraz = nejnovější označený) a náhled stránky roku |
+| `description` | veřejný popis na webu |
+| `details` | popisky detailních fotek (viz *Detailní fotky*) |
+| `private_note` | SOUKROMÉ: zůstane jen v obsahovém repu |
+
+Ukázka (výřez):
+
 ```yaml
-id: k3f9a                     # doplní pipeline, NEMĚNIT
-title: Ráno u rybníka
-date: 2026-06-14              # den vzniku: určuje řazení i rok díla (stránky roků, adresa, složky v pavla)
-technique: akvarel
-support: papír Arches 300 g   # nepovinné
-size_cm: [40, 30]             # šířka × výška; drží měřítko mockupu na stěně
-tags: [krajina, voda, plenér]
-status: available             # available | reserved | sold | not-for-sale
-price: 3200                   # Kč; zobrazí se jen u available
-fler: https://www.fler.cz/... # tlačítko „Koupit na Fleru“
-instagram: true               # připravit fotky pro Instagram (výchozí false)
-mockups: true                 # mockupy (obraz v rámu na zdi), nezávisle na prodeji (výchozí false)
-featured: true                # kandidát na úvodní stránku
-draft: true                   # rozpracované, na webu se nezobrazí
-description: |                # veřejný popis na webu
-  Pár vět o obraze.
-details:                      # popisky detailních fotek, nepovinné (viz Detailní fotky)
-  1-mlha: Mlha nad hladinou
-private_note: |               # SOUKROMÉ: zůstane jen v pavla-content
-  Komu jsem ho ukazovala, za kolik šel, co příště jinak.
+# Popis obrazu – kostru vytvořila pipeline podle fotky.
+
+# Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
+# Generuje ho pipeline, NIKDY neměnit. Hodí se napsat tužkou na zadní stranu obrazu.
+id: k3f9a
+
+# změřeno i s okrajem papíru
+# DOPLNIT Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu:
+# podle rozměrů se dělají mockupy ve skutečné velikosti.
+size_cm: [40, 30]
 ```
 
 **Stavy:**
@@ -224,24 +241,54 @@ private_note: |               # SOUKROMÉ: zůstane jen v pavla-content
 **Instagram na vyžádání:** fotky pro Instagram (originál a detaily) vzniknou jen
 u díla s `instagram: true`. Výchozí je `false` (kostra ho tak zapisuje). Přepnutí
 dílo přegeneruje, vypnutí jeho exporty pro Instagram smaže. Jiná hodnota než
-`true`/`false` je chyba. Pole zůstává jen v `pavla-content`, na web se nekopíruje.
+`true`/`false` je chyba. Pole zůstává jen v obsahovém repu, na web se nekopíruje.
 
 Obrazy na prodej jsou `available` a `reserved`: jen ty mají Fler exporty a jen ty
 ukazuje filtr „neprodané“. Mockupy na stavu nezávisí (viz *Mockupy*). **Musí mít cenu** (`price`, kladné číslo
 v Kč), jinak pipeline skončí chybou.
 
-**Kostry popisů:** k nové fotce obrazu, nové složce kolekce a nové fotce stránky
-založí pipeline popis se **všemi podporovanými atributy** a jejich výchozími
-hodnotami (šablony `scripts/templates/work.yaml`, `collection.yaml`, `photo.yaml`).
-Výčty atributů jsou `WORK_FIELDS` (`scripts/lib/works.mjs`), `COLLECTION_FIELDS`
-(`scripts/lib/collections.mjs`) a `PHOTO_FIELDS` (`scripts/lib/photos.mjs`). Test
-ověřuje, že vygenerovaná kostra obsahuje každý z nich, takže nový atribut bez
-úpravy šablony neprojde.
+### Udržování popisů (schéma, DOPLNIT, NEZNÁMÝ)
+
+Jediný zdroj pravdy o atributech popisů je `scripts/lib/schema.mjs` (`WORK_SCHEMA`, `COLLECTION_SCHEMA`,
+`PHOTO_SCHEMA`): pořadí, výchozí hodnota nové kostry, hodnota pro doplnění do existujícího souboru
+(`missing`, znamená totéž co chybějící atribut, takže se na webu nic nezmění: chybějící `draft` = `false`,
+`description` = prázdné…) a **technický komentář** (typ, povolené hodnoty, příklady). Výčty `WORK_FIELDS`,
+`COLLECTION_FIELDS` a `PHOTO_FIELDS` se z něj odvozují. Logika je v `scripts/lib/metadata-yaml.mjs`.
+
+- **Nová kostra** (nová fotka obrazu, složka kolekce, fotka stránky): všechny atributy s výchozími hodnotami,
+  u každého kromě `id` komentář začínající `DOPLNIT`.
+- **Každý běh pipeline** (na `main`, ve větvi s `--prepare-only` i lokálně) srovná **všechny existující**
+  popisy děl, kolekcí i fotek:
+  - chybějící atribut doplní (hodnota `missing`) a jeho komentář označí `DOPLNIT`,
+  - atributy seřadí podle schématu, mezi nimi prázdný řádek,
+  - nad každý atribut dá jeho technický komentář v aktuálním znění, ve všech souborech stejný
+    (starší znění z `previous` pozná a nahradí),
+  - `DOPLNIT` nechá, dokud ho člověk nesmaže (znamená „hodnotu zkontrolovat“), sám ho nikdy neodstraní,
+  - vlastní komentář nad atributem nechá, nad technickým,
+  - neznámý atribut (např. překlep `mockup:`) nesmaže, dá ho na konec a označí komentářem `NEZNÁMÝ atribut…`;
+    na web se nedostane,
+  - komentář na začátku souboru zůstane nahoře, oddělený prázdným řádkem,
+  - hodnoty ani jejich zápis (`|`, `[a, b]`, uvozovky) se nemění: po úpravě se to kontroluje a jinak se soubor
+    nezapíše a běh skončí chybou.
+  Zveřejněná díla (`draft: false`), kterým zůstal `DOPLNIT`, vypíše log (`! published, still marked DOPLNIT: …`)
+  a souhrn běhu („Zveřejněné obrazy, kterým zůstal DOPLNIT“); běh tím neselže. Neznámé atributy hlásí týdenní
+  kontrola (viz *Automatické zpracování obsahu*).
+  Soubor se zapíše, jen když se opravdu změnil; druhý běh nic nemění. Změněné soubory vypíše log
+  (`~ metadata brought in line with the schema: …`) a souhrn běhu („Srovnané popisy“); automatika je commitne
+  zpět do obsahového repa stejně jako přidělená `id`.
+- **Starší soubory** (komentáře na konci řádku): text ze starých šablon (`LEGACY_COMMENTS`) zmizí, jiný komentář
+  se přesune nad atribut jako vlastní; komentáře nad prvním atributem se stanou komentářem souboru.
+- **Nový atribut** = nový záznam ve schématu (komentář, `value`, případně `missing`), veřejný i do
+  `PUBLIC_WORK_FIELDS` / `PUBLIC_COLLECTION_FIELDS`. Další běh pipeline ho doplní do všech skutečných
+  i testovacích popisů (u testovacích přes `npm run demo`, který změny zapíše zpět do `demo/`).
+- Vyzkoušení: `npm run demo:prepare`, pak `git diff demo/` (nic, když je vše srovnané); ukázka `DOPLNIT`
+  a `NEZNÁMÝ` (`mockup:`) je v `demo/tvorba/demo-rozpracovane.yaml`. Nebo v kopii popisu smaž řádek
+  `featured: …` a spusť `npm run demo:prepare`: vrátí se s `false` a `DOPLNIT`.
 
 **Soukromá poznámka a veřejná kopie:** do `content/works/` (veřejné repo) se
 kopírují jen pole z `PUBLIC_WORK_FIELDS` v `scripts/lib/works.mjs`, a to bez
 komentářů. `private_note`, komentáře v yaml i jakákoli neznámá pole zůstávají
-jen v `pavla-content`. Nové veřejné pole je proto potřeba do seznamu přidat,
+jen v obsahovém repu. Nové veřejné pole je proto potřeba do seznamu přidat,
 jinak se na web nedostane. U kolekcí platí totéž (`PUBLIC_COLLECTION_FIELDS`
 v `scripts/lib/collections.mjs`).
 
@@ -265,8 +312,8 @@ v `demo/`, zobrazené přes `npm run demo`.
 | export pro Instagram (`instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail), Kytice z louky (+ 1 detail, není na prodej), Máky; ostatní díla žádný |
 | `mockups: true`, na prodej | Ráno u rybníka (+ detaily), Zimní sad, Město v dešti, Náměstí v mlze, Kočka na okně, Rybník v zimě |
 | `mockups: true`, ne na prodej | Kytice z louky (+ detail), Slunečnice, Šumava v mlze (prodáno) |
-| `mockups: false` | Pivoňky (na prodej, + detail), Bouřka nad polem, Modravské slatě (na prodej), Kvilda skica, Nádraží (prodáno) |
-| bez pole `mockups` (= false) | Máky (na prodej), Jablka na stole (prodáno), Rozpracovaný obraz |
+| `mockups: false` | Pivoňky (na prodej, + detail), Bouřka nad polem, Modravské slatě (na prodej), Kvilda skica, Nádraží (prodáno), Máky (na prodej), Jablka na stole (prodáno), Rozpracovaný obraz |
+| `DOPLNIT` a neznámý atribut (`NEZNÁMÝ`) | Rozpracovaný obraz (`mockup: true` je schválně překlep) |
 | mockupy malého díla (≤ 35 cm) / většího | Kočka na okně / Zimní sad |
 | detailní fotky | Ráno u rybníka (2, s popisky), Kytice z louky (1, bez popisku), Pivoňky (1 široký) |
 | kolekce: vlastní úvodní fotka (panorama + `focus`) | Plenér Šumava 2026 |
@@ -300,10 +347,10 @@ na detailu díla pod popisem a stavem (mockupy jsou až pod nimi) a jdou i na In
 **Kam je dát:** do podsložky vedle master fotky, pojmenované přesně jako dílo:
 
 ```
-pavla-content/tvorba/2026-plener-sumava/rano-u-rybnika.jpg        master
-pavla-content/tvorba/2026-plener-sumava/rano-u-rybnika.yaml       popis
-pavla-content/tvorba/2026-plener-sumava/rano-u-rybnika/1-mlha.jpg detail 1
-pavla-content/tvorba/2026-plener-sumava/rano-u-rybnika/2-rakos.jpg detail 2
+tvorba/2026-plener-sumava/rano-u-rybnika.jpg        master
+tvorba/2026-plener-sumava/rano-u-rybnika.yaml       popis
+tvorba/2026-plener-sumava/rano-u-rybnika/1-mlha.jpg detail 1
+tvorba/2026-plener-sumava/rano-u-rybnika/2-rakos.jpg detail 2
 ```
 
 - Název složky = název yaml díla (bez `.yaml`). Složka bez díla je chyba.
@@ -338,7 +385,7 @@ a staré soubory i exporty smaže.
 
 ## Exporty (Instagram, Fler)
 
-Pipeline je vyrábí do `pavla-content/export/` při každém přegenerování díla.
+Pipeline je vyrábí do `export/` obsahového repa při každém přegenerování díla.
 Předtím smaže všechny staré exporty daného díla, takže nikdy nezůstane nic
 neplatného (např. Fler fotky prodaného obrazu).
 
@@ -346,7 +393,7 @@ neplatného (např. Fler fotky prodaného obrazu).
 mělo (`expectedExports` v `scripts/lib/works.mjs`), bez ohledu na to, jestli
 se dílo v tomto běhu přegenerovalo. Smaže:
 
-- exporty děl, která z `pavla-content` zmizela nebo se přejmenovala (i přesunutá do jiného roku),
+- exporty děl, která z obsahového repa zmizela nebo se přejmenovala (i přesunutá do jiného roku),
 - exporty detailních fotek, které dílo už nemá,
 - Fler exporty mockupů scén, které dílo už nemá (podle `info.json`),
 - všechny Fler exporty díla, které není na prodej,
@@ -391,7 +438,7 @@ změnou fotky). Dokud neexistuje, stránka sdílí největší webovou velikost 
 ## Kolekce
 
 Kolekce seskupuje díla, např. z jednoho plenéru nebo průřezové téma přes víc let.
-**Kolekce je složka v `pavla-content/tvorba/`** a díla do ní patří tím, že v ní
+**Kolekce je složka v `tvorba/` obsahového repa** a díla do ní patří tím, že v ní
 leží (dílo je nejvýš v jedné kolekci). Díla přímo v `tvorba/` jsou bez kolekce.
 Složky roků nejsou: rok díla je rok jeho `date`, kolekce může trvat i přes přelom
 roku nebo víc let.
@@ -422,7 +469,7 @@ tvorba/zatisi-s-jablky.jpg + .yaml    ← dílo bez kolekce
   (diakritika).
 
 ```yaml
-# pavla-content/tvorba/2026-plener-sumava/_kolekce.yaml
+# tvorba/2026-plener-sumava/_kolekce.yaml (obsahové repo)
 title: Plenér Šumava 2026
 description: |
   Týden malování venku na Kvildě a Modravě.
@@ -506,7 +553,7 @@ negeneruje znovu (zapíše se jen kopie yaml).
 
 ## Ostatní fotky (O mně, Kontakt)
 
-Fotky ulož do `pavla-content/fotky/` a spusť `npm run images`. Ke každé vznikne
+Fotky ulož do `fotky/` obsahového repa a spusť `npm run images`. Ke každé vznikne
 `<název>.yaml` s popisem (`alt`, `caption`), který stojí za to doplnit. Stránky
 používají tyto názvy; dokud fotka neexistuje, na stránce prostě chybí:
 
@@ -520,7 +567,7 @@ Přípona může být i `.jpeg`, `.png` apod. Další fotku lze na libovolnou st
 přidat komponentou `<Photo name="…" />`.
 
 ```yaml
-# pavla-content/fotky/o-mne-uvod.yaml
+# fotky/o-mne-uvod.yaml (obsahové repo)
 alt: Pavla maluje u potoka na šumavské pláni   # co je na fotce
 caption: Můj ateliér pod širým nebem           # popisek pod fotkou, nepovinné
 focus: [85, 60]                                # bod [zleva %, shora %], který zůstane vidět při ořezu
@@ -542,7 +589,7 @@ Obě repa vedle sebe, v tomto repu jednou `npm ci`.
 2. **Na testovacích datech** (vše níže): `npm run demo` → http://localhost:4321.
    Připraví `.demo/` a spustí web nad ním; skutečná data ani tohle repo nemění.
    `npm run demo:build` postaví web z testovacích dat do `.demo/site/dist`.
-3. **Na skutečných datech:** `npm run images` zpracuje `../pavla-content`
+3. **Na skutečných datech:** `npm run images` zpracuje obsahové repo (`CONTENT_DIR` z `.env`)
    (zapisuje do obou rep), `npm run dev` nebo `npm run build && npm run preview`
    ukáže přesně to, co půjde ven.
 
@@ -555,7 +602,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | náhledy pro sdílení | `grep -o '<meta property="og:image[^>]*>' dist/tvorba/2026/*/index.html` po `npm run build`; soubory `public/works/*/*/og.jpg` a `public/og/collections/*.jpg`. Online: po nasazení vlož odkaz do <https://www.opengraph.xyz/> nebo do Facebook Sharing Debuggeru. |
 | rozpracované dílo | „Rozpracovaný obraz“ nesmí být v galerii, v roce 2026 ani na adrese `/tvorba/dhsh5/` |
 | web bez děl | `mkdir -p /tmp/prazdny/public && cp public/favicon.svg /tmp/prazdny/public/ && SITE_DATA_DIR=/tmp/prazdny npx astro build`: úvodní stránka ukáže „Obrazy tu brzy přibudou.“ a odkaz na Instagram (bez `site.instagram` jen první větu) |
-| mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla s `mockups: true` do testovacích dat nebo `pavla-content`, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
+| mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla s `mockups: true` do testovacích dat nebo obsahového repa, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
 | stav a mockupy | v yaml díla s `mockups: true` změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, mockupy na detailu zůstanou (nadpis „Jak vypadá na zdi“), z `export/fler` zmizí; pak `mockups: false`: mockupy zmizí i z webu. Testovací data: Ráno u rybníka (na prodej) × Slunečnice, Šumava v mlze (ne) × Pivoňky (vypnuté) |
 | exporty | `ls .demo/content/export/*/*/`: Instagram jen Ráno u rybníka, Pivoňky, Kytice z louky a Máky (`instagram: true`) s `-clean` a `-detail-*`, Fler jen díla `available`/`reserved`; smaž `instagram: true` u Máků v `demo/`, `npm run demo:prepare`, jejich export zmizí (originál + `-mockup-*`) |
 | cena | smaž `price` u díla `available`: `npm run images` skončí chybou „needs a price“ |
@@ -563,7 +610,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | kolekce | `/tvorba/kolekce/` (přehled), `/tvorba/kolekce/demo-plener-sumava-2026/` (s úvodní fotkou), `/tvorba/kolekce/demo-zahrada-2025/` (bez ní), výběr „Kolekce“ a „O kolekci →“ v galerii, řádek „Kolekce“ na detailu díla |
 | detailní fotky | `/tvorba/2026/demo-rano-u-rybnika-pf7ru/` (2 detaily s popisky), `/tvorba/2025/demo-kytice-z-louky-q6bn6/` (1 detail bez popisku): náhledy pod popisem, prohlížečka; v `export/instagram` soubory `-detail-*` |
 | soukromá poznámka | `grep -r private_note .demo/site/content/` nesmí nic najít; `demo-rano-u-rybnika` a `demo-jablka-na-stole` ji v `demo/` mají |
-| oddělení testovacích dat | zkopíruj `demo/tvorba/demo-maky.yaml` do `../pavla-content/tvorba/` a spusť `npm run images`: skončí chybou „test data do not belong in the real content“ a nic nezapíše (pak soubor smaž). Obráceně: yaml bez `demo: true` v `demo/` zastaví `npm run demo`. |
+| oddělení testovacích dat | zkopíruj `demo/tvorba/demo-maky.yaml` do `tvorba/` obsahového repa a spusť `npm run images`: skončí chybou „test data do not belong in the real content“ a nic nezapíše (pak soubor smaž). Obráceně: yaml bez `demo: true` v `demo/` zastaví `npm run demo`. |
 | fotky stránek | `/o-mne/` (`o-mne-uvod` nahoře oříznutá na 2:1, `portret` vedle textu; bez kterékoli z nich se rozložení přizpůsobí); změň `focus` v `fotky/o-mne-uvod.yaml` (např. `[10, 10]`), `npm run images`, výřez se posune |
 | úvodní obraz kolekce | `/tvorba/kolekce/` a `/tvorba/kolekce/demo-zahrada-2025/`: „Ze zahrady 2025“ ukazuje široký detail Pivoněk (`cover: vjr39#1-kvety-nahore`). Zkus `cover: vjr39` (celé Pivoňky oříznuté na 3:2 kolem `focus`), pak řádek smaž (nejnovější Kytice z louky). „Plenér Šumava 2026“ má vlastní fotku jako panorama 2400 × 1000 s `focus: [25, 50]`: ořízne se na 3:2, zůstane levá část. |
 | obrázek pro sdílení kolekce | po `npm run images` otevři `public/og/collections/*.jpg` (1200 × 800, stejný výřez jako na stránce); změň `focus` kolekce, `npm run images`, v logu `→ og kolekce/…` a výřez se posune. Na stránce kolekce je v `<meta property="og:image">`. |
@@ -572,92 +619,60 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 Pozn.: když Astro při buildu padá na zápisu telemetrie (sandbox, CI bez domovského
 adresáře), pomůže `ASTRO_TELEMETRY_DISABLED=1`.
 
-## Automatické zpracování (GitHub Actions)
+## Automatické zpracování obsahu
 
-Pavla (ani nikdo jiný) nepotřebuje terminál: stačí nahrát fotku nebo upravit
-yaml v `pavla-content` přes web GitHubu. Workflow `pavla-content/.github/workflows/publish.yml`
-(„Zpracování obsahu“) pak:
+Obsah se na web dostává automaticky: workflow **obsahového repa** (je soukromé a popisuje ho jeho vlastní
+dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z pohledu tohoto repa:
 
-- **na `main`**:
-  1. spustí stejnou pipeline jako `npm run images` (kód bere z tohoto repa),
-  2. commitne do `pavla-content` nové kostry popisů, přidělená ID a exporty pro Fler a Instagram,
-  3. otevře (nebo aktualizuje) v tomto repu pull request z větve `obsah/aktualizace`
-     s webovými obrázky a kopiemi popisů. Po sloučení se web nasadí.
-     Pull request připraví `node scripts/pull-request.mjs <soubor-popisu>` (`scripts/lib/pull-request.mjs`):
-     do `add-paths` dá jen výstupní složky z `OUTPUT_PATHS` (`content/works`, `public/works`,
-     `public/photos`, `content/collections`, `public/collections`, `public/og`), a to jen ty, které
-     existují nebo je git zná (smazaná složka). Chybějící složku (např. `public/collections`, dokud
-     žádná kolekce nemá `_uvod.jpg`) přeskočí, jinak by `git add` selhal a pull request by nevznikl;
-     bez jediné složky se pull request přeskočí. Do popisu napíše odkaz na běh a seznam změněných děl,
-     kolekcí a fotek. Nová výstupní složka pipeline = doplnit do `OUTPUT_PATHS`.
-- **na jakékoli jiné větvi** (např. `nove-obrazy`) jen připravuje, nic nezveřejní:
-  1. spustí `npm run images -- --prepare-only`: k novým fotkám založí kostru
-     popisu s výchozími hodnotami (`draft: true`, název z názvu souboru,
-     datum dnešek, `status: not-for-sale`,
-     `instagram: false`…), doplní chybějící `id` a zkontroluje všechny popisy,
-  2. commitne kostry a ID **zpět do stejné větve** („Pipeline: metadata
-     skeletons and ids to fill in“),
-  3. souhrn běhu je „Připraveno k doplnění“ se seznamem popisů k vyplnění.
-     Obrázky, exporty ani pull request do tohoto repa nevznikají.
+- **plný běh** (`npm run images` s `CONTENT_DIR` = checkout obsahového repa): vygeneruje `content/` a
+  `public/…` a otevře do tohoto repa pull request z větve `obsah/aktualizace`. Po sloučení se web nasadí.
+  Pull request připraví `node scripts/pull-request.mjs <soubor-popisu>` (`scripts/lib/pull-request.mjs`):
+  - do `add-paths` dá jen výstupní složky z `OUTPUT_PATHS` (`content/works`, `public/works`,
+    `public/photos`, `content/collections`, `public/collections`, `public/og`), a to jen ty, které existují
+    nebo je git zná (smazaná složka). Chybějící složku (např. `public/collections`, dokud žádná kolekce nemá
+    `_uvod.jpg`) přeskočí, jinak by `git add` selhal a pull request by nevznikl; bez jediné složky se pull
+    request přeskočí. Nová výstupní složka pipeline = doplnit do `OUTPUT_PATHS`,
+  - popis: číslo běhu a seznam změněných děl, kolekcí a fotek. Pull request je veřejný, takže **nikdy
+    neuvádí název ani odkaz na obsahové repo** (to platí i pro jeho titulek a commit).
+- **přípravný běh** (`npm run images -- --prepare-only`, na větvích obsahového repa): jen kostry popisů, `id`,
+  srovnání popisů a kontroly, bez obrázků, exportů a zápisu do tohoto repa.
+- Souhrn běhu (`scripts/lib/summary.mjs`) jde do `GITHUB_STEP_SUMMARY`.
 
-**Postup s větví:** nová větev s fotkami → push → automatika doplní kostry
-(je potřeba si je stáhnout: `git pull`) → vyplnit skutečné hodnoty a smazat
-`draft: true` → push do větve (automatika znovu zkontroluje, chyba = červený
-běh) → pull request do `main` a sloučení → zpracování jako na `main`. Na webu
-GitHubu jde totéž: při nahrání fotek zvolit *Create a new branch for this commit*,
-po doběhnutí automatiky upravit yaml ve větvi a nakonec pull request sloučit.
-Týdenní kontrola automatiky hlídá jen běhy na `main`.
+Lokální `npm run images` funguje dál stejně. Jen nekombinuj obojí najednou: buď pushni výsledek lokálního
+běhu, nebo nech pracovat automatiku.
 
-Výsledek běhu (co se zpracovalo, co je potřeba opravit) je česky na stránce běhu
-v záložce *Actions* repa `pavla-content`. Při chybě v popisu se nic nezveřejní.
+**Týdenní kontrola automatiky** běží v obsahovém repu, kód je tady: `scripts/check-health.mjs` (volání API,
+čtení popisů) a `scripts/lib/health.mjs` (vyhodnocení, české zprávy). Proměnné: `TOKEN` (token pro zápis do
+tohoto repa), `RUNS_TOKEN` a `REPO` (běhy workflow obsahového repa), `CONTENT_DIR` (checkout popisů,
+nepovinný). Kontroluje:
 
-Lokální `npm run images` funguje dál stejně. Jen nekombinuj obojí najednou:
-buď pushni výsledek lokálního běhu, nebo nech pracovat Action.
+- že token funguje a nevyprší do 14 dní (`--days`),
+- že poslední dokončený běh zpracování obsahu neselhal (selhání opravené pozdějším během jen zmíní),
+- že poslední „Zkušební běh zpracování“ (níže) neselhal,
+- že se poslední commit v `main` tohoto repa nasadil,
+- že pull request `obsah/aktualizace` nečeká na sloučení déle než 7 dní (`--pr-days`),
+- že žádný popis nemá neznámý atribut (`NEZNÁMÝ`, `findUnknownAttributes` v `scripts/lib/content.mjs`;
+  bez `CONTENT_DIR` se tahle kontrola přeskočí).
 
-**Jednorázové nastavení:**
-
-1. Otevři předvyplněný formulář tokenu (název, platnost 366 dní, oprávnění *Contents* a *Pull requests*
-   pro zápis):
-   <https://github.com/settings/personal-access-tokens/new?name=pavla-content+to+pavla&description=Zpracovani+obsahu+z+pavla-content+otevira+PR+do+pavla&target_name=shamoh&expires_in=366&contents=write&pull_requests=write>
-   Ručně zvol jen *Repository access → Only select repositories → shamoh/pavla* a dole *Generate token*.
-   (Bez odkazu: *Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token*,
-   v části *Permissions* přes *Add permissions* přidat *Contents* a *Pull requests*, obojí *Read and write*.)
-2. Repo `pavla-content` → *Settings → Secrets and variables → Actions → New repository secret*:
-   název `PAVLA_TOKEN`, hodnota token z bodu 1.
-3. Repo `pavla-content` → *Settings → Collaborators*: přidat Pavlin GitHub účet.
-4. První běh lze spustit ručně: *Actions → Zpracování obsahu → Run workflow*.
-
-**Hlídání automatiky:** workflow „Kontrola automatiky“ (`pavla-content/.github/workflows/health-check.yml`)
-každé pondělí ověří:
-
-- že `PAVLA_TOKEN` funguje a nevyprší do 14 dní,
-- že poslední dokončený běh „Zpracování obsahu“ neselhal (i kdyby to bylo dávno). Selhání, které
-  pozdější běh opravil, jen zmíní,
-- že se poslední commit v `main` tohoto repa opravdu nasadil (deploy neselhal ani nechybí),
-- že pull request `obsah/aktualizace` nečeká na sloučení déle než 7 dní.
-
-Když je něco špatně, běh selže a v `pavla-content` se otevře issue „Automatika webu potřebuje pozornost“
-(přiřazené tobě, takže přijde e-mail) s popisem a odkazem na selhaný běh, u tokenu i s návodem na obnovení.
-Další týden se k otevřenému issue jen přidá komentář. Když je vše zase v pořádku, issue se samo zavře.
-Logika je v `scripts/lib/health.mjs`, volání API v `scripts/check-health.mjs`.
-Kontrola hlídá i poslední „Zkušební běh zpracování“ (viz níže): když selhal, přijde stejné issue.
+Výsledek je markdown (`formatReport`) na stránce běhu a ve výstupu kroku `report`; když je něco špatně,
+skript skončí kódem 1.
 
 **Zkušební běh zpracování** (`.github/workflows/dry-run.yml` v tomto repu): každou neděli (den před
-kontrolou automatiky), po změně pipeline (`scripts/process-images.mjs`, `scripts/pull-request.mjs`,
+týdenní kontrolou), po změně pipeline (`scripts/process-images.mjs`, `scripts/pull-request.mjs`,
 `scripts/lib/pull-request.mjs`, `scripts/demo.mjs`, samotného workflow) a ručně (*Actions → Zkušební běh
-zpracování → Run workflow*) projde celé „Zpracování obsahu“ na testovacích datech, aby se chyba ukázala dřív,
+zpracování → Run workflow*) projde celé zpracování obsahu na testovacích datech, aby se chyba ukázala dřív,
 než na ni narazí skutečný obsah:
 
 1. `node scripts/demo.mjs --content-only` postaví z `demo/` testovací obsah do `.demo/content` (bez pipeline),
 2. pipeline jako na větvi (`npm run images -- --demo --prepare-only`) a jako na `main` (`npm run images -- --demo`;
    `--demo` = obsah musí být testovací), výstupy jdou do checkoutu tohoto repa jako při skutečném běhu,
-3. pull request připraví stejný `scripts/pull-request.mjs` jako `publish.yml` a `.github/dry-run-commit.sh`
+3. pull request připraví stejný `scripts/pull-request.mjs` jako skutečné zpracování a `.github/dry-run-commit.sh`
    s jeho složkami udělá totéž co `peter-evans/create-pull-request`: `git add` a commit, **nic nepushne**
    a žádný pull request neotevře (souhrn běhu ukáže, jak by vypadal),
 4. dvakrát: nejdřív bez úvodních fotek kolekcí (`public/collections` neexistuje, jako teď u skutečného obsahu),
    pak s nimi (složka vznikne).
 
-Nekontroluje pushe do `pavla-content` ani `PAVLA_TOKEN` (to hlídá kontrola automatiky). Lokálně jde projít totéž
+Nekontroluje pushe do obsahového repa ani token (to hlídá týdenní kontrola). Lokálně jde projít totéž
 na kopii repa (skutečné výstupy v `content/` a `public/` by přepsal):
 `git clone . /tmp/zkusebni && cd /tmp/zkusebni && npm ci && node scripts/demo.mjs --content-only`, pak
 `CONTENT_DIR=$PWD/.demo/content npm run images -- --demo` a `node scripts/pull-request.mjs /tmp/popis.md`.
@@ -743,13 +758,12 @@ kalendářní verzování (CalVer): verze **je** čas, kdy se web sestavil, ve f
 - `npm test`: testy pipeline a filtrů (`node:test`). Každý modul v `scripts/lib/` má svůj `*.test.mjs`.
 - **Automatická kontrola** (`.github/workflows/check.yml`, „Kontrola kódu“): při každém pull requestu
   a pushi do `main` spustí `npm test` a `npm run build` (web z commitnutých dat, zkompiluje i všechny
-  šablony stránek). Trvá asi minutu. Nespouští se pro aktualizace obsahu z `pavla-content`
+  šablony stránek). Trvá asi minutu. Nespouští se pro aktualizace obsahu
   (`content/`, vygenerované `public/…`) ani pro změny dokumentace (`*.md`); ručně jde spustit
   v *Actions → Kontrola kódu → Run workflow*.
 - **Kontrola workflow** (job `workflows` v „Kontrola kódu“): `actionlint` (verze 1.7.12, se shellcheckem) projde
   všechna workflow tohoto repa (syntaxe, výrazy `${{ }}`, vstupy akcí, skripty v `run:`) a `shellcheck`
-  pomocné skripty `.github/*.sh`. `pavla-content` má totéž jako „Kontrola workflow“ (`check-workflows.yml`,
-  spouští se při změně `.github/workflows/`). Chyby, které vzniknou až za běhu (chybějící složka apod.),
+  pomocné skripty `.github/*.sh`. Chyby, které vzniknou až za běhu (chybějící složka apod.),
   actionlint nenajde, na ty je zkušební běh zpracování. Lokálně: `brew install actionlint` a v kořeni repa
   `actionlint` (shellcheck použije, když je nainstalovaný: `brew install shellcheck`).
 - **Web z testovacích dat se na GitHubu nestaví:** nikde se nezveřejňuje a na runneru GitHubu
@@ -766,13 +780,13 @@ najde list papíru, opraví perspektivu na obdélník a ořízne fotku tak, že 
 listu nechá **úzký okraj podkladu**, aby byly vidět celé okraje papíru (i nerovné
 nebo natržené). **Originály
 nemění**, výsledky ukládá do nové složky. Výsledek je pak master fotka pro
-`pavla-content/tvorba/` (nebo do složky kolekce).
+`tvorba/` obsahového repa (nebo do složky kolekce).
 
 ```
-npm run straighten -- "../pavla-content/tmp/2026 Plenér Šumava"            # všechny fotky ve složce
-npm run straighten -- "../pavla-content/tmp/2026 Plenér Šumava" --preview  # + náhledy s nalezeným listem
-npm run straighten -- "../pavla-content/tmp/2026 Plenér Šumava" --white-balance   # + papír neutrálně bílý
-npm run straighten -- "../pavla-content/tmp/2026 Plenér Šumava" --width 3000      # + nejvýš 3000 px na šířku
+npm run straighten -- "../obsah/tmp/2026 Plenér Šumava"            # všechny fotky ve složce
+npm run straighten -- "../obsah/tmp/2026 Plenér Šumava" --preview  # + náhledy s nalezeným listem
+npm run straighten -- "../obsah/tmp/2026 Plenér Šumava" --white-balance   # + papír neutrálně bílý
+npm run straighten -- "../obsah/tmp/2026 Plenér Šumava" --width 3000      # + nejvýš 3000 px na šířku
 npm run straighten -- foto.jpg --corners 0.02,0.03,0.97,0.01,0.98,0.76,0.01,0.78   # rohy ručně (uloží se)
 npm run straighten -- foto.jpg --rotate -90                                          # list vyfocený bokem (uloží se)
 npm run straighten -- foto.jpg --extra deska --corners 0.2,0.79,0.75,0.8,0.75,0.98,0.2,0.98   # další výřez
@@ -852,7 +866,7 @@ Kód: `scripts/lib/straighten.mjs` (hledání listu, homografie, převzorkován�
 2. DNS (Forpsi): CNAME záznam `pavla` → `shamoh.github.io.` (doména je v `public/CNAME` a `site.config.yaml`).
 3. Po ověření domény zapnout *Enforce HTTPS*.
 4. Doplnit `email` a později `fler` v `site.config.yaml`, přepsat text v `src/pages/o-mne.astro`.
-5. Naklonovat `shamoh/pavla-content` vedle tohoto repa (`../pavla-content`) a spustit `npm ci`.
+5. Naklonovat obsahové repo (např. vedle tohoto repa), do `.env` zapsat `CONTENT_DIR=<cesta k němu>` a spustit `npm ci`.
 
 ## Poznámky
 

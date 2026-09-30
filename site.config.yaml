@@ -19,9 +19,8 @@ gallery:
   pageSizes: [12, 24, 48]                # počty děl na stránku, které si návštěvník může vybrat; první je výchozí
 
 images:
-  # Originály fotek a popisy děl jsou v soukromém repu pavla-content (tvorba/<rok>/<slug>.yaml + fotka).
-  # Cesta je relativní k tomuto repu; lze přepsat proměnnou CONTENT_DIR.
-  contentDir: ../pavla-content
+  # Originály fotek a popisy děl jsou v odděleném obsahovém repu (tvorba/, fotky/). Jeho cestu určuje
+  # proměnná CONTENT_DIR (lokálně v souboru .env, mimo git; viz README).
   web:
     widths: [480, 960, 1600, 2400]
     quality: 82
@@ -30,7 +29,7 @@ images:
   details:
     widths: [480, 960, 1600, 2400]       # detailní fotky díla (tvorba/<rok>/<slug>/)
   photos:
-    widths: [480, 960, 1600, 2400]       # ostatní fotky webu (pavla-content/fotky/) a úvodní fotky kolekcí
+    widths: [480, 960, 1600, 2400]       # ostatní fotky webu (fotky/ obsahového repa) a úvodní fotky kolekcí
   og:                                    # obrázky pro sdílení (og:image), 3:2
     width: 1200
     height: 800

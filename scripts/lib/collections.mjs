@@ -9,7 +9,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
-import { COLLECTION_META, WORKS_SUBDIR } from './content.mjs';
+import { COLLECTION_META, WORKS_SUBDIR, keepInLine } from './content.mjs';
+import { skeleton } from './metadata-yaml.mjs';
+import { COLLECTION_SCHEMA, fieldKeys } from './schema.mjs';
 import { isValidFocus } from './photos.mjs';
 import { detailKey, isValidSlug, titleFromName } from './works.mjs';
 
@@ -18,10 +20,9 @@ export const LEGACY_COLLECTIONS_SUBDIR = 'kolekce';
 
 /** Fields of a collection copied to the public site repository (private_note stays private). */
 export const PUBLIC_COLLECTION_FIELDS = ['title', 'description', 'cover', 'focus'];
-/** Every attribute of _kolekce.yaml; the skeleton (scripts/templates/collection.yaml) must contain all of them. */
-export const COLLECTION_FIELDS = [...PUBLIC_COLLECTION_FIELDS, 'private_note'];
+/** Every attribute of _kolekce.yaml (COLLECTION_SCHEMA in scripts/lib/schema.mjs). */
+export const COLLECTION_FIELDS = fieldKeys(COLLECTION_SCHEMA);
 
-const templatePath = new URL('../templates/collection.yaml', import.meta.url);
 
 /**
  * Title of a new collection from its folder name, with a leading year moved to the end:
@@ -38,12 +39,14 @@ export function titleFromFolder(name) {
 export const collectionMetaPath = (dir) => path.join(WORKS_SUBDIR, dir, COLLECTION_META);
 
 /**
- * Reads the collections (folders from prepareContent) and returns { collections, created, problems }.
- * A folder without _kolekce.yaml gets a skeleton. Collection: { slug, dir, data, coverPath, yamlPath }.
+ * Reads the collections (folders from prepareContent) and returns { collections, created, updated, problems }.
+ * A folder without _kolekce.yaml gets a skeleton; every _kolekce.yaml is brought in line with COLLECTION_SCHEMA.
+ * Collection: { slug, dir, data, coverPath, yamlPath }.
  */
 export async function prepareCollections(contentDir, folders = []) {
   const collections = [];
   const created = [];
+  const updated = [];
   const problems = [];
   try {
     if ((await fs.stat(path.join(contentDir, LEGACY_COLLECTIONS_SUBDIR))).isDirectory()) {
@@ -67,9 +70,9 @@ export async function prepareCollections(contentDir, folders = []) {
     let text;
     if (f.metaPath) {
       text = await fs.readFile(f.metaPath, 'utf8');
+      text = await keepInLine(text, COLLECTION_SCHEMA, yamlPath, f.metaPath, updated, problems);
     } else {
-      const template = await fs.readFile(templatePath, 'utf8');
-      text = template.replace('{{title}}', JSON.stringify(titleFromFolder(f.dir)));
+      text = skeleton(COLLECTION_SCHEMA, { title: titleFromFolder(f.dir) });
       await fs.writeFile(path.join(contentDir, yamlPath), text);
       created.push(yamlPath);
     }
@@ -83,7 +86,7 @@ export async function prepareCollections(contentDir, folders = []) {
     if (!data.title) problems.push(`${yamlPath}: missing title`);
     collections.push({ slug: f.slug, dir: f.dir, data, coverPath: f.coverPath, yamlPath });
   }
-  return { collections, created, problems };
+  return { collections, created, updated, problems };
 }
 
 /** "vjr39#1-kvety" → { id: "vjr39", detail: "1-kvety" }; "vjr39" → { id: "vjr39", detail: null }. */

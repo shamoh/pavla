@@ -52,7 +52,7 @@ const idOf = async (year, slug) => YAML.parse(await fs.readFile(path.join(await 
 
 beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-pipeline-'));
-  contentDir = path.join(tmp, 'pavla-content');
+  contentDir = path.join(tmp, 'content');
   siteDir = path.join(tmp, 'pavla');
   await fs.mkdir(path.join(contentDir, 'tvorba'), { recursive: true });
   await fs.mkdir(siteDir);
@@ -378,7 +378,11 @@ test('private note: never reaches the site repository, not even through comments
   const key = `rano-${await idOf('2026', 'rano')}`;
   const copy = await fs.readFile(path.join(siteDir, 'content/works/2026', `${key}.yaml`), 'utf8');
   assert.doesNotMatch(copy, /Soukromá|private_note|teta|vymyšlené/);
-  assert.deepEqual(YAML.parse(copy), { id: key.slice(-5), title: 'Ráno', date: '2026-06-14', description: 'Veřejný popis.' });
+  // attributes the file lacked were added with values that mean the same as their absence
+  assert.deepEqual(YAML.parse(copy), {
+    id: key.slice(-5), draft: false, title: 'Ráno', date: '2026-06-14', technique: '', support: '', size_cm: null, tags: [],
+    status: 'not-for-sale', price: null, fler: '', featured: false, description: 'Veřejný popis.', details: null, mockups: false,
+  });
   // the private repository keeps the note
   assert.match(await fs.readFile(path.join(contentDir, 'tvorba/rano.yaml'), 'utf8'), /Soukromá poznámka/);
 });
@@ -413,7 +417,7 @@ test('collections: a folder in tvorba/ is a collection, gets a skeleton titled a
   await setCollection('2026-plener-sumava', 'title: Plenér Šumava 2026\ndescription: Týden na Kvildě.\nprivate_note: tajné\n');
   await run(opts());
   const copy = await fs.readFile(path.join(siteDir, 'content/collections/2026-plener-sumava.yaml'), 'utf8');
-  assert.deepEqual(YAML.parse(copy), { title: 'Plenér Šumava 2026', description: 'Týden na Kvildě.' });
+  assert.deepEqual(YAML.parse(copy), { title: 'Plenér Šumava 2026', description: 'Týden na Kvildě.', cover: '', focus: [50, 50] });
   assert.doesNotMatch(copy, /tajné/);
   // no cover photo, no cover folder
   assert.ok(!(await exists(path.join(siteDir, 'public/collections/2026-plener-sumava'))));
@@ -701,7 +705,7 @@ test('collections: cover can be a detail photo of a work; focus reaches the publ
   await setCollection('plener', `title: Plenér\ncover: ${id}#1-kvety\nfocus: [30, 70]\n`);
   assert.equal((await run(opts())).ok, true);
   const copy = YAML.parse(await fs.readFile(path.join(siteDir, 'content/collections/plener.yaml'), 'utf8'));
-  assert.deepEqual(copy, { title: 'Plenér', cover: `${id}#1-kvety`, focus: [30, 70] });
+  assert.deepEqual(copy, { title: 'Plenér', description: null, cover: `${id}#1-kvety`, focus: [30, 70] });
 
   await setCollection('plener', `title: Plenér\ncover: ${id}#lodka\n`);
   let r = await run(opts());
@@ -909,8 +913,52 @@ test('skeletons contain every supported attribute (work, collection, photo) and 
   assert.equal(r.ok, true, r.problems.join('\n'));
   const keysOf = async (...p) => Object.keys(YAML.parse(await fs.readFile(path.join(contentDir, ...p), 'utf8')));
   const missing = (fields, keys) => fields.filter((f) => !keys.includes(f));
-  // a new attribute must also go into the template in scripts/templates/, see WORK_FIELDS etc.
-  assert.deepEqual(missing(WORK_FIELDS, await keysOf('tvorba/nova-kolekce/novy.yaml')), [], 'scripts/templates/work.yaml');
-  assert.deepEqual(missing(COLLECTION_FIELDS, await keysOf('tvorba/nova-kolekce/_kolekce.yaml')), [], 'scripts/templates/collection.yaml');
-  assert.deepEqual(missing(PHOTO_FIELDS, await keysOf('fotky/kontakt.yaml')), [], 'scripts/templates/photo.yaml');
+  // skeletons are built from scripts/lib/schema.mjs, see WORK_FIELDS etc.
+  assert.deepEqual(missing(WORK_FIELDS, await keysOf('tvorba/nova-kolekce/novy.yaml')), [], 'WORK_SCHEMA');
+  assert.deepEqual(missing(COLLECTION_FIELDS, await keysOf('tvorba/nova-kolekce/_kolekce.yaml')), [], 'COLLECTION_SCHEMA');
+  assert.deepEqual(missing(PHOTO_FIELDS, await keysOf('fotky/kontakt.yaml')), [], 'PHOTO_SCHEMA');
+  assert.deepEqual(r.updated, [], 'new skeletons are already in line');
+});
+
+test('existing files get every supported attribute on every run, on a branch too; nothing else changes', async () => {
+  await addWork('2026', 'rano', 'id: k3f9a\ntitle: Ráno\ndate: 2026-06-14\nsize_cm: [40, 30]   # změřeno\nmockup: true\n');
+  await setCollection('plener', 'title: Plenér\n');
+  await addWork('2026', 'vecer', 'id: m7q2x\ntitle: Večer\ndate: 2026-06-15\n', { collection: 'plener' });
+  await addPhoto('kontakt', 'alt: Pavla\n');
+
+  const r = await run(opts({ prepareOnly: true }));
+  assert.equal(r.ok, true, r.problems.join('\n'));
+  assert.deepEqual(r.updated.map((u) => u.split(':')[0]).sort(), ['fotky/kontakt.yaml', 'tvorba/plener/_kolekce.yaml', 'tvorba/plener/vecer.yaml', 'tvorba/rano.yaml']);
+  assert.match(r.updated.find((u) => u.startsWith('tvorba/rano.yaml')), /doplněno draft, technique.*\(DOPLNIT\); neznámé mockup \(NEZNÁMÝ\)/);
+
+  const text = await fs.readFile(path.join(contentDir, 'tvorba/rano.yaml'), 'utf8');
+  const data = YAML.parse(text);
+  assert.deepEqual(Object.keys(data), [...WORK_FIELDS, 'mockup']);
+  assert.equal(data.draft, false, 'a work without draft stays published');
+  assert.equal(data.description, null, 'no placeholder text reaches the site');
+  assert.match(text, /# změřeno\n# Šířka × výška v cm[^\n]*\n[^\n]*\nsize_cm: \[40, 30\]/);
+  assert.match(text, /# DOPLNIT true = rozpracovaný/);
+  assert.match(text, /# NEZNÁMÝ atribut[^\n]*\nmockup: true\n$/);
+  assert.deepEqual(Object.keys(YAML.parse(await fs.readFile(path.join(contentDir, 'fotky/kontakt.yaml'), 'utf8'))), PHOTO_FIELDS);
+
+  // published works with DOPLNIT left are listed (drafts are not): rano and vecer have no draft, so they are published
+  assert.deepEqual(r.pending.map((p) => p.split(':')[0]).sort(), ['tvorba/plener/vecer.yaml', 'tvorba/rano.yaml']);
+  assert.match(r.pending.find((p) => p.startsWith('tvorba/rano.yaml')), /: draft, technique, support, tags/);
+
+  // the second run has nothing to do, the site data are the same as from the old files
+  const second = await run(opts());
+  assert.deepEqual(second.updated, []);
+  assert.equal(second.pending.length, 2, 'still listed until DOPLNIT is removed');
+  const vecer = path.join(contentDir, 'tvorba/plener/vecer.yaml');
+  await fs.writeFile(vecer, (await fs.readFile(vecer, 'utf8')).replaceAll('# DOPLNIT ', '# '));
+  assert.deepEqual((await run(opts())).pending.map((p) => p.split(':')[0]), ['tvorba/rano.yaml']);
+  // a draft is not listed
+  const rano = path.join(contentDir, 'tvorba/rano.yaml');
+  await fs.writeFile(rano, (await fs.readFile(rano, 'utf8')).replace('draft: false', 'draft: true'));
+  assert.deepEqual((await run(opts())).pending, []);
+  await fs.writeFile(rano, (await fs.readFile(rano, 'utf8')).replace('draft: true', 'draft: false'));
+  await run(opts());
+  const copy = YAML.parse(await fs.readFile(path.join(siteDir, 'content/works/2026/rano-k3f9a.yaml'), 'utf8'));
+  assert.equal(copy.draft, false);
+  assert.equal(copy.mockup, undefined);
 });

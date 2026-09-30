@@ -1,9 +1,10 @@
-// Weekly health check of the automation around pavla-content:
+// Weekly health check of the automation around the content repository:
 //   - PAVLA_TOKEN (used by the "Zpracování obsahu" workflow) works and does not expire soon,
 //   - the latest run of "Zpracování obsahu" did not fail,
 //   - the latest weekly dry run of that workflow on the test data ("Zkušební běh zpracování", pavla) did not fail,
 //   - the latest commit on pavla/main was deployed,
-//   - the content pull request (obsah/aktualizace) does not wait for a merge too long.
+//   - the content pull request (obsah/aktualizace) does not wait for a merge too long,
+//   - no description of the content has an attribute the pipeline does not know (NEZNÁMÝ).
 // Pure functions; the GitHub API calls live in scripts/check-health.mjs.
 // Messages are Czech: they end up on the run page and in an issue e-mailed to the owner.
 
@@ -105,13 +106,28 @@ Nové obrazy nejsou na webu, dokud ji nesloučíš.` };
   return { ok: true, message: `Aktualizace obsahu čeká na sloučení ${age} dní: ${pr.html_url}` };
 }
 
+/**
+ * `found`: ["<file>: <keys>"] from findUnknownAttributes, or null when the content was not available to check.
+ * Not ok when a description has an attribute the pipeline does not know (a typo is silently ignored otherwise).
+ */
+export function evaluateUnknownAttributes(found) {
+  if (found === null) return { ok: true, message: 'Popisy obrazů nebyly zkontrolovány (obsah není k dispozici).' };
+  if (!found.length) return { ok: true, message: 'Žádný popis nemá neznámý atribut.' };
+  return {
+    ok: false,
+    message: `Popisy s neznámým atributem (označené NEZNÁMÝ, nejspíš překlep; web ho nepoužije):\n`
+      + found.map((f) => `- ${f}`).join('\n')
+      + '\nOprav jeho název, nebo řádek smaž.',
+  };
+}
+
 export const RENEW_TOKEN = [
   'Jak token obnovit:',
   '',
   '1. GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens,',
   '   u tokenu pro shamoh/pavla zvol Regenerate token (nebo vytvoř nový se stejnými oprávněními:',
   '   Contents a Pull requests, Read and write).',
-  '2. Repo pavla-content → Settings → Secrets and variables → Actions → PAVLA_TOKEN → Update, vlož nový token.',
+  '2. Obsahové repo (to, ve kterém je tato kontrola) → Settings → Secrets and variables → Actions → PAVLA_TOKEN → Update, vlož nový token.',
   '3. Actions → Kontrola automatiky → Run workflow, ať se ověří, že je vše v pořádku.',
 ].join('\n');
 

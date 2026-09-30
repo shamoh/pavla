@@ -29,8 +29,10 @@ export function formatSummary(result, error) {
     items.forEach((i) => lines.push(`- ${i}`));
     lines.push('');
   };
-  section('Nové popisy k doplnění (smaž v nich řádek draft: true, až budou hotové)', result.created);
+  section('Nové popisy k doplnění (doplň hodnoty s DOPLNIT, pak draft: false)', result.created);
   section('Přidělené kódy obrazů', result.assigned);
+  section('Srovnané popisy (nové atributy mají u komentáře DOPLNIT, neznámé NEZNÁMÝ)', result.updated ?? []);
+  section('Zveřejněné obrazy, kterým zůstal DOPLNIT (hodnotu zkontroluj, pak slovo DOPLNIT smaž)', result.pending ?? []);
   section('Odstraněno (web a exporty smazaných či přejmenovaných děl)', result.pruned);
   if (!result.prepared) lines.push(`Zpracováno: ${result.processed}, beze změny: ${result.skipped}.`);
   return lines.join('\n') + '\n';

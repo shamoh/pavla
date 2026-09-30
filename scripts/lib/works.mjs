@@ -1,6 +1,8 @@
 // Pure helpers shared by the image pipeline and the Astro site.
 // No filesystem access here, so everything is easy to unit test.
 
+import { WORK_SCHEMA, fieldKeys } from './schema.mjs';
+
 /** Characters used for work IDs: lowercase letters and digits without look-alikes (0/o, 1/l/i). */
 export const ID_ALPHABET = '23456789abcdefghjkmnpqrstuvwxyz';
 /**
@@ -97,7 +99,7 @@ export function validateWorks(works) {
     else if (!isValidYear(String(dateYear(w.data.date))) || !/^\d{4}-\d{2}-\d{2}/.test(formatDate(w.data.date))) {
       problems.push(`${where}: date must be a day like 2026-06-14 (the year of the work comes from it), not "${formatDate(w.data.date)}"`);
     }
-    if (!w.data?.draft && w.data?.size_cm !== undefined && !validSize(w.data.size_cm)) {
+    if (!w.data?.draft && w.data?.size_cm !== undefined && w.data.size_cm !== null && !validSize(w.data.size_cm)) {
       problems.push(`${where}: size_cm must be [width, height] in cm, both greater than 0`);
     }
     if (!w.data?.draft && isOnSale(w.data?.status) && !(typeof w.data.price === 'number' && w.data.price > 0)) {
@@ -131,12 +133,8 @@ export const PUBLIC_WORK_FIELDS = [
   'status', 'price', 'fler', 'featured', 'collection', 'description', 'details', 'mockups',
 ];
 
-/**
- * Every attribute a work's YAML supports: the public ones (except `collection`, which comes from the folder)
- * plus those that stay private. The skeleton of a new work (scripts/templates/work.yaml) must contain all of
- * them, a test checks it: a new attribute goes here, into PUBLIC_WORK_FIELDS if public, and into the template.
- */
-export const WORK_FIELDS = [...PUBLIC_WORK_FIELDS.filter((f) => f !== 'collection'), 'instagram', 'private_note'];
+/** Every attribute a work's YAML supports (WORK_SCHEMA in scripts/lib/schema.mjs). */
+export const WORK_FIELDS = fieldKeys(WORK_SCHEMA);
 
 /** Picks the public fields of `data` (in PUBLIC_WORK_FIELDS order), leaving out the rest. */
 export function publicFields(data, fields) {

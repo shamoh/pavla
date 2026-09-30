@@ -1,5 +1,5 @@
-// What a content update puts into the pull request into this repo. Used by the "Zpracování obsahu" workflow
-// (pavla-content/.github/workflows/publish.yml) and by its dry run on the test data (.github/workflows/dry-run.yml),
+// What a content update puts into the pull request into this repo. Used by the content workflow (the one that
+// runs the pipeline on the real content) and by its dry run on the test data (.github/workflows/dry-run.yml),
 // so both go through exactly the same steps.
 
 import { execFile } from 'node:child_process';
@@ -54,13 +54,12 @@ export function changedItems(files) {
 }
 
 /**
- * Czech description of the pull request. `run`: { repoUrl, repoName, number, url } of the workflow run
- * (from the GitHub Actions environment), or null outside of it.
+ * Czech description of the pull request. `run`: { number } of the workflow run (from the GitHub Actions
+ * environment), or null outside of it. The pull request is public: it never names or links the content
+ * repository, which is private.
  */
 export function pullRequestBody(items, run) {
-  const source = run
-    ? `Automaticky z [${run.repoName}](${run.repoUrl}), [běh ${run.number}](${run.url}).`
-    : 'Ručně, mimo GitHub Actions.';
+  const source = run ? `Automatická aktualizace obsahu (běh ${run.number}).` : 'Aktualizace obsahu, ručně mimo GitHub Actions.';
   return [
     source,
     '',
@@ -73,12 +72,10 @@ export function pullRequestBody(items, run) {
   ].join('\n');
 }
 
-/** The workflow run from the GitHub Actions environment, or null outside of it. */
+/** The workflow run from the GitHub Actions environment (only its number), or null outside of it. */
 export function runFromEnv(env = process.env) {
-  if (!env.GITHUB_REPOSITORY || !env.GITHUB_RUN_ID) return null;
-  const server = env.GITHUB_SERVER_URL ?? 'https://github.com';
-  const repoUrl = `${server}/${env.GITHUB_REPOSITORY}`;
-  return { repoName: env.GITHUB_REPOSITORY.split('/')[1], repoUrl, number: env.GITHUB_RUN_NUMBER, url: `${repoUrl}/actions/runs/${env.GITHUB_RUN_ID}` };
+  if (!env.GITHUB_RUN_ID) return null;
+  return { number: env.GITHUB_RUN_NUMBER };
 }
 
 /** Step output in the GitHub Actions format for a multi-line value. */

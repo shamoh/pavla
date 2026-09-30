@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, formatReport, parseExpiration } from './health.mjs';
+import {
+  DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, formatReport, parseExpiration,
+} from './health.mjs';
 
 const now = new Date('2026-09-27T10:00:00Z');
 const run = (conclusion, created_at, status = 'completed') => ({ status, conclusion, created_at, html_url: `https://example.test/${created_at}` });
@@ -125,4 +127,14 @@ test('formatReport lists any number of checks', () => {
   const r = formatReport({ ok: true, message: 'a' }, { ok: true, message: 'b' }, { ok: false, message: 'c' }, { ok: true, message: 'd' });
   assert.equal(r.ok, false);
   assert.equal(r.text.match(/^- /gm).length, 4);
+});
+
+test('unknown attributes: listed with the file, fine when there are none or the content was not checked', () => {
+  const bad = evaluateUnknownAttributes(['tvorba/rano.yaml: mockup', 'fotky/portret.yaml: popis']);
+  assert.equal(bad.ok, false);
+  assert.match(bad.message, /NEZNÁMÝ[\s\S]*\n- tvorba\/rano\.yaml: mockup\n- fotky\/portret\.yaml: popis\nOprav/);
+  assert.equal(evaluateUnknownAttributes([]).ok, true);
+  const skipped = evaluateUnknownAttributes(null);
+  assert.equal(skipped.ok, true);
+  assert.match(skipped.message, /nebyly zkontrolovány/);
 });

@@ -1,4 +1,4 @@
-// Reads the content repository (pavla-content) and prepares it for the pipeline:
+// Reads the content repository and prepares it for the pipeline:
 // creates skeleton YAML files for new images and assigns missing work IDs.
 //
 // Layout (no year folders: the year of a work is the year of its `date`):
@@ -14,14 +14,14 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
+import { normalizeMetadata, skeleton, todoKeys } from './metadata-yaml.mjs';
+import { COLLECTION_SCHEMA, PHOTO_SCHEMA, WORK_SCHEMA } from './schema.mjs';
 import { IMAGE_EXTENSIONS, dateYear, generateId, isValidId, slugify, splitExt, titleFromName } from './works.mjs';
 
 export const WORKS_SUBDIR = 'tvorba';
 /** Files of a collection folder that are not works. */
 export const COLLECTION_META = '_kolekce.yaml';
 export const COLLECTION_COVER = '_uvod';
-
-const templatePath = new URL('../templates/work.yaml', import.meta.url);
 
 const isHidden = (name) => name.startsWith('.') || name.startsWith('_');
 const byName = (a, b) => a.name.localeCompare(b.name);
@@ -105,13 +105,26 @@ async function readDetails(dir, where) {
   return { files, problems };
 }
 
-/** Creates the YAML text for a new work from the template. */
-export async function skeletonYaml({ id, title, date }) {
-  const template = await fs.readFile(templatePath, 'utf8');
-  return template
-    .replace('{{id}}', id)
-    .replace('{{title}}', JSON.stringify(title))
-    .replace('{{date}}', date);
+/** The YAML text of a new work: every attribute of WORK_SCHEMA, marked DOPLNIT (except the id). */
+export const skeletonYaml = ({ id, title, date }) => skeleton(WORK_SCHEMA, { id, title, date });
+
+/**
+ * Brings the YAML of one content file in line with its schema (scripts/lib/metadata-yaml.mjs) and writes it when
+ * it changed. Adds to `updated` ("<file>: …" in Czech, for the run summary) and `problems`. Returns the new text.
+ */
+export async function keepInLine(text, schema, file, absPath, updated, problems) {
+  const r = normalizeMetadata(text, schema);
+  if (r.problem) {
+    problems.push(`${file}: ${r.problem}`);
+    return text;
+  }
+  if (!r.changed) return text;
+  await fs.writeFile(absPath, r.text);
+  const notes = [];
+  if (r.added.length) notes.push(`doplněno ${r.added.join(', ')} (DOPLNIT)`);
+  if (r.unknown.length) notes.push(`neznámé ${r.unknown.join(', ')} (NEZNÁMÝ)`);
+  updated.push(`${file}: ${notes.length ? notes.join('; ') : 'srovnány komentáře a pořadí'}`);
+  return r.text;
 }
 
 /**
@@ -130,8 +143,9 @@ export function withId(yamlText, id) {
 const isoDay = (d) => d.toISOString().slice(0, 10);
 
 /**
- * Scans the content repository, writes skeletons and IDs where needed and returns
- * { works, collectionFolders, created, assigned, problems }.
+ * Scans the content repository, writes skeletons and IDs where needed, brings every work's YAML in line with
+ * WORK_SCHEMA and returns { works, collectionFolders, created, assigned, updated, pending, problems }.
+ * `pending`: published works (draft: false) that still have values marked DOPLNIT ("<file>: <keys>").
  * A work: { slug, dir (folder in tvorba/, '' without a collection), collection (slug or null), year (from its date,
  * null when the date is not valid), id, data, text, yamlPath, masterPath, details }.
  * A collection folder: { slug, dir, metaPath (null when there is no _kolekce.yaml yet), coverPath }.
@@ -166,7 +180,7 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
       if (g.yamls.has(slug)) continue;
       const id = generateId(taken, random);
       taken.add(id);
-      const text = await skeletonYaml({ id, title: titleFromName(image.name), date: isoDay(today) });
+      const text = skeletonYaml({ id, title: titleFromName(image.name), date: isoDay(today) });
       const yamlPath = path.join(worksRoot, g.dir, `${slug}.yaml`);
       await fs.writeFile(yamlPath, text);
       created.push(rel(g.dir, `${slug}.yaml`));
@@ -183,6 +197,17 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
     e.data = YAML.parse(e.text);
     await fs.writeFile(e.yamlPath, e.text);
     assigned.push(`${rel(e.g.dir, e.slug)}: ${id}`);
+  }
+
+  // Pass 3: every file gets all supported attributes, in order, with their technical comments.
+  const updated = [];
+  const pending = [];
+  for (const e of entries) {
+    const file = path.relative(contentDir, e.yamlPath);
+    e.text = await keepInLine(e.text, WORK_SCHEMA, file, e.yamlPath, updated, problems);
+    e.data = YAML.parse(e.text) ?? {};
+    const todo = e.data.draft === true ? [] : todoKeys(e.text);
+    if (todo.length) pending.push(`${file}: ${todo.join(', ')}`);
   }
 
   const works = entries.map((e) => {
@@ -206,5 +231,29 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
     metaPath: g.meta ? path.join(worksRoot, g.dir, g.meta) : null,
     coverPath: g.cover ? path.join(worksRoot, g.dir, g.cover) : null,
   }));
-  return { works, collectionFolders, created, assigned, problems };
+  return { works, collectionFolders, created, assigned, updated, pending, problems };
+}
+
+/**
+ * Attributes the schema does not know (typos like "mockup:"), in every work, collection and photo description:
+ * ["<file>: <keys>"]. Reads only, changes nothing; used by the weekly health check.
+ */
+export async function findUnknownAttributes(contentDir) {
+  const files = [];
+  const worksRoot = path.join(contentDir, WORKS_SUBDIR);
+  const { groups } = await readTree(worksRoot);
+  for (const g of groups) {
+    for (const file of g.yamls.values()) files.push([path.join(WORKS_SUBDIR, g.dir, file), WORK_SCHEMA]);
+    if (g.meta) files.push([path.join(WORKS_SUBDIR, g.dir, g.meta), COLLECTION_SCHEMA]);
+  }
+  const photosDir = path.join(contentDir, 'fotky');
+  const photos = await fs.readdir(photosDir).catch(() => []);
+  for (const f of photos.sort()) if (/\.ya?ml$/.test(f)) files.push([path.join('fotky', f), PHOTO_SCHEMA]);
+
+  const found = [];
+  for (const [file, schema] of files) {
+    const { unknown } = normalizeMetadata(await fs.readFile(path.join(contentDir, file), 'utf8'), schema);
+    if (unknown.length) found.push(`${file}: ${unknown.join(', ')}`);
+  }
+  return found;
 }

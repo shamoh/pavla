@@ -6,7 +6,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "images": "node scripts/process-images.mjs",
+    "images": "node --env-file-if-exists=.env scripts/process-images.mjs",
     "test": "node --test \"scripts/**/*.test.mjs\"",
     "demo:prepare": "node scripts/demo.mjs",
     "demo": "node scripts/demo.mjs && SITE_DATA_DIR=.demo/site astro dev",

@@ -1,4 +1,20 @@
-demo: true # testovací data (pavla/demo), nikdy do pavla-content
+# Jen testovací data (repo pavla, složka demo/): true = testovací položka. Ve skutečném obsahu být nesmí.
+demo: true
+
+# Název kolekce na webu, např. Plenér Šumava 2026.
 title: Kresby, pastely a kvaš 2025–2026
+
+# Pár vět o kolekci: kde a kdy obrazy vznikly. Víc řádků pod sebou, odsazených dvěma mezerami.
 description: |
   Kolekce přes dva roky (i přes přelom roku). Bez cover i bez vlastní fotky: úvodní obraz je nejnovější dílo (Nádraží).
+
+# Úvodní obraz: id díla z kolekce (např. k3f9a) nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer.
+# Nepovinné: bez něj vlastní fotka _uvod.jpg, jinak nejnovější dílo. Dílo s draft: true nejde.
+cover: ""
+
+# Úvodní obraz se ořízne na 3:2; [zleva %, shora %] = co zůstane vidět,
+# např. [50, 50] = střed, [80, 30] = vpravo nahoře.
+focus: [50, 50]
+
+# Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+private_note: ""

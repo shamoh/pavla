@@ -1,4 +1,12 @@
-demo: true # testovací data (pavla/demo), nikdy do pavla-content
+# Jen testovací data (repo pavla, složka demo/): true = testovací položka. Ve skutečném obsahu být nesmí.
+demo: true
+
+# Co je na fotce (pro nevidomé a vyhledávače), např. „Pavla maluje v ateliéru“.
 alt: "Zástupná fotka pro stránku Kontakt (testovací data)"
+
+# Popisek pod fotkou, nepovinné.
 caption: ""
+
+# Kam se fotka vycentruje, když ji stránka ořízne: [zleva %, shora %],
+# např. [50, 50] = střed, [80, 70] = vpravo dole.
 focus: [50, 50]
