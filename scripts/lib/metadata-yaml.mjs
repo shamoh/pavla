@@ -104,7 +104,7 @@ export function normalizeMetadata(text, schema, { values = {}, header = null, fr
       place(pair, field, items.length);
       continue;
     }
-    if (field.optional) continue;
+    if (field.optional && !(field.key in values)) continue;
     const value = field.key in values ? values[field.key] : !fresh && 'missing' in field ? field.missing : field.value;
     const newPair = doc.createPair(field.key, null);
     newPair.value = newValueNode(doc, field, value);

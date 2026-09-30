@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
+import { FEATURED_ON,
   countStatuses, matchesFilters, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
   stateFromParams, stateToParams, withPageSize,
 } from './gallery-filter.mjs';
 
 const work = (status, extra = {}) => ({ tags: ['krajina'], technique: 'akvarel', year: '2026', collection: '', status, ...extra });
-const all = { tag: '', technique: '', year: '', collection: '', status: '' };
+const all = { tag: '', technique: '', year: '', collection: '', status: '', featured: '' };
 const allState = { ...all, page: 1, perPage: null };
 const statuses = ['available', 'reserved', 'sold', 'not-for-sale'];
 const passing = (state) => statuses.filter((s) => matchesFilters(work(s), { ...all, ...state }));
@@ -57,7 +57,7 @@ test('stateFromParams reads every filter and drops an unknown status', () => {
 
 test('stateToParams leaves out empty filters and round-trips any combination', () => {
   assert.equal(stateToParams(all).toString(), '');
-  const state = { tag: 'řeka a mlha', technique: 'akvarel', year: '2025', collection: 'plener', status: 'available', page: 3, perPage: 48 };
+  const state = { tag: 'řeka a mlha', technique: 'akvarel', year: '2025', collection: 'plener', status: 'available', featured: '1', page: 3, perPage: 48 };
   assert.equal(stateToParams({ ...all, technique: 'akvarel', status: 'available' }).toString(), 'technique=akvarel&status=available');
   assert.deepEqual(stateFromParams(new URLSearchParams(stateToParams(state).toString())), state);
 });
@@ -144,4 +144,21 @@ test('pageSizeToRemember forgets the default size', () => {
   assert.equal(pageSizeToRemember(24), '24');
   assert.equal(pageSizeToRemember(12), null);
   assert.equal(pageSizeToRemember(7), null);
+});
+
+test('author\'s selection: only featured works, combines with other filters, ?featured=1 in the URL', () => {
+  const works = [
+    { tags: ['voda'], technique: 'akvarel', year: '2026', collection: 'plener', status: 'available', featured: true },
+    { tags: ['voda'], technique: 'akvarel', year: '2026', collection: 'plener', status: 'sold', featured: false },
+    { tags: ['les'], technique: 'kresba', year: '2025', collection: '', status: 'not-for-sale', featured: true },
+  ];
+  const shown = (state) => works.filter((w) => matchesFilters(w, { ...all, ...state })).length;
+  assert.equal(shown({}), 3);
+  assert.equal(shown({ featured: FEATURED_ON }), 2);
+  assert.equal(shown({ featured: FEATURED_ON, tag: 'voda' }), 1);
+  assert.equal(shown({ featured: FEATURED_ON, status: 'unsold' }), 1);
+  assert.equal(stateToParams({ ...allState, featured: FEATURED_ON }).toString(), 'featured=1');
+  assert.equal(stateFromParams(new URLSearchParams('featured=1')).featured, '1');
+  assert.equal(stateFromParams(new URLSearchParams('featured=yes')).featured, '', 'only 1 switches it on');
+  assert.equal(stateFromParams(new URLSearchParams('')).featured, '');
 });

@@ -42,6 +42,7 @@ test('filterEventParams: only the active filters, always the number of matching 
   assert.deepEqual(filterEventParams(state, 5), { tag: 'krajina', year: '2026', status: 'unsold', results: 5 });
   assert.deepEqual(filterEventParams({ tag: '', technique: '', year: '', collection: '', status: '' }, 21), { results: 21 });
   assert.deepEqual(filterEventParams({ collection: '2026-plener-sumava', technique: 'akvarel' }, 0), { technique: 'akvarel', collection: '2026-plener-sumava', results: 0 });
+  assert.deepEqual(filterEventParams({ tag: '', featured: '1' }, 4), { featured: '1', results: 4 }, 'the author\'s selection too');
 });
 
 test('trackedClick: the buttons of a work with its id and title, nothing for other elements', () => {

@@ -36,7 +36,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   s `_kolekce.yaml` a volitelnou `_uvod.jpg`; dílo do ní patří umístěním (max. jedna), `collection:` v yaml díla je chyba,
   do veřejné kopie ho doplní pipeline. Složka jménem díla vedle něj = detailní fotky. Pipeline `scripts/lib/collections.mjs`,
   web `getCollections` a `/tvorba/kolekce/<slug>/`.
-  Úvodní obrázek: vlastní fotka > `cover: <id>` nebo `cover: <id>#<detail>` > nejnovější dílo; vždy ořez 3:2 kolem `focus`
+  Úvodní obrázek: vlastní fotka > `cover: <id>` nebo `cover: <id>#<detail>` > náhodně z výběru autorky (`coverCandidates`)
+  > nejnovější dílo; vždy ořez 3:2 kolem `focus`
   (`src/components/CollectionCover.astro`); `og:image` kolekce je týž výřez, `public/og/collections/<slug>.jpg`
   (`coverSource` + `focusCrop`). Každá výstupní složka pipeline v tomto repu (i `public/og`) musí být v `OUTPUT_PATHS` (`scripts/lib/pull-request.mjs`;
   do PR jdou jen ty z nich, které existují nebo je git zná).
@@ -44,6 +45,12 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
 - Filtry galerie (`scripts/lib/gallery-filter.mjs`): všechny se kombinují a každá změna se hned zapisuje do URL,
   aby šel odkaz poslat dál. Platí vždy, i pro každý nový filtr a pro stránku (`page`, i `page=all`).
+- `featured: true` = výběr autorky: filtr „Výběr autorky“ (`?featured=1`) a kandidáti úvodních obrazů
+  (`coverCandidates`, `FEATURED_PICK` = 10 nejnovějších vybraných): úvodní stránka, stránka roku a kolekce bez cover
+  (`FeaturedPick.astro`, `CollectionCover.astro`, úvodní obraz vede na zobrazené dílo); stránka ukáže náhodného skriptem `scripts/lib/random-pick.mjs`
+  (vložený, bez přeblikávání), `og:image` je vždy první kandidát. Web pipeline (`coverSource`) musí vybírat stejně.
+- Text o roce: `roky/<rok>.yaml` obsahového repa (`YEAR_SCHEMA`, `scripts/lib/years.mjs`), kostru pipeline založí
+  ke každému roku s díly; veřejná kopie `content/years/<rok>.yaml` (jen `description`), web `getYearDescription`.
 - Každý výpis děl se stránkuje, v prohlížeči nad vyfiltrovaným seznamem (`paginate`); návštěvník volí počet
   na stránku (`gallery.pageSizes`, `?perPage=`, pamatuje se v `localStorage`, ale odkaz s `perPage`/`page` má vždy
   přednost) a může stránkování jednorázově vypnout („Zobrazit vše“, `?page=all`, nepamatuje se).

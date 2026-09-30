@@ -43,9 +43,9 @@ instagram: false
 # true = mockupy (obraz v rámu v interiéru) na webu, u obrazu na prodej i pro Fler; false = žádné.
 mockups: false
 
-# true = obraz může být na úvodní stránce webu (velký obraz nahoře, vybere se nejnovější z označených)
-# a náhled pro sdílení stránky jeho roku; false = ne. Bez označeného obrazu se použije nejnovější.
-featured: false
+# true = ve výběru autorky: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně
+# střídají obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover). false = ne.
+featured: true
 
 # Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.
 description: |

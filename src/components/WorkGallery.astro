@@ -16,6 +16,8 @@ const tags = count(works.flatMap((w) => w.tags));
 const techniques = count(works.map((w) => w.technique));
 const collections = count(works.flatMap((w) => (w.collection ? [w.collection] : []))).map(([slug, n]) => ({ slug, n, title: getCollection(slug)?.title ?? slug }));
 const statusCounts = countStatuses(works.map((w) => w.status));
+// The author's selection (featured): a switch, shown only when the list has such works.
+const featuredCount = works.filter((w) => w.featured).length;
 const years = getYears();
 // Page sizes the visitor can pick (the first is the default); the rest of the filtered list is on further
 // pages (?page=2), hidden cards load no images.
@@ -58,6 +60,9 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
         <option value="unsold">neprodané ({statusCounts.unsold})</option>
       </select>
     </label>
+    {featuredCount > 0 && (
+      <label class="switch"><input type="checkbox" name="featured" value="1" /> Výběr autorky ({featuredCount})</label>
+    )}
     {works.length > pageSizes[0] && (
       <label>Na stránku
         <select name="perPage">{pageSizes.map((n) => <option value={n}>{n}</option>)}</select>
@@ -77,7 +82,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   // Paging happens here too: the filtered list is split into pages, cards of other pages are hidden
   // (hidden cards load no images). Without JavaScript every work is shown.
   import {
-    ALL_PAGES, PAGE_SIZE_STORAGE_KEY, matchesFilters, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate,
+    ALL_PAGES, FEATURED_ON, PAGE_SIZE_STORAGE_KEY, matchesFilters, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate,
     rememberedPageSize, stateFromParams, stateToParams, withPageSize,
   } from '../../scripts/lib/gallery-filter.mjs';
   import { EVENTS, filterEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
@@ -91,6 +96,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   const pager = document.getElementById('pager')!;
   const pageSizes: number[] = JSON.parse(grid.dataset.pageSizes!);
   const perPageSelect = form.elements.namedItem('perPage') as HTMLSelectElement | null;
+  const featuredBox = form.elements.namedItem('featured') as HTMLInputElement | null;
   const select = (name: string) => form.elements.namedItem(name) as HTMLSelectElement | null;
   // Filters without a select on this page (year on a year page, collection on a collection page) are off.
   const selects = (['technique', 'year', 'collection', 'status'] as const).filter((k) => select(k));
@@ -107,6 +113,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   };
   if (perPageSelect) state.perPage = rememberedPageSize(params, storage.get(), pageSizes) ?? state.perPage;
   for (const k of ['year', 'collection'] as const) if (!select(k)) state[k] = '';
+  if (!featuredBox) state.featured = '';
 
   const plural = (n: number) => (n === 1 ? 'dílo' : n >= 2 && n <= 4 ? 'díla' : 'děl');
 
@@ -145,7 +152,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   function apply() {
     const matching = cards.filter((c) => {
       const d = c.dataset;
-      return matchesFilters({ tags: d.tags!.split('|'), technique: d.technique!, year: d.year!, collection: d.collection!, status: d.status! }, state);
+      return matchesFilters({ tags: d.tags!.split('|'), technique: d.technique!, year: d.year!, collection: d.collection!, status: d.status!, featured: d.featured === '1' }, state);
     });
     const { page, pages, start, end } = paginate(matching.length, state.page, pageSizeOf(state, pageSizes));
     state.page = page;
@@ -155,6 +162,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     renderPager(page, pages, matching.length);
     chips.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === state.tag)));
     for (const k of selects) select(k)!.value = state[k];
+    if (featuredBox) featuredBox.checked = state.featured === FEATURED_ON;
     if (perPageSelect) perPageSelect.value = String(pageSizeOf(state, pageSizes));
     // "O kolekci →" next to the collection filter, only for the selected collection.
     form.querySelectorAll<HTMLAnchorElement>('[data-collection-link]').forEach((a) => { a.hidden = a.dataset.collectionLink !== state.collection; });
@@ -179,6 +187,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     }
     else {
       for (const k of selects) state[k] = select(k)!.value;
+      if (featuredBox) state.featured = featuredBox.checked ? FEATURED_ON : '';
       state.page = pageAfterFilterChange(state.page);
       trackFilter(apply());
     }
@@ -210,6 +219,8 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   .selects { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; font-size: 0.9rem; }
   .selects label { display: flex; gap: 8px; align-items: center; color: var(--ink-soft); }
   .selects select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 4px 8px; border-radius: 2px; }
+  .selects .switch { color: var(--ink); cursor: pointer; }
+  .selects .switch input { accent-color: var(--ink); margin: 0; }
   .count { margin-left: auto; }
   .pager { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 6px 14px; margin: 16px 0 8px; font-size: 0.95rem; }
   .pager a { text-decoration: none; color: var(--ink-soft); padding: 4px 8px; border-bottom: 1px solid transparent; }

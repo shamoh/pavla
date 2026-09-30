@@ -13,7 +13,7 @@ import { COLLECTION_META, WORKS_SUBDIR, keepInLine } from './content.mjs';
 import { skeleton } from './metadata-yaml.mjs';
 import { COLLECTION_SCHEMA, fieldKeys } from './schema.mjs';
 import { isValidFocus } from './photos.mjs';
-import { detailKey, isValidSlug, titleFromName } from './works.mjs';
+import { coverCandidates, detailKey, isValidSlug, titleFromName } from './works.mjs';
 
 /** Former home of collections; now they are folders in tvorba/. */
 export const LEGACY_COLLECTIONS_SUBDIR = 'kolekce';
@@ -133,7 +133,8 @@ export function coverSource(collection, works) {
     .filter((w) => w.collection === collection.slug && !w.data.draft)
     .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
   const ref = collection.data?.cover ? parseCoverRef(collection.data.cover) : null;
-  const work = ref ? members.find((w) => w.id === ref.id) : members[0];
+  // without an explicit cover: the newest work of the author's selection (featured), otherwise the newest work
+  const work = ref ? members.find((w) => w.id === ref.id) : coverCandidates(members, (w) => w.data.featured === true)[0];
   if (!work) return null;
   if (ref?.detail) return work.details?.find((d) => d.name === ref.detail)?.path ?? null;
   return work.masterPath ?? null;

@@ -1,5 +1,5 @@
 // Gallery filter logic shared by the browser script in WorkGallery.astro and the tests.
-// A filter state: { tag, technique, year, collection, status, page, perPage } where each empty value means
+// A filter state: { tag, technique, year, collection, status, featured, page, perPage } where each empty value means
 // "all", page is the 1-based page of the filtered list (or 'all' when the visitor switched paging off) and
 // perPage the page size the visitor picked (null = the default size). Everything lives in the URL, so a filtered and
 // paged gallery can be shared as a link.
@@ -13,16 +13,19 @@ export const STATUS_FILTERS = {
   unsold: isOnSale,
 };
 
-export const FILTER_KEYS = ['tag', 'technique', 'year', 'collection', 'status'];
+export const FILTER_KEYS = ['tag', 'technique', 'year', 'collection', 'status', 'featured'];
+/** Value of `featured` when the visitor shows only the author's selection ("Výběr autorky", ?featured=1). */
+export const FEATURED_ON = '1';
 
-/** True when a work ({ tags, technique, year as string, collection, status }) passes every active filter. */
+/** True when a work ({ tags, technique, year as string, collection, status, featured }) passes every active filter. */
 export function matchesFilters(work, state) {
   return (
     (!state.tag || work.tags.includes(state.tag)) &&
     (!state.technique || work.technique === state.technique) &&
     (!state.year || work.year === state.year) &&
     (!state.collection || work.collection === state.collection) &&
-    (!state.status || (STATUS_FILTERS[state.status]?.(work.status) ?? true))
+    (!state.status || (STATUS_FILTERS[state.status]?.(work.status) ?? true)) &&
+    (!state.featured || work.featured === true)
   );
 }
 
@@ -44,6 +47,7 @@ export const DEFAULT_PAGE_SIZES = [12, 24, 48];
 export function stateFromParams(params, pageSizes = DEFAULT_PAGE_SIZES) {
   const state = Object.fromEntries(FILTER_KEYS.map((k) => [k, params.get(k) ?? '']));
   if (!(state.status in STATUS_FILTERS)) state.status = '';
+  if (state.featured !== FEATURED_ON) state.featured = '';
   const raw = params.get('page');
   const page = Number(raw);
   state.page = raw === ALL_PAGES ? ALL_PAGES : Number.isInteger(page) && page > 1 ? page : 1;

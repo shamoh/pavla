@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
-import { detailKey, parseWorkKey } from '../../scripts/lib/works.mjs';
+import { coverCandidates, detailKey, parseWorkKey } from '../../scripts/lib/works.mjs';
 import { parseCoverRef } from '../../scripts/lib/collections.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
 import { measurementIdFor } from '../../scripts/lib/analytics.mjs';
@@ -66,8 +66,13 @@ export interface Collection {
   description?: string;
   /** Cover photo from public/collections/<slug>/, if the collection has one. */
   cover: (ImageSet & { alt: string }) | null;
-  /** The work shown as cover when there is no cover photo: `cover: <id>` from the YAML, otherwise the newest work. */
+  /**
+   * The work shown as cover when there is no cover photo: `cover: <id>` from the YAML, otherwise the newest work of the
+   * author's selection (featured), otherwise the newest work. Also the share image of the collection.
+   */
   coverWork: Work;
+  /** Works that take turns as the cover, one at random per visit (coverCandidates); just coverWork with `cover:`. */
+  coverWorks: Work[];
   /** Detail photo of coverWork shown instead of the whole work (`cover: <id>#<detail>`). */
   coverDetail?: Detail;
   /** Point kept in view when the cover is cropped: [x, y] in % from the left and top edge. */
@@ -151,10 +156,12 @@ export function getCollections(): Collection[] {
     const coverPath = path.join(dataRoot, 'public/collections', slug, 'info.json');
     const cover = fs.existsSync(coverPath) ? JSON.parse(fs.readFileSync(coverPath, 'utf8')) : null;
     const ref = data.cover ? parseCoverRef(data.cover) : null;
-    const coverWork = members.find((w) => w.id === ref?.id) ?? members[0];
+    const candidates = ref ? members.filter((w) => w.id === ref.id) : coverCandidates(members);
+    const coverWorks = candidates.length ? candidates : [members[0]];
+    const coverWork = coverWorks[0];
     const coverDetail = ref?.detail ? coverWork.image.details?.find((d) => d.name === ref.detail) : undefined;
     const focus: [number, number] = Array.isArray(data.focus) && data.focus.length === 2 ? data.focus : [50, 50];
-    collections.push({ slug, title: data.title ?? slug, description: data.description, cover, coverWork, coverDetail, focus, works: members });
+    collections.push({ slug, title: data.title ?? slug, description: data.description, cover, coverWork, coverWorks, coverDetail, focus, works: members });
   }
   collectionCache = collections.sort((a, b) => b.works[0].date.getTime() - a.works[0].date.getTime());
   return collectionCache;
@@ -191,6 +198,14 @@ export const version = buildVersion(new Date(), currentCommit());
 export const analyticsId = measurementIdFor(config.analytics, { production: import.meta.env.PROD, demo: Boolean(process.env.SITE_DATA_DIR) });
 
 /** Years that have at least one published work, newest first. */
+/** The author's text about a year (content/years/<year>.yaml), trimmed; undefined when there is none. */
+export function getYearDescription(year: number): string | undefined {
+  const file = path.join(dataRoot, 'content/years', `${year}.yaml`);
+  if (!fs.existsSync(file)) return undefined;
+  const text = (YAML.parse(fs.readFileSync(file, 'utf8')) ?? {}).description;
+  return typeof text === 'string' && text.trim() ? text.trim() : undefined;
+}
+
 export const getYears = () => [...new Set(getWorks().map((w) => w.year))].sort((a, b) => b - a);
 
 export const formatSize = (s?: [number, number]) => (s ? `${s[0]} × ${s[1]} cm` : '');
@@ -223,9 +238,9 @@ export function workShareImage(w: Work): ShareImage {
   return { src: `${workImagePath(w)}/${width}.jpg`, width, height: Math.round((w.image.height * width) / w.image.width) };
 }
 
-/** Share image of a list of works (a year): its first featured work, otherwise its newest one. */
+/** Share image of a list of works (a year): its newest work of the author's selection (featured), otherwise its newest. */
 export const worksShareImage = (works: Work[]): ShareImage | undefined => {
-  const w = works.find((x) => x.featured) ?? works[0];
+  const w = coverCandidates(works)[0];
   return w && workShareImage(w);
 };
 

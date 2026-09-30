@@ -18,6 +18,7 @@ nikdy nejdou.
   tvorba/<kolekce>/_uvod.jpg                úvodní fotka kolekce (nepovinné)
   tvorba/<kolekce>/<slug>.yaml + .jpg       díla kolekce (a jejich detaily v <slug>/)
   fotky/<název>.jpg + <název>.yaml          ostatní fotky webu (O mně, Kontakt)
+  roky/<rok>.yaml                           text autorky o roce (nepovinný, kostru založí pipeline)
   export/instagram/<rok>/…                  pro Instagram: originál a detaily, jen díla s instagram: true (generuje pipeline)
   export/fler/<rok>/…                       pro Fler: originál a mockupy s vodoznakem, jen díla na prodej
 
@@ -26,6 +27,7 @@ pavla/                                      (toto repo, veřejné)
   .demo/                                    připravená testovací data a web z nich (npm run demo, mimo git)
   content/works/<rok>/<slug>-<id>.yaml      veřejná kopie popisu díla (generuje pipeline, needitovat)
   content/collections/<slug>.yaml           veřejná kopie popisu kolekce (generuje pipeline)
+  content/years/<rok>.yaml                  veřejný text o roce (generuje pipeline)
   public/works/<rok>/<slug>-<id>/           webové velikosti díla, detailů a mockupů, og.jpg + info.json (generuje pipeline)
   public/collections/<slug>/                úvodní fotka kolekce (generuje pipeline)
   public/og/collections/<slug>.jpg          obrázek pro sdílení kolekce, ořez 3:2 (generuje pipeline)
@@ -69,6 +71,7 @@ Tohle je závazné pravidlo: každý nový filtr musí mít parametr v URL.
 | Rok (jen na `/tvorba/` a u kolekce) | `year` | `?year=2025` |
 | Kolekce (jen na `/tvorba/` a stránce roku) | `collection` | slug kolekce, `?collection=plener-sumava-2026` |
 | Stav (s počty) | `status` | `available` = k prodeji, `unsold` = neprodané |
+| Výběr autorky (přepínač s počtem, jen když výpis nějaké má) | `featured` | `1` = jen díla s `featured: true`, jiná hodnota se ignoruje |
 | Stránka (viz *Stránkování*) | `page` | číslo stránky od 2, `all` = vše bez stránkování |
 | Na stránku (viz *Stránkování*) | `perPage` | `24` nebo `48` (výchozí 12 se nepíše) |
 
@@ -78,10 +81,54 @@ stránku. Odkaz **Kolekce** v řádku s roky vede na přehled `/tvorba/kolekce/`
 Stav **k prodeji** jsou díla `available`. **Neprodané** jsou díla, která se
 prodávají a ještě nejsou prodaná: `available` + `reserved`. Díla `not-for-sale`
 ani `sold` se v žádném z nich neobjeví. Příklad kombinace:
-`/tvorba/?collection=plener-sumava-2026&status=unsold&tag=voda`.
+`/tvorba/?collection=plener-sumava-2026&status=unsold&tag=voda`, nebo jen výběr autorky
+na prodej: `/tvorba/?featured=1&status=unsold`.
 
 Logika filtrů je v `scripts/lib/gallery-filter.mjs` (sdílí ji prohlížeč i testy),
 stav prodeje v `scripts/lib/works.mjs#isOnSale`.
+
+### Výběr autorky a náhodný úvodní obraz
+
+Díla s `featured: true` jsou **výběr autorky**: v galerii je filtruje přepínač „Výběr autorky“ (`?featured=1`)
+a z nich se berou úvodní obrazy. Kandidáti jsou 10 nejnovějších vybraných v dané oblasti (`coverCandidates`
+a `FEATURED_PICK` v `scripts/lib/works.mjs`), bez vybraných jen nejnovější dílo. Každý úvodní obraz vede
+na stránku díla, které zrovna ukazuje:
+
+- **úvodní stránka:** velký obraz nahoře je při každé návštěvě náhodně jeden z kandidátů celého webu;
+  pod ním „Nejnovější“ ho neopakuje (vždy 6 děl),
+- **stránka roku** (`/tvorba/2026/`): vlevo nadpis „Tvorba 2026“ a nepovinný text autorky o roce
+  (viz *Text o roce*), vpravo náhodně jeden z kandidátů toho roku (komponenta `FeaturedPick.astro`,
+  stejně jako na úvodní stránce),
+- **kolekce bez `_uvod.jpg` a bez `cover:`:** úvodní obraz na její stránce (klikací, vede na dílo) i v přehledu
+  kolekcí (tam vede na kolekci),
+- **náhledy pro sdílení (`og:image`):** vždy první kandidát (nejnovější), protože sociální sítě si náhled
+  stáhnou jen jednou.
+
+Stránka obsahuje všechny kandidáty, první viditelný a ostatní `hidden` s líně načítanými obrázky (skryté se
+nestahují). Hned za nimi je malý vložený skript (`applyRandomPick` ze `scripts/lib/random-pick.mjs`), který ještě
+před vykreslením ukáže náhodného, takže nic nepřeblikne. Bez JavaScriptu zůstane první. Karusel (střídání
+během návštěvy) záměrně není: obrazy mají různé poměry stran a rám by „dýchal“.
+Vyzkoušení: `npm run demo`, na `/` několikrát obnov stránku (střídá se všech 9 vybraných děl; obraz nahoře
+nikdy není i v „Nejnovější“), na `/tvorba/2026/` a `/tvorba/2025/` (5 a 4 vybraná díla) a u kolekce Kresby,
+pastely a kvaš 2025–2026 (všechny 4 obrazy vybrané; klik vede na zobrazené dílo).
+
+### Text o roce
+
+Nepovinný text autorky o roce (jaký byl, co se v tvorbě dělo) je v obsahovém repu v `roky/<rok>.yaml`
+(`YEAR_SCHEMA` v `scripts/lib/schema.mjs`, pipeline `scripts/lib/years.mjs`):
+
+```yaml
+description: |
+  Rok plenérů: Šumava v září, zahrada v létě…
+private_note: ""    # soukromé, na web se nedostane
+```
+
+- Pipeline ke každému roku, ve kterém je nějaké dílo, sama založí kostru (s prázdným `description`
+  a `DOPLNIT`) a všechny popisy roků srovnává podle schématu jako ostatní popisy.
+- Veřejná kopie (jen `description`) jde do `content/years/<rok>.yaml`; web ji načte přes
+  `getYearDescription` (`src/lib/site.ts`). Prázdný text se nezobrazí. Text je i popisem stránky pro vyhledávače.
+- Jiný soubor v `roky/` než `<rok>.yaml`, nebo `description`, které není text, zastaví běh chybou.
+- Vyzkoušení: `npm run demo`, `/tvorba/2026/` (text z `demo/roky/2026.yaml`) a `/tvorba/2025/` (bez textu).
 
 ### Stránkování
 
@@ -209,7 +256,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `fler` | odkaz na Fler, tlačítko „Koupit na Fleru“ |
 | `instagram` | `true` = exporty pro Instagram (výchozí `false`) |
 | `mockups` | `true` = mockupy, nezávisle na prodeji (výchozí `false`) |
-| `featured` | `true` = kandidát na úvodní stránku (hlavní obraz = nejnovější označený) a náhled stránky roku |
+| `featured` | `true` = ve **výběru autorky**: filtr „Výběr autorky“; z 10 nejnovějších vybraných (`FEATURED_PICK`) se náhodně střídá obraz nahoře na úvodní stránce, na stránce roku a úvod kolekce bez `cover`; nejnovější z nich je náhled pro sdílení (úvod, rok, kolekce) |
 | `description` | veřejný popis na webu |
 | `details` | popisky detailních fotek (viz *Detailní fotky*) |
 | `private_note` | SOUKROMÉ: zůstane jen v obsahovém repu |
@@ -307,7 +354,8 @@ v `demo/`, zobrazené přes `npm run demo`.
 | `not-for-sale` | Kytice z louky, Kvilda skica, Slunečnice |
 | techniky | akvarel, akvarel a tuš, pastel, kresba tužkou, kvaš (Slunečnice, Rybník v zimě) |
 | tagy | krajina, voda, plenér, hory, květiny, zátiší, ovoce, zvířata, zima, město, déšť, mlha, léto (i kombinace) |
-| `featured` (úvodní stránka) | Ráno u rybníka, Šumava v mlze |
+| `featured` (výběr autorky, 9 děl) | Máky, Ráno u rybníka, Šumava v mlze, Nádraží, Rybník v zimě… (2026 a přelom roku), Pivoňky, Zimní sad, Kočka na okně, Jablka na stole (2025): úvodní stránka náhodně střídá všech 9, `/tvorba/?featured=1` je ukáže |
+| text o roce | `/tvorba/2026/` má text (`demo/roky/2026.yaml`), `/tvorba/2025/` ne (`description: ""`) |
 | tlačítko „Koupit na Fleru“ | Máky |
 | export pro Instagram (`instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail), Kytice z louky (+ 1 detail, není na prodej), Máky; ostatní díla žádný |
 | `mockups: true`, na prodej | Ráno u rybníka (+ detaily), Zimní sad, Město v dešti, Náměstí v mlze, Kočka na okně, Rybník v zimě |
@@ -319,7 +367,7 @@ v `demo/`, zobrazené přes `npm run demo`.
 | kolekce: vlastní úvodní fotka (panorama + `focus`) | Plenér Šumava 2026 |
 | kolekce: `cover: <id>#<detail>` + `focus` | Ze zahrady 2025 (detail Pivoněk) |
 | kolekce: `cover: <id>` (celé dílo) | Město 2026 (Město v dešti, ne nejnovější Náměstí v mlze) |
-| kolekce bez `cover` = nejnovější dílo | Kresby, pastely a kvaš 2025–2026 (Nádraží) |
+| kolekce bez `cover` = náhodně z výběru autorky | Kresby, pastely a kvaš 2025–2026 (všechny 4 obrazy vybrané; náhled pro sdílení Nádraží) |
 | kolekce přes víc let a přelom roku | `demo-kresby-2025-2026/`: Kočka na okně, Jablka na stole (2025), Rybník v zimě (prosinec 2025), Nádraží (únor 2026) |
 | díla bez kolekce | Zimní sad, Slunečnice, Máky, Bouřka nad polem |
 | soukromá poznámka | Ráno u rybníka, Jablka na stole, kolekce Plenér Šumava 2026 |
@@ -424,8 +472,8 @@ Messenger…) ukázaly velký náhled hned napoprvé. Všechny náhledy jsou
 | Stránka | Náhled | Soubor |
 |---|---|---|
 | detail díla | celý obraz na papírovém pozadí, **nikdy oříznutý** | `public/works/<rok>/<slug>-<id>/og.jpg` |
-| úvodní stránka | totéž pro hlavní (první `featured`) dílo | týž soubor |
-| stránka roku | první `featured` dílo roku, jinak nejnovější | týž soubor |
+| úvodní stránka | totéž pro nejnovější dílo výběru autorky (stránka sama ukazuje náhodné z 10, náhled pro sdílení náhodný být nemůže) | týž soubor |
+| stránka roku | nejnovější dílo výběru autorky v roce, jinak nejnovější (stránka sama ukazuje náhodné z 10) | týž soubor |
 | stránka kolekce | úvodní obraz kolekce oříznutý na 3:2 kolem `focus` (jako na stránce) | `public/og/collections/<slug>.jpg` |
 | přehled kolekcí | náhled první (nejnovější) kolekce | týž soubor |
 
@@ -485,7 +533,9 @@ private_note: ""    # soukromé, na web se nedostane
   3. `cover: <id>#<detail>`: jedna z detailních fotek toho díla (jméno jako
      v `details:`, tj. název souboru bez přípony; bez mezer kolem `#`, jinak
      by YAML bral zbytek jako komentář),
-  4. jinak nejnovější dílo kolekce.
+  4. jinak obraz z výběru autorky (`featured: true`): stránka náhodně ukáže jeden z 10 nejnovějších vybraných
+     v kolekci, náhled pro sdílení je nejnovější z nich,
+  5. jinak nejnovější dílo kolekce.
   Fotka i `cover` zároveň je chyba (pipeline neví, co platí), stejně jako
   detail, který dílo nemá.
 - Úvodní obrázek se na stránce kolekce i v přehledu vždy **ořízne na 3:2**,
@@ -631,7 +681,7 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
   s *Require status checks to pass* (`check`) a výjimkou pro správce (přímé pushe do `main`).
   Pull request připraví `node scripts/pull-request.mjs <soubor-popisu>` (`scripts/lib/pull-request.mjs`):
   - do `add-paths` dá jen výstupní složky z `OUTPUT_PATHS` (`content/works`, `public/works`,
-    `public/photos`, `content/collections`, `public/collections`, `public/og`), a to jen ty, které existují
+    `public/photos`, `content/collections`, `public/collections`, `public/og`, `content/years`), a to jen ty, které existují
     nebo je git zná (smazaná složka). Chybějící složku (např. `public/collections`, dokud žádná kolekce nemá
     `_uvod.jpg`) přeskočí, jinak by `git add` selhal a pull request by nevznikl; bez jediné složky se pull
     request přeskočí. Nová výstupní složka pipeline = doplnit do `OUTPUT_PATHS`,
@@ -705,7 +755,7 @@ analytics:
 
   | Událost | Kdy | Parametry |
   |---|---|---|
-  | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav); ne stránkování ani počet na stránku | aktivní filtry `tag`, `technique`, `year`, `collection`, `status` (prázdné se neposílají) a `results` (kolik děl odpovídá) |
+  | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav); ne stránkování ani počet na stránku | aktivní filtry `tag`, `technique`, `year`, `collection`, `status`, `featured` (prázdné se neposílají) a `results` (kolik děl odpovídá) |
   | `fler_click` | klik na „Koupit na Fleru“ u díla | `work_id`, `work_title` |
   | `email_click` | klik na „Napsat autorce“ u díla (jen když je v `site.email` adresa) | `work_id`, `work_title` |
 
@@ -714,7 +764,7 @@ analytics:
 - **Jednorázově v GA** (bez toho se parametry v přehledech neukážou, jen počty událostí):
   *Administrátor → Vlastní definice → Vytvořit vlastní dimenzi*, rozsah **Událost**, pro každý parametr zvlášť:
   `tag` (Štítek), `technique` (Technika), `year` (Rok), `collection` (Kolekce), `status` (Stav filtru),
-  `work_id` (ID díla), `work_title` (Název díla); a *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru,
+  `featured` (Výběr autorky), `work_id` (ID díla), `work_title` (Název díla); a *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru,
   jednotka Standardní). Data se v nich ukazují až od chvíle registrace, zpětně ne.
   Přehledy: *Přehledy → Zapojení → Události* (počty a proklik na parametry) nebo *Průzkum* (tabulka např.
   Událost × Technika).

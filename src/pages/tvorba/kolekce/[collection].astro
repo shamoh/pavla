@@ -22,7 +22,7 @@ const { title, description, works } = collection;
       <h1>{title}</h1>
       {description && <p class="desc">{description}</p>}
     </div>
-    <CollectionCover collection={collection} sizes="(max-width: 900px) 100vw, 55vw" eager />
+    <CollectionCover collection={collection} sizes="(max-width: 900px) 100vw, 55vw" eager link />
   </header>
   <WorkGallery works={works} collection={collection.slug} />
 </Base>

@@ -35,6 +35,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
 import YAML from 'yaml';
 import { PUBLIC_COLLECTION_FIELDS, coverSource, prepareCollections, validateCollectionCovers } from './lib/collections.mjs';
+import { PUBLIC_YEAR_FIELDS, prepareYears } from './lib/years.mjs';
 import { prepareContent } from './lib/content.mjs';
 import { demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
@@ -287,14 +288,17 @@ export async function run({
   const collections = await prepareCollections(contentDir, collectionFolders);
   created.push(...collections.created);
   updated.push(...collections.updated);
+  const years = await prepareYears(contentDir, works.map((w) => w.year).filter(Boolean), { demo: dataset === 'demo' });
+  created.push(...years.created);
+  updated.push(...years.updated);
   created.forEach((p) => log(`+ new metadata skeleton: ${p}`));
   assigned.forEach((p) => log(`+ id assigned: ${p}`));
   updated.forEach((p) => log(`~ metadata brought in line with the schema: ${p}`));
   pending.forEach((p) => log(`! published, still marked DOPLNIT: ${p}`));
   const problems = [
-    ...scanProblems, ...validateWorks(works), ...photos.problems, ...collections.problems,
+    ...scanProblems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems,
     ...validateCollectionCovers(collections.collections, works),
-    ...demoProblems({ works, collections: collections.collections, photos: photos.photos }, dataset),
+    ...demoProblems({ works, collections: collections.collections, photos: photos.photos, years: years.years }, dataset),
   ];
   if (problems.length) {
     return { ok: false, problems, created, assigned, updated, pending, processed: 0, skipped: 0, missing: [], pruned: [], prepared: prepareOnly };
@@ -467,6 +471,23 @@ export async function run({
       if ((await fs.readdir(collMetaRoot)).length === 0) await fs.rmdir(collMetaRoot);
     }
     await pruneDirs(coversRoot, new Set(collections.collections.filter((c) => c.coverPath).map((c) => c.slug)), 'public/collections', pruned);
+  }
+
+  // Years: content/years/<year>.yaml (the public text of the author about the year).
+  const yearsRoot = path.join(siteDir, 'content/years');
+  for (const y of years.years) {
+    if (only.length && !only.includes(y.year)) continue;
+    await writeIfChanged(path.join(yearsRoot, `${y.year}.yaml`), publicCopy(y.data, PUBLIC_YEAR_FIELDS));
+  }
+  if (!only.length && (await exists(yearsRoot))) {
+    const wantedYears = new Set(years.years.map((y) => `${y.year}.yaml`));
+    for (const f of await fs.readdir(yearsRoot)) {
+      if (!wantedYears.has(f)) {
+        await fs.rm(path.join(yearsRoot, f));
+        pruned.push(`content/years/${f}`);
+      }
+    }
+    if ((await fs.readdir(yearsRoot)).length === 0) await fs.rmdir(yearsRoot);
   }
   pruned.forEach((p) => log(`- removed ${p}`));
 

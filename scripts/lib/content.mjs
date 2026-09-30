@@ -15,7 +15,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
 import { normalizeMetadata, skeleton, todoKeys } from './metadata-yaml.mjs';
-import { COLLECTION_SCHEMA, PHOTO_SCHEMA, WORK_SCHEMA } from './schema.mjs';
+import { COLLECTION_SCHEMA, PHOTO_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA } from './schema.mjs';
 import { IMAGE_EXTENSIONS, dateYear, generateId, isValidId, slugify, splitExt, titleFromName } from './works.mjs';
 
 export const WORKS_SUBDIR = 'tvorba';
@@ -235,7 +235,7 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
 }
 
 /**
- * Attributes the schema does not know (typos like "mockup:"), in every work, collection and photo description:
+ * Attributes the schema does not know (typos like "mockup:"), in every work, collection, year and photo description:
  * ["<file>: <keys>"]. Reads only, changes nothing; used by the weekly health check.
  */
 export async function findUnknownAttributes(contentDir) {
@@ -246,6 +246,8 @@ export async function findUnknownAttributes(contentDir) {
     for (const file of g.yamls.values()) files.push([path.join(WORKS_SUBDIR, g.dir, file), WORK_SCHEMA]);
     if (g.meta) files.push([path.join(WORKS_SUBDIR, g.dir, g.meta), COLLECTION_SCHEMA]);
   }
+  const yearsDir = path.join(contentDir, 'roky');
+  for (const f of (await fs.readdir(yearsDir).catch(() => [])).sort()) if (/\.ya?ml$/.test(f)) files.push([path.join('roky', f), YEAR_SCHEMA]);
   const photosDir = path.join(contentDir, 'fotky');
   const photos = await fs.readdir(photosDir).catch(() => []);
   for (const f of photos.sort()) if (/\.ya?ml$/.test(f)) files.push([path.join('fotky', f), PHOTO_SCHEMA]);

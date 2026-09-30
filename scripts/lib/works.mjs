@@ -232,3 +232,16 @@ export function expectedExports({ status, details, mockupScenes, instagram = fal
     fler: !onSale ? [] : mockupScenes === null ? null : ['', ...mockupScenes.map((s) => `-mockup-${s}`)],
   };
 }
+
+/** How many of the newest works of the author's selection (featured) take turns on a cover, one at random per visit. */
+export const FEATURED_PICK = 10;
+
+/**
+ * Candidates for the cover of a list of works (newest first): its newest `n` works in the author's selection
+ * (`isFeatured`), or just its newest work when none is selected. The first candidate is the fixed choice: the share
+ * image and what visitors without JavaScript see; the page shows one of them at random.
+ */
+export function coverCandidates(works, isFeatured = (w) => w.featured === true, n = FEATURED_PICK) {
+  const selected = works.filter(isFeatured);
+  return selected.length ? selected.slice(0, n) : works.slice(0, 1);
+}

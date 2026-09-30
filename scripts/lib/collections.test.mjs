@@ -48,6 +48,10 @@ test('coverSource picks the same image as the site: own photo, cover work or det
   assert.equal(coverSource(c({}), all), '/m/kytice.jpg');
   assert.equal(coverSource({ slug: 'prazdna', data: {}, coverPath: null }, all), null);
   assert.equal(coverSource(c({}), [{ ...all[1], masterPath: null }]), null);
+  // without cover: the newest work of the author's selection (featured) wins over the newest work
+  const featured = all.map((w) => (w.id === 'vjr39' ? { ...w, data: { ...w.data, featured: true } } : w));
+  assert.equal(coverSource(c({}), featured), '/m/pivonky.jpg');
+  assert.equal(coverSource(c({ cover: 'q6bn6' }), featured), '/m/kytice.jpg', 'an explicit cover still decides');
 });
 
 test('titleFromFolder moves a leading year (or range) to the end of the title', async () => {

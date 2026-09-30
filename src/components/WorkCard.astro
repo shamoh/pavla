@@ -1,8 +1,8 @@
 ---
 import Picture from './Picture.astro';
 import { type Work, statusLabel, formatSize, workUrl } from '../lib/site';
-interface Props { work: Work; eager?: boolean }
-const { work, eager } = Astro.props;
+interface Props { work: Work; eager?: boolean; hidden?: boolean }
+const { work, eager, hidden } = Astro.props;
 ---
 <a
   class="card"
@@ -12,6 +12,9 @@ const { work, eager } = Astro.props;
   data-status={work.status}
   data-collection={work.collection ?? ''}
   data-year={work.year}
+  data-featured={work.featured ? '1' : ''}
+  data-id={work.id}
+  hidden={hidden}
 >
   <Picture work={work} sizes="(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 33vw" eager={eager} />
   <span class="meta">

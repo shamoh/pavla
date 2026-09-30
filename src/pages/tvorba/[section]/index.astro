@@ -4,7 +4,9 @@
 //   /tvorba/k3f9a/  permanent short link of a work, redirects to its current detail URL
 import Base from '../../../layouts/Base.astro';
 import WorkGallery from '../../../components/WorkGallery.astro';
-import { getWorks, getYears, site, workUrl, worksShareImage, type Work } from '../../../lib/site';
+import FeaturedPick from '../../../components/FeaturedPick.astro';
+import { getWorks, getYearDescription, getYears, site, workUrl, worksShareImage, type Work } from '../../../lib/site';
+import { coverCandidates } from '../../../../scripts/lib/works.mjs';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -16,6 +18,9 @@ export function getStaticPaths() {
 type Props = { year: number; works: Work[]; redirect?: undefined } | { redirect: Work; year?: undefined; works?: undefined };
 const { year, works, redirect } = Astro.props;
 const target = redirect && workUrl(redirect);
+// Year page: the author's text about the year (optional) and one of the newest works of her selection at random.
+const text = year && getYearDescription(year);
+const candidates = works ? coverCandidates(works) : [];
 ---
 {redirect ? (
   <html lang="cs">
@@ -29,8 +34,20 @@ const target = redirect && workUrl(redirect);
     <body><a href={target}>{redirect.title}</a></body>
   </html>
 ) : (
-  <Base title={`Tvorba ${year}`} description={`Akvarely a kresby z roku ${year}.`} image={worksShareImage(works!)}>
-    <h1>Tvorba {year}</h1>
+  <Base title={`Tvorba ${year}`} description={text || `Akvarely a kresby z roku ${year}.`} image={worksShareImage(works!)}>
+    <header class="intro">
+      <div>
+        <h1>Tvorba {year}</h1>
+        {text ? <p class="desc">{text}</p> : null}
+      </div>
+      <FeaturedPick works={candidates} sizes="(max-width: 900px) 100vw, 45vw" eager />
+    </header>
     <WorkGallery works={works!} year={year} />
   </Base>
 )}
+<style>
+  .intro { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 5vw, 64px); align-items: center; margin-bottom: 48px; }
+  .intro h1 { margin-top: 0.1em; }
+  .desc { white-space: pre-line; font-size: 1.05rem; }
+  @media (max-width: 900px) { .intro { grid-template-columns: 1fr; } }
+</style>

@@ -20,7 +20,7 @@ import { recipeProblems, renderDemoImages } from './lib/demo-images.mjs';
 import { run } from './process-images.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const CONTENT_SUBDIRS = ['tvorba', 'fotky'];
+const CONTENT_SUBDIRS = ['tvorba', 'fotky', 'roky'];
 /** Generated folders of public/ that belong to the data, not to the site itself. */
 const GENERATED_PUBLIC = new Set(['works', 'photos', 'collections', 'og']);
 

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   ID_LENGTH, PUBLIC_WORK_FIELDS, expectedExports, exportPattern, generateId, idFromPath, isOnSale, isValidId, parseWorkKey, planExportPrune, planPrune,
   publicFields, slugify, wantsMockups, splitExt, titleFromName, validSize, validateWorks, workKey,
+  coverCandidates, FEATURED_PICK,
 } from './works.mjs';
 
 /** Deterministic "random" returning the given values in a loop. */
@@ -238,4 +239,17 @@ test('wantsMockups: only an explicit mockups: true, independent of the status; t
   }
   assert.ok(PUBLIC_WORK_FIELDS.includes('mockups'));
   assert.match(validateWorks([work({ data: { mockups: 'ano' } })])[0], /mockups must be true or false/);
+});
+
+test('coverCandidates: the newest works of the author\'s selection, at most FEATURED_PICK, else the newest work', () => {
+  const works = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id, i) => ({ id, featured: i % 2 === 1 }));
+  assert.equal(FEATURED_PICK, 10);
+  assert.deepEqual(coverCandidates(works).map((w) => w.id), ['b', 'd', 'f', 'h']);
+  const many = works.map((w) => ({ ...w, featured: true }));
+  assert.deepEqual(coverCandidates(many, undefined, 5).map((w) => w.id), ['a', 'b', 'c', 'd', 'e']);
+  assert.equal(coverCandidates([...many, ...many, ...many].map((w, i) => ({ ...w, id: `w${i}` }))).length, FEATURED_PICK);
+  assert.deepEqual(coverCandidates(works.map((w) => ({ ...w, featured: false }))).map((w) => w.id), ['a']);
+  assert.deepEqual(coverCandidates([]), []);
+  // the pipeline passes its own accessor (featured lives in data)
+  assert.deepEqual(coverCandidates([{ id: 'x', data: {} }, { id: 'y', data: { featured: true } }], (w) => w.data.featured === true).map((w) => w.id), ['y']);
 });

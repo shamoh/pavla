@@ -97,10 +97,17 @@ export const WORK_SCHEMA = {
     {
       key: 'featured',
       doc: [
-        'true = obraz může být na úvodní stránce webu (velký obraz nahoře, vybere se nejnovější z označených)',
-        'a náhled pro sdílení stránky jeho roku; false = ne. Bez označeného obrazu se použije nejnovější.',
+        'true = ve výběru autorky: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně',
+        'střídají obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover). false = ne.',
       ],
       value: false,
+      previous: [[
+        'true = ve výběru autorky: filtr „Výběr autorky“ v galerii; z 5 nejnovějších vybraných se náhodně',
+        'střídají obrazy nahoře na úvodní stránce a na úvodu kolekce (bez cover). false = ne.',
+      ], [
+        'true = obraz může být na úvodní stránce webu (velký obraz nahoře, vybere se nejnovější z označených)',
+        'a náhled pro sdílení stránky jeho roku; false = ne. Bez označeného obrazu se použije nejnovější.',
+      ]],
     },
     {
       key: 'description',
@@ -189,6 +196,30 @@ export const PHOTO_SCHEMA = {
         'např. [50, 50] = střed, [80, 70] = vpravo dole.',
       ],
       value: [50, 50],
+    },
+  ],
+};
+
+export const YEAR_SCHEMA = {
+  name: 'year',
+  header: [
+    'Rok – kostru vytvořila pipeline pro rok, ve kterém jsou obrazy (název souboru je rok).',
+    'Text je nepovinný: prázdný se na webu nezobrazí. Po vyplnění slovo DOPLNIT smaž.',
+  ],
+  fields: [
+    demo,
+    {
+      key: 'description',
+      doc: [
+        'Pár vět o roce za sebe (jaký byl, co se v tvorbě dělo); zobrazí se nahoře na stránce roku /tvorba/<rok>/.',
+        'Víc řádků: napiš description: | a pod to text odsazený dvěma mezerami. Prázdné "" = bez textu.',
+      ],
+      value: '',
+    },
+    {
+      key: 'private_note',
+      doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',
+      value: '',
     },
   ],
 };

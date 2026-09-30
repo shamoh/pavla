@@ -93,7 +93,7 @@ test('second run skips unchanged works; --force regenerates', async () => {
 test('a new image without metadata becomes a draft with generated outputs', async () => {
   await addWork('2026', 'novy', undefined);
   const r = await run(opts({ today: new Date('2026-05-01') }));
-  assert.deepEqual(r.created, ['tvorba/novy.yaml']);
+  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml']);
   const key = `novy-${await idOf('2026', 'novy')}`;
   assert.equal(YAML.parse(await fs.readFile(path.join(siteDir, 'content/works/2026', `${key}.yaml`), 'utf8')).draft, true);
   assert.ok(await exists(path.join(siteDir, 'public/works/2026', key, 'info.json')));
@@ -851,7 +851,7 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   const r = await run(opts({ prepareOnly: true, today: new Date('2026-05-01') }));
   assert.equal(r.ok, true);
   assert.equal(r.prepared, true);
-  assert.deepEqual(r.created, ['tvorba/novy.yaml']);
+  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml']);
   assert.equal(r.assigned.length, 1);
   const skeleton = YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/novy.yaml'), 'utf8'));
   assert.equal(skeleton.date, '2026-05-01', 'a new work is dated today');
@@ -961,4 +961,25 @@ test('existing files get every supported attribute on every run, on a branch too
   const copy = YAML.parse(await fs.readFile(path.join(siteDir, 'content/works/2026/rano-k3f9a.yaml'), 'utf8'));
   assert.equal(copy.draft, false);
   assert.equal(copy.mockup, undefined);
+});
+
+test('years: a skeleton per year, the public text reaches the site, the private note never; removed with the year', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n');
+  let r = await run(opts());
+  assert.ok(r.created.includes('roky/2026.yaml'));
+  const copyPath = path.join(siteDir, 'content/years/2026.yaml');
+  assert.equal(YAML.parse(await fs.readFile(copyPath, 'utf8')).description, '');
+
+  await fs.writeFile(path.join(contentDir, 'roky/2026.yaml'), 'description: |\n  Rok plenérů.\nprivate_note: tajné\n');
+  r = await run(opts());
+  const copy = await fs.readFile(copyPath, 'utf8');
+  assert.deepEqual(YAML.parse(copy), { description: 'Rok plenérů.\n' });
+  assert.doesNotMatch(copy, /tajné/);
+
+  await fs.rm(path.join(contentDir, 'roky/2026.yaml'));
+  await fs.rm(path.join(contentDir, 'tvorba/rano.yaml'));
+  await fs.rm(path.join(contentDir, 'tvorba/rano.jpg'));
+  r = await run(opts());
+  assert.ok(r.pruned.includes('content/years/2026.yaml'));
+  assert.ok(!(await exists(path.join(siteDir, 'content/years'))));
 });

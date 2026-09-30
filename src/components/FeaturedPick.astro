@@ -1,0 +1,24 @@
+---
+// A cover picture chosen at random per visit from candidates (coverCandidates: the newest works of the author's
+// selection), linked to the work: the home page and year pages. The first candidate is visible in the HTML, the
+// others hidden with lazy images; the inline script right after the box shows a random one before the first paint
+// (scripts/lib/random-pick.mjs). `exclude` + `show`: a list of cards (data-id) that must not repeat the shown work.
+import Picture from './Picture.astro';
+import { type Work, workUrl } from '../lib/site';
+import { randomPickScript } from '../../scripts/lib/random-pick.mjs';
+
+interface Props { works: Work[]; sizes: string; eager?: boolean; exclude?: string; show?: number; class?: string }
+const { works, sizes, eager, exclude, show, class: cls } = Astro.props;
+---
+<div class:list={['featured-pick', cls]} data-pick-exclude={exclude} data-pick-show={show}>
+  {works.map((w, i) => (
+    <a class="pick" href={workUrl(w)} data-pick data-id={w.id} hidden={i > 0} title={w.title}>
+      <Picture work={w} sizes={sizes} eager={eager && i === 0} />
+    </a>
+  ))}
+</div>
+{works.length > 1 && <script is:inline set:html={randomPickScript} />}
+<style>
+  .featured-pick .pick { display: block; }
+  .featured-pick :global(picture) { box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 24px 48px -24px rgba(0,0,0,.3); }
+</style>
