@@ -301,12 +301,13 @@ export async function run({
   const shareCrop = async ({ source, crop }, file, label) => {
     const m = await loadMaster(await fs.readFile(source));
     const ogRatio = img.og.width / img.og.height;
-    const cut = crop && (await sharp(m.buf).extract(focusCrop(m.width, m.height, crop.ratio, crop.focus)).toBuffer({ resolveWithObject: true }));
+    const area = crop && focusCrop(m.width, m.height, crop.ratio, crop.focus);
+    // one lossy encoding only: the crop fills the share image in a single pipeline, or goes on paper as lossless PNG
     const buf = !crop
       ? await wholeOnPaper(m, img)
       : Math.abs(crop.ratio - ogRatio) < 0.01
-        ? await sharp(cut.data).resize(img.og.width, img.og.height).jpeg({ quality: img.og.quality, mozjpeg: true }).toBuffer()
-        : await wholeOnPaper({ buf: cut.data, width: cut.info.width, height: cut.info.height }, img);
+        ? await sharp(m.buf).extract(area).resize(img.og.width, img.og.height).jpeg({ quality: img.og.quality, mozjpeg: true }).toBuffer()
+        : await wholeOnPaper({ buf: await sharp(m.buf).extract(area).png().toBuffer(), width: area.width, height: area.height }, img);
     const old = await fs.readFile(file).catch(() => null);
     if (!old || !old.equals(buf)) {
       log(`→ ${label}`);
