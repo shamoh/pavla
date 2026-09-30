@@ -4,7 +4,6 @@ draft: false
 title: Ovce
 date: 2026-09-26
 technique: akvarel
-support: ""
 size_cm:
   - 42
   - 30
@@ -12,11 +11,8 @@ tags:
   - zvířata
   - plenér
 status: not-for-sale
-price: null
-fler: ""
 featured: false
 collection: 2026-plener-sumava
 description: |
   Tři ovce z pastviny u Filipovy Huti.
-details: null
 mockups: true

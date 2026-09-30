@@ -4,7 +4,6 @@ draft: false
 title: Šumava 2026
 date: 2026-09-26
 technique: linoryt
-support: ""
 size_cm:
   - 16.5
   - 4
@@ -13,8 +12,6 @@ tags:
   - krajina
   - plenér
 status: not-for-sale
-price: null
-fler: ""
 featured: false
 collection: 2026-plener-sumava
 description: |

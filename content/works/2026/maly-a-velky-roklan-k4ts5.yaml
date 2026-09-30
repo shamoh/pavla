@@ -4,7 +4,6 @@ draft: false
 title: Malý a Velký Roklan
 date: 2026-09-26
 technique: akvarel
-support: ""
 size_cm:
   - 21
   - 15
@@ -13,11 +12,8 @@ tags:
   - hory
   - plenér
 status: not-for-sale
-price: null
-fler: ""
 featured: true
 collection: 2026-plener-sumava
 description: |
   Pohled na Malý a Velký Roklan.
-details: null
 mockups: true
