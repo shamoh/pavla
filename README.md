@@ -729,6 +729,16 @@ analytics:
 - Filtry galerie mění URL bez načtení stránky. GA je započítá jako zobrazení s novou adresou jen se zapnutým
   *Vylepšené měření → Změny stránky na základě událostí historie prohlížeče* (výchozí stav streamu,
   *Administrátor → Datové streamy → Web*); vypnutím by se počítala jen skutečná načtení stránek.
+- **Vlastní návštěvy se nepočítají (interní provoz podle IP):** v GA *Administrátor → Datové streamy → Web →
+  Nakonfigurovat nastavení značky → Zobrazit vše → Definovat interní provoz → Vytvořit*: název třeba
+  „Domácí síť“, hodnota `traffic_type` = `internal`, typ shody *IP adresa se rovná* a veřejná IP adresa
+  domácí sítě. Tu ukáže <https://ifconfig.me> (otevřít z domácí sítě, ne z mobilních dat ani přes VPN).
+  Pak *Administrátor → Shromažďování a úprava dat → Datové filtry → Internal Traffic*: stav **Aktivní**
+  (nový filtr je ve stavu *Testování* a nic nevyřazuje). Samotná adresa se sem nepíše (repo je veřejné),
+  poznamenaná je v dokumentaci obsahového repa.
+  Doma se IP adresa může po restartu routeru změnit: když se vlastní návštěvy zase objevují v *V reálném
+  čase*, zjisti novou adresu na ifconfig.me a přepiš ji ve stejném pravidle. Filtr platí jen dopředu,
+  už započítané návštěvy z přehledů nezmizí.
 
 ## Verze v patičce
 
@@ -788,10 +798,10 @@ nemění**, výsledky ukládá do nové složky. Výsledek je pak master fotka p
 `tvorba/` obsahového repa (nebo do složky kolekce).
 
 ```
-npm run straighten -- "../obsah/tmp/2026 Plenér Šumava"            # všechny fotky ve složce
-npm run straighten -- "../obsah/tmp/2026 Plenér Šumava" --preview  # + náhledy s nalezeným listem
-npm run straighten -- "../obsah/tmp/2026 Plenér Šumava" --white-balance   # + papír neutrálně bílý
-npm run straighten -- "../obsah/tmp/2026 Plenér Šumava" --width 3000      # + nejvýš 3000 px na šířku
+npm run straighten -- "../obsah/tmp/fotky-obrazu"            # všechny fotky ve složce
+npm run straighten -- "../obsah/tmp/fotky-obrazu" --preview  # + náhledy s nalezeným listem
+npm run straighten -- "../obsah/tmp/fotky-obrazu" --white-balance   # + papír neutrálně bílý
+npm run straighten -- "../obsah/tmp/fotky-obrazu" --width 3000      # + nejvýš 3000 px na šířku
 npm run straighten -- foto.jpg --corners 0.02,0.03,0.97,0.01,0.98,0.76,0.01,0.78   # rohy ručně (uloží se)
 npm run straighten -- foto.jpg --rotate -90                                          # list vyfocený bokem (uloží se)
 npm run straighten -- foto.jpg --extra deska --corners 0.2,0.79,0.75,0.8,0.75,0.98,0.2,0.98   # další výřez
@@ -868,7 +878,7 @@ Kód: `scripts/lib/straighten.mjs` (hledání listu, homografie, převzorkován�
 ## Nastavení (jednorázově)
 
 1. Repozitář `shamoh/pavla` → *Settings → Pages → Source: GitHub Actions*.
-2. DNS (Forpsi): CNAME záznam `pavla` → `shamoh.github.io.` (doména je v `public/CNAME` a `site.config.yaml`).
+2. DNS u registrátora domény: CNAME záznam `pavla` → `shamoh.github.io.` (doména je v `public/CNAME` a `site.config.yaml`).
 3. Po ověření domény zapnout *Enforce HTTPS*.
 4. Doplnit `email` a později `fler` v `site.config.yaml`, přepsat text v `src/pages/o-mne.astro`.
 5. Naklonovat obsahové repo (např. vedle tohoto repa), do `.env` zapsat `CONTENT_DIR=<cesta k němu>` a spustit `npm ci`.

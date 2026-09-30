@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-Osobní web akvarelistky Pavly Kramolišové. Spravuje ho Libor (manžel), s pomocí Claude Code.
+Osobní web akvarelistky Pavly Kramolišové, spravovaný s pomocí Claude Code.
+Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web spravuje, registrátor domény, IP adresy,
+účty, tokeny): ty jsou v dokumentaci obsahového repa.
 
 ## Stack
 - Astro (statický výstup), žádný UI framework, vanilla JS jen pro filtry v galerii.
