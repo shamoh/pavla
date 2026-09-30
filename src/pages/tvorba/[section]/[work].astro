@@ -4,6 +4,7 @@ import Picture from '../../../components/Picture.astro';
 import Img from '../../../components/Img.astro';
 import { collectionUrl, detailCaption, getCollection, workShareImage, getWorks, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
 import { isOnSale, wantsMockups } from '../../../../scripts/lib/works.mjs';
+import { EVENTS } from '../../../../scripts/lib/analytics.mjs';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -70,8 +71,8 @@ const mockupsWide = mockups.every((m) => m.width >= m.height);
       )}
       {work.status === 'available' && (
         <div class="actions">
-          {work.fler && <a class="btn" href={work.fler}>Koupit na Fleru</a>}
-          {mail && <a class="btn ghost" href={mail}>Napsat autorce</a>}
+          {work.fler && <a class="btn" href={work.fler} data-track={EVENTS.fler} data-work-id={work.id} data-work-title={work.title}>Koupit na Fleru</a>}
+          {mail && <a class="btn ghost" href={mail} data-track={EVENTS.email} data-work-id={work.id} data-work-title={work.title}>Napsat autorce</a>}
         </div>
       )}
       {mockups.length > 0 && (

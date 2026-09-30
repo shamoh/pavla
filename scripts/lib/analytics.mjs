@@ -1,6 +1,10 @@
 // Visitor statistics: Google Analytics 4 (gtag.js), configured by analytics.googleMeasurementId in site.config.yaml.
 // Only the production build of the real site measures: never `astro dev`, never the site from the test data.
 // GA stores its usual first-party cookies (_ga, _ga_<id>), so returning visitors are recognised.
+// Own events (sent from the browser, see EVENTS): a filter change in the gallery and clicks on the buttons
+// of a work ("Koupit na Fleru", "Napsat autorce"). This module runs both in the build and in the browser.
+
+import { FILTER_KEYS } from './gallery-filter.mjs';
 
 /** A GA4 measurement ID, e.g. "G-HPZNHYZ2MQ". */
 export const isMeasurementId = (id) => typeof id === 'string' && /^G-[A-Z0-9]{4,16}$/.test(id);
@@ -33,4 +37,41 @@ export function gtagConfigScript(id) {
     "gtag('js', new Date());",
     `gtag('config', '${id}');`,
   ].join('\n');
+}
+
+/** Names of the own events; their parameters must be registered as custom dimensions in GA (see README). */
+export const EVENTS = {
+  filter: 'gallery_filter', // tag, technique, year, collection, status (only the active ones), results
+  fler: 'fler_click', // work_id, work_title
+  email: 'email_click', // work_id, work_title
+};
+
+/** Parameters of gallery_filter: the active filters (empty ones left out) and how many works match. */
+export function filterEventParams(state, results) {
+  const params = {};
+  for (const key of FILTER_KEYS) if (state[key]) params[key] = String(state[key]);
+  params.results = results;
+  return params;
+}
+
+/**
+ * The event of a clicked element marked with data-track="<event>" (and data-work-id, data-work-title),
+ * or null when it is not one of our events.
+ */
+export function trackedClick(dataset) {
+  const name = dataset?.track;
+  if (!Object.values(EVENTS).includes(name)) return null;
+  const params = {};
+  if (dataset.workId) params.work_id = dataset.workId;
+  if (dataset.workTitle) params.work_title = dataset.workTitle;
+  return { name, params };
+}
+
+/**
+ * Sends an event to GA. Without the Google tag (dev server, test data) nothing is sent; the event is only
+ * logged to the console (level "Verbose"/debug), so it can be checked locally.
+ */
+export function trackEvent(name, params, w = globalThis) {
+  if (typeof w.gtag === 'function') w.gtag('event', name, params);
+  else w.console?.debug?.('[analytics]', name, params);
 }

@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor } from './analytics.mjs';
+import {
+  EVENTS, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick,
+} from './analytics.mjs';
 
 const analytics = { googleMeasurementId: 'G-HPZNHYZ2MQ' };
 
@@ -33,4 +35,31 @@ test('gtag: loader URL and the config from the installation guide (the page is r
   assert.match(script, /gtag\('config', 'G-HPZNHYZ2MQ'\);$/);
   assert.doesNotMatch(script, /page_location/);
   assert.throws(() => gtagConfigScript("G-X');alert(1);//"), /invalid measurement ID/);
+});
+
+test('filterEventParams: only the active filters, always the number of matching works', () => {
+  const state = { tag: 'krajina', technique: '', year: '2026', collection: '', status: 'unsold', page: 2, perPage: 24 };
+  assert.deepEqual(filterEventParams(state, 5), { tag: 'krajina', year: '2026', status: 'unsold', results: 5 });
+  assert.deepEqual(filterEventParams({ tag: '', technique: '', year: '', collection: '', status: '' }, 21), { results: 21 });
+  assert.deepEqual(filterEventParams({ collection: '2026-plener-sumava', technique: 'akvarel' }, 0), { technique: 'akvarel', collection: '2026-plener-sumava', results: 0 });
+});
+
+test('trackedClick: the buttons of a work with its id and title, nothing for other elements', () => {
+  assert.deepEqual(trackedClick({ track: EVENTS.fler, workId: 'k4ts5', workTitle: 'Malý a Velký Roklan' }),
+    { name: 'fler_click', params: { work_id: 'k4ts5', work_title: 'Malý a Velký Roklan' } });
+  assert.deepEqual(trackedClick({ track: EVENTS.email, workId: 'k4ts5' }), { name: 'email_click', params: { work_id: 'k4ts5' } });
+  assert.equal(trackedClick({ track: 'something_else' }), null);
+  assert.equal(trackedClick({}), null);
+  assert.equal(trackedClick(undefined), null);
+});
+
+test('trackEvent: sends through gtag when the Google tag is on the page, otherwise only logs', () => {
+  const sent = [];
+  trackEvent('fler_click', { work_id: 'k4ts5' }, { gtag: (...args) => sent.push(args) });
+  assert.deepEqual(sent, [['event', 'fler_click', { work_id: 'k4ts5' }]]);
+
+  const logged = [];
+  trackEvent('gallery_filter', { results: 3 }, { console: { debug: (...args) => logged.push(args) } });
+  assert.deepEqual(logged, [['[analytics]', 'gallery_filter', { results: 3 }]]);
+  assert.doesNotThrow(() => trackEvent('gallery_filter', {}, {}));
 });

@@ -682,6 +682,27 @@ analytics:
 - GA ukládá své cookies (`_ga`, `_ga_<id>`), takže rozpozná vracející se návštěvníky. Lišta se souhlasem
   na webu není (vědomé rozhodnutí, stejně jako na music.kramolis.cz).
 - Neplatné ID (např. `UA-…` nebo překlep) zastaví build chybou, aby statistiky potichu nevypadly.
+- **Vlastní události** (`EVENTS` v `scripts/lib/analytics.mjs`, posílá je prohlížeč přes `gtag('event', …)`):
+
+  | Událost | Kdy | Parametry |
+  |---|---|---|
+  | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav); ne stránkování ani počet na stránku | aktivní filtry `tag`, `technique`, `year`, `collection`, `status` (prázdné se neposílají) a `results` (kolik děl odpovídá) |
+  | `fler_click` | klik na „Koupit na Fleru“ u díla | `work_id`, `work_title` |
+  | `email_click` | klik na „Napsat autorce“ u díla (jen když je v `site.email` adresa) | `work_id`, `work_title` |
+
+  Tlačítka nesou `data-track="<událost>"`, `data-work-id` a `data-work-title`; posluchač kliků je v `Base.astro`,
+  filtr v `WorkGallery.astro`. Nové tlačítko se sleduje přidáním stejných atributů a názvu do `EVENTS`.
+- **Jednorázově v GA** (bez toho se parametry v přehledech neukážou, jen počty událostí):
+  *Administrátor → Vlastní definice → Vytvořit vlastní dimenzi*, rozsah **Událost**, pro každý parametr zvlášť:
+  `tag` (Štítek), `technique` (Technika), `year` (Rok), `collection` (Kolekce), `status` (Stav filtru),
+  `work_id` (ID díla), `work_title` (Název díla); a *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru,
+  jednotka Standardní). Data se v nich ukazují až od chvíle registrace, zpětně ne.
+  Přehledy: *Přehledy → Zapojení → Události* (počty a proklik na parametry) nebo *Průzkum* (tabulka např.
+  Událost × Technika).
+- Vyzkoušení událostí lokálně (bez Google tagu se nic neposílá, jen vypisuje): `npm run demo`, v DevTools →
+  *Console* zapnout úroveň *Verbose*, změnit filtr v `/tvorba/` → `[analytics] gallery_filter {…}`; na detailu
+  díla na prodej s odkazem na Fler (v testovacích datech Máky) klik na „Koupit na Fleru“ → `[analytics] fler_click`.
+  Na nasazeném webu: GA → *Administrátor → DebugView* s Tag Assistantem, nebo *V reálném čase → Počet událostí*.
 - Kód: `scripts/lib/analytics.mjs` (kdy měřit, obsah značky, kontrola ID), `analyticsId` v `src/lib/site.ts`.
 - Vyzkoušení: `npm run build`, pak `grep -c googletagmanager dist/index.html` (1 = značka je tam);
   po `npm run demo:build` `grep -rl googletagmanager .demo/site/dist` nesmí nic najít. Na nasazeném webu:

@@ -80,6 +80,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     ALL_PAGES, PAGE_SIZE_STORAGE_KEY, matchesFilters, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate,
     rememberedPageSize, stateFromParams, stateToParams, withPageSize,
   } from '../../scripts/lib/gallery-filter.mjs';
+  import { EVENTS, filterEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
 
   const form = document.getElementById('filters') as HTMLFormElement;
   const cards = [...document.querySelectorAll<HTMLElement>('#grid .card')];
@@ -140,6 +141,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     pager.append(link(`Zobrazit vše (${total})`, ALL_PAGES, { class: 'mode' }));
   }
 
+  /** Shows the works of the current state and writes it to the URL; returns how many works match. */
   function apply() {
     const matching = cards.filter((c) => {
       const d = c.dataset;
@@ -160,21 +162,26 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     emptyEl.hidden = shown > 0;
     const p = stateToParams(state);
     history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
+    return matching.length;
   }
 
+  // Statistics: every filter change (not paging, not the page size) with the active filters and the result count.
+  const trackFilter = (results: number) => trackEvent(EVENTS.filter, filterEventParams(state, results));
+
   // A new filter starts again on the first page.
-  chips.forEach((b) => b.addEventListener('click', () => { state.tag = b.dataset.value!; state.page = pageAfterFilterChange(state.page); apply(); }));
+  chips.forEach((b) => b.addEventListener('click', () => { state.tag = b.dataset.value!; state.page = pageAfterFilterChange(state.page); trackFilter(apply()); }));
   form.addEventListener('change', (e) => {
     // Picking a page size starts again on page 1 with paging on; any other change is a filter.
     if (e.target === perPageSelect) {
       state = withPageSize(state, Number(perPageSelect!.value), pageSizes);
       storage.set(pageSizeToRemember(Number(perPageSelect!.value), pageSizes));
+      apply();
     }
     else {
       for (const k of selects) state[k] = select(k)!.value;
       state.page = pageAfterFilterChange(state.page);
+      trackFilter(apply());
     }
-    apply();
   });
   pager.addEventListener('click', (e) => {
     const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[data-page]');

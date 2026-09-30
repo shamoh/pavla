@@ -74,6 +74,17 @@ const ogImage = image ? new URL(image.src, site.url).href : undefined;
   </body>
 </html>
 
+<script>
+  // Statistics: clicks on elements marked with data-track (buttons of a work), see scripts/lib/analytics.mjs.
+  import { trackEvent, trackedClick } from '../../scripts/lib/analytics.mjs';
+
+  document.addEventListener('click', (e) => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-track]');
+    const event = el && trackedClick(el.dataset);
+    if (event) trackEvent(event.name, event.params);
+  });
+</script>
+
 <style is:global>
   :root {
     --paper: #f7f4ee;
