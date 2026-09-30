@@ -38,6 +38,9 @@ test('pullRequestPaths: only output folders that exist or that git knows; git ad
   await write('public/collections/plener/480.jpg', 'cover');
   await write('public/og/collections/plener.jpg', 'share');
   await write('content/years/2026.yaml', 'description: Rok');
+  await write('public/years/2026/480.jpg', 'year');
+  await write('content/home.yaml', 'description: Úvod');
+  await write('public/home/480.jpg', 'home');
   // the last photo removed: the folder is gone, but its deletion must reach the pull request
   await fs.rm(path.join(dir, 'public/photos'), { recursive: true });
   const paths = await pullRequestPaths(dir);

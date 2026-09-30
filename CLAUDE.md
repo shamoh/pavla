@@ -36,21 +36,23 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   s `_kolekce.yaml` a volitelnou `_uvod.jpg`; dílo do ní patří umístěním (max. jedna), `collection:` v yaml díla je chyba,
   do veřejné kopie ho doplní pipeline. Složka jménem díla vedle něj = detailní fotky. Pipeline `scripts/lib/collections.mjs`,
   web `getCollections` a `/tvorba/kolekce/<slug>/`.
-  Úvodní obrázek: vlastní fotka > `cover: <id>` nebo `cover: <id>#<detail>` > náhodně z výběru autorky (`coverCandidates`)
-  > nejnovější dílo; vždy ořez 3:2 kolem `focus`
-  (`src/components/CollectionCover.astro`); `og:image` kolekce je týž výřez, `public/og/collections/<slug>.jpg`
-  (`coverSource` + `focusCrop`). Každá výstupní složka pipeline v tomto repu (i `public/og`) musí být v `OUTPUT_PATHS` (`scripts/lib/pull-request.mjs`;
-  do PR jdou jen ty z nich, které existují nebo je git zná).
+  Úvodní obraz kolekce, roku i úvodní stránky: jedno pravidlo (`scripts/lib/covers.mjs`, web `resolveCover`,
+  komponenta `Cover.astro`): vlastní fotka (`_uvod.jpg`, `roky/<rok>.jpg`, `uvod.jpg`) > `cover: <id>` nebo
+  `<id>#<detail>` > náhodně z výběru autorky > nejnovější dílo. Vše se ukáže celé; jen `cover` + `focus` se ořízne
+  na 3:2 kolem `focus` (stejný výřez je `og:image` v `public/og/…`). `focus` bez `cover` = chyba, výchozí `focus` prázdný. Každá výstupní složka pipeline v tomto repu musí být
+  v `OUTPUT_PATHS` (`scripts/lib/pull-request.mjs`; do PR jdou jen ty z nich, které existují nebo je git zná).
 - Detailní fotky díla: `tvorba/[<kolekce>/]<slug>/*.jpg` (obsahové repo) → `detail-<název>-<šířka>.*` a `info.json#details`;
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
 - Filtry galerie (`scripts/lib/gallery-filter.mjs`): všechny se kombinují a každá změna se hned zapisuje do URL,
   aby šel odkaz poslat dál. Platí vždy, i pro každý nový filtr a pro stránku (`page`, i `page=all`).
 - `featured: true` = výběr autorky: filtr „Výběr autorky“ (`?featured=1`) a kandidáti úvodních obrazů
-  (`coverCandidates`, `FEATURED_PICK` = 10 nejnovějších vybraných): úvodní stránka, stránka roku a kolekce bez cover
-  (`FeaturedPick.astro`, `CollectionCover.astro`, úvodní obraz vede na zobrazené dílo); stránka ukáže náhodného skriptem `scripts/lib/random-pick.mjs`
+  (`coverCandidates`, `FEATURED_PICK` = 10 nejnovějších vybraných): úvodní obraz bez vlastní fotky a `cover`
+  (`Cover.astro`, vede na zobrazené dílo); stránka ukáže náhodného skriptem `scripts/lib/random-pick.mjs`
   (vložený, bez přeblikávání), `og:image` je vždy první kandidát. Web pipeline (`coverSource`) musí vybírat stejně.
 - Text o roce: `roky/<rok>.yaml` obsahového repa (`YEAR_SCHEMA`, `scripts/lib/years.mjs`), kostru pipeline založí
-  ke každému roku s díly; veřejná kopie `content/years/<rok>.yaml` (jen `description`), web `getYearDescription`.
+  ke každému roku s díly; veřejná kopie `content/years/<rok>.yaml` (`description`, `cover`, `focus`), web `getYear`.
+- Úvodní stránka: `uvod.yaml` v kořeni obsahového repa (`HOME_SCHEMA`, `scripts/lib/home.mjs`; text `description`,
+  `cover`, `focus`), kostra s původním textem `HOME_TEXT`; veřejná kopie `content/home.yaml`, web `getHome`.
 - Každý výpis děl se stránkuje, v prohlížeči nad vyfiltrovaným seznamem (`paginate`); návštěvník volí počet
   na stránku (`gallery.pageSizes`, `?perPage=`, pamatuje se v `localStorage`, ale odkaz s `perPage`/`page` má vždy
   přednost) a může stránkování jednorázově vypnout („Zobrazit vše“, `?page=all`, nepamatuje se).
@@ -62,7 +64,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   a testovací data; změna znění komentáře = staré znění do `previous`. `DOPLNIT` nikdy neodstraňovat za lidi.
 - Testovacích děl (`pavla/demo/`) musí být vždy víc, než je nejmenší počet na stránku (aspoň 15 při 12).
 - Náhledy pro sdílení (`og:image` + rozměry): dílo = `og.jpg` celý obraz na papíře (nikdy neořezávat),
-  kolekce = ořez 3:2 kolem `focus`; helpery `*ShareImage` v `src/lib/site.ts`.
+  úvodní obraz kolekce/roku/úvodu = `cover` + `focus` ořez 3:2, vlastní fotka nebo detail celé na papíře, jinak `og.jpg`
+  díla (`coverShareSource`); helpery `*ShareImage` v `src/lib/site.ts`.
 - Mockupy: scény v `mockups/scenes.yaml` (kalibrace px/cm), výběr a vykreslení `scripts/lib/mockups.mjs`.
 - Ostatní fotky: `fotky/<název>.jpg` obsahového repa → `public/photos/<název>/`, na stránce `<Photo name="…" />`;
   `aspect` ořízne na poměr stran kolem `focus: [x, y]` (%) z yaml fotky. O mně: `o-mne-uvod` (2:1) a `portret`.

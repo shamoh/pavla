@@ -25,6 +25,45 @@ const demo = {
   value: true,
 };
 
+/**
+ * `cover` of a place (collection, year, home page), see scripts/lib/covers.mjs. `scope`: which works it may name,
+ * `photo`: the file of its own cover photo; `previous`: older wordings of the comment.
+ */
+const coverField = (scope, photo, previous) => ({
+  key: 'cover',
+  doc: [
+    `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
+    `vede na to dílo. Nebo místo toho vlastní fotka ${photo} (bez odkazu). Ukáže se celý, s focus oříznutý na 3:2.`,
+    'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
+  ],
+  value: '',
+  previous: [
+    ...[photo, photo.replace(/ vedle tohoto souboru$/, ' (vedle tohoto souboru)')].map((p) => [
+      `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
+      `vede na to dílo. Nebo místo toho vlastní fotka ${p} (bez odkazu). Obojí se ořízne na 3:2 kolem focus.`,
+      'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
+    ]),
+    ...(previous ? [previous] : []),
+  ],
+});
+
+/** `focus` of a chosen cover: only with `cover`, it crops that work to 3:2; `previous`: older wordings. */
+const focusField = (previous) => ({
+  key: 'focus',
+  doc: [
+    'Jen s cover: vybraný obraz se ořízne na 3:2 a [zleva %, shora %] = co zůstane vidět, např. [50, 50] = střed,',
+    '[80, 30] = vpravo nahoře. Prázdné = obraz celý, bez ořezu. Bez cover (i s vlastní fotkou) nechat prázdné.',
+  ],
+  value: null,
+  previous: [
+    [
+      'Jen pro vybraný úvodní obraz (cover nebo vlastní fotka): ořízne se na 3:2 a [zleva %, shora %] = co zůstane',
+      'vidět, např. [50, 50] = střed, [80, 30] = vpravo nahoře. U náhodného obrazu se nepoužije.',
+    ],
+    ...(previous ? [previous] : []),
+  ],
+});
+
 export const WORK_SCHEMA = {
   name: 'work',
   header: [
@@ -151,22 +190,14 @@ export const COLLECTION_SCHEMA = {
       value: 'Pár vět o kolekci: kde a kdy obrazy vznikly.\n',
       missing: null,
     },
-    {
-      key: 'cover',
-      doc: [
-        'Úvodní obraz: id díla z kolekce (např. k3f9a) nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer.',
-        'Nepovinné: bez něj vlastní fotka _uvod.jpg, jinak nejnovější dílo. Dílo s draft: true nejde.',
-      ],
-      value: '',
-    },
-    {
-      key: 'focus',
-      doc: [
-        'Úvodní obraz se ořízne na 3:2; [zleva %, shora %] = co zůstane vidět,',
-        'např. [50, 50] = střed, [80, 30] = vpravo nahoře.',
-      ],
-      value: [50, 50],
-    },
+    coverField('z kolekce', '_uvod.jpg', [
+      'Úvodní obraz: id díla z kolekce (např. k3f9a) nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer.',
+      'Nepovinné: bez něj vlastní fotka _uvod.jpg, jinak nejnovější dílo. Dílo s draft: true nejde.',
+    ]),
+    focusField([
+      'Úvodní obraz se ořízne na 3:2; [zleva %, shora %] = co zůstane vidět,',
+      'např. [50, 50] = střed, [80, 30] = vpravo nahoře.',
+    ]),
     {
       key: 'private_note',
       doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',
@@ -204,7 +235,7 @@ export const YEAR_SCHEMA = {
   name: 'year',
   header: [
     'Rok – kostru vytvořila pipeline pro rok, ve kterém jsou obrazy (název souboru je rok).',
-    'Text je nepovinný: prázdný se na webu nezobrazí. Po vyplnění slovo DOPLNIT smaž.',
+    'Text i úvodní obraz jsou nepovinné. Po vyplnění slovo DOPLNIT smaž.',
   ],
   fields: [
     demo,
@@ -216,6 +247,39 @@ export const YEAR_SCHEMA = {
       ],
       value: '',
     },
+    coverField('z toho roku', '<rok>.jpg vedle tohoto souboru'),
+    focusField(),
+    {
+      key: 'private_note',
+      doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',
+      value: '',
+    },
+  ],
+};
+
+/** The text of the home page as it was before it moved into uvod.yaml: the value of a new skeleton. */
+export const HOME_TEXT = 'Maluji hlavně akvarelem — v kroužku, na plenérech a doma u stolu. Tady najdete, co mi právě\n'
+  + 'uschlo na papíře, i to, co už visí jinde.\n';
+
+export const HOME_SCHEMA = {
+  name: 'home',
+  header: [
+    'Úvodní stránka webu – kostru vytvořila pipeline.',
+    'Úvodní obraz je nepovinný. Po kontrole hodnot slovo DOPLNIT smaž.',
+  ],
+  fields: [
+    demo,
+    {
+      key: 'description',
+      block: true,
+      doc: [
+        'Text na úvodní stránce vedle velkého obrazu (pod nadpisem). Víc řádků pod sebou, odsazených dvěma',
+        'mezerami. Prázdné "" = bez textu.',
+      ],
+      value: HOME_TEXT,
+    },
+    coverField('z celé tvorby', 'uvod.jpg vedle tohoto souboru'),
+    focusField(),
     {
       key: 'private_note',
       doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',

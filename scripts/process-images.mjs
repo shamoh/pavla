@@ -36,6 +36,8 @@ import sharp from 'sharp';
 import YAML from 'yaml';
 import { PUBLIC_COLLECTION_FIELDS, coverSource, prepareCollections, validateCollectionCovers } from './lib/collections.mjs';
 import { PUBLIC_YEAR_FIELDS, prepareYears } from './lib/years.mjs';
+import { PUBLIC_HOME_FIELDS, prepareHome } from './lib/home.mjs';
+import { coverProblems, coverShareSource } from './lib/covers.mjs';
 import { prepareContent } from './lib/content.mjs';
 import { demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
@@ -137,15 +139,20 @@ async function web(dir, m, img, { work, picked, details, fingerprint }) {
  * Share image of a work (og:image): the whole work on the paper background, never cropped (it is art),
  * in the 3:2 frame social networks show without cropping. Returns { width, height }.
  */
-async function shareImage(file, m, img) {
+/** The whole image centred on the paper background in the share image size (images.og), as a JPEG buffer. */
+async function wholeOnPaper(m, img) {
   const { width: W, height: H, background, padding, quality } = img.og;
   const pad = Math.round(H * padding);
   const inner = await sharp(m.buf).resize({ width: W - 2 * pad, height: H - 2 * pad, fit: 'inside', withoutEnlargement: true }).toBuffer();
-  await sharp({ create: { width: W, height: H, channels: 3, background } })
+  return sharp({ create: { width: W, height: H, channels: 3, background } })
     .composite([{ input: inner, gravity: 'center' }])
     .jpeg({ quality, mozjpeg: true })
-    .toFile(file);
-  return { width: W, height: H };
+    .toBuffer();
+}
+
+async function shareImage(file, m, img) {
+  await fs.writeFile(file, await wholeOnPaper(m, img));
+  return { width: img.og.width, height: img.og.height };
 }
 
 async function instagramClean(file, m, img) {
@@ -208,6 +215,18 @@ async function photoSet(masterPath, dir, img, extra, { force, log, label }) {
 }
 
 /** Removes the sub-folders of `root` not in `wanted` (and `root` itself when it ends up empty). */
+/** Removes files in `root` that are not in `wanted` (names), and `root` itself when it ends up empty. */
+async function pruneFiles(root, wanted, rel, pruned) {
+  if (!(await exists(root))) return;
+  for (const f of await fs.readdir(root)) {
+    if (!wanted.has(f)) {
+      await fs.rm(path.join(root, f));
+      pruned.push(`${rel}/${f}`);
+    }
+  }
+  if ((await fs.readdir(root)).length === 0) await fs.rmdir(root);
+}
+
 async function pruneDirs(root, wanted, rel, pruned) {
   if (!(await exists(root))) return;
   for (const e of await fs.readdir(root, { withFileTypes: true })) {
@@ -274,6 +293,26 @@ export async function run({
 } = {}) {
   config ??= YAML.parse(await fs.readFile(path.join(siteDir, 'site.config.yaml'), 'utf8'));
   const img = config.images;
+  /**
+   * Share image of a chosen cover ({ source, focus } from coverShareSource): cropped to 3:2 (images.og) around focus,
+   * or without focus the whole image on paper like the share image of a work; written only when it changed.
+   */
+  const shareCrop = async ({ source, focus }, file, label) => {
+    const m = await loadMaster(await fs.readFile(source));
+    const buf = focus
+      ? await sharp(m.buf)
+        .extract(focusCrop(m.width, m.height, img.og.width / img.og.height, focus))
+        .resize(img.og.width, img.og.height)
+        .jpeg({ quality: img.og.quality, mozjpeg: true })
+        .toBuffer()
+      : await wholeOnPaper(m, img);
+    const old = await fs.readFile(file).catch(() => null);
+    if (!old || !old.equals(buf)) {
+      log(`→ ${label}`);
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(file, buf);
+    }
+  };
   contentDir ??= process.env.CONTENT_DIR || img.contentDir;
   if (!contentDir) throw new Error('Content location not set: put CONTENT_DIR=<path to the content repository> into .env');
   contentDir = path.resolve(siteDir, contentDir);
@@ -291,14 +330,21 @@ export async function run({
   const years = await prepareYears(contentDir, works.map((w) => w.year).filter(Boolean), { demo: dataset === 'demo' });
   created.push(...years.created);
   updated.push(...years.updated);
+  const home = await prepareHome(contentDir, { demo: dataset === 'demo' });
+  created.push(...home.created);
+  updated.push(...home.updated);
   created.forEach((p) => log(`+ new metadata skeleton: ${p}`));
   assigned.forEach((p) => log(`+ id assigned: ${p}`));
   updated.forEach((p) => log(`~ metadata brought in line with the schema: ${p}`));
   pending.forEach((p) => log(`! published, still marked DOPLNIT: ${p}`));
   const problems = [
-    ...scanProblems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems,
+    ...scanProblems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems, ...home.problems,
+    ...years.years.flatMap((y) => coverProblems({
+      where: y.yamlPath, data: y.data, photoPath: y.coverPath, works, inScope: (w) => w.year === y.year, scope: y.year,
+    })),
+    ...(home.home ? coverProblems({ where: home.home.yamlPath, data: home.home.data, photoPath: home.home.coverPath, works }) : []),
     ...validateCollectionCovers(collections.collections, works),
-    ...demoProblems({ works, collections: collections.collections, photos: photos.photos, years: years.years }, dataset),
+    ...demoProblems({ works, collections: collections.collections, photos: photos.photos, years: years.years, home: home.home }, dataset),
   ];
   if (problems.length) {
     return { ok: false, problems, created, assigned, updated, pending, processed: 0, skipped: 0, missing: [], pruned: [], prepared: prepareOnly };
@@ -431,20 +477,7 @@ export async function run({
     const source = coverSource(c, works);
     if (!source) continue;
     ogWanted.add(`${c.slug}.jpg`);
-    const m = await loadMaster(await fs.readFile(source));
-    const focus = Array.isArray(c.data.focus) ? c.data.focus : [50, 50];
-    const buf = await sharp(m.buf)
-      .extract(focusCrop(m.width, m.height, img.og.width / img.og.height, focus))
-      .resize(img.og.width, img.og.height)
-      .jpeg({ quality: img.og.quality, mozjpeg: true })
-      .toBuffer();
-    const file = path.join(ogRoot, `${c.slug}.jpg`);
-    const old = await fs.readFile(file).catch(() => null);
-    if (!old || !old.equals(buf)) {
-      log(`→ og kolekce/${c.slug}`);
-      await fs.mkdir(ogRoot, { recursive: true });
-      await fs.writeFile(file, buf);
-    }
+    await shareCrop(source, path.join(ogRoot, `${c.slug}.jpg`), `og kolekce/${c.slug}`);
   }
   if (!only.length) {
     if (await exists(ogRoot)) {
@@ -473,11 +506,31 @@ export async function run({
     await pruneDirs(coversRoot, new Set(collections.collections.filter((c) => c.coverPath).map((c) => c.slug)), 'public/collections', pruned);
   }
 
-  // Years: content/years/<year>.yaml (the public text of the author about the year).
+  // Years: content/years/<year>.yaml (text and cover), public/years/<year>/ (own cover photo),
+  // public/og/years/<year>.jpg (share image of a chosen cover, 3:2 around focus).
   const yearsRoot = path.join(siteDir, 'content/years');
+  const yearPhotosRoot = path.join(siteDir, 'public/years');
+  const yearOgRoot = path.join(siteDir, 'public/og/years');
+  const yearOgWanted = new Set();
   for (const y of years.years) {
     if (only.length && !only.includes(y.year)) continue;
     await writeIfChanged(path.join(yearsRoot, `${y.year}.yaml`), publicCopy(y.data, PUBLIC_YEAR_FIELDS));
+    const dir = path.join(yearPhotosRoot, y.year);
+    if (!y.coverPath) {
+      if (await exists(dir)) {
+        await fs.rm(dir, { recursive: true, force: true });
+        pruned.push(`public/years/${y.year}/`);
+      }
+    } else if (await photoSet(y.coverPath, dir, img, { alt: `Tvorba ${y.year}` }, { force, log, label: `roky/${y.year}` })) processed++;
+    else skipped++;
+    const source = coverShareSource({ photoPath: y.coverPath, data: y.data, works: works.filter((w) => w.year === y.year) });
+    if (!source) continue;
+    yearOgWanted.add(`${y.year}.jpg`);
+    await shareCrop(source, path.join(yearOgRoot, `${y.year}.jpg`), `og roky/${y.year}`);
+  }
+  if (!only.length) {
+    await pruneDirs(yearPhotosRoot, new Set(years.years.filter((y) => y.coverPath).map((y) => y.year)), 'public/years', pruned);
+    await pruneFiles(yearOgRoot, yearOgWanted, 'public/og/years', pruned);
   }
   if (!only.length && (await exists(yearsRoot))) {
     const wantedYears = new Set(years.years.map((y) => `${y.year}.yaml`));
@@ -488,6 +541,27 @@ export async function run({
       }
     }
     if ((await fs.readdir(yearsRoot)).length === 0) await fs.rmdir(yearsRoot);
+  }
+
+  // Home page: content/home.yaml (text and cover), public/home/ (own cover photo), public/og/home.jpg (chosen cover).
+  if (home.home && !only.length) {
+    const h = home.home;
+    await writeIfChanged(path.join(siteDir, 'content/home.yaml'), publicCopy(h.data, PUBLIC_HOME_FIELDS));
+    const dir = path.join(siteDir, 'public/home');
+    if (!h.coverPath) {
+      if (await exists(dir)) {
+        await fs.rm(dir, { recursive: true, force: true });
+        pruned.push('public/home/');
+      }
+    } else if (await photoSet(h.coverPath, dir, img, { alt: config.site?.title ?? '' }, { force, log, label: 'uvod' })) processed++;
+    else skipped++;
+    const source = coverShareSource({ photoPath: h.coverPath, data: h.data, works });
+    const ogFile = path.join(siteDir, 'public/og/home.jpg');
+    if (source) await shareCrop(source, ogFile, 'og uvod');
+    else if (await exists(ogFile)) {
+      await fs.rm(ogFile);
+      pruned.push('public/og/home.jpg');
+    }
   }
   pruned.forEach((p) => log(`- removed ${p}`));
 

@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
 import { coverCandidates, detailKey, parseWorkKey } from '../../scripts/lib/works.mjs';
-import { parseCoverRef } from '../../scripts/lib/collections.mjs';
+import { parseCoverRef } from '../../scripts/lib/covers.mjs';
+import { HOME_TEXT } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
 import { measurementIdFor } from '../../scripts/lib/analytics.mjs';
 import { execSync } from 'node:child_process';
@@ -32,6 +33,16 @@ export interface Detail extends ImageSet { name: string }
 
 /** Image for link previews (og:image) with its dimensions, so social networks can show it right away. */
 export interface ShareImage { src: string; width: number; height: number }
+
+/**
+ * The cover of a collection, a year or the home page (resolveCover). `photo` (own photo) and `work` (`cover`) are
+ * chosen, `random` takes turns among the newest works of the author's selection. All are shown whole; only a `work`
+ * with `focus` is cropped to 3:2 around it. `og`: the share image the pipeline made for it, if any.
+ */
+export type Cover =
+  | { kind: 'photo'; base: string; image: ImageSet & { alt: string }; og?: string }
+  | { kind: 'work'; work: Work; detail?: Detail; focus?: [number, number]; og?: string }
+  | { kind: 'random'; works: Work[] };
 
 export interface Work {
   id: string;
@@ -64,19 +75,8 @@ export interface Collection {
   slug: string;
   title: string;
   description?: string;
-  /** Cover photo from public/collections/<slug>/, if the collection has one. */
-  cover: (ImageSet & { alt: string }) | null;
-  /**
-   * The work shown as cover when there is no cover photo: `cover: <id>` from the YAML, otherwise the newest work of the
-   * author's selection (featured), otherwise the newest work. Also the share image of the collection.
-   */
-  coverWork: Work;
-  /** Works that take turns as the cover, one at random per visit (coverCandidates); just coverWork with `cover:`. */
-  coverWorks: Work[];
-  /** Detail photo of coverWork shown instead of the whole work (`cover: <id>#<detail>`). */
-  coverDetail?: Detail;
-  /** Point kept in view when the cover is cropped: [x, y] in % from the left and top edge. */
-  focus: [number, number];
+  /** The cover (resolveCover): its own photo, `cover`, or random from the author's selection. */
+  cover: Cover;
   /** Published works of the collection, newest first. */
   works: Work[];
 }
@@ -153,15 +153,8 @@ export function getCollections(): Collection[] {
     const data = YAML.parse(fs.readFileSync(path.join(dir, file), 'utf8')) ?? {};
     const members = works.filter((w) => w.collection === slug);
     if (!members.length) continue;
-    const coverPath = path.join(dataRoot, 'public/collections', slug, 'info.json');
-    const cover = fs.existsSync(coverPath) ? JSON.parse(fs.readFileSync(coverPath, 'utf8')) : null;
-    const ref = data.cover ? parseCoverRef(data.cover) : null;
-    const candidates = ref ? members.filter((w) => w.id === ref.id) : coverCandidates(members);
-    const coverWorks = candidates.length ? candidates : [members[0]];
-    const coverWork = coverWorks[0];
-    const coverDetail = ref?.detail ? coverWork.image.details?.find((d) => d.name === ref.detail) : undefined;
-    const focus: [number, number] = Array.isArray(data.focus) && data.focus.length === 2 ? data.focus : [50, 50];
-    collections.push({ slug, title: data.title ?? slug, description: data.description, cover, coverWork, coverWorks, coverDetail, focus, works: members });
+    const cover = resolveCover(members, data, `collections/${slug}`, `og/collections/${slug}.jpg`, data.title ?? slug)!;
+    collections.push({ slug, title: data.title ?? slug, description: data.description, cover, works: members });
   }
   collectionCache = collections.sort((a, b) => b.works[0].date.getTime() - a.works[0].date.getTime());
   return collectionCache;
@@ -198,12 +191,60 @@ export const version = buildVersion(new Date(), currentCommit());
 export const analyticsId = measurementIdFor(config.analytics, { production: import.meta.env.PROD, demo: Boolean(process.env.SITE_DATA_DIR) });
 
 /** Years that have at least one published work, newest first. */
-/** The author's text about a year (content/years/<year>.yaml), trimmed; undefined when there is none. */
-export function getYearDescription(year: number): string | undefined {
+/**
+ * The cover of a place (a collection, a year, the home page), the same rule as the pipeline (scripts/lib/covers.mjs):
+ * its own photo (public/<photoDir>/), otherwise `cover: <id>` or `<id>#<detail>` among `works` (cropped to 3:2 only
+ * with `focus`), otherwise one of the newest works of the author's selection at random. `ogFile`: the share image the
+ * pipeline makes for a chosen cover. Null only without any work.
+ */
+export function resolveCover(works: Work[], data: any, photoDir: string, ogFile: string, alt: string): Cover | null {
+  const focus = Array.isArray(data?.focus) && data.focus.length === 2 ? (data.focus as [number, number]) : undefined;
+  const og = fs.existsSync(path.join(dataRoot, 'public', ogFile)) ? `/${ogFile}` : undefined;
+  const info = path.join(dataRoot, 'public', photoDir, 'info.json');
+  if (fs.existsSync(info)) {
+    const photo = JSON.parse(fs.readFileSync(info, 'utf8'));
+    return { kind: 'photo', base: `/${photoDir}`, image: { ...photo, alt: photo.alt || alt }, og };
+  }
+  const ref = typeof data?.cover === 'string' && data.cover.trim() ? parseCoverRef(data.cover) : null;
+  const work = ref && works.find((w) => w.id === ref.id);
+  if (work) {
+    const detail = ref!.detail ? work.image.details?.find((d) => d.name === ref!.detail) : undefined;
+    return { kind: 'work', work, detail, focus, og };
+  }
+  const candidates = coverCandidates(works);
+  return candidates.length ? { kind: 'random', works: candidates } : null;
+}
+
+/** The id of the work a cover shows first (the one in the HTML), for lists that should not repeat it. */
+export const coverWorkId = (c: Cover | null) => (c?.kind === 'work' ? c.work.id : c?.kind === 'random' ? c.works[0].id : undefined);
+
+/** Share image of a cover: the pipeline's 3:2 crop of a chosen cover, otherwise the share image of the (first) work. */
+export function coverShareImage(c: Cover | null): ShareImage | undefined {
+  if (!c) return undefined;
+  if (c.kind !== 'random' && c.og) return { src: c.og, width: config.images.og.width, height: config.images.og.height };
+  if (c.kind === 'work') return workShareImage(c.work);
+  if (c.kind === 'random') return workShareImage(c.works[0]);
+  return undefined;
+}
+
+/** A year page: the author's text about the year (content/years/<year>.yaml) and its cover. */
+export function getYear(year: number): { description?: string; cover: Cover | null } {
   const file = path.join(dataRoot, 'content/years', `${year}.yaml`);
-  if (!fs.existsSync(file)) return undefined;
-  const text = (YAML.parse(fs.readFileSync(file, 'utf8')) ?? {}).description;
-  return typeof text === 'string' && text.trim() ? text.trim() : undefined;
+  const data = fs.existsSync(file) ? YAML.parse(fs.readFileSync(file, 'utf8')) ?? {} : {};
+  const text = typeof data.description === 'string' && data.description.trim() ? data.description.trim() : undefined;
+  const works = getWorks().filter((w) => w.year === year);
+  return { description: text, cover: resolveCover(works, data, `years/${year}`, `og/years/${year}.jpg`, `Tvorba ${year}`) };
+}
+
+/**
+ * The home page: its text (content/home.yaml; without the file, e.g. before the first pipeline run, the text the page
+ * always had) and its cover.
+ */
+export function getHome(): { description?: string; cover: Cover | null } {
+  const file = path.join(dataRoot, 'content/home.yaml');
+  const data = fs.existsSync(file) ? YAML.parse(fs.readFileSync(file, 'utf8')) ?? {} : { description: HOME_TEXT };
+  const text = typeof data.description === 'string' && data.description.trim() ? data.description.trim() : undefined;
+  return { description: text, cover: resolveCover(getWorks(), data, 'home', 'og/home.jpg', site.title) };
 }
 
 export const getYears = () => [...new Set(getWorks().map((w) => w.year))].sort((a, b) => b - a);
@@ -221,13 +262,6 @@ export function detailCaption(work: Work, name: string): string {
   return entry ? String(entry[1]).trim() : '';
 }
 
-/** Largest generated JPEG of a collection's cover (for og:image). */
-export function collectionCoverImage(c: Collection): string {
-  if (c.cover) return `/collections/${c.slug}/${c.cover.widths[c.cover.widths.length - 1]}.jpg`;
-  if (c.coverDetail) return `${workImagePath(c.coverWork)}/detail-${c.coverDetail.name}-${c.coverDetail.widths[c.coverDetail.widths.length - 1]}.jpg`;
-  return `${workImagePath(c.coverWork)}/1600.jpg`;
-}
-
 /**
  * Share image (og:image) of a work: og.jpg from the pipeline (the whole work on paper, 3:2),
  * falling back to the largest web size up to 1600 px while it does not exist.
@@ -238,21 +272,8 @@ export function workShareImage(w: Work): ShareImage {
   return { src: `${workImagePath(w)}/${width}.jpg`, width, height: Math.round((w.image.height * width) / w.image.width) };
 }
 
-/** Share image of a list of works (a year): its newest work of the author's selection (featured), otherwise its newest. */
-export const worksShareImage = (works: Work[]): ShareImage | undefined => {
-  const w = coverCandidates(works)[0];
-  return w && workShareImage(w);
-};
-
-/**
- * Share image (og:image) of a collection: the cover cropped to 3:2 around `focus` by the pipeline
- * (public/og/collections/<slug>.jpg), falling back to the share image of its cover work.
- */
-export function collectionShareImage(c: Collection): ShareImage {
-  const src = `/og/collections/${c.slug}.jpg`;
-  if (!fs.existsSync(path.join(dataRoot, 'public', src))) return workShareImage(c.coverWork);
-  return { src, width: config.images.og.width, height: config.images.og.height };
-}
+/** Share image (og:image) of a collection: its chosen cover cropped to 3:2, otherwise its (random) cover work. */
+export const collectionShareImage = (c: Collection): ShareImage | undefined => coverShareImage(c.cover);
 
 /** Page of a collection: /tvorba/kolekce/<slug>/ */
 export const collectionUrl = (slug: string) => url(`/tvorba/kolekce/${slug}/`);

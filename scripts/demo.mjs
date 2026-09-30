@@ -21,6 +21,9 @@ import { run } from './process-images.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT_SUBDIRS = ['tvorba', 'fotky', 'roky'];
+/** Descriptions in the root of the content (the home page). */
+const CONTENT_FILES = ['uvod.yaml'];
+const isContent = (f) => CONTENT_SUBDIRS.includes(f.split(path.sep)[0]) || CONTENT_FILES.includes(f);
 /** Generated folders of public/ that belong to the data, not to the site itself. */
 const GENERATED_PUBLIC = new Set(['works', 'photos', 'collections', 'og']);
 
@@ -59,9 +62,10 @@ export async function prepareDemo({
 
   // 1. content: fresh copies of the YAML files and the rendered images (exports stay, the pipeline prunes them)
   // (kolekce/ is the former home of collections, left over from older runs)
-  for (const sub of [...CONTENT_SUBDIRS, 'kolekce']) await fs.rm(path.join(contentDir, sub), { recursive: true, force: true });
+  for (const sub of [...CONTENT_SUBDIRS, ...CONTENT_FILES, 'kolekce']) await fs.rm(path.join(contentDir, sub), { recursive: true, force: true });
+  for (const f of await fs.readdir(contentDir).catch(() => [])) if (/^uvod\.(jpe?g|png|webp)$/.test(f)) await fs.rm(path.join(contentDir, f));
   await fs.mkdir(path.join(contentDir, 'tvorba'), { recursive: true });
-  const yamls = (await listYaml(demoDir)).filter((f) => CONTENT_SUBDIRS.includes(f.split(path.sep)[0]));
+  const yamls = (await listYaml(demoDir)).filter(isContent);
   for (const f of yamls) {
     await fs.mkdir(path.dirname(path.join(contentDir, f)), { recursive: true });
     await fs.copyFile(path.join(demoDir, f), path.join(contentDir, f));
@@ -81,7 +85,7 @@ export async function prepareDemo({
 
   // 4. ids and skeletons written by the pipeline go back to demo/, so they stay stable
   for (const f of await listYaml(contentDir)) {
-    if (!CONTENT_SUBDIRS.includes(f.split(path.sep)[0])) continue;
+    if (!isContent(f)) continue;
     const text = await fs.readFile(path.join(contentDir, f), 'utf8');
     const source = await fs.readFile(path.join(demoDir, f), 'utf8').catch(() => null);
     if (source !== text) {

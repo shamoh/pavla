@@ -1,32 +1,27 @@
 ---
 import Base from '../layouts/Base.astro';
 import WorkCard from '../components/WorkCard.astro';
-import FeaturedPick from '../components/FeaturedPick.astro';
-import { getWorks, site, url, workShareImage } from '../lib/site';
-import { coverCandidates } from '../../scripts/lib/works.mjs';
+import Cover from '../components/Cover.astro';
+import { coverShareImage, coverWorkId, getHome, getWorks, site, url } from '../lib/site';
 import { hiddenInList } from '../../scripts/lib/random-pick.mjs';
 
 const RECENT = 6;
 const works = getWorks();
-// The cover: one of the newest works of the author's selection (featured) at random per visit, the first one without
-// JavaScript and as the share image (scripts/lib/random-pick.mjs).
-const candidates = coverCandidates(works);
-const hero = candidates[0];
+// Text and cover from uvod.yaml of the content repository (content/home.yaml): its own photo, `cover`, or one of the
+// newest works of the author's selection at random per visit.
+const home = getHome();
 // "Nejnovější" below: the newest works except the one on the cover; one more is rendered for when the cover is one of them.
 const recent = works.slice(0, RECENT + 1);
-const recentHidden = hiddenInList(recent.map((w) => w.id), hero?.id, RECENT);
+const recentHidden = hiddenInList(recent.map((w) => w.id), coverWorkId(home.cover), RECENT);
 ---
-<Base image={hero && workShareImage(hero)}>
-  {hero ? (
+<Base image={coverShareImage(home.cover)}>
+  {home.cover ? (
     <section class="hero">
-      <FeaturedPick works={candidates} sizes="(max-width: 900px) 100vw, 60vw" eager exclude="#recent" show={RECENT} />
+      <Cover cover={home.cover} sizes="(max-width: 900px) 100vw, 60vw" eager exclude="#recent" show={RECENT} />
       <div class="hero-text">
         <p class="eyebrow">{site.tagline}</p>
         <h1>Barvy, voda <br />a trochu náhody</h1>
-        <p class="muted">
-          Maluji hlavně akvarelem — v kroužku, na plenérech a doma u stolu. Tady najdete, co mi právě
-          uschlo na papíře, i to, co už visí jinde.
-        </p>
+        {home.description ? <p class="muted desc">{home.description}</p> : null}
         <a class="btn" href={url('/tvorba')}>Prohlédnout tvorbu</a>
       </div>
     </section>
@@ -53,6 +48,7 @@ const recentHidden = hiddenInList(recent.map((w) => w.id), hero?.id, RECENT);
 <style>
   .hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: clamp(24px, 5vw, 72px); align-items: center; margin-bottom: 96px; }
   .hero-text h1 { margin-top: 0.1em; }
+  .desc { white-space: pre-line; }
   .hero-text .btn { margin-top: 12px; }
   .section-head { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: 24px; margin-bottom: 28px; }
   .section-head h2 { margin: 0; }

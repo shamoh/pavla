@@ -32,26 +32,20 @@ test('validateCollectionCovers reports a cover next to a cover photo', () => {
   assert.match(check({ cover: 'vjr39#1-kvety' }, '/x/kolekce/zahrada.jpg')[0], /both set, keep one/);
 });
 
-test('coverSource picks the same image as the site: own photo, cover work or detail, newest work', async () => {
+test('coverSource: the share image source of a collection (own photo, cropped work, detail); none when random', async () => {
   const { coverSource } = await import('./collections.mjs');
   const all = [
     { id: 'vjr39', collection: 'zahrada', data: { date: '2025-05-28' }, masterPath: '/m/pivonky.jpg', details: [{ name: '1-kvety', path: '/m/pivonky/1-kvety.jpg' }] },
     { id: 'q6bn6', collection: 'zahrada', data: { date: '2025-08-20' }, masterPath: '/m/kytice.jpg', details: [] },
-    { id: 'drft1', collection: 'zahrada', data: { date: '2025-12-01', draft: true }, masterPath: '/m/draft.jpg', details: [] },
     { id: 'jinde', collection: 'jina', data: { date: '2025-12-02' }, masterPath: '/m/jinde.jpg', details: [] },
   ];
   const c = (data, coverPath = null) => ({ slug: 'zahrada', data, coverPath });
-  assert.equal(coverSource(c({}, '/k/zahrada.jpg'), all), '/k/zahrada.jpg');
-  assert.equal(coverSource(c({ cover: 'vjr39' }), all), '/m/pivonky.jpg');
-  assert.equal(coverSource(c({ cover: 'vjr39#1 Květy' }), all), '/m/pivonky/1-kvety.jpg');
-  // newest published work of the collection (not the draft, not another collection)
-  assert.equal(coverSource(c({}), all), '/m/kytice.jpg');
-  assert.equal(coverSource({ slug: 'prazdna', data: {}, coverPath: null }, all), null);
-  assert.equal(coverSource(c({}), [{ ...all[1], masterPath: null }]), null);
-  // without cover: the newest work of the author's selection (featured) wins over the newest work
-  const featured = all.map((w) => (w.id === 'vjr39' ? { ...w, data: { ...w.data, featured: true } } : w));
-  assert.equal(coverSource(c({}), featured), '/m/pivonky.jpg');
-  assert.equal(coverSource(c({ cover: 'q6bn6' }), featured), '/m/kytice.jpg', 'an explicit cover still decides');
+  assert.deepEqual(coverSource(c({}, '/k/zahrada.jpg'), all), { source: '/k/zahrada.jpg', focus: null });
+  assert.deepEqual(coverSource(c({ cover: 'vjr39', focus: [50, 40] }), all), { source: '/m/pivonky.jpg', focus: [50, 40] });
+  assert.equal(coverSource(c({ cover: 'vjr39' }), all), null, 'a whole work shares its own og.jpg');
+  assert.deepEqual(coverSource(c({ cover: 'vjr39#1 Květy' }), all), { source: '/m/pivonky/1-kvety.jpg', focus: null });
+  assert.equal(coverSource(c({}), all), null);
+  assert.equal(coverSource(c({ cover: 'jinde', focus: [1, 1] }), all), null, 'a work of another collection is not its cover');
 });
 
 test('titleFromFolder moves a leading year (or range) to the end of the title', async () => {

@@ -12,8 +12,8 @@ import YAML from 'yaml';
 import { COLLECTION_META, WORKS_SUBDIR, keepInLine } from './content.mjs';
 import { skeleton } from './metadata-yaml.mjs';
 import { COLLECTION_SCHEMA, fieldKeys } from './schema.mjs';
-import { isValidFocus } from './photos.mjs';
-import { coverCandidates, detailKey, isValidSlug, titleFromName } from './works.mjs';
+import { coverProblems, coverShareSource, parseCoverRef } from './covers.mjs';
+import { isValidSlug, titleFromName } from './works.mjs';
 
 /** Former home of collections; now they are folders in tvorba/. */
 export const LEGACY_COLLECTIONS_SUBDIR = 'kolekce';
@@ -89,53 +89,24 @@ export async function prepareCollections(contentDir, folders = []) {
   return { collections, created, updated, problems };
 }
 
-/** "vjr39#1-kvety" → { id: "vjr39", detail: "1-kvety" }; "vjr39" → { id: "vjr39", detail: null }. */
-export function parseCoverRef(cover) {
-  const [id, ...rest] = String(cover).trim().split('#');
-  return { id: id.trim(), detail: rest.length ? detailKey(rest.join('#')) : null };
-}
+export { parseCoverRef };
 
 /**
- * Checks `cover` and `focus` of every collection. `cover` must be a published work of that collection
- * (`<id>`) or one of its detail photos (`<id>#<detail photo name>`), and a collection cannot have both
+ * Checks `cover` and `focus` of every collection (scripts/lib/covers.mjs): `cover` must be a published work of that
+ * collection (`<id>`) or one of its detail photos (`<id>#<detail photo name>`), and a collection cannot have both
  * `cover` and its own cover photo. Works: { id, data, details } from prepareContent.
  */
 export function validateCollectionCovers(collections, works) {
-  const problems = [];
-  for (const c of collections) {
-    const where = c.yamlPath ?? collectionMetaPath(c.dir ?? c.slug);
-    if (c.data?.focus !== undefined && c.data.focus !== null && !isValidFocus(c.data.focus)) {
-      problems.push(`${where}: focus must be [x, y] in % (0–100), e.g. focus: [50, 30]`);
-    }
-    const cover = c.data?.cover;
-    if (cover === undefined || cover === null || cover === '') continue;
-    const { id, detail } = parseCoverRef(cover);
-    const work = works.find((w) => w.id === id);
-    if (c.coverPath) problems.push(`${where}: cover ${cover} and the cover photo ${path.basename(c.coverPath)} both set, keep one`);
-    else if (!work) problems.push(`${where}: cover ${cover}: ${id} is not the id of any work`);
-    else if (work.collection !== c.slug) problems.push(`${where}: cover ${cover} (${work.data.title}) is not in this collection`);
-    else if (work.data.draft) problems.push(`${where}: cover ${cover} (${work.data.title}) is a draft, it is not on the web`);
-    else if (detail !== null && !(work.details ?? []).some((d) => d.name === detail)) {
-      problems.push(`${where}: cover ${cover}: ${work.data.title} has no detail photo "${detail}" (folder ${WORKS_SUBDIR}/${work.dir ? `${work.dir}/` : ''}${work.slug}/)`);
-    }
-  }
-  return problems;
+  return collections.flatMap((c) => coverProblems({
+    where: c.yamlPath ?? collectionMetaPath(c.dir ?? c.slug),
+    data: c.data,
+    photoPath: c.coverPath,
+    works,
+    inScope: (w) => w.collection === c.slug,
+    scope: 'this collection',
+  }));
 }
 
-/**
- * Master file of the image a collection shows as its cover, the same choice the site makes:
- * its own photo, otherwise `cover` (a work or `<id>#<detail>`), otherwise its newest published work.
- * Works: { id, data, masterPath, details: [{ name, path }] } from prepareContent. Null when unknown.
- */
-export function coverSource(collection, works) {
-  if (collection.coverPath) return collection.coverPath;
-  const members = works
-    .filter((w) => w.collection === collection.slug && !w.data.draft)
-    .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
-  const ref = collection.data?.cover ? parseCoverRef(collection.data.cover) : null;
-  // without an explicit cover: the newest work of the author's selection (featured), otherwise the newest work
-  const work = ref ? members.find((w) => w.id === ref.id) : coverCandidates(members, (w) => w.data.featured === true)[0];
-  if (!work) return null;
-  if (ref?.detail) return work.details?.find((d) => d.name === ref.detail)?.path ?? null;
-  return work.masterPath ?? null;
-}
+/** Source of a collection's share image (coverShareSource in scripts/lib/covers.mjs), null when the site uses a work's. */
+export const coverSource = (collection, works) =>
+  coverShareSource({ photoPath: collection.coverPath, data: collection.data, works: works.filter((w) => w.collection === collection.slug) });

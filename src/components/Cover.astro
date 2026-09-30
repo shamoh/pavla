@@ -1,0 +1,51 @@
+---
+// The cover of a collection, a year or the home page (resolveCover in src/lib/site.ts), always the whole image, except:
+//   - chosen (own photo, or `cover`: a work or its detail photo): one image; `cover` with `focus` cropped to 3:2,
+//   - random: one of the newest works of the author's selection at random per visit. The first one is
+//     in the HTML, the others hidden with lazy images; the inline script right after shows a random one before the
+//     first paint (scripts/lib/random-pick.mjs). `exclude` + `show`: a list of cards (data-id) not to repeat it in.
+// `link`: a work links to its page (not in the collections overview, where the whole item links to the collection).
+import Img from './Img.astro';
+import Picture from './Picture.astro';
+import { type Cover, workImagePath, workUrl } from '../lib/site';
+import { randomPickScript } from '../../scripts/lib/random-pick.mjs';
+
+interface Props { cover: Cover; sizes: string; eager?: boolean; link?: boolean; exclude?: string; show?: number; class?: string }
+const { cover, sizes, eager, link = true, exclude, show, class: cls } = Astro.props;
+const crop = cover.kind === 'photo'
+  ? { base: cover.base, prefix: '', set: cover.image, alt: cover.image.alt, href: undefined, id: undefined }
+  : cover.kind === 'work'
+    ? cover.detail
+      ? { base: workImagePath(cover.work), prefix: `detail-${cover.detail.name}-`, set: cover.detail, alt: `${cover.work.title}, detail`, href: workUrl(cover.work), id: cover.work.id }
+      : { base: workImagePath(cover.work), prefix: '', set: cover.work.image, alt: `${cover.work.title} — ${cover.work.technique}`, href: workUrl(cover.work), id: cover.work.id }
+    : null;
+const focus = cover.kind === 'work' && cover.focus ? `--focus: ${cover.focus[0]}% ${cover.focus[1]}%` : undefined;
+const href = crop && link ? crop.href : undefined;
+---
+{crop ? (
+  <div class:list={['cover', 'chosen', { cropped: focus }, cls]} style={focus} data-id={crop.id}>
+    {href ? (
+      <a class="frame" href={href}><Img base={crop.base} prefix={crop.prefix} image={crop.set} alt={crop.alt} sizes={sizes} eager={eager} /></a>
+    ) : (
+      <div class="frame"><Img base={crop.base} prefix={crop.prefix} image={crop.set} alt={crop.alt} sizes={sizes} eager={eager} /></div>
+    )}
+  </div>
+) : cover.kind === 'random' ? (
+  <div class:list={['cover', 'whole', cls]} data-pick-exclude={exclude} data-pick-show={show}>
+    {cover.works.map((w, i) =>
+      link ? (
+        <a class="pick" href={workUrl(w)} data-pick data-id={w.id} hidden={i > 0}><Picture work={w} sizes={sizes} eager={eager && i === 0} /></a>
+      ) : (
+        <div class="pick" data-pick data-id={w.id} hidden={i > 0}><Picture work={w} sizes={sizes} eager={eager && i === 0} /></div>
+      ),
+    )}
+  </div>
+) : null}
+{cover.kind === 'random' && cover.works.length > 1 && <script is:inline set:html={randomPickScript} />}
+<style>
+  .cover :global(picture) { box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 24px 48px -24px rgba(0,0,0,.3); }
+  .cover .pick, .cover .frame { display: block; }
+  .cropped { aspect-ratio: 3 / 2; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 24px 48px -24px rgba(0,0,0,.3); }
+  .cropped .frame, .cropped :global(picture) { height: 100%; box-shadow: none; }
+  .cropped :global(img) { width: 100%; height: 100%; object-fit: cover; object-position: var(--focus); }
+</style>

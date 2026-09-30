@@ -1,7 +1,7 @@
 ---
 // Overview of all collections: /tvorba/kolekce/ (the one with the newest work first).
 import Base from '../../../layouts/Base.astro';
-import CollectionCover from '../../../components/CollectionCover.astro';
+import Cover from '../../../components/Cover.astro';
 import { collectionShareImage, collectionUrl, getCollections, url } from '../../../lib/site';
 
 const collections = getCollections();
@@ -14,7 +14,7 @@ const plural = (n: number) => (n === 1 ? 'dílo' : n >= 2 && n <= 4 ? 'díla' : 
   <div class="list">
     {collections.map((c, i) => (
       <a class="item" href={collectionUrl(c.slug)}>
-        <CollectionCover collection={c} sizes="(max-width: 700px) 100vw, 50vw" eager={i < 2} />
+        <Cover cover={c.cover} sizes="(max-width: 700px) 100vw, 50vw" eager={i < 2} link={false} class="collection-cover" />
         <span class="title">{c.title}</span>
         <span class="muted">{c.works.length} {plural(c.works.length)}</span>
         {c.description && <span class="desc">{c.description}</span>}

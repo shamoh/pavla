@@ -93,7 +93,7 @@ test('second run skips unchanged works; --force regenerates', async () => {
 test('a new image without metadata becomes a draft with generated outputs', async () => {
   await addWork('2026', 'novy', undefined);
   const r = await run(opts({ today: new Date('2026-05-01') }));
-  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml']);
+  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml', 'uvod.yaml']);
   const key = `novy-${await idOf('2026', 'novy')}`;
   assert.equal(YAML.parse(await fs.readFile(path.join(siteDir, 'content/works/2026', `${key}.yaml`), 'utf8')).draft, true);
   assert.ok(await exists(path.join(siteDir, 'public/works/2026', key, 'info.json')));
@@ -417,7 +417,7 @@ test('collections: a folder in tvorba/ is a collection, gets a skeleton titled a
   await setCollection('2026-plener-sumava', 'title: Plenér Šumava 2026\ndescription: Týden na Kvildě.\nprivate_note: tajné\n');
   await run(opts());
   const copy = await fs.readFile(path.join(siteDir, 'content/collections/2026-plener-sumava.yaml'), 'utf8');
-  assert.deepEqual(YAML.parse(copy), { title: 'Plenér Šumava 2026', description: 'Týden na Kvildě.', cover: '', focus: [50, 50] });
+  assert.deepEqual(YAML.parse(copy), { title: 'Plenér Šumava 2026', description: 'Týden na Kvildě.', cover: '', focus: null });
   assert.doesNotMatch(copy, /tajné/);
   // no cover photo, no cover folder
   assert.ok(!(await exists(path.join(siteDir, 'public/collections/2026-plener-sumava'))));
@@ -718,14 +718,16 @@ test('collections: cover can be a detail photo of a work; focus reaches the publ
   assert.match(r.problems.join('\n'), /tvorba\/plener\/_kolekce\.yaml: focus must be \[x, y\]/);
 });
 
-test('collections: the share image is the cover cropped to 3:2 around focus, like the page', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: 'plener' });
-  // panorama 90 × 30: left third red, middle green, right third blue
+test('collections: cover with focus is cropped to 3:2 around it (page and share image); an own photo is not', async () => {
+  // a panorama 90 × 30 work: left third red, middle green, right third blue
   const third = (c) => sharp({ create: { width: 30, height: 30, channels: 3, background: c } }).png().toBuffer();
   const panorama = await sharp({ create: { width: 90, height: 30, channels: 3, background: '#000' } })
     .composite([{ input: await third('#ff0000'), left: 0, top: 0 }, { input: await third('#00ff00'), left: 30, top: 0 }, { input: await third('#0000ff'), left: 60, top: 0 }])
     .jpeg({ quality: 100 }).toBuffer();
-  await fs.writeFile(collFile('plener', '_uvod.jpg'), panorama);
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: 'plener', image: false });
+  await fs.writeFile(collFile('plener', 'rano.jpg'), panorama);
+  await run(opts());
+  const id = await idOf('2026', 'rano');
   const og = path.join(siteDir, 'public/og/collections/plener.jpg');
   const dominant = async () => {
     // read the bytes: sharp caches files by path, the same path would return the old image
@@ -733,37 +735,59 @@ test('collections: the share image is the cover cropped to 3:2 around focus, lik
     return channels.slice(0, 3).map((ch) => Math.round(ch.mean));
   };
 
-  await setCollection('plener', 'title: Plenér\nfocus: [0, 50]\n');
+  // random cover (no cover): no share crop, the site shares the work's og.jpg
+  assert.ok(!(await exists(og)));
+  // cover without focus: the whole work, again the work's own og.jpg
+  await setCollection('plener', `title: Plenér\ncover: ${id}\n`);
+  assert.equal((await run(opts())).ok, true);
+  assert.ok(!(await exists(og)));
+
+  await setCollection('plener', `title: Plenér\ncover: ${id}\nfocus: [0, 50]\n`);
   await run(opts());
   const { width, height } = await sharp(await fs.readFile(og)).metadata();
   assert.deepEqual([width, height], [config.images.og.width, config.images.og.height]);
   const [r, , b] = await dominant();
   assert.ok(r > 150 && b < 100, `left crop is mostly red: ${await dominant()}`);
-
   // unchanged input → the file is not rewritten
   const mtime = (await fs.stat(og)).mtimeMs;
   await run(opts());
   assert.equal((await fs.stat(og)).mtimeMs, mtime);
-
-  await setCollection('plener', 'title: Plenér\nfocus: [100, 50]\n');
+  await setCollection('plener', `title: Plenér\ncover: ${id}\nfocus: [100, 50]\n`);
   await run(opts());
   const [r2, , b2] = await dominant();
   assert.ok(b2 > 150 && r2 < 100, `right crop is mostly blue: ${await dominant()}`);
 
+  // own photo: the whole photo on paper (both ends visible), focus is an error there, as without cover
+  await fs.writeFile(collFile('plener', '_uvod.jpg'), panorama);
+  await setCollection('plener', 'title: Plenér\n');
+  assert.equal((await run(opts())).ok, true);
+  const [r3, , b3] = await dominant();
+  assert.ok(r3 > 150 && b3 > 150, `whole photo on paper: ${await dominant()}`);
+  await setCollection('plener', 'title: Plenér\nfocus: [0, 50]\n');
+  let bad = await run(opts());
+  assert.match(bad.problems.join('\n'), /focus does not apply to the own cover photo _uvod\.jpg/);
+  await fs.rm(collFile('plener', '_uvod.jpg'));
+  bad = await run(opts());
+  assert.match(bad.problems.join('\n'), /focus only crops the work chosen by cover/);
+
   // collection gone → share image and the empty og folders are removed
   await fs.rm(path.join(contentDir, 'tvorba/plener'), { recursive: true });
-  const r3 = await run(opts());
-  assert.ok(r3.pruned.includes('public/og/collections/plener.jpg'));
+  const gone = await run(opts());
+  assert.ok(gone.pruned.includes('public/og/collections/plener.jpg'));
   assert.ok(!(await exists(path.join(siteDir, 'public/og'))));
 });
 
-test('collections: without its own photo the share image comes from the cover work or detail', async () => {
+test('collections: a detail photo as cover gets a share image, cropped only with focus', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: 'plener' });
   await addDetail('2026', 'rano', 'kvet.jpg', '#113355');
   await run(opts());
+  const og = path.join(siteDir, 'public/og/collections/plener.jpg');
   await setCollection('plener', `title: Plenér\ncover: ${await idOf('2026', 'rano')}#kvet\n`);
   await run(opts());
-  const { channels } = await sharp(path.join(siteDir, 'public/og/collections/plener.jpg')).stats();
+  assert.ok(await exists(og), 'whole detail on paper');
+  await setCollection('plener', `title: Plenér\ncover: ${await idOf('2026', 'rano')}#kvet\nfocus: [50, 50]\n`);
+  await run(opts());
+  const { channels } = await sharp(await fs.readFile(og)).stats();
   // the detail is #113355 (dark blue), the work master #88aacc (light blue)
   assert.ok(channels[2].mean < 110, `share image comes from the detail: ${channels.map((c) => Math.round(c.mean))}`);
 });
@@ -851,7 +875,7 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   const r = await run(opts({ prepareOnly: true, today: new Date('2026-05-01') }));
   assert.equal(r.ok, true);
   assert.equal(r.prepared, true);
-  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml']);
+  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml', 'uvod.yaml']);
   assert.equal(r.assigned.length, 1);
   const skeleton = YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/novy.yaml'), 'utf8'));
   assert.equal(skeleton.date, '2026-05-01', 'a new work is dated today');
@@ -973,7 +997,7 @@ test('years: a skeleton per year, the public text reaches the site, the private 
   await fs.writeFile(path.join(contentDir, 'roky/2026.yaml'), 'description: |\n  Rok plenérů.\nprivate_note: tajné\n');
   r = await run(opts());
   const copy = await fs.readFile(copyPath, 'utf8');
-  assert.deepEqual(YAML.parse(copy), { description: 'Rok plenérů.\n' });
+  assert.deepEqual(YAML.parse(copy), { description: 'Rok plenérů.\n', cover: '', focus: null });
   assert.doesNotMatch(copy, /tajné/);
 
   await fs.rm(path.join(contentDir, 'roky/2026.yaml'));
@@ -982,4 +1006,45 @@ test('years: a skeleton per year, the public text reaches the site, the private 
   r = await run(opts());
   assert.ok(r.pruned.includes('content/years/2026.yaml'));
   assert.ok(!(await exists(path.join(siteDir, 'content/years'))));
+});
+
+test('covers of years and the home page: own photo, cover, focus; share image only for a chosen cover', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n');
+  await addWork('2025', 'vecer', 'title: Večer\ndate: 2025-06-14\n');
+  let r = await run(opts());
+  assert.equal(r.ok, true, r.problems.join('\n'));
+  assert.ok(r.created.includes('uvod.yaml'));
+  const home = YAML.parse(await fs.readFile(path.join(siteDir, 'content/home.yaml'), 'utf8'));
+  assert.match(home.description, /Maluji hlavně akvarelem/);
+  // random covers: no share crops, no photos
+  assert.ok(!(await exists(path.join(siteDir, 'public/og/home.jpg'))));
+  assert.ok(!(await exists(path.join(siteDir, 'public/og/years'))));
+
+  const idRano = await idOf('2026', 'rano');
+  await fs.writeFile(path.join(contentDir, 'uvod.yaml'), `description: Ahoj.\ncover: ${idRano}\nfocus: [30, 40]\n`);
+  await sharp({ create: { width: 90, height: 30, channels: 3, background: '#335577' } }).jpeg().toFile(path.join(contentDir, 'roky/2025.jpg'));
+  r = await run(opts());
+  assert.equal(r.ok, true, r.problems.join('\n'));
+  assert.ok(await exists(path.join(siteDir, 'public/og/home.jpg')));
+  assert.ok(await exists(path.join(siteDir, 'public/og/years/2025.jpg')));
+  assert.ok(await exists(path.join(siteDir, 'public/years/2025/info.json')));
+  assert.deepEqual(YAML.parse(await fs.readFile(path.join(siteDir, 'content/home.yaml'), 'utf8')), { description: 'Ahoj.', cover: idRano, focus: [30, 40] });
+
+  // a cover of another year, a year photo and a cover both set stop the run
+  await fs.writeFile(path.join(contentDir, 'roky/2025.yaml'), `cover: ${idRano}\n`);
+  r = await run(opts());
+  assert.equal(r.ok, false);
+  assert.match(r.problems.join('\n'), /roky\/2025\.yaml: cover .* and the cover photo 2025\.jpg both set/);
+  await fs.rm(path.join(contentDir, 'roky/2025.jpg'));
+  r = await run(opts());
+  assert.match(r.problems.join('\n'), /roky\/2025\.yaml: cover .*\(Ráno\) is not in 2025/);
+
+  // back to random: share crops and photos are removed
+  await fs.writeFile(path.join(contentDir, 'roky/2025.yaml'), 'description: ""\n');
+  await fs.writeFile(path.join(contentDir, 'uvod.yaml'), 'description: Ahoj.\n');
+  r = await run(opts());
+  assert.equal(r.ok, true, r.problems.join('\n'));
+  assert.ok(r.pruned.includes('public/og/home.jpg'));
+  assert.ok(r.pruned.includes('public/years/2025/'));
+  assert.ok(!(await exists(path.join(siteDir, 'public/og/years'))));
 });

@@ -4,7 +4,7 @@
 // otherwise `cover: <id>` or `cover: <id>#<detail>` from its YAML, otherwise its newest work.
 import Base from '../../../layouts/Base.astro';
 import WorkGallery from '../../../components/WorkGallery.astro';
-import CollectionCover from '../../../components/CollectionCover.astro';
+import Cover from '../../../components/Cover.astro';
 import { collectionShareImage, getCollections, url, type Collection } from '../../../lib/site';
 
 export function getStaticPaths() {
@@ -22,7 +22,7 @@ const { title, description, works } = collection;
       <h1>{title}</h1>
       {description && <p class="desc">{description}</p>}
     </div>
-    <CollectionCover collection={collection} sizes="(max-width: 900px) 100vw, 55vw" eager link />
+    <Cover cover={collection.cover} sizes="(max-width: 900px) 100vw, 55vw" eager />
   </header>
   <WorkGallery works={works} collection={collection.slug} />
 </Base>

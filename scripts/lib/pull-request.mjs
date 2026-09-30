@@ -10,7 +10,10 @@ import { promisify } from 'node:util';
 const git = async (cwd, ...args) => (await promisify(execFile)('git', args, { cwd, maxBuffer: 64 * 1024 * 1024 })).stdout;
 
 /** Every folder the pipeline writes into this repo. A new output folder of the pipeline belongs here. */
-export const OUTPUT_PATHS = ['content/works', 'public/works', 'public/photos', 'content/collections', 'public/collections', 'public/og', 'content/years'];
+export const OUTPUT_PATHS = [
+  'content/works', 'public/works', 'public/photos', 'content/collections', 'public/collections', 'public/og', 'content/years',
+  'public/years', 'content/home.yaml', 'public/home',
+];
 
 /**
  * The output folders to put into the pull request: those that exist, or that git knows (a folder deleted as a
@@ -43,6 +46,9 @@ export function changedItems(files) {
     [/^public\/collections\/([^/]+)\//, (m) => `kolekce ${m[1]}`],
     [/^public\/og\/collections\/([^/]+)\.jpg$/, (m) => `kolekce ${m[1]}`],
     [/^content\/years\/(\d{4})\.yaml$/, (m) => `rok ${m[1]}`],
+    [/^public\/years\/(\d{4})\//, (m) => `rok ${m[1]}`],
+    [/^public\/og\/years\/(\d{4})\.jpg$/, (m) => `rok ${m[1]}`],
+    [/^(content\/home\.yaml|public\/home\/|public\/og\/home\.jpg)/, () => 'úvodní stránka'],
   ];
   const items = new Set();
   for (const f of files) {

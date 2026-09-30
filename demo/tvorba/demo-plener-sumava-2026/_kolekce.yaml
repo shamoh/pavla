@@ -8,14 +8,15 @@ title: Plenér Šumava 2026
 description: |
   Týden malování venku na Kvildě a Modravě, v mlze, na slatích i u rybníka.
 
-# Úvodní obraz: id díla z kolekce (např. k3f9a) nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer.
-# Nepovinné: bez něj vlastní fotka _uvod.jpg, jinak nejnovější dílo. Dílo s draft: true nejde.
+# Vybraný úvodní obraz: id díla z kolekce (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;
+# vede na to dílo. Nebo místo toho vlastní fotka _uvod.jpg (bez odkazu). Ukáže se celý, s focus oříznutý na 3:2.
+# Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.
 cover: ""
 
-# vlastní úvodní fotka je panorama (2400 × 1000); na stránce se ořízne na 3:2, levá část zůstane vidět
-# Úvodní obraz se ořízne na 3:2; [zleva %, shora %] = co zůstane vidět,
-# např. [50, 50] = střed, [80, 30] = vpravo nahoře.
-focus: [25, 50]
+# vlastní úvodní fotka je panorama (2400 × 1000); ukáže se celá, bez ořezu
+# Jen s cover: vybraný obraz se ořízne na 3:2 a [zleva %, shora %] = co zůstane vidět, např. [50, 50] = střed,
+# [80, 30] = vpravo nahoře. Prázdné = obraz celý, bez ořezu. Bez cover (i s vlastní fotkou) nechat prázdné.
+focus:
 
 # Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
 private_note: |

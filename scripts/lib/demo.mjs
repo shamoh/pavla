@@ -15,12 +15,13 @@ export const isDemo = (name, data) => String(name).startsWith(DEMO_PREFIX) || da
  * fully marked: works and collections by name and field, photos by field).
  * Items: works [{ slug, data, yamlPath }], collections [{ slug, data }], photos [{ name, data }].
  */
-export function demoProblems({ works = [], collections = [], photos = [], years = [] }, dataset) {
+export function demoProblems({ works = [], collections = [], photos = [], years = [], home = null }, dataset) {
   const items = [
     ...works.map((w) => ({ where: w.yamlPath ?? `tvorba/${w.year}/${w.slug}.yaml`, name: w.slug, data: w.data, named: true })),
     ...collections.map((c) => ({ where: c.yamlPath ?? `tvorba/${c.dir ?? c.slug}/_kolekce.yaml`, name: c.slug, data: c.data, named: true })),
     ...photos.map((p) => ({ where: `fotky/${p.name}.yaml`, name: p.name, data: p.data, named: false })),
     ...years.map((y) => ({ where: y.yamlPath, name: y.year, data: y.data, named: false })),
+    ...(home ? [{ where: home.yamlPath, name: 'uvod', data: home.data, named: false }] : []),
   ];
   const problems = [];
   for (const { where, name, data, named } of items) {
