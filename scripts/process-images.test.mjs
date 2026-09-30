@@ -9,6 +9,7 @@ import { run } from './process-images.mjs';
 import { sheetXmp } from './lib/sheet-box.mjs';
 import { WORK_FIELDS } from './lib/works.mjs';
 import { COLLECTION_FIELDS } from './lib/collections.mjs';
+import { WORK_SCHEMA } from './lib/schema.mjs';
 import { PHOTO_FIELDS } from './lib/photos.mjs';
 
 const siteConfig = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
@@ -380,8 +381,8 @@ test('private note: never reaches the site repository, not even through comments
   assert.doesNotMatch(copy, /Soukromá|private_note|teta|vymyšlené/);
   // attributes the file lacked were added with values that mean the same as their absence
   assert.deepEqual(YAML.parse(copy), {
-    id: key.slice(-5), draft: false, title: 'Ráno', date: '2026-06-14', technique: '', support: '', size_cm: null, tags: [],
-    status: 'not-for-sale', price: null, fler: '', featured: false, description: 'Veřejný popis.', details: null, mockups: false,
+    id: key.slice(-5), draft: false, title: 'Ráno', date: '2026-06-14', technique: '', size_cm: null, tags: [],
+    status: 'not-for-sale', featured: false, description: 'Veřejný popis.', mockups: false,
   });
   // the private repository keeps the note
   assert.match(await fs.readFile(path.join(contentDir, 'tvorba/rano.yaml'), 'utf8'), /Soukromá poznámka/);
@@ -417,7 +418,7 @@ test('collections: a folder in tvorba/ is a collection, gets a skeleton titled a
   await setCollection('2026-plener-sumava', 'title: Plenér Šumava 2026\ndescription: Týden na Kvildě.\nprivate_note: tajné\n');
   await run(opts());
   const copy = await fs.readFile(path.join(siteDir, 'content/collections/2026-plener-sumava.yaml'), 'utf8');
-  assert.deepEqual(YAML.parse(copy), { title: 'Plenér Šumava 2026', description: 'Týden na Kvildě.', cover: '', focus: null });
+  assert.deepEqual(YAML.parse(copy), { title: 'Plenér Šumava 2026', description: 'Týden na Kvildě.' });
   assert.doesNotMatch(copy, /tajné/);
   // no cover photo, no cover folder
   assert.ok(!(await exists(path.join(siteDir, 'public/collections/2026-plener-sumava'))));
@@ -697,28 +698,28 @@ test('photos: focus goes to info.json (centre by default), an invalid focus stop
   }
 });
 
-test('collections: cover can be a detail photo of a work; focus reaches the public copy', async () => {
+test('collections: cover can be a detail photo of a work; aspect and focus reach the public copy', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: 'plener' });
   await addDetail('2026', 'rano', '1 Květy.jpg');
   await run(opts());
   const id = await idOf('2026', 'rano');
-  await setCollection('plener', `title: Plenér\ncover: ${id}#1-kvety\nfocus: [30, 70]\n`);
+  await setCollection('plener', `title: Plenér\ncover: ${id}#1-kvety\naspect: "2:1"\nfocus: [30, 70]\n`);
   assert.equal((await run(opts())).ok, true);
   const copy = YAML.parse(await fs.readFile(path.join(siteDir, 'content/collections/plener.yaml'), 'utf8'));
-  assert.deepEqual(copy, { title: 'Plenér', description: null, cover: `${id}#1-kvety`, focus: [30, 70] });
+  assert.deepEqual(copy, { title: 'Plenér', description: null, cover: `${id}#1-kvety`, aspect: '2:1', focus: [30, 70] });
 
   await setCollection('plener', `title: Plenér\ncover: ${id}#lodka\n`);
   let r = await run(opts());
   assert.equal(r.ok, false);
   assert.match(r.problems.join('\n'), /Ráno has no detail photo "lodka" \(folder tvorba\/plener\/rano\/\)/);
 
-  await setCollection('plener', 'title: Plenér\nfocus: [50, 150]\n');
+  await setCollection('plener', `title: Plenér\ncover: ${id}\naspect: "3:2"\nfocus: [50, 150]\n`);
   r = await run(opts());
   assert.equal(r.ok, false);
   assert.match(r.problems.join('\n'), /tvorba\/plener\/_kolekce\.yaml: focus must be \[x, y\]/);
 });
 
-test('collections: cover with focus is cropped to 3:2 around it (page and share image); an own photo is not', async () => {
+test('collections: a chosen cover with aspect or focus is cropped (page and share image), otherwise whole', async () => {
   // a panorama 90 × 30 work: left third red, middle green, right third blue
   const third = (c) => sharp({ create: { width: 30, height: 30, channels: 3, background: c } }).png().toBuffer();
   const panorama = await sharp({ create: { width: 90, height: 30, channels: 3, background: '#000' } })
@@ -737,12 +738,12 @@ test('collections: cover with focus is cropped to 3:2 around it (page and share 
 
   // random cover (no cover): no share crop, the site shares the work's og.jpg
   assert.ok(!(await exists(og)));
-  // cover without focus: the whole work, again the work's own og.jpg
+  // cover without a crop: the whole work, again the work's own og.jpg
   await setCollection('plener', `title: Plenér\ncover: ${id}\n`);
   assert.equal((await run(opts())).ok, true);
   assert.ok(!(await exists(og)));
 
-  await setCollection('plener', `title: Plenér\ncover: ${id}\nfocus: [0, 50]\n`);
+  await setCollection('plener', `title: Plenér\ncover: ${id}\naspect: "3:2"\nfocus: [0, 50]\n`);
   await run(opts());
   const { width, height } = await sharp(await fs.readFile(og)).metadata();
   assert.deepEqual([width, height], [config.images.og.width, config.images.og.height]);
@@ -752,23 +753,33 @@ test('collections: cover with focus is cropped to 3:2 around it (page and share 
   const mtime = (await fs.stat(og)).mtimeMs;
   await run(opts());
   assert.equal((await fs.stat(og)).mtimeMs, mtime);
-  await setCollection('plener', `title: Plenér\ncover: ${id}\nfocus: [100, 50]\n`);
+  await setCollection('plener', `title: Plenér\ncover: ${id}\naspect: "3:2"\nfocus: [100, 50]\n`);
   await run(opts());
   const [r2, , b2] = await dominant();
   assert.ok(b2 > 150 && r2 < 100, `right crop is mostly blue: ${await dominant()}`);
+  // another aspect ratio than the share image's: the crop sits on paper (the corner is paper, the middle the crop)
+  await setCollection('plener', `title: Plenér\ncover: ${id}\naspect: "1:1"\nfocus: [0, 50]\n`);
+  await run(opts());
+  const pixel = async (left, top) => [...(await sharp(await fs.readFile(og)).extract({ left, top, width: 1, height: 1 }).raw().toBuffer())];
+  const [cr, , cb] = await pixel(config.images.og.width / 2, config.images.og.height / 2);
+  assert.ok(cr > 150 && cb < 100, `middle is the red square: ${cr},${cb}`);
+  assert.ok((await pixel(2, 2)).every((c) => c > 200), 'corner is paper');
 
-  // own photo: the whole photo on paper (both ends visible), focus is an error there, as without cover
+  // own photo: whole on paper (both ends visible); aspect alone crops it around the centre (green)
   await fs.writeFile(collFile('plener', '_uvod.jpg'), panorama);
   await setCollection('plener', 'title: Plenér\n');
   assert.equal((await run(opts())).ok, true);
   const [r3, , b3] = await dominant();
   assert.ok(r3 > 150 && b3 > 150, `whole photo on paper: ${await dominant()}`);
-  await setCollection('plener', 'title: Plenér\nfocus: [0, 50]\n');
-  let bad = await run(opts());
-  assert.match(bad.problems.join('\n'), /focus does not apply to the own cover photo _uvod\.jpg/);
+  await setCollection('plener', 'title: Plenér\naspect: "3:2"\n');
+  assert.equal((await run(opts())).ok, true);
+  const [r4, g4, b4] = await dominant();
+  assert.ok(g4 > 150 && r4 < 150 && b4 < 150, `own photo cropped around the centre: ${r4},${g4},${b4}`);
+  // a random cover is never cropped: aspect or focus there is an error
   await fs.rm(collFile('plener', '_uvod.jpg'));
-  bad = await run(opts());
-  assert.match(bad.problems.join('\n'), /focus only crops the work chosen by cover/);
+  await setCollection('plener', 'title: Plenér\nfocus: [0, 50]\n');
+  const bad = await run(opts());
+  assert.match(bad.problems.join('\n'), /focus crops only a chosen cover/);
 
   // collection gone → share image and the empty og folders are removed
   await fs.rm(path.join(contentDir, 'tvorba/plener'), { recursive: true });
@@ -785,7 +796,7 @@ test('collections: a detail photo as cover gets a share image, cropped only with
   await setCollection('plener', `title: Plenér\ncover: ${await idOf('2026', 'rano')}#kvet\n`);
   await run(opts());
   assert.ok(await exists(og), 'whole detail on paper');
-  await setCollection('plener', `title: Plenér\ncover: ${await idOf('2026', 'rano')}#kvet\nfocus: [50, 50]\n`);
+  await setCollection('plener', `title: Plenér\ncover: ${await idOf('2026', 'rano')}#kvet\naspect: "3:2"\nfocus: [50, 50]\n`);
   await run(opts());
   const { channels } = await sharp(await fs.readFile(og)).stats();
   // the detail is #113355 (dark blue), the work master #88aacc (light blue)
@@ -935,7 +946,11 @@ test('skeletons contain every supported attribute (work, collection, photo) and 
   await addPhoto('kontakt');
   const r = await run(opts({ today: new Date('2026-05-01') }));
   assert.equal(r.ok, true, r.problems.join('\n'));
-  const keysOf = async (...p) => Object.keys(YAML.parse(await fs.readFile(path.join(contentDir, ...p), 'utf8')));
+  const keysOf = async (...p) => {
+    const text = await fs.readFile(path.join(contentDir, ...p), 'utf8');
+    // commented-out optional attributes ("# aspect: …") count as there
+    return [...Object.keys(YAML.parse(text)), ...[...text.matchAll(/^# (\w+): /gm)].map((m) => m[1])];
+  };
   const missing = (fields, keys) => fields.filter((f) => !keys.includes(f));
   // skeletons are built from scripts/lib/schema.mjs, see WORK_FIELDS etc.
   assert.deepEqual(missing(WORK_FIELDS, await keysOf('tvorba/nova-kolekce/novy.yaml')), [], 'WORK_SCHEMA');
@@ -953,21 +968,23 @@ test('existing files get every supported attribute on every run, on a branch too
   const r = await run(opts({ prepareOnly: true }));
   assert.equal(r.ok, true, r.problems.join('\n'));
   assert.deepEqual(r.updated.map((u) => u.split(':')[0]).sort(), ['fotky/kontakt.yaml', 'tvorba/plener/_kolekce.yaml', 'tvorba/plener/vecer.yaml', 'tvorba/rano.yaml']);
-  assert.match(r.updated.find((u) => u.startsWith('tvorba/rano.yaml')), /doplněno draft, technique.*\(DOPLNIT\); neznámé mockup \(NEZNÁMÝ\)/);
+  assert.match(r.updated.find((u) => u.startsWith('tvorba/rano.yaml')), /doplněno technique.*\(DOPLNIT\); doplněno draft.*\(výchozí hodnota\); neznámé mockup \(NEZNÁMÝ\)/);
 
   const text = await fs.readFile(path.join(contentDir, 'tvorba/rano.yaml'), 'utf8');
   const data = YAML.parse(text);
-  assert.deepEqual(Object.keys(data), [...WORK_FIELDS, 'mockup']);
+  const commented = WORK_SCHEMA.fields.filter((f) => f.commented).map((f) => f.key);
+  assert.deepEqual(Object.keys(data), [...WORK_FIELDS.filter((k) => !commented.includes(k)), 'mockup']);
+  assert.match(text, /\n# NEPOVINNÉ\. Cena v Kč.*\n# price: 2500\n/, 'price and fler are commented out');
   assert.equal(data.draft, false, 'a work without draft stays published');
   assert.equal(data.description, null, 'no placeholder text reaches the site');
   assert.match(text, /# změřeno\n# Šířka × výška v cm[^\n]*\n[^\n]*\nsize_cm: \[40, 30\]/);
-  assert.match(text, /# DOPLNIT true = rozpracovaný/);
+  assert.match(text, /\n# true = rozpracovaný[^\n]*\ndraft: false\n/, 'settled: no DOPLNIT');
   assert.match(text, /# NEZNÁMÝ atribut[^\n]*\nmockup: true\n$/);
-  assert.deepEqual(Object.keys(YAML.parse(await fs.readFile(path.join(contentDir, 'fotky/kontakt.yaml'), 'utf8'))), PHOTO_FIELDS);
+  assert.deepEqual(Object.keys(YAML.parse(await fs.readFile(path.join(contentDir, 'fotky/kontakt.yaml'), 'utf8'))), PHOTO_FIELDS.filter((k) => k !== 'caption'));
 
   // published works with DOPLNIT left are listed (drafts are not): rano and vecer have no draft, so they are published
   assert.deepEqual(r.pending.map((p) => p.split(':')[0]).sort(), ['tvorba/plener/vecer.yaml', 'tvorba/rano.yaml']);
-  assert.match(r.pending.find((p) => p.startsWith('tvorba/rano.yaml')), /: draft, technique, support, tags/);
+  assert.match(r.pending.find((p) => p.startsWith('tvorba/rano.yaml')), /: technique, status, description$/, "only attributes still to check: not settled, not commented out");
 
   // the second run has nothing to do, the site data are the same as from the old files
   const second = await run(opts());
@@ -997,7 +1014,7 @@ test('years: a skeleton per year, the public text reaches the site, the private 
   await fs.writeFile(path.join(contentDir, 'roky/2026.yaml'), 'description: |\n  Rok plenérů.\nprivate_note: tajné\n');
   r = await run(opts());
   const copy = await fs.readFile(copyPath, 'utf8');
-  assert.deepEqual(YAML.parse(copy), { description: 'Rok plenérů.\n', cover: '', focus: null });
+  assert.deepEqual(YAML.parse(copy), { description: 'Rok plenérů.\n' });
   assert.doesNotMatch(copy, /tajné/);
 
   await fs.rm(path.join(contentDir, 'roky/2026.yaml'));
@@ -1021,14 +1038,14 @@ test('covers of years and the home page: own photo, cover, focus; share image on
   assert.ok(!(await exists(path.join(siteDir, 'public/og/years'))));
 
   const idRano = await idOf('2026', 'rano');
-  await fs.writeFile(path.join(contentDir, 'uvod.yaml'), `description: Ahoj.\ncover: ${idRano}\nfocus: [30, 40]\n`);
+  await fs.writeFile(path.join(contentDir, 'uvod.yaml'), `description: Ahoj.\ncover: ${idRano}\naspect: "1:1"\nfocus: [30, 40]\n`);
   await sharp({ create: { width: 90, height: 30, channels: 3, background: '#335577' } }).jpeg().toFile(path.join(contentDir, 'roky/2025.jpg'));
   r = await run(opts());
   assert.equal(r.ok, true, r.problems.join('\n'));
   assert.ok(await exists(path.join(siteDir, 'public/og/home.jpg')));
   assert.ok(await exists(path.join(siteDir, 'public/og/years/2025.jpg')));
   assert.ok(await exists(path.join(siteDir, 'public/years/2025/info.json')));
-  assert.deepEqual(YAML.parse(await fs.readFile(path.join(siteDir, 'content/home.yaml'), 'utf8')), { description: 'Ahoj.', cover: idRano, focus: [30, 40] });
+  assert.deepEqual(YAML.parse(await fs.readFile(path.join(siteDir, 'content/home.yaml'), 'utf8')), { description: 'Ahoj.', cover: idRano, aspect: '1:1', focus: [30, 40] });
 
   // a cover of another year, a year photo and a cover both set stop the run
   await fs.writeFile(path.join(contentDir, 'roky/2025.yaml'), `cover: ${idRano}\n`);

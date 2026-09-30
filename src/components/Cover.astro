@@ -1,6 +1,6 @@
 ---
 // The cover of a collection, a year or the home page (resolveCover in src/lib/site.ts), always the whole image, except:
-//   - chosen (own photo, or `cover`: a work or its detail photo): one image; `cover` with `focus` cropped to 3:2,
+//   - chosen (own photo, or `cover`: a work or its detail photo): one image; with `aspect` or `focus` cropped,
 //   - random: one of the newest works of the author's selection at random per visit. The first one is
 //     in the HTML, the others hidden with lazy images; the inline script right after shows a random one before the
 //     first paint (scripts/lib/random-pick.mjs). `exclude` + `show`: a list of cards (data-id) not to repeat it in.
@@ -19,11 +19,12 @@ const crop = cover.kind === 'photo'
       ? { base: workImagePath(cover.work), prefix: `detail-${cover.detail.name}-`, set: cover.detail, alt: `${cover.work.title}, detail`, href: workUrl(cover.work), id: cover.work.id }
       : { base: workImagePath(cover.work), prefix: '', set: cover.work.image, alt: `${cover.work.title} — ${cover.work.technique}`, href: workUrl(cover.work), id: cover.work.id }
     : null;
-const focus = cover.kind === 'work' && cover.focus ? `--focus: ${cover.focus[0]}% ${cover.focus[1]}%` : undefined;
+const cut = cover.kind === 'random' ? undefined : cover.crop;
+const style = cut ? `--aspect: ${cut.css}; --focus: ${cut.focus[0]}% ${cut.focus[1]}%` : undefined;
 const href = crop && link ? crop.href : undefined;
 ---
 {crop ? (
-  <div class:list={['cover', 'chosen', { cropped: focus }, cls]} style={focus} data-id={crop.id}>
+  <div class:list={['cover', 'chosen', { cropped: cut }, cls]} style={style} data-id={crop.id}>
     {href ? (
       <a class="frame" href={href}><Img base={crop.base} prefix={crop.prefix} image={crop.set} alt={crop.alt} sizes={sizes} eager={eager} /></a>
     ) : (
@@ -45,7 +46,7 @@ const href = crop && link ? crop.href : undefined;
 <style>
   .cover :global(picture) { box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 24px 48px -24px rgba(0,0,0,.3); }
   .cover .pick, .cover .frame { display: block; }
-  .cropped { aspect-ratio: 3 / 2; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 24px 48px -24px rgba(0,0,0,.3); }
+  .cropped { aspect-ratio: var(--aspect); overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 24px 48px -24px rgba(0,0,0,.3); }
   .cropped .frame, .cropped :global(picture) { height: 100%; box-shadow: none; }
   .cropped :global(img) { width: 100%; height: 100%; object-fit: cover; object-position: var(--focus); }
 </style>

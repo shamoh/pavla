@@ -121,7 +121,11 @@ export async function keepInLine(text, schema, file, absPath, updated, problems)
   if (!r.changed) return text;
   await fs.writeFile(absPath, r.text);
   const notes = [];
-  if (r.added.length) notes.push(`doplněno ${r.added.join(', ')} (DOPLNIT)`);
+  const settled = new Set(schema.fields.filter((f) => f.settled).map((f) => f.key));
+  const toCheck = r.added.filter((k) => !settled.has(k));
+  const final = r.added.filter((k) => settled.has(k));
+  if (toCheck.length) notes.push(`doplněno ${toCheck.join(', ')} (DOPLNIT)`);
+  if (final.length) notes.push(`doplněno ${final.join(', ')} (výchozí hodnota)`);
   if (r.unknown.length) notes.push(`neznámé ${r.unknown.join(', ')} (NEZNÁMÝ)`);
   updated.push(`${file}: ${notes.length ? notes.join('; ') : 'srovnány komentáře a pořadí'}`);
   return r.text;

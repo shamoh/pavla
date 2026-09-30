@@ -12,7 +12,7 @@ import { IMAGE_EXTENSIONS, splitExt } from './works.mjs';
 
 export const YEARS_SUBDIR = 'roky';
 /** Fields copied to the public site repository; the private note never is. */
-export const PUBLIC_YEAR_FIELDS = ['description', 'cover', 'focus'];
+export const PUBLIC_YEAR_FIELDS = ['description', 'cover', 'aspect', 'focus'];
 /** Every attribute of a year's YAML (YEAR_SCHEMA). */
 export const YEAR_FIELDS = fieldKeys(YEAR_SCHEMA);
 

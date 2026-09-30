@@ -19,7 +19,7 @@ import { isValidSlug, titleFromName } from './works.mjs';
 export const LEGACY_COLLECTIONS_SUBDIR = 'kolekce';
 
 /** Fields of a collection copied to the public site repository (private_note stays private). */
-export const PUBLIC_COLLECTION_FIELDS = ['title', 'description', 'cover', 'focus'];
+export const PUBLIC_COLLECTION_FIELDS = ['title', 'description', 'cover', 'aspect', 'focus'];
 /** Every attribute of _kolekce.yaml (COLLECTION_SCHEMA in scripts/lib/schema.mjs). */
 export const COLLECTION_FIELDS = fieldKeys(COLLECTION_SCHEMA);
 

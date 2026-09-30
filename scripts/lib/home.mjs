@@ -13,7 +13,7 @@ import { IMAGE_EXTENSIONS, splitExt } from './works.mjs';
 export const HOME_FILE = 'uvod.yaml';
 export const HOME_PHOTO = 'uvod';
 /** Fields copied to the public site repository; the private note never is. */
-export const PUBLIC_HOME_FIELDS = ['description', 'cover', 'focus'];
+export const PUBLIC_HOME_FIELDS = ['description', 'cover', 'aspect', 'focus'];
 /** Every attribute of uvod.yaml (HOME_SCHEMA). */
 export const HOME_FIELDS = fieldKeys(HOME_SCHEMA);
 

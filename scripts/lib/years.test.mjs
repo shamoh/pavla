@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
 import { YEAR_FIELDS, prepareYears } from './years.mjs';
+import { schemaKeysIn } from './metadata-yaml.mjs';
+import { YEAR_SCHEMA } from './schema.mjs';
 
 let dir;
 const file = (name) => path.join(dir, 'roky', name);
@@ -16,7 +18,7 @@ test('prepareYears: a skeleton for each year with works, every attribute, text e
   assert.deepEqual(r.created, ['roky/2025.yaml', 'roky/2026.yaml']);
   assert.deepEqual(r.problems, []);
   const text = await fs.readFile(file('2026.yaml'), 'utf8');
-  assert.deepEqual(Object.keys(YAML.parse(text)), YEAR_FIELDS);
+  assert.deepEqual(schemaKeysIn(text, YEAR_SCHEMA), YEAR_FIELDS);
   assert.equal(YAML.parse(text).description, '');
   assert.match(text, /# DOPLNIT Pár vět o roce/);
   assert.deepEqual(r.years.map((y) => y.year), ['2025', '2026']);

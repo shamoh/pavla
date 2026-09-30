@@ -4,7 +4,7 @@ demo: true
 # Co je na fotce (pro nevidomé a vyhledávače), např. „Pavla maluje v ateliéru“.
 alt: "Zástupná úvodní fotka stránky O mně (testovací data)"
 
-# Popisek pod fotkou, nepovinné.
+# NEPOVINNÉ. Popisek pod fotkou.
 caption: "Popisek pod fotkou (testovací data)"
 
 # Kam se fotka vycentruje, když ji stránka ořízne: [zleva %, shora %],

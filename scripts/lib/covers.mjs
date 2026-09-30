@@ -3,8 +3,9 @@
 //   2. `cover: <id>`: a published work of the place, or `cover: <id>#<detail>`: one of its detail photos,
 //   3. otherwise one of the newest works of the author's selection (featured) at random per visit,
 //   4. otherwise the newest work.
-// Every cover is shown whole, as it is. Only `cover` together with `focus` crops the chosen work (or detail photo) to
-// 3:2 around `focus`, on the page and in its share image; `focus` without `cover` is an error (it would do nothing).
+// Every cover is shown whole, as it is, unless `aspect` (e.g. "3:2") or `focus` is set: then a chosen cover (the own
+// photo or `cover`) is cropped to that aspect ratio (default 1:1) around `focus` (default [50, 50]), on the page and in
+// its share image. A random cover is never cropped, so `aspect` and `focus` without a chosen one are an error.
 // Pure helpers of the pipeline; the site mirrors them in src/lib/site.ts.
 
 import path from 'node:path';
@@ -21,8 +22,33 @@ export function parseCoverRef(cover) {
 /** True when `cover` is set (not missing, not empty). */
 export const hasCoverRef = (data) => data?.cover !== undefined && data.cover !== null && String(data.cover).trim() !== '';
 
-/** True when `focus` is set (not missing, not empty): the chosen cover is then cropped to 3:2 around it. */
+/** True when `focus` is set (not missing, not empty). */
 export const hasFocus = (data) => data?.focus !== undefined && data.focus !== null && data.focus !== '' && !(Array.isArray(data.focus) && !data.focus.length);
+
+/** True when `aspect` is set (not missing, not empty). */
+export const hasAspect = (data) => data?.aspect !== undefined && data.aspect !== null && String(data.aspect).trim() !== '';
+
+/** "3:2" → { ratio: 1.5, css: "3 / 2" }; null for anything else (positive numbers, decimal point or comma). */
+export function parseAspect(aspect) {
+  const m = /^\s*(\d+(?:[.,]\d+)?)\s*:\s*(\d+(?:[.,]\d+)?)\s*$/.exec(String(aspect ?? ''));
+  if (!m) return null;
+  const [w, h] = [m[1], m[2]].map((n) => Number(n.replace(',', '.')));
+  return w > 0 && h > 0 ? { ratio: w / h, css: `${w} / ${h}` } : null;
+}
+
+export const DEFAULT_ASPECT = '1:1';
+export const DEFAULT_FOCUS = [50, 50];
+
+/**
+ * The crop of a chosen cover (`chosen`: an own photo or `cover`), { ratio, css, focus } when `aspect` or `focus` is set
+ * (the other one defaults to DEFAULT_ASPECT / DEFAULT_FOCUS) and both are valid; null for a whole cover.
+ */
+export function coverCrop(data, chosen = hasCoverRef(data)) {
+  if (!chosen || !(hasAspect(data) || hasFocus(data))) return null;
+  const aspect = parseAspect(hasAspect(data) ? data.aspect : DEFAULT_ASPECT);
+  const focus = hasFocus(data) ? data.focus : DEFAULT_FOCUS;
+  return aspect && isValidFocus(focus) ? { ...aspect, focus } : null;
+}
 
 /**
  * Problems of the cover of one place. `where`: the file for messages; `data`: its description; `photoPath`: its own
@@ -34,10 +60,12 @@ export function coverProblems({ where, data, photoPath, works, inScope = () => t
   if (hasFocus(data) && !isValidFocus(data.focus)) {
     problems.push(`${where}: focus must be [x, y] in % (0–100), e.g. focus: [50, 30]`);
   }
-  if (hasFocus(data) && !hasCoverRef(data)) {
-    problems.push(photoPath
-      ? `${where}: focus does not apply to the own cover photo ${path.basename(photoPath)}, it is shown as it is; remove focus`
-      : `${where}: focus only crops the work chosen by cover (cover: <id>); without cover remove focus`);
+  if (hasAspect(data) && !parseAspect(data.aspect)) {
+    problems.push(`${where}: aspect must be width:height, e.g. aspect: "3:2"`);
+  }
+  const cropKeys = [hasAspect(data) && 'aspect', hasFocus(data) && 'focus'].filter(Boolean).join(' and ');
+  if (cropKeys && !hasCoverRef(data) && !photoPath) {
+    problems.push(`${where}: ${cropKeys} ${cropKeys.includes(' and ') ? 'crop' : 'crops'} only a chosen cover (cover: <id> or an own cover photo), a random one is shown whole; remove ${cropKeys}`);
   }
   if (!hasCoverRef(data)) return problems;
   const cover = data.cover;
@@ -54,18 +82,18 @@ export function coverProblems({ where, data, photoPath, works, inScope = () => t
 }
 
 /**
- * Source of the share image of a cover: { source (master file), focus (crop to 3:2 around it) or null (the whole
- * image on paper, like the share image of a work) }. Null when the site uses the share image of a work: a random cover,
- * or `cover: <id>` without focus. Works: { id, data, masterPath, details: [{ name, path }] } from prepareContent.
+ * Source of the share image of a cover: { source (master file), crop (coverCrop) or null (the whole image on paper,
+ * like the share image of a work) }. Null when the site uses the share image of a work: a random cover, or
+ * `cover: <id>` without crop. Works: { id, data, masterPath, details: [{ name, path }] } from prepareContent.
  */
 export function coverShareSource({ photoPath, data, works }) {
-  if (photoPath) return { source: photoPath, focus: null };
+  if (photoPath) return { source: photoPath, crop: coverCrop(data, true) };
   if (!hasCoverRef(data)) return null;
   const { id, detail } = parseCoverRef(data.cover);
   const work = works.find((w) => w.id === id && !w.data.draft);
   if (!work) return null;
-  const focus = hasFocus(data) ? data.focus : null;
+  const crop = coverCrop(data);
   const source = detail ? work.details?.find((d) => d.name === detail)?.path : work.masterPath;
-  if (!source || (!detail && !focus)) return null;
-  return { source, focus };
+  if (!source || (!detail && !crop)) return null;
+  return { source, crop };
 }

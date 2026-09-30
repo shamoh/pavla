@@ -5,15 +5,19 @@ demo: true
 # Víc řádků: napiš description: | a pod to text odsazený dvěma mezerami. Prázdné "" = bez textu.
 description: ""
 
-# DOPLNIT Vybraný úvodní obraz: id díla z toho roku (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;
-# vede na to dílo. Nebo místo toho vlastní fotka <rok>.jpg vedle tohoto souboru (bez odkazu). Ukáže se celý, s focus oříznutý na 3:2.
+# NEPOVINNÉ. Vybraný úvodní obraz: id díla z toho roku (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;
+# vede na to dílo. Nebo místo toho vlastní fotka <rok>.jpg vedle tohoto souboru (bez odkazu). Ukáže se celý, s aspect nebo focus oříznutý.
 # Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.
-cover: ""
+# cover: k3f9a
 
-# UKÁZKA: vlastní úvodní fotka roku (roky/2025.jpg, široké panorama), ukáže se celá, bez ořezu
-# Jen s cover: vybraný obraz se ořízne na 3:2 a [zleva %, shora %] = co zůstane vidět, např. [50, 50] = střed,
-# [80, 30] = vpravo nahoře. Prázdné = obraz celý, bez ořezu. Bez cover (i s vlastní fotkou) nechat prázdné.
-focus:
+# NEPOVINNÉ. Ořez vybraného obrazu (cover nebo vlastní fotky) na poměr stran šířka:výška v uvozovkách, např. "3:2", "2:1",
+# "1:1". Jen s focus = "1:1". Bez aspect i focus = celý.
+# aspect: "3:2"
 
-# DOPLNIT Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
-private_note: ""
+# UKÁZKA: vlastní úvodní fotka roku (roky/2025.jpg, široké panorama); jen focus = ořez na čtverec 1:1
+# NEPOVINNÉ. Při ořezu vybraného obrazu zůstane vidět [zleva %, shora %], např. [50, 50] = střed, [80, 30] = vpravo nahoře.
+# Jen s aspect = střed. Náhodný obraz se neořezává.
+focus: [20, 50]
+
+# NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+# private_note: kde obraz visí, komu patří

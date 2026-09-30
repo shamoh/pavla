@@ -35,7 +35,7 @@ pavla/                                      (toto repo, veřejné)
   public/years/<rok>/, public/home/         webové velikosti vlastních úvodních fotek roku a úvodu (generuje pipeline)
   public/works/<rok>/<slug>-<id>/           webové velikosti díla, detailů a mockupů, og.jpg + info.json (generuje pipeline)
   public/collections/<slug>/                úvodní fotka kolekce (generuje pipeline)
-  public/og/collections/<slug>.jpg          obrázek pro sdílení vybraného obalu kolekce, ořez 3:2 (generuje pipeline)
+  public/og/collections/<slug>.jpg          obrázek pro sdílení vybraného obalu kolekce (generuje pipeline)
   public/og/years/<rok>.jpg, public/og/home.jpg  totéž pro rok a úvodní stránku
   public/photos/<název>/                    webové velikosti ostatních fotek (generuje pipeline)
   mockups/                                  scény pro mockupy a jejich kalibrace (scenes.yaml)
@@ -105,20 +105,23 @@ Kolekce, stránka roku i úvodní stránka mají **úvodní obraz** podle jednoh
 4. jinak **náhodně** jeden z 10 nejnovějších obrazů **výběru autorky** (`featured: true`; `coverCandidates`,
    `FEATURED_PICK` v `scripts/lib/works.mjs`), jinak nejnovější dílo; vede na zobrazené dílo.
 
-Každý úvodní obraz se ukáže **celý, tak jak je**. Jedinou výjimkou je **`cover` spolu s `focus`**: vybrané dílo
-(nebo detail) se ořízne na **3:2 kolem `focus`** a stejný výřez je i obrázkem pro sdílení. `focus` je tak jediný
-spínač ořezu; bez `cover` (náhodný obraz, vlastní fotka) nemá smysl a pipeline ho hlásí jako chybu.
+Každý úvodní obraz se ukáže **celý, tak jak je**, dokud u **vybraného** obrazu (vlastní fotka nebo `cover`) není
+vyplněné `aspect` nebo `focus`. Pak se ořízne na poměr stran `aspect` (`šířka:výška` v uvozovkách, např. `"3:2"`,
+`"2:1"`, `"1:1"`; prázdné = `"1:1"`) kolem bodu `focus` (`[zleva %, shora %]`; prázdné = `[50, 50]`, střed) a stejný
+výřez je i obrázkem pro sdílení (`coverCrop`, `parseAspect`, `DEFAULT_ASPECT`, `DEFAULT_FOCUS` v
+`scripts/lib/covers.mjs`). Náhodný obraz se nikdy neořezává, `aspect` nebo `focus` bez vybraného obrazu je chyba.
 
 | Úvodní obraz | Na stránce | Obrázek pro sdílení |
 |---|---|---|
-| vlastní fotka | celá | celá na papíře 3:2 (`public/og/collections/<slug>.jpg`, `public/og/years/<rok>.jpg`, `public/og/home.jpg`) |
-| `cover: <id>` bez `focus` | celé dílo | `og.jpg` díla |
-| `cover: <id>#<detail>` bez `focus` | celý detail | celý detail na papíře 3:2 (tentýž soubor jako u vlastní fotky) |
-| `cover` + `focus` | ořez 3:2 kolem `focus` | stejný ořez 3:2 (tentýž soubor) |
+| vlastní fotka bez ořezu | celá | celá na papíře 3:2 (`public/og/collections/<slug>.jpg`, `public/og/years/<rok>.jpg`, `public/og/home.jpg`) |
+| `cover: <id>` bez ořezu | celé dílo | `og.jpg` díla |
+| `cover: <id>#<detail>` bez ořezu | celý detail | celý detail na papíře 3:2 (tentýž soubor jako u vlastní fotky) |
+| vlastní fotka nebo `cover` + `aspect` a/nebo `focus` | ořez na `aspect` kolem `focus` | stejný ořez (tentýž soubor): při `"3:2"` (poměr náhledu) vyplní celý náhled, jiný poměr leží na papíře |
 | nic (náhodně / nejnovější) | celé dílo | `og.jpg` prvního (nejnovějšího) kandidáta |
 
-Chyby, které zastaví běh: vlastní fotka a `cover` zároveň, `focus` bez `cover`, dílo z jiného místa, rozpracované
-dílo, neexistující detail, neplatný `focus`. Výchozí `focus` v kostrách je prázdný. V přehledu kolekcí obal nikam
+Chyby, které zastaví běh: vlastní fotka a `cover` zároveň, `aspect` nebo `focus` bez vybraného obrazu (náhodný),
+dílo z jiného místa, rozpracované dílo, neexistující detail, neplatný `aspect` nebo `focus`. `aspect` i `focus` jsou
+v kostrách prázdné. V přehledu kolekcí obal nikam
 nevede (celá položka vede na kolekci).
 
 Díla s `featured: true` jsou zároveň filtrovatelná přepínačem „Výběr autorky“ (`?featured=1`). Na úvodní stránce
@@ -130,9 +133,10 @@ který ještě před vykreslením ukáže náhodného, takže nic nepřeblikne. 
 (střídání během návštěvy) záměrně není: obrazy mají různé poměry stran a rám by „dýchal“.
 
 Vyzkoušení (`npm run demo`): `/` a `/tvorba/2026/` náhodně (obnovuj stránku), `/tvorba/2025/` vlastní fotka
-(panorama z receptu `roky/2025.jpg`, celá), kolekce: Plenér Šumava vlastní fotka (celá), Město `cover: <id>` bez
-`focus` (celé dílo), Ze zahrady `cover: <id>#<detail>` s `focus` (ořez 3:2), Kresby náhodně (celé, klik vede na
-dílo). Konkrétní obraz na úvodní stránce: do `demo/uvod.yaml` napiš `cover: pf7ru`, s `focus: [40, 60]` se ořízne.
+(panorama z receptu `roky/2025.jpg`, jen `focus: [20, 50]` = čtverec 1:1), kolekce: Plenér Šumava vlastní fotka (celá), Město `cover: <id>` bez
+ořezu (celé dílo), Ze zahrady `cover: <id>#<detail>` s `aspect: "2:1"` a `focus` (široký ořez), Kresby náhodně
+(celé, klik vede na dílo). Konkrétní obraz na úvodní stránce: do `demo/uvod.yaml` napiš `cover: pf7ru`, s
+`aspect: "3:2"` se ořízne kolem středu.
 
 ### Text o roce
 
@@ -142,14 +146,15 @@ Nepovinný text autorky o roce (jaký byl, co se v tvorbě dělo) je v obsahové
 ```yaml
 description: |
   Rok plenérů: Šumava v září, zahrada v létě…
-cover: ""           # úvodní obraz roku, viz Úvodní obraz (nebo vlastní fotka roky/2026.jpg)
-focus:              # jen s cover: ořez na 3:2 kolem [zleva %, shora %]
-private_note: ""    # soukromé, na web se nedostane
+# cover: k3f9a      # NEPOVINNÉ: úvodní obraz roku, viz Úvodní obraz (nebo vlastní fotka roky/2026.jpg)
+# aspect: "3:2"     # NEPOVINNÉ, zapíná se smazáním "# ": ořez vybraného obrazu (jen s focus = "1:1")
+# focus: [50, 50]   # NEPOVINNÉ: co zůstane vidět [zleva %, shora %] (jen s aspect = střed)
+# private_note: …   # NEPOVINNÉ, soukromé, na web se nedostane
 ```
 
 - Pipeline ke každému roku, ve kterém je nějaké dílo, sama založí kostru (s prázdným `description`
   a `DOPLNIT`) a všechny popisy roků srovnává podle schématu jako ostatní popisy.
-- Veřejná kopie (`description`, `cover`, `focus`) jde do `content/years/<rok>.yaml`; web ji načte přes
+- Veřejná kopie (`description`, `cover`, `aspect`, `focus`) jde do `content/years/<rok>.yaml`; web ji načte přes
   `getYear` (`src/lib/site.ts`). Prázdný text se nezobrazí. Text je i popisem stránky pro vyhledávače.
 - Jiný soubor v `roky/` než `<rok>.yaml` a `<rok>.jpg`, fotka roku bez díla, nebo `description`, které není
   text, zastaví běh chybou.
@@ -157,7 +162,7 @@ private_note: ""    # soukromé, na web se nedostane
 ### Úvodní stránka (`uvod.yaml`)
 
 Text vedle velkého obrazu na úvodní stránce a její úvodní obraz jsou v kořeni obsahového repa v `uvod.yaml`
-(`HOME_SCHEMA`, pipeline `scripts/lib/home.mjs`): `description`, `cover`, `focus` a `private_note`, vlastní fotka
+(`HOME_SCHEMA`, pipeline `scripts/lib/home.mjs`): `description`, `cover`, `aspect`, `focus` a `private_note`, vlastní fotka
 `uvod.jpg`. Když soubor chybí, pipeline založí kostru s textem, který stránka měla předtím (`HOME_TEXT`), takže se
 nic nezmění. Veřejná kopie je `content/home.yaml` (web `getHome`); bez ní web ukáže ten původní text. Nadpis
 „Barvy, voda a trochu náhody“ je dál v `src/pages/index.astro`. Vyzkoušení: `demo/uvod.yaml`, `/`.
@@ -347,6 +352,16 @@ Jediný zdroj pravdy o atributech popisů je `scripts/lib/schema.mjs` (`WORK_SCH
   - vlastní komentář nad atributem nechá, nad technickým,
   - neznámý atribut (např. překlep `mockup:`) nesmaže, dá ho na konec a označí komentářem `NEZNÁMÝ atribut…`;
     na web se nedostane,
+  - **atribut s konečnou výchozí hodnotou** (ve schématu `settled: true`: `draft`, `tags`, `instagram`, `mockups`,
+    `featured`) nikdy nedostane `DOPLNIT` (ani v kostře, ani při doplnění), starý `DOPLNIT` u něj zmizí; souhrn běhu
+    ho hlásí jako „doplněno … (výchozí hodnota)“,
+  - **zakomentovaný nepovinný atribut** (ve schématu `commented: true` a ukázková hodnota `example`; teď `support`,
+    `details`, `price`, `fler` a `private_note` díla, `cover`, `aspect`, `focus` a `private_note` kolekce, roku
+    a úvodu, `caption` fotky): když chybí nebo je prázdný, vloží ho jako řádek
+    komentáře `# aspect: "3:2"` pod jeho technický komentář začínající `NEPOVINNÉ.` (`OPTIONAL` v
+    `scripts/lib/schema.mjs`), nikdy s `DOPLNIT` a nehlásí ho jako doplněný. Do veřejné kopie se nedostane. Zapne se smazáním `# `; prázdná
+    hodnota znamená totéž co chybějící atribut, takže ji příští běh zase zakomentuje. Vlastní komentář nad ním
+    zůstane (`stripCommented`, `schemaKeysIn` v `scripts/lib/metadata-yaml.mjs`),
   - komentář na začátku souboru zůstane nahoře, oddělený prázdným řádkem,
   - hodnoty ani jejich zápis (`|`, `[a, b]`, uvozovky) se nemění: po úpravě se to kontroluje a jinak se soubor
     nezapíše a běh skončí chybou.
@@ -398,10 +413,10 @@ v `demo/`, zobrazené přes `npm run demo`.
 | mockupy malého díla (≤ 35 cm) / většího | Kočka na okně / Zimní sad |
 | detailní fotky | Ráno u rybníka (2, s popisky), Kytice z louky (1, bez popisku), Pivoňky (1 široký) |
 | kolekce: vlastní úvodní fotka (panorama, celá) | Plenér Šumava 2026 |
-| kolekce: `cover: <id>#<detail>` + `focus` | Ze zahrady 2025 (detail Pivoněk) |
+| kolekce: `cover: <id>#<detail>` + `aspect: "2:1"` + `focus` | Ze zahrady 2025 (detail Pivoněk) |
 | kolekce: `cover: <id>` (celé dílo) | Město 2026 (Město v dešti, ne nejnovější Náměstí v mlze) |
 | kolekce bez `cover` = náhodně z výběru autorky, celé | Kresby, pastely a kvaš 2025–2026 (všechny 4 obrazy vybrané; náhled pro sdílení Nádraží) |
-| rok: vlastní úvodní fotka (celá) | 2025 (`demo/roky/2025.yaml`, panorama `roky/2025.jpg`) |
+| rok: vlastní úvodní fotka, jen `focus` (ořez 1:1) | 2025 (`demo/roky/2025.yaml`, panorama `roky/2025.jpg`) |
 | úvodní stránka: text z `uvod.yaml`, náhodný obraz | `demo/uvod.yaml` |
 | kolekce přes víc let a přelom roku | `demo-kresby-2025-2026/`: Kočka na okně, Jablka na stole (2025), Rybník v zimě (prosinec 2025), Nádraží (únor 2026) |
 | díla bez kolekce | Zimní sad, Slunečnice, Máky, Bouřka nad polem |
@@ -416,7 +431,7 @@ v `demo/`, zobrazené přes `npm run demo`.
 - dílo `available` nebo `reserved` má `price` (kladné číslo),
 - `instagram` je `true` nebo `false`,
 - `collection` je slug (malá písmena, číslice, pomlčky), kolekce má `title`,
-- `cover` kolekce je `id` publikovaného díla této kolekce (případně `#` a jeho existující detail) a kolekce nemá zároveň vlastní úvodní fotku, `focus` kolekce, roku i úvodu je `[x, y]` 0–100 a jen spolu s `cover`,
+- `cover` kolekce je `id` publikovaného díla této kolekce (případně `#` a jeho existující detail) a kolekce nemá zároveň vlastní úvodní fotku, `aspect` (`šířka:výška`) a `focus` (`[x, y]` 0–100) kolekce, roku i úvodu jsou jen u vybraného obrazu (`cover` nebo vlastní fotka),
 - `focus` fotky je `[x, y]` v rozsahu 0–100,
 - každý klíč v `details:` odpovídá existující detailní fotce a popisek je text,
 - soubory ve složkách mají známý typ, detailní složka patří k existujícímu dílu,
@@ -556,9 +571,10 @@ tvorba/zatisi-s-jablky.jpg + .yaml    ← dílo bez kolekce
 title: Plenér Šumava 2026
 description: |
   Týden malování venku na Kvildě a Modravě.
-cover: k3f9a#1-kvet # úvodní obraz: id díla z kolekce, případně #detailní fotka; nepovinné
-focus: [50, 40]     # jen s cover: ořízne se na 3:2 kolem bodu [zleva %, shora %]; prázdné = celý
-private_note: ""    # soukromé, na web se nedostane
+cover: k3f9a#1-kvet # NEPOVINNÉ: úvodní obraz, id díla z kolekce, případně #detailní fotka
+aspect: "3:2"       # ořez vybraného obrazu na poměr stran (prázdné s focus = "1:1"); obě prázdné = celý
+focus: [50, 40]     # bod [zleva %, shora %], který zůstane vidět (prázdné s aspect = střed)
+private_note: kde … # NEPOVINNÉ, soukromé, na web se nedostane
 ```
 
 - **Úvodní obrázek** kolekce (na její stránce, v přehledu i jako náhled při
@@ -574,15 +590,15 @@ private_note: ""    # soukromé, na web se nedostane
   Stejné pravidlo platí pro rok a úvodní stránku (viz *Úvodní obraz*).
   Fotka i `cover` zároveň je chyba (pipeline neví, co platí), stejně jako
   detail, který dílo nemá.
-- Úvodní obrázek kolekce se ukáže celý; jen `cover` s `focus` se ořízne na **3:2** kolem `focus`, takže obraz
-  na výšku ani panorama nerozbije hlavičku (viz tabulka v *Úvodní obraz*). `focus` bez `cover` je chyba.
+- Úvodní obrázek kolekce se ukáže celý; s `aspect` nebo `focus` se vybraný obraz ořízne, takže obraz na výšku
+  ani panorama nerozbije hlavičku (viz *Úvodní obraz*).
 - **Obrázek pro sdílení** (`og:image`, náhled odkazu na Facebooku, WhatsAppu
   apod.) je stejný výřez: pipeline ho vyrobí jako
   `public/og/collections/<slug>.jpg` (1200 × 800, `images.og` v
   `site.config.yaml`) ze stejného zdroje, jaký ukazuje stránka
   (`coverSource` v `scripts/lib/collections.mjs`), a se stejným ořezem
   (`focusCrop` v `scripts/lib/photos.mjs` počítá jako CSS `object-position`).
-  Vyrábí se při každém běhu jen pro vlastní fotku, detail a `cover` s `focus` (bez ořezu celé na papíře),
+  Vyrábí se při každém běhu jen pro vlastní fotku, detail a `cover` s ořezem (bez ořezu celé na papíře),
   zapíše se jen při změně. Zmizí se smazanou kolekcí nebo když obal přestane být vybraný; pak stránka sdílí
   `og.jpg` díla. Když ořez nestačí, je
   lepší připravit široký detail a použít `cover: <id>#<detail>`. Komponenta `src/components/Cover.astro`.
@@ -690,15 +706,15 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla s `mockups: true` do testovacích dat nebo obsahového repa, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
 | stav a mockupy | v yaml díla s `mockups: true` změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, mockupy na detailu zůstanou (nadpis „Jak vypadá na zdi“), z `export/fler` zmizí; pak `mockups: false`: mockupy zmizí i z webu. Testovací data: Ráno u rybníka (na prodej) × Slunečnice, Šumava v mlze (ne) × Pivoňky (vypnuté) |
 | exporty | `ls .demo/content/export/*/*/`: Instagram jen Ráno u rybníka, Pivoňky, Kytice z louky a Máky (`instagram: true`) s `-clean` a `-detail-*`, Fler jen díla `available`/`reserved`; smaž `instagram: true` u Máků v `demo/`, `npm run demo:prepare`, jejich export zmizí (originál + `-mockup-*`) |
-| cena | smaž `price` u díla `available`: `npm run images` skončí chybou „needs a price“ |
+| cena | zakomentuj nebo smaž `price` u díla `available` (`demo-maky.yaml`): `npm run images` skončí chybou „needs a price“ |
 | úklid exportů | přejmenuj dílo (yaml, fotku i složku detailů), `npm run images`: v logu `- removed export/…` se starým názvem, v `export/` zůstanou jen soubory s novým názvem; totéž po smazání díla. Nebo nakopíruj do `export/fler/<rok>/` cizí soubor `<slug>-<id>-mockup-xyz.jpg` existujícího díla: další běh ho smaže, i když nic nepřegeneruje. |
 | kolekce | `/tvorba/kolekce/` (přehled), `/tvorba/kolekce/demo-plener-sumava-2026/` (s úvodní fotkou), `/tvorba/kolekce/demo-zahrada-2025/` (bez ní), výběr „Kolekce“ a „O kolekci →“ v galerii, řádek „Kolekce“ na detailu díla |
 | detailní fotky | `/tvorba/2026/demo-rano-u-rybnika-pf7ru/` (2 detaily s popisky), `/tvorba/2025/demo-kytice-z-louky-q6bn6/` (1 detail bez popisku): náhledy pod popisem, prohlížečka; v `export/instagram` soubory `-detail-*` |
 | soukromá poznámka | `grep -r private_note .demo/site/content/` nesmí nic najít; `demo-rano-u-rybnika` a `demo-jablka-na-stole` ji v `demo/` mají |
 | oddělení testovacích dat | zkopíruj `demo/tvorba/demo-maky.yaml` do `tvorba/` obsahového repa a spusť `npm run images`: skončí chybou „test data do not belong in the real content“ a nic nezapíše (pak soubor smaž). Obráceně: yaml bez `demo: true` v `demo/` zastaví `npm run demo`. |
 | fotky stránek | `/o-mne/` (`o-mne-uvod` nahoře oříznutá na 2:1, `portret` vedle textu; bez kterékoli z nich se rozložení přizpůsobí); změň `focus` v `fotky/o-mne-uvod.yaml` (např. `[10, 10]`), `npm run images`, výřez se posune |
-| úvodní obraz kolekce | `/tvorba/kolekce/` a `/tvorba/kolekce/demo-zahrada-2025/`: „Ze zahrady 2025“ ukazuje široký detail Pivoněk (`cover: vjr39#1-kvety-nahore`). Zkus `cover: vjr39` (celé Pivoňky oříznuté na 3:2 kolem `focus`), pak smaž i `focus` (celé Pivoňky bez ořezu), pak `cover` smaž (náhodně z výběru, celé). „Plenér Šumava 2026“ má vlastní fotku jako panorama 2400 × 1000: ukáže se celá; `focus` k ní je chyba. „Město 2026“: `cover` bez `focus`, celé dílo. |
-| obrázek pro sdílení kolekce | po `npm run images` otevři `public/og/collections/*.jpg` (1200 × 800, stejný výřez jako na stránce, jen u vlastní fotky, detailu a `cover` s `focus`); změň `focus` kolekce Ze zahrady, `npm run images`, v logu `→ og kolekce/…` a výřez se posune. Na stránce kolekce je v `<meta property="og:image">`. |
+| úvodní obraz kolekce | `/tvorba/kolekce/` a `/tvorba/kolekce/demo-zahrada-2025/`: „Ze zahrady 2025“ ukazuje široký detail Pivoněk (`cover: vjr39#1-kvety-nahore`). Má `aspect: "2:1"`: zkus `"3:2"` nebo `"1:1"`, pak `cover: vjr39` (celé Pivoňky oříznuté), pak smaž `aspect` i `focus` (bez ořezu), pak `cover` (náhodně z výběru, celé). Bez `aspect` se ořízne na čtverec, bez `focus` kolem středu. „Plenér Šumava 2026“ má vlastní fotku jako panorama 2400 × 1000: ukáže se celá; zkus k ní `aspect: "3:2"`. „Město 2026“: `cover` bez ořezu, celé dílo. |
+| obrázek pro sdílení kolekce | po `npm run images` otevři `public/og/collections/*.jpg` (1200 × 800, stejný výřez jako na stránce, jen u vlastní fotky, detailu a `cover` s ořezem; ořez 2:1 Ze zahrady leží na papíře); změň `focus` nebo `aspect` kolekce Ze zahrady, `npm run images`, v logu `→ og kolekce/…` a výřez se posune. Na stránce kolekce je v `<meta property="og:image">`. |
 | chyby v popisu | např. `date: 14. 6. 2026`, `collection: plener` v popisu díla, podsložka v kolekci bez díla, dvě složky se stejnou adresou, popisek v `details:` k neexistující fotce, `cover` s dílem z jiné kolekce nebo `focus: [120, 50]`: `npm run images` skončí chybou a nic nezapíše |
 
 Pozn.: když Astro při buildu padá na zápisu telemetrie (sandbox, CI bez domovského

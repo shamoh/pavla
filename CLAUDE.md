@@ -38,8 +38,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   web `getCollections` a `/tvorba/kolekce/<slug>/`.
   Úvodní obraz kolekce, roku i úvodní stránky: jedno pravidlo (`scripts/lib/covers.mjs`, web `resolveCover`,
   komponenta `Cover.astro`): vlastní fotka (`_uvod.jpg`, `roky/<rok>.jpg`, `uvod.jpg`) > `cover: <id>` nebo
-  `<id>#<detail>` > náhodně z výběru autorky > nejnovější dílo. Vše se ukáže celé; jen `cover` + `focus` se ořízne
-  na 3:2 kolem `focus` (stejný výřez je `og:image` v `public/og/…`). `focus` bez `cover` = chyba, výchozí `focus` prázdný. Každá výstupní složka pipeline v tomto repu musí být
+  `<id>#<detail>` > náhodně z výběru autorky > nejnovější dílo. Vše se ukáže celé; vybraný obraz (vlastní fotka nebo
+  `cover`) s `aspect` nebo `focus` se ořízne (`coverCrop`, chybějící = `"1:1"` / `[50, 50]`; stejný výřez je `og:image`
+  v `public/og/…`). Náhodný se neořezává, `aspect`/`focus` u něj = chyba; v kostrách prázdné. Každá výstupní složka pipeline v tomto repu musí být
   v `OUTPUT_PATHS` (`scripts/lib/pull-request.mjs`; do PR jdou jen ty z nich, které existují nebo je git zná).
 - Detailní fotky díla: `tvorba/[<kolekce>/]<slug>/*.jpg` (obsahové repo) → `detail-<název>-<šířka>.*` a `info.json#details`;
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
@@ -50,9 +51,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (`Cover.astro`, vede na zobrazené dílo); stránka ukáže náhodného skriptem `scripts/lib/random-pick.mjs`
   (vložený, bez přeblikávání), `og:image` je vždy první kandidát. Web pipeline (`coverSource`) musí vybírat stejně.
 - Text o roce: `roky/<rok>.yaml` obsahového repa (`YEAR_SCHEMA`, `scripts/lib/years.mjs`), kostru pipeline založí
-  ke každému roku s díly; veřejná kopie `content/years/<rok>.yaml` (`description`, `cover`, `focus`), web `getYear`.
+  ke každému roku s díly; veřejná kopie `content/years/<rok>.yaml` (`description`, `cover`, `aspect`, `focus`), web `getYear`.
 - Úvodní stránka: `uvod.yaml` v kořeni obsahového repa (`HOME_SCHEMA`, `scripts/lib/home.mjs`; text `description`,
-  `cover`, `focus`), kostra s původním textem `HOME_TEXT`; veřejná kopie `content/home.yaml`, web `getHome`.
+  `cover`, `aspect`, `focus`), kostra s původním textem `HOME_TEXT`; veřejná kopie `content/home.yaml`, web `getHome`.
 - Každý výpis děl se stránkuje, v prohlížeči nad vyfiltrovaným seznamem (`paginate`); návštěvník volí počet
   na stránku (`gallery.pageSizes`, `?perPage=`, pamatuje se v `localStorage`, ale odkaz s `perPage`/`page` má vždy
   přednost) a může stránkování jednorázově vypnout („Zobrazit vše“, `?page=all`, nepamatuje se).
@@ -60,11 +61,14 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `missing` (hodnota pro doplnění do existujícího souboru, musí znamenat totéž co chybějící atribut) a technický
   komentář (česky, typ, hodnoty, příklady). Pipeline z něj staví kostry a při každém běhu srovná všechny popisy
   (`scripts/lib/metadata-yaml.mjs`): doplní chybějící atributy s `DOPLNIT`, srovná pořadí a technické komentáře,
-  neznámé označí `NEZNÁMÝ`. Nový atribut = záznam ve schématu (+ `PUBLIC_*_FIELDS`, když je veřejný), README obou rep
+  neznámé označí `NEZNÁMÝ`. Povinný atribut s konečnou výchozí hodnotou (`settled: true`: `draft`, `tags`, `instagram`,
+  `mockups`, `featured`) nikdy nemá `DOPLNIT`. Nepovinný atribut (`commented: true` + `example`: `support`, `details`,
+  `caption`, `private_note`, `price`, `fler`, `cover`, `aspect`, `focus`) je v souboru zakomentovaný (`# price: 2500`) pod technickým komentářem s `NEPOVINNÉ.`, bez
+  `DOPLNIT`; prázdná hodnota = zakomentovat. Nový atribut = záznam ve schématu (+ `PUBLIC_*_FIELDS`, když je veřejný), README obou rep
   a testovací data; změna znění komentáře = staré znění do `previous`. `DOPLNIT` nikdy neodstraňovat za lidi.
 - Testovacích děl (`pavla/demo/`) musí být vždy víc, než je nejmenší počet na stránku (aspoň 15 při 12).
 - Náhledy pro sdílení (`og:image` + rozměry): dílo = `og.jpg` celý obraz na papíře (nikdy neořezávat),
-  úvodní obraz kolekce/roku/úvodu = `cover` + `focus` ořez 3:2, vlastní fotka nebo detail celé na papíře, jinak `og.jpg`
+  úvodní obraz kolekce/roku/úvodu = ořez vybraného (`aspect`/`focus`), vlastní fotka nebo detail celé na papíře, jinak `og.jpg`
   díla (`coverShareSource`); helpery `*ShareImage` v `src/lib/site.ts`.
 - Mockupy: scény v `mockups/scenes.yaml` (kalibrace px/cm), výběr a vykreslení `scripts/lib/mockups.mjs`.
 - Ostatní fotky: `fotky/<název>.jpg` obsahového repa → `public/photos/<název>/`, na stránce `<Photo name="…" />`;

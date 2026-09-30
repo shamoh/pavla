@@ -4,8 +4,8 @@ demo: true
 # Co je na fotce (pro nevidomé a vyhledávače), např. „Pavla maluje v ateliéru“.
 alt: "Zástupná fotka pro stránku Kontakt (testovací data)"
 
-# Popisek pod fotkou, nepovinné.
-caption: ""
+# NEPOVINNÉ. Popisek pod fotkou.
+# caption: Na plenéru na Šumavě
 
 # Kam se fotka vycentruje, když ji stránka ořízne: [zleva %, shora %],
 # např. [50, 50] = střed, [80, 70] = vpravo dole.

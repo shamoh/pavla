@@ -16,16 +16,16 @@ const check = (data, coverPath = null) => validateCollectionCovers([{ slug: 'zah
 
 test('validateCollectionCovers accepts a work, a detail photo of a work, no cover and a valid focus', () => {
   assert.deepEqual(check({ cover: 'vjr39' }), []);
-  assert.deepEqual(check({ cover: 'vjr39#1-kvety', focus: [0, 100] }), []);
+  assert.deepEqual(check({ cover: 'vjr39#1-kvety', aspect: '3:2', focus: [0, 100] }), []);
   assert.deepEqual(check({}), []);
-  assert.deepEqual(check({ cover: '', focus: null }), []);
+  assert.deepEqual(check({ cover: '', aspect: null, focus: null }), []);
 });
 
 test('validateCollectionCovers reports a missing detail, a detail of a work without details and a bad focus', () => {
   assert.match(check({ cover: 'vjr39#listy' })[0], /Pivoňky has no detail photo "listy" \(folder tvorba\/zahrada\/pivonky\/\)/);
   assert.match(check({ cover: 'q6bn6#1-kvety' })[0], /Kytice has no detail photo "1-kvety"/);
-  assert.match(check({ focus: [50] })[0], /focus must be \[x, y\]/);
-  assert.match(check({ focus: '50 50' })[0], /focus must be \[x, y\]/);
+  assert.match(check({ cover: 'vjr39', aspect: '3:2', focus: [50] })[0], /focus must be \[x, y\]/);
+  assert.match(check({ cover: 'vjr39', aspect: '3:2', focus: '50 50' })[0], /focus must be \[x, y\]/);
 });
 
 test('validateCollectionCovers reports a cover next to a cover photo', () => {
@@ -40,12 +40,14 @@ test('coverSource: the share image source of a collection (own photo, cropped wo
     { id: 'jinde', collection: 'jina', data: { date: '2025-12-02' }, masterPath: '/m/jinde.jpg', details: [] },
   ];
   const c = (data, coverPath = null) => ({ slug: 'zahrada', data, coverPath });
-  assert.deepEqual(coverSource(c({}, '/k/zahrada.jpg'), all), { source: '/k/zahrada.jpg', focus: null });
-  assert.deepEqual(coverSource(c({ cover: 'vjr39', focus: [50, 40] }), all), { source: '/m/pivonky.jpg', focus: [50, 40] });
+  assert.deepEqual(coverSource(c({}, '/k/zahrada.jpg'), all), { source: '/k/zahrada.jpg', crop: null });
+  assert.deepEqual(coverSource(c({ cover: 'vjr39', aspect: '3:2', focus: [50, 40] }), all), { source: '/m/pivonky.jpg', crop: { ratio: 1.5, css: '3 / 2', focus: [50, 40] } });
+  assert.deepEqual(coverSource(c({ cover: 'vjr39', focus: [50, 40] }), all), { source: '/m/pivonky.jpg', crop: { ratio: 1, css: '1 / 1', focus: [50, 40] } }, 'focus alone: 1:1');
+  assert.deepEqual(coverSource(c({ aspect: '2:1' }, '/k/zahrada.jpg'), all), { source: '/k/zahrada.jpg', crop: { ratio: 2, css: '2 / 1', focus: [50, 50] } }, 'own photo, aspect alone: the centre');
   assert.equal(coverSource(c({ cover: 'vjr39' }), all), null, 'a whole work shares its own og.jpg');
-  assert.deepEqual(coverSource(c({ cover: 'vjr39#1 Květy' }), all), { source: '/m/pivonky/1-kvety.jpg', focus: null });
+  assert.deepEqual(coverSource(c({ cover: 'vjr39#1 Květy' }), all), { source: '/m/pivonky/1-kvety.jpg', crop: null });
   assert.equal(coverSource(c({}), all), null);
-  assert.equal(coverSource(c({ cover: 'jinde', focus: [1, 1] }), all), null, 'a work of another collection is not its cover');
+  assert.equal(coverSource(c({ cover: 'jinde', aspect: '1:1', focus: [1, 1] }), all), null, 'a work of another collection is not its cover');
 });
 
 test('titleFromFolder moves a leading year (or range) to the end of the title', async () => {

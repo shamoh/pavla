@@ -5,7 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
 import { HOME_FIELDS, prepareHome } from './home.mjs';
-import { HOME_TEXT } from './schema.mjs';
+import { HOME_SCHEMA, HOME_TEXT } from './schema.mjs';
+import { schemaKeysIn } from './metadata-yaml.mjs';
 
 let dir;
 beforeEach(async () => { dir = await fs.mkdtemp(path.join(os.tmpdir(), 'home-')); });
@@ -15,7 +16,8 @@ test('prepareHome writes a skeleton with the text the home page had, every attri
   const r = await prepareHome(dir);
   assert.deepEqual(r.created, ['uvod.yaml']);
   const text = await fs.readFile(path.join(dir, 'uvod.yaml'), 'utf8');
-  assert.deepEqual(Object.keys(YAML.parse(text)), HOME_FIELDS);
+  assert.deepEqual(schemaKeysIn(text, HOME_SCHEMA), HOME_FIELDS);
+  assert.match(text, /\n# aspect: "3:2"\n/, 'optional attributes commented out');
   assert.equal(r.home.data.description, HOME_TEXT);
   assert.equal(r.home.coverPath, null);
   assert.match(text, /# DOPLNIT Text na úvodní stránce/);

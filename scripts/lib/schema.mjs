@@ -31,13 +31,25 @@ const demo = {
  */
 const coverField = (scope, photo, previous) => ({
   key: 'cover',
+  commented: true,
+  example: 'k3f9a',
   doc: [
     `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
-    `vede na to dílo. Nebo místo toho vlastní fotka ${photo} (bez odkazu). Ukáže se celý, s focus oříznutý na 3:2.`,
+    `vede na to dílo. Nebo místo toho vlastní fotka ${photo} (bez odkazu). Ukáže se celý, s aspect nebo focus oříznutý.`,
     'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
   ],
   value: '',
   previous: [
+    [
+      `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
+      `vede na to dílo. Nebo místo toho vlastní fotka ${photo} (bez odkazu). Ukáže se celý, s aspect a focus oříznutý.`,
+      'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
+    ],
+    [
+      `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
+      `vede na to dílo. Nebo místo toho vlastní fotka ${photo} (bez odkazu). Ukáže se celý, s focus oříznutý na 3:2.`,
+      'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
+    ],
     ...[photo, photo.replace(/ vedle tohoto souboru$/, ' (vedle tohoto souboru)')].map((p) => [
       `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
       `vede na to dílo. Nebo místo toho vlastní fotka ${p} (bez odkazu). Obojí se ořízne na 3:2 kolem focus.`,
@@ -47,15 +59,65 @@ const coverField = (scope, photo, previous) => ({
   ],
 });
 
-/** `focus` of a chosen cover: only with `cover`, it crops that work to 3:2; `previous`: older wordings. */
-const focusField = (previous) => ({
-  key: 'focus',
+/**
+ * `aspect` of a chosen cover (own photo or `cover`): crops it to this aspect ratio; `focus` alone means 1:1.
+ * Commented out unless used (`commented`, see scripts/lib/metadata-yaml.mjs).
+ */
+const aspectField = {
+  key: 'aspect',
+  commented: true,
+  example: '"3:2"',
   doc: [
-    'Jen s cover: vybraný obraz se ořízne na 3:2 a [zleva %, shora %] = co zůstane vidět, např. [50, 50] = střed,',
-    '[80, 30] = vpravo nahoře. Prázdné = obraz celý, bez ořezu. Bez cover (i s vlastní fotkou) nechat prázdné.',
+    'Ořez vybraného obrazu (cover nebo vlastní fotky) na poměr stran šířka:výška v uvozovkách, např. "3:2", "2:1",',
+    '"1:1". Jen s focus = "1:1". Bez aspect i focus = celý.',
   ],
   value: null,
   previous: [
+    [
+      'Nepovinné, zapneš smazáním "# " na začátku řádku. Ořez vybraného obrazu (cover nebo vlastní fotky) na poměr',
+      'stran šířka:výška v uvozovkách, např. "3:2", "2:1", "1:1". Jen s focus = "1:1". Bez aspect i focus = celý.',
+    ],
+    [
+      'Ořez vybraného obrazu (cover nebo vlastní fotky) na poměr stran šířka:výška, např. "3:2", "2:1", "1:1"',
+      '(v uvozovkách). Prázdné i s focus = "1:1". Prázdné aspect i focus = obraz celý, bez ořezu.',
+    ],
+    [
+      'Jen s cover a focus: vybraný obraz se ořízne na tento poměr stran šířka:výška, např. "3:2", "2:1", "1:1"',
+      '(v uvozovkách). Prázdné = obraz celý, bez ořezu. Bez cover (i s vlastní fotkou) nechat prázdné.',
+    ],
+  ],
+};
+
+/**
+ * `focus` of a chosen cover: what stays visible when cropped; `aspect` alone means [50, 50]. Commented out unless
+ * used (`commented`); `previous`: older wordings.
+ */
+const focusField = (previous) => ({
+  key: 'focus',
+  commented: true,
+  example: '[50, 50]',
+  doc: [
+    'Při ořezu vybraného obrazu zůstane vidět [zleva %, shora %], např. [50, 50] = střed, [80, 30] = vpravo nahoře.',
+    'Jen s aspect = střed. Náhodný obraz se neořezává.',
+  ],
+  value: null,
+  previous: [
+    [
+      'Nepovinné, zapneš smazáním "# " na začátku řádku. Při ořezu vybraného obrazu zůstane vidět [zleva %, shora %],',
+      'např. [50, 50] = střed, [80, 30] = vpravo nahoře. Jen s aspect = střed. Náhodný obraz se neořezává.',
+    ],
+    [
+      'Při ořezu vybraného obrazu zůstane vidět [zleva %, shora %], např. [50, 50] = střed, [80, 30] = vpravo nahoře.',
+      'Prázdné i s aspect = [50, 50]. Prázdné aspect i focus = obraz celý, bez ořezu. Náhodný obraz se neořezává.',
+    ],
+    [
+      'Jen s cover a aspect: při ořezu zůstane vidět [zleva %, shora %], např. [50, 50] = střed, [80, 30] = vpravo',
+      'nahoře. Prázdné = obraz celý, bez ořezu. Bez cover (i s vlastní fotkou) nechat prázdné.',
+    ],
+    [
+      'Jen s cover: vybraný obraz se ořízne na 3:2 a [zleva %, shora %] = co zůstane vidět, např. [50, 50] = střed,',
+      '[80, 30] = vpravo nahoře. Prázdné = obraz celý, bez ořezu. Bez cover (i s vlastní fotkou) nechat prázdné.',
+    ],
     [
       'Jen pro vybraný úvodní obraz (cover nebo vlastní fotka): ořízne se na 3:2 a [zleva %, shora %] = co zůstane',
       'vidět, např. [50, 50] = střed, [80, 30] = vpravo nahoře. U náhodného obrazu se nepoužije.',
@@ -81,7 +143,7 @@ export const WORK_SCHEMA = {
       value: null,
     },
     demo,
-    { key: 'draft', doc: 'true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.', value: true, missing: false },
+    { key: 'draft', settled: true, doc: 'true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.', value: true, missing: false },
     { key: 'title', doc: 'Název obrazu, jak ho uvidí návštěvníci webu.', value: '' },
     {
       key: 'date',
@@ -94,7 +156,14 @@ export const WORK_SCHEMA = {
       value: 'akvarel',
       missing: '',
     },
-    { key: 'support', doc: 'Podklad, např. papír Arches 300 g. Nepovinné, prázdné = na webu se nezobrazí.', value: '' },
+    {
+      key: 'support',
+      commented: true,
+      example: 'papír Arches 300 g',
+      doc: 'Podklad, např. papír Arches 300 g. Bez něj se na webu nezobrazí.',
+      value: '',
+      previous: ['Podklad, např. papír Arches 300 g. Nepovinné, prázdné = na webu se nezobrazí.'],
+    },
     {
       key: 'size_cm',
       doc: [
@@ -104,7 +173,7 @@ export const WORK_SCHEMA = {
       value: [0, 0],
       missing: null,
     },
-    { key: 'tags', doc: 'Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].', value: [] },
+    { key: 'tags', settled: true, doc: 'Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].', value: [] },
     {
       key: 'status',
       doc: [
@@ -115,26 +184,34 @@ export const WORK_SCHEMA = {
     },
     {
       key: 'price',
-      doc: 'Cena v Kč, např. 2500. Povinná u available a reserved, jinak nech prázdné.',
+      commented: true,
+      example: '2500',
+      doc: 'Cena v Kč, např. 2500. Povinná u available a reserved.',
       value: null,
+      previous: ['Cena v Kč, např. 2500. Povinná u available a reserved, jinak nech prázdné.'],
     },
     {
       key: 'fler',
+      commented: true,
+      example: 'https://www.fler.cz/zbozi/…',
       doc: 'Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.',
       value: '',
     },
     {
       key: 'instagram',
+      settled: true,
       doc: 'true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.',
       value: false,
     },
     {
       key: 'mockups',
+      settled: true,
       doc: 'true = mockupy (obraz v rámu v interiéru) na webu, u obrazu na prodej i pro Fler; false = žádné.',
       value: false,
     },
     {
       key: 'featured',
+      settled: true,
       doc: [
         'true = ve výběru autorky: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně',
         'střídají obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover). false = ne.',
@@ -157,15 +234,20 @@ export const WORK_SCHEMA = {
     },
     {
       key: 'details',
-      doc: [
+      commented: true,
+      example: '{ 1-mlha: Ranní mlha nad vodou }',
+      doc: 'Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.',
+      value: null,
+      previous: [[
         'Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru), nepovinné. Např.:',
         'details:',
         '  1-mlha: Mlha nad hladinou',
-      ],
-      value: null,
+      ]],
     },
     {
       key: 'private_note',
+      commented: true,
+      example: 'kde obraz visí, komu patří',
       doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',
       value: '',
     },
@@ -194,12 +276,15 @@ export const COLLECTION_SCHEMA = {
       'Úvodní obraz: id díla z kolekce (např. k3f9a) nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer.',
       'Nepovinné: bez něj vlastní fotka _uvod.jpg, jinak nejnovější dílo. Dílo s draft: true nejde.',
     ]),
+    aspectField,
     focusField([
       'Úvodní obraz se ořízne na 3:2; [zleva %, shora %] = co zůstane vidět,',
       'např. [50, 50] = střed, [80, 30] = vpravo nahoře.',
     ]),
     {
       key: 'private_note',
+      commented: true,
+      example: 'kde obraz visí, komu patří',
       doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',
       value: '',
     },
@@ -219,7 +304,7 @@ export const PHOTO_SCHEMA = {
       doc: 'Co je na fotce (pro nevidomé a vyhledávače), např. „Pavla maluje v ateliéru“.',
       value: '',
     },
-    { key: 'caption', doc: 'Popisek pod fotkou, nepovinné.', value: '' },
+    { key: 'caption', commented: true, example: 'Na plenéru na Šumavě', doc: 'Popisek pod fotkou.', value: '', previous: ['Popisek pod fotkou, nepovinné.'] },
     {
       key: 'focus',
       doc: [
@@ -248,9 +333,12 @@ export const YEAR_SCHEMA = {
       value: '',
     },
     coverField('z toho roku', '<rok>.jpg vedle tohoto souboru'),
+    aspectField,
     focusField(),
     {
       key: 'private_note',
+      commented: true,
+      example: 'kde obraz visí, komu patří',
       doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',
       value: '',
     },
@@ -279,9 +367,12 @@ export const HOME_SCHEMA = {
       value: HOME_TEXT,
     },
     coverField('z celé tvorby', 'uvod.jpg vedle tohoto souboru'),
+    aspectField,
     focusField(),
     {
       key: 'private_note',
+      commented: true,
+      example: 'kde obraz visí, komu patří',
       doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',
       value: '',
     },
@@ -292,7 +383,14 @@ export const HOME_SCHEMA = {
 export const fieldKeys = (schema) => schema.fields.filter((f) => f.key !== 'demo').map((f) => f.key);
 
 /** Lines of a technical comment. */
-export const docLines = (field) => (Array.isArray(field.doc) ? field.doc : [field.doc]);
+/** Mark in front of the technical comment of a commented-out (optional, off by default) attribute. */
+export const OPTIONAL = 'NEPOVINNÉ.';
+
+/** The technical comment of a field as lines as written in the file (a commented-out one starts with OPTIONAL). */
+export const docLines = (field) => {
+  const doc = Array.isArray(field.doc) ? field.doc : [field.doc];
+  return field.commented ? [`${OPTIONAL} ${doc[0]}`, ...doc.slice(1)] : doc;
+};
 
 /**
  * Comments of the templates before the technical comments existed (at the end of a line, or below a key).

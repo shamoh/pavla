@@ -17,7 +17,7 @@ date: 2025-01-18
 # Technika, např. akvarel, kresba tužkou, linoryt, kombinovaná technika. Podle ní se filtruje v galerii.
 technique: akvarel
 
-# Podklad, např. papír Arches 300 g. Nepovinné, prázdné = na webu se nezobrazí.
+# NEPOVINNÉ. Podklad, např. papír Arches 300 g. Bez něj se na webu nezobrazí.
 support: papír 300 g
 
 # Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu:
@@ -31,11 +31,11 @@ tags: [krajina, zima]
 # | not-for-sale (není na prodej, na webu bez štítku).
 status: available
 
-# Cena v Kč, např. 2500. Povinná u available a reserved, jinak nech prázdné.
+# NEPOVINNÉ. Cena v Kč, např. 2500. Povinná u available a reserved.
 price: 4500
 
-# Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
-fler: ""
+# NEPOVINNÉ. Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
+# fler: https://www.fler.cz/zbozi/…
 
 # true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.
 instagram: false
@@ -52,10 +52,8 @@ featured: true
 description: |
   Jabloně pod sněhem za vesnicí.
 
-# Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru), nepovinné. Např.:
-# details:
-#   1-mlha: Mlha nad hladinou
-details:
+# NEPOVINNÉ. Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.
+# details: { 1-mlha: Ranní mlha nad vodou }
 
-# Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
-private_note: ""
+# NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+# private_note: kde obraz visí, komu patří

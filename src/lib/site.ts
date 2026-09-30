@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
 import { coverCandidates, detailKey, parseWorkKey } from '../../scripts/lib/works.mjs';
-import { parseCoverRef } from '../../scripts/lib/covers.mjs';
+import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
 import { HOME_TEXT } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
 import { measurementIdFor } from '../../scripts/lib/analytics.mjs';
@@ -36,12 +36,12 @@ export interface ShareImage { src: string; width: number; height: number }
 
 /**
  * The cover of a collection, a year or the home page (resolveCover). `photo` (own photo) and `work` (`cover`) are
- * chosen, `random` takes turns among the newest works of the author's selection. All are shown whole; only a `work`
- * with `focus` is cropped to 3:2 around it. `og`: the share image the pipeline made for it, if any.
+ * chosen, `random` takes turns among the newest works of the author's selection. All are shown whole; a chosen one
+ * with `crop` (`aspect` and/or `focus`, coverCrop) is cropped to that aspect ratio around focus. `og`: its share image.
  */
 export type Cover =
-  | { kind: 'photo'; base: string; image: ImageSet & { alt: string }; og?: string }
-  | { kind: 'work'; work: Work; detail?: Detail; focus?: [number, number]; og?: string }
+  | { kind: 'photo'; base: string; image: ImageSet & { alt: string }; crop?: { css: string; focus: [number, number] }; og?: string }
+  | { kind: 'work'; work: Work; detail?: Detail; crop?: { css: string; focus: [number, number] }; og?: string }
   | { kind: 'random'; works: Work[] };
 
 export interface Work {
@@ -193,23 +193,26 @@ export const analyticsId = measurementIdFor(config.analytics, { production: impo
 /** Years that have at least one published work, newest first. */
 /**
  * The cover of a place (a collection, a year, the home page), the same rule as the pipeline (scripts/lib/covers.mjs):
- * its own photo (public/<photoDir>/), otherwise `cover: <id>` or `<id>#<detail>` among `works` (cropped to 3:2 only
- * with `focus`), otherwise one of the newest works of the author's selection at random. `ogFile`: the share image the
- * pipeline makes for a chosen cover. Null only without any work.
+ * its own photo (public/<photoDir>/), otherwise `cover: <id>` or `<id>#<detail>` among `works` (both cropped only
+ * with `aspect` or `focus`, coverCrop), otherwise one of the newest works of the author's selection at random. `ogFile`: the
+ * share image the pipeline makes for a chosen cover. Null only without any work.
  */
 export function resolveCover(works: Work[], data: any, photoDir: string, ogFile: string, alt: string): Cover | null {
-  const focus = Array.isArray(data?.focus) && data.focus.length === 2 ? (data.focus as [number, number]) : undefined;
+  const toCrop = (chosen: boolean) => {
+    const cut = coverCrop(data, chosen);
+    return cut ? { css: cut.css, focus: cut.focus as [number, number] } : undefined;
+  };
   const og = fs.existsSync(path.join(dataRoot, 'public', ogFile)) ? `/${ogFile}` : undefined;
   const info = path.join(dataRoot, 'public', photoDir, 'info.json');
   if (fs.existsSync(info)) {
     const photo = JSON.parse(fs.readFileSync(info, 'utf8'));
-    return { kind: 'photo', base: `/${photoDir}`, image: { ...photo, alt: photo.alt || alt }, og };
+    return { kind: 'photo', base: `/${photoDir}`, image: { ...photo, alt: photo.alt || alt }, crop: toCrop(true), og };
   }
   const ref = typeof data?.cover === 'string' && data.cover.trim() ? parseCoverRef(data.cover) : null;
   const work = ref && works.find((w) => w.id === ref.id);
   if (work) {
     const detail = ref!.detail ? work.image.details?.find((d) => d.name === ref!.detail) : undefined;
-    return { kind: 'work', work, detail, focus, og };
+    return { kind: 'work', work, detail, crop: toCrop(true), og };
   }
   const candidates = coverCandidates(works);
   return candidates.length ? { kind: 'random', works: candidates } : null;
@@ -218,7 +221,7 @@ export function resolveCover(works: Work[], data: any, photoDir: string, ogFile:
 /** The id of the work a cover shows first (the one in the HTML), for lists that should not repeat it. */
 export const coverWorkId = (c: Cover | null) => (c?.kind === 'work' ? c.work.id : c?.kind === 'random' ? c.works[0].id : undefined);
 
-/** Share image of a cover: the pipeline's 3:2 crop of a chosen cover, otherwise the share image of the (first) work. */
+/** Share image of a cover: the pipeline's one for a chosen cover, otherwise the share image of the (first) work. */
 export function coverShareImage(c: Cover | null): ShareImage | undefined {
   if (!c) return undefined;
   if (c.kind !== 'random' && c.og) return { src: c.og, width: config.images.og.width, height: config.images.og.height };

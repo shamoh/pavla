@@ -294,18 +294,19 @@ export async function run({
   config ??= YAML.parse(await fs.readFile(path.join(siteDir, 'site.config.yaml'), 'utf8'));
   const img = config.images;
   /**
-   * Share image of a chosen cover ({ source, focus } from coverShareSource): cropped to 3:2 (images.og) around focus,
-   * or without focus the whole image on paper like the share image of a work; written only when it changed.
+   * Share image of a chosen cover ({ source, crop } from coverShareSource): cropped to crop.ratio around crop.focus
+   * (filling the share image when the ratio is its own, 3:2, otherwise on paper), or without crop the whole image on
+   * paper like the share image of a work; written only when it changed.
    */
-  const shareCrop = async ({ source, focus }, file, label) => {
+  const shareCrop = async ({ source, crop }, file, label) => {
     const m = await loadMaster(await fs.readFile(source));
-    const buf = focus
-      ? await sharp(m.buf)
-        .extract(focusCrop(m.width, m.height, img.og.width / img.og.height, focus))
-        .resize(img.og.width, img.og.height)
-        .jpeg({ quality: img.og.quality, mozjpeg: true })
-        .toBuffer()
-      : await wholeOnPaper(m, img);
+    const ogRatio = img.og.width / img.og.height;
+    const cut = crop && (await sharp(m.buf).extract(focusCrop(m.width, m.height, crop.ratio, crop.focus)).toBuffer({ resolveWithObject: true }));
+    const buf = !crop
+      ? await wholeOnPaper(m, img)
+      : Math.abs(crop.ratio - ogRatio) < 0.01
+        ? await sharp(cut.data).resize(img.og.width, img.og.height).jpeg({ quality: img.og.quality, mozjpeg: true }).toBuffer()
+        : await wholeOnPaper({ buf: cut.data, width: cut.info.width, height: cut.info.height }, img);
     const old = await fs.readFile(file).catch(() => null);
     if (!old || !old.equals(buf)) {
       log(`→ ${label}`);

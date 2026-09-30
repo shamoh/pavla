@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import YAML from 'yaml';
-import { normalizeMetadata, skeleton, todoKeys } from './metadata-yaml.mjs';
-import { COLLECTION_SCHEMA, PHOTO_SCHEMA, TODO, UNKNOWN_DOC, WORK_SCHEMA, fieldKeys } from './schema.mjs';
+import { normalizeMetadata, schemaKeysIn, skeleton, todoKeys } from './metadata-yaml.mjs';
+import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, UNKNOWN_DOC, WORK_SCHEMA, YEAR_SCHEMA, fieldKeys } from './schema.mjs';
 
 // A small schema keeps the expected texts readable.
 const schema = {
@@ -133,12 +133,13 @@ test('skeleton: every attribute with its skeleton default, DOPLNIT everywhere ex
   assert.equal(normalizeMetadata(text, schema).changed, false);
 });
 
-test('the real schemas: skeletons contain every attribute and nothing is unknown or DOPLNIT-less but the id', () => {
-  for (const s of [WORK_SCHEMA, COLLECTION_SCHEMA, PHOTO_SCHEMA]) {
+test('the real schemas: skeletons contain every attribute; DOPLNIT on all but generated, settled and commented-out ones', () => {
+  for (const s of [WORK_SCHEMA, COLLECTION_SCHEMA, PHOTO_SCHEMA, YEAR_SCHEMA, HOME_SCHEMA]) {
     const text = skeleton(s, { id: 'k3f9a', title: 'X', date: '2026-06-14', alt: 'X' });
-    assert.deepEqual(Object.keys(YAML.parse(text)), fieldKeys(s), s.name);
+    assert.deepEqual(schemaKeysIn(text, s), fieldKeys(s).filter((k) => k !== 'demo'), s.name);
     const marked = text.split('\n').filter((l) => l.startsWith(`# ${TODO} `)).length;
-    assert.equal(marked, fieldKeys(s).filter((k) => k !== 'id').length, s.name);
+    const toCheck = s.fields.filter((f) => !f.generated && !f.optional && !f.settled && !f.commented);
+    assert.equal(marked, toCheck.length, s.name);
     assert.equal(normalizeMetadata(text, s).changed, false, s.name);
   }
 });
@@ -150,4 +151,53 @@ test('todoKeys: the attributes still marked DOPLNIT, in file order', () => {
   assert.deepEqual(todoKeys(text), ['draft', 'size', 'text']);
   assert.deepEqual(todoKeys(norm('id: k3f9a\ndraft: false\ntitle: Ráno\nsize: [1, 2]\ntext:\n').text), []);
   assert.deepEqual(todoKeys(`# ${TODO} nahoře v souboru\n\nid: k3f9a\n`), [], 'the file comment is not an attribute');
+});
+
+// A small schema with a commented-out attribute.
+const withOff = { header: [], fields: [
+  { key: 'title', doc: 'Název.', value: '' },
+  { key: 'crop', commented: true, example: '"3:2"', doc: 'Ořez.', value: null, previous: ['Ořez, starý text.'] },
+  { key: 'note', doc: 'Poznámka.', value: '' },
+] };
+
+test('commented-out attribute: there as a comment line under its technical comment, never DOPLNIT', () => {
+  const r = normalizeMetadata('title: A\nnote: ""\n', withOff);
+  assert.equal(r.text, '# Název.\ntitle: A\n\n# NEPOVINNÉ. Ořez.\n# crop: "3:2"\n\n# Poznámka.\nnote: ""\n');
+  assert.deepEqual(r.added, [], 'not reported as added, nothing to fill in');
+  assert.equal(normalizeMetadata(r.text, withOff).changed, false);
+  assert.deepEqual(todoKeys(r.text), []);
+  assert.deepEqual(schemaKeysIn(r.text, withOff), ['title', 'crop', 'note']);
+  assert.equal(YAML.parse(r.text).crop, undefined);
+});
+
+test('commented-out attribute: switched on by removing "# ", an empty value is commented out again', () => {
+  const on = normalizeMetadata('# Název.\ntitle: A\n\n# NEPOVINNÉ. Ořez.\ncrop: "2:1"\n\n# Poznámka.\nnote: ""\n', withOff);
+  assert.equal(on.changed, false);
+  assert.equal(YAML.parse(on.text).crop, '2:1');
+  const empty = normalizeMetadata('title: A\n# moje\ncrop:\nnote: ""\n', withOff);
+  assert.equal(empty.problem, null);
+  assert.match(empty.text, /\n# moje\n# NEPOVINNÉ\. Ořez\.\n# crop: "3:2"\n/, 'the own comment stays');
+  assert.equal(normalizeMetadata(empty.text, withOff).changed, false, 'and stays there on the next run');
+});
+
+test('commented-out attribute: an older wording of its comment is replaced', () => {
+  const r = normalizeMetadata('title: A\n\n# Ořez, starý text.\n# crop: "3:2"\n\nnote: ""\n', withOff);
+  assert.match(r.text, /# NEPOVINNÉ\. Ořez\.\n# crop: "3:2"/);
+  // before it was a commented-out attribute: the comment without the mark
+  const was = normalizeMetadata('title: A\n# Ořez.\ncrop:\nnote: ""\n', withOff);
+  assert.match(was.text, /\ntitle: A\n\n# NEPOVINNÉ\. Ořez\.\n# crop: "3:2"\n\n# Poznámka/);
+  assert.doesNotMatch(r.text, /starý text/);
+});
+
+test('settled attribute: its default is final, never marked DOPLNIT, an old DOPLNIT goes', () => {
+  const settled = { header: [], fields: [
+    { key: 'title', doc: 'Název.', value: '' },
+    { key: 'draft', settled: true, doc: 'true = skryté.', value: true, missing: false },
+  ] };
+  assert.equal(skeleton(settled, { title: 'A' }), '# DOPLNIT Název.\ntitle: A\n\n# true = skryté.\ndraft: true\n');
+  const added = normalizeMetadata('title: A\n', settled);
+  assert.match(added.text, /\n# true = skryté\.\ndraft: false\n/);
+  assert.deepEqual(added.added, ['draft']);
+  const old = normalizeMetadata(`title: A\n# ${TODO} true = skryté.\ndraft: true\n`, settled);
+  assert.match(old.text, /\n# true = skryté\.\ndraft: true\n/);
 });
