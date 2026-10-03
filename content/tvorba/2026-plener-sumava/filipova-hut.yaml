@@ -3,7 +3,7 @@ id: uw9vh
 date: 2026-09-26
 description: |
   Chalupy Filipovy Hutě pod lesem.
-featured: true
+featured: false
 mockups: false
 size_cm:
   - 21
@@ -12,7 +12,6 @@ status: not-for-sale
 tags:
   - krajina
   - vesnice
-  - plenér
-technique: tuš a akvarel
+technique: brush pen
 title: Filipova Huť
 derived_modified: 2026-10-03

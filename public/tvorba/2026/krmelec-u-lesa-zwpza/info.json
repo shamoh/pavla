@@ -12,20 +12,20 @@
     {
       "scene": "loznice",
       "label": "Ložnice",
-      "width": 1378,
-      "height": 919,
+      "width": 1392,
+      "height": 928,
       "widths": [
         480,
         960,
-        1378
+        1392
       ],
       "dominant": "rgb(56,40,8)"
     },
     {
       "scene": "police",
       "label": "Polička",
-      "width": 2194,
-      "height": 1463,
+      "width": 2218,
+      "height": 1479,
       "widths": [
         480,
         960,
@@ -36,12 +36,12 @@
     {
       "scene": "pracovna",
       "label": "Pracovna",
-      "width": 1435,
-      "height": 957,
+      "width": 1450,
+      "height": 967,
       "widths": [
         480,
         960,
-        1435
+        1450
       ],
       "dominant": "rgb(232,232,232)"
     }
@@ -51,5 +51,5 @@
     "width": 1200,
     "height": 800
   },
-  "fingerprint": "2f86630a63b95c47"
+  "fingerprint": "7ccc0dd1450153ca"
 }

@@ -1,0 +1,31 @@
+{
+  "width": 1686,
+  "height": 473,
+  "widths": [
+    480,
+    960,
+    1600,
+    1686
+  ],
+  "dominant": "rgb(184,184,168)",
+  "mockups": [],
+  "details": [
+    {
+      "name": "matrice",
+      "width": 1861,
+      "height": 625,
+      "widths": [
+        480,
+        960,
+        1600,
+        1861
+      ],
+      "dominant": "rgb(104,104,104)"
+    }
+  ],
+  "og": {
+    "width": 1200,
+    "height": 800
+  },
+  "fingerprint": "10313a9483af4815"
+}
