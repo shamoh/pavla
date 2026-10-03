@@ -4,7 +4,7 @@ import WorkGallery from '../../components/WorkGallery.astro';
 import { getWorks, site } from '../../lib/site';
 import { breadcrumbLd, collectionPageLd, graphLd } from '../../../scripts/lib/seo.mjs';
 
-const description = 'Všechny moje akvarely a kresby: krajiny z plenérů, skici z procházek, květiny a zvířata. Hledat se dá podle roku, techniky, kolekce i štítků.';
+const description = 'Všechny moje malby a kresby: krajiny z plenérů, skici z procházek, příroda a zvířata. Hledat se dá podle roku, techniky, kolekce i štítků.';
 const jsonLd = graphLd(
   collectionPageLd(site, { path: '/tvorba/', name: 'Tvorba', description, items: getWorks(), itemPath: (w) => `/tvorba/${w.year}/${w.key}/` }),
   breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Tvorba', path: '/tvorba/' }]),

@@ -15,7 +15,7 @@ interface Props { collection: Collection }
 const { collection } = Astro.props;
 const { title, description, works } = collection;
 const path = `/tvorba/kolekce/${collection.slug}/`;
-const pageDescription = description?.trim() || `${title} – kolekce akvarelů a kreseb, ${site.author}.`;
+const pageDescription = description?.trim() || `${title} – kolekce maleb a kreseb, ${site.author}.`;
 const jsonLd = graphLd(
   collectionPageLd(site, { path, name: title, description: pageDescription, items: works, itemPath: (w) => `/tvorba/${w.year}/${w.key}/` }),
   breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Tvorba', path: '/tvorba/' }, { name: 'Kolekce', path: '/tvorba/kolekce/' }, { name: title, path }]),

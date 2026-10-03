@@ -4,9 +4,9 @@
 site:
   url: https://pavla.kramolis.cz         # musí sedět s public/CNAME
   title: Pavla Kramolišová
-  tagline: Akvarely a kresby
+  tagline: Akvarely pro radost
   author: Pavla Kramolišová
-  email: ""                              # doplnit, zobrazí se v Kontaktu
+  email: pavla@kramolis.cz
   instagram: pavla.kramolisova
   fler: ""                               # URL obchůdku na Fleru, až bude
   verification:                          # ověření webu u vyhledávačů značkou <meta> (jen když ověřuješ touto cestou,

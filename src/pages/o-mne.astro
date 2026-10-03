@@ -4,7 +4,7 @@ import Photo from '../components/Photo.astro';
 import { photoImageUrl, site } from '../lib/site';
 import { breadcrumbLd, graphLd, personLd } from '../../scripts/lib/seo.mjs';
 
-const description = 'Maluji pro radost už dlouhé roky. Nejvíc mě chytil akvarel, na procházkách skicuji tužkou a brush penem. Kdo jsem a jak maluji.';
+const description = 'Maluji pro radost už dlouhé roky. Nejvíc mě chytil akvarel, na procházkách skicuji i tužkou a brush penem. Kdo jsem a jak maluji.';
 // For search engines: a profile page about the author.
 const jsonLd = graphLd(
   { '@type': 'ProfilePage', '@id': new URL('/o-mne/', site.url).href, url: new URL('/o-mne/', site.url).href, name: `O mně – ${site.author}`, inLanguage: 'cs', mainEntity: { '@id': new URL('/#autorka', site.url).href } },
@@ -32,12 +32,17 @@ const jsonLd = graphLd(
           trochu dělá, co chce, a právě to bývá na obraze nejhezčí.
         </p>
         <p>
-          Na procházky a plenéry s sebou nosím malý skicák. Kromě rychlých akvarelů v něm přibývají skici
-          tužkou a brush penem – krajina, stromy, zvířata, cokoli, co mě cestou zastaví.
+          Nejraději maluji na procházkách v přírodě, hlavně krajinu a zvířata – a ta nejlépe v pohybu.
+          Obrazy a skicy tvořím převážně akvarelem, někdy fixem, brush penem či tužkou, podle toho, co si
+          zrovna žádá chvíle.
+        </p>
+        <p>
+          Kdykoli mám volnou chvilku, cvičím si ruku i oko slepou kresbou: kreslím lidi a zvířata
+          a na papír se přitom vůbec nedívám.
         </p>
         <p class="muted">
-          Obrazy maluji hlavně pro sebe. Když vám ale některý přiroste k srdci, ráda ho pustím dál, do dobrých
-          rukou – stačí se ozvat.
+          Obrazy maluji hlavně pro sebe. Některé u mě ale jen přečkávají, než najdou svůj domov.
+          Kdyby vás některý oslovil, napište mi.
         </p>
       </div>
       <Photo name="portret" sizes="(max-width: 800px) 100vw, 300px" class="portrait" />

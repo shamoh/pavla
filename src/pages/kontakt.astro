@@ -4,7 +4,7 @@ import Photo from '../components/Photo.astro';
 import { site } from '../lib/site';
 import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
 
-const description = 'Zaujal vás obraz, máte otázku, nebo jen chcete pozdravit? Napište mi – a když se vám některý obraz zalíbí, domluvíme se.';
+const description = 'Zaujal vás obraz, nebo jen chcete pozdravit? Napište mi – a když se vám některý obraz zalíbí, domluvíme se.';
 // For search engines: the contact page of the author.
 const jsonLd = graphLd(
   { '@type': 'ContactPage', '@id': new URL('/kontakt/', site.url).href, url: new URL('/kontakt/', site.url).href, name: `Kontakt – ${site.author}`, inLanguage: 'cs', about: { '@id': new URL('/#autorka', site.url).href } },
@@ -15,8 +15,7 @@ const jsonLd = graphLd(
   <div class="contact-page">
     <div>
       <h1>Kontakt</h1>
-      <p>Zaujal vás obraz, máte otázku, nebo jen chcete pozdravit? Napište mi.</p>
-      <p class="muted">A když vám některý obraz přiroste k srdci natolik, že byste mu rádi dali domov, domluvíme se.</p>
+      <p>Zaujal vás obraz nebo jen chcete pozdravit?</p>
       <ul class="contact">
         {site.email && <li><span class="eyebrow">E-mail</span><a href={`mailto:${site.email}`}>{site.email}</a></li>}
         {site.instagram && <li><span class="eyebrow">Instagram</span><a href={`https://www.instagram.com/${site.instagram}/`} rel="me">@{site.instagram}</a></li>}
