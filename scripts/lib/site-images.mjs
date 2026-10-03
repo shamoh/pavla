@@ -33,8 +33,6 @@ export const photoDir = (name) => `fotky/${name}`;
 
 /** Everything the pipeline writes into public/ lies under these (static files of the site such as favicon.svg do not). */
 export const OUTPUT_ROOTS = [WORKS_PAGES, 'fotky', COVER_DIR, OG_FILE];
-/** Output folders of the former layout; a full run removes them. */
-export const LEGACY_ROOTS = ['works', 'photos', 'collections', 'years', 'home', 'og'];
 
 /**
  * Folders that only hold other outputs (tvorba/, tvorba/<year>/, tvorba/kolekce/, tvorba/kolekce/<slug>/, fotky/):
@@ -51,7 +49,7 @@ export function isContainer(rel) {
  * Outputs under public/ of `siteDir` that a full run did not want: [{ rel, dir }] (rel relative to public/), sorted.
  * `wanted`: paths relative to public/ of the items the run produced (work, photo and _cover folders, og.jpg files;
  * a wanted folder is kept whole). Containers are looked into, any other item under OUTPUT_ROOTS that is not wanted
- * is stale, and so are the LEGACY_ROOTS (reported whole). Empty containers are left to the caller.
+ * is stale. Empty containers are left to the caller.
  */
 export function staleOutputs(siteDir, wanted) {
   const publicDir = path.join(siteDir, 'public');
@@ -66,6 +64,6 @@ export function staleOutputs(siteDir, wanted) {
     }
     stale.push({ rel, dir });
   };
-  for (const root of [...OUTPUT_ROOTS, ...LEGACY_ROOTS]) visit(root);
+  for (const root of OUTPUT_ROOTS) visit(root);
   return stale.sort((a, b) => a.rel.localeCompare(b.rel));
 }

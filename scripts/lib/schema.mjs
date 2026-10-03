@@ -380,9 +380,12 @@ export const YEAR_SCHEMA = {
   ]),
 };
 
-/** The text of the home page as it was before it moved into the content repository: the value of a new skeleton. */
-export const HOME_TEXT = 'Maluji hlavně akvarelem — v kroužku, na plenérech a doma u stolu. Tady najdete, co mi právě\n'
-  + 'uschlo na papíře, i to, co už visí jinde.\n';
+/**
+ * Default text of the home page: the value of a new skeleton of _index.yaml, and what the site shows before the
+ * first public copy exists. The same as the text of the home page in the content repository (texts to approve: T4).
+ */
+export const HOME_TEXT = 'Maluji pro radost, hlavně akvarelem – na plenérech, na procházkách i doma u stolu. Tady najdete,\n'
+  + 'co mi právě uschlo na papíře, rychlé skici tužkou a brush penem i obrazy, které už visí jinde.\n';
 
 export const HOME_SCHEMA = {
   name: 'home',

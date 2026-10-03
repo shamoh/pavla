@@ -28,7 +28,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   a obrázky v `public/` ve složce své stránky (= adresa, `scripts/lib/site-images.mjs`): dílo
   `public/tvorba/<rok>/<slug>-<id>/`, rok `public/tvorba/<rok>/_cover/` + `og.jpg`, kolekce
   `public/tvorba/kolekce/<slug>/_cover/` + `og.jpg`, úvod `public/_cover/` + `public/og.jpg`, fotky `public/fotky/<název>/`;
-  plný běh smaže vše, co nevyrobil (`staleOutputs`, i staré `public/works/` apod.).
+  plný běh smaže vše, co nevyrobil (`staleOutputs`).
   Exporty pro Instagram a Fler jdou do `export/` obsahového repa.
   Web čte kopie přes `readCopies`: rok díla z `date`, kolekce ze složky (žádný atribut `collection`).
 - Každé dílo má trvalé 5znakové `id` (začíná písmenem, viz `scripts/lib/works.mjs`). URL: `/tvorba/<rok>/<slug>-<id>/`.
@@ -70,7 +70,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Text o roce: `roky/<rok>.yaml` obsahového repa (`YEAR_SCHEMA`, `scripts/lib/years.mjs`), kostru pipeline založí
   ke každému roku s díly; veřejná kopie `content/roky/<rok>.yaml` (`description`, `cover`, `aspect`, `focus`), web `getYear`.
 - Úvodní stránka: `_index.yaml` v kořeni obsahového repa (`HOME_SCHEMA`, `scripts/lib/home.mjs`; text `description`,
-  `cover`, `aspect`, `focus`), kostra s původním textem `HOME_TEXT`; veřejná kopie `content/_index.yaml`, web `getHome`.
+  `cover`, `aspect`, `focus`), kostra s výchozím textem `HOME_TEXT` (= text úvodu ve skutečném obsahu); veřejná kopie `content/_index.yaml`, web `getHome`.
 - Každý výpis děl se stránkuje, v prohlížeči nad vyfiltrovaným seznamem (`paginate`); návštěvník volí počet
   na stránku (`gallery.pageSizes`, `?perPage=`, pamatuje se v `localStorage`, ale odkaz s `perPage`/`page` má vždy
   přednost) a může stránkování jednorázově vypnout („Zobrazit vše“, `?page=all`, nepamatuje se).

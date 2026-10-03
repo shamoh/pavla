@@ -514,8 +514,7 @@ export async function run({
     await pageCover(HOME_PAGE_DIR, { photoPath: h.coverPath, alt: config.site?.title ?? '', source, label: 'uvod' });
   }
 
-  // Images nobody produced in this full run: deleted, renamed or unpublished items, covers no longer used, the
-  // former layout (public/works/, public/og/ …).
+  // Images nobody produced in this full run: deleted, renamed or unpublished items, covers no longer used.
   if (!only.length) {
     for (const { rel, dir } of staleOutputs(siteDir, outputs)) {
       await fs.rm(path.join(publicDir, rel), { recursive: true, force: true });
@@ -523,7 +522,7 @@ export async function run({
     }
     for (const root of OUTPUT_ROOTS) await removeEmptyDirs(path.join(publicDir, root)).catch(() => {});
   }
-  // Public copies nobody wrote in this full run: deleted, renamed or unpublished items, or an older layout.
+  // Public copies nobody wrote in this full run: deleted, renamed or unpublished items.
   if (!only.length) {
     for (const rel of staleCopies(siteDir, copies)) {
       await fs.rm(path.join(siteDir, rel));

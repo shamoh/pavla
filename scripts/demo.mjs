@@ -20,7 +20,7 @@ import YAML from 'yaml';
 import { recipeProblems, renderDemoImages } from './lib/demo-images.mjs';
 import { INDEX_FILE } from './lib/content.mjs';
 import { DEMO_MARKER } from './lib/demo.mjs';
-import { LEGACY_ROOTS, OUTPUT_ROOTS } from './lib/site-images.mjs';
+import { OUTPUT_ROOTS } from './lib/site-images.mjs';
 import { run } from './process-images.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -29,7 +29,7 @@ const CONTENT_SUBDIRS = ['tvorba', 'fotky', 'roky'];
 const CONTENT_FILES = [INDEX_FILE, DEMO_MARKER];
 const isContent = (f) => CONTENT_SUBDIRS.includes(f.split(path.sep)[0]) || CONTENT_FILES.includes(f);
 /** Generated folders of public/ that belong to the data, not to the site itself. */
-const GENERATED_PUBLIC = new Set([...OUTPUT_ROOTS, ...LEGACY_ROOTS]);
+const GENERATED_PUBLIC = new Set(OUTPUT_ROOTS);
 
 async function listYaml(dir, rel = '') {
   const out = [];
@@ -65,9 +65,8 @@ export async function prepareDemo({
   const dataDir = path.join(outDir, 'site');
 
   // 1. content: fresh copies of the YAML files and the rendered images (exports stay, the pipeline prunes them)
-  // (kolekce/ and uvod.* are former names, left over from older runs)
-  for (const sub of [...CONTENT_SUBDIRS, ...CONTENT_FILES, 'kolekce', 'uvod.yaml']) await fs.rm(path.join(contentDir, sub), { recursive: true, force: true });
-  for (const f of await fs.readdir(contentDir).catch(() => [])) if (/^(_cover|uvod)\.(jpe?g|png|webp)$/.test(f)) await fs.rm(path.join(contentDir, f));
+  for (const sub of [...CONTENT_SUBDIRS, ...CONTENT_FILES]) await fs.rm(path.join(contentDir, sub), { recursive: true, force: true });
+  for (const f of await fs.readdir(contentDir).catch(() => [])) if (/^_cover\.(jpe?g|png|webp)$/.test(f)) await fs.rm(path.join(contentDir, f));
   await fs.mkdir(path.join(contentDir, 'tvorba'), { recursive: true });
   const yamls = (await listYaml(demoDir)).filter(isContent);
   for (const f of yamls) {

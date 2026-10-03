@@ -76,7 +76,7 @@ export function readCopies(root) {
 
 /**
  * Files under content/ of `root` that are not in `wanted` (paths relative to `root`, e.g. "content/roky/2026.yaml"):
- * left over from deleted, renamed or unpublished items, or from an older layout. Sorted.
+ * left over from deleted, renamed or unpublished items. Sorted.
  */
 export function staleCopies(root, wanted) {
   const stale = [];

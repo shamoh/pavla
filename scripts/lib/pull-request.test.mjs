@@ -46,8 +46,8 @@ test('pullRequestPaths: only output folders that exist or that git knows; git ad
   await fs.rm(path.join(dir, 'public/fotky'), { recursive: true });
   const paths = await pullRequestPaths(dir);
   assert.deepEqual(paths, ['content', 'public/tvorba', 'public/fotky', 'public/_cover', 'public/og.jpg']);
-  // the former image folders are output paths too, so their deletion reaches the pull request
-  for (const p of ['public/works', 'public/photos', 'public/collections', 'public/og']) assert.ok(OUTPUT_PATHS.includes(p), p);
+  // only the current layout; the former image folders are gone from the repository
+  assert.deepEqual(OUTPUT_PATHS, ['content', 'public/tvorba', 'public/fotky', 'public/_cover', 'public/og.jpg']);
 
   // what peter-evans/create-pull-request does with add-paths
   await git(dir, 'add', '--', ...paths);

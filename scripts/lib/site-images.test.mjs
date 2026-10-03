@@ -33,7 +33,7 @@ test('isContainer: folders that only hold other outputs', () => {
   }
 });
 
-test('staleOutputs: each item nobody wanted, the former layout whole, static files of the site never', async () => {
+test('staleOutputs: each item nobody wanted; static files and other folders of the site never', async () => {
   await write('favicon.svg');
   await write('CNAME');
   await write('tvorba/2026/rano-k3f9a/480.jpg');
@@ -45,17 +45,15 @@ test('staleOutputs: each item nobody wanted, the former layout whole, static fil
   await write('fotky/portret/480.jpg');
   await write('_cover/480.jpg');
   await write('og.jpg');
-  await write('works/2026/rano-k3f9a/480.jpg');
+  await write('works/2026/rano-k3f9a/480.jpg'); // not an output folder (any more): left alone
   await write('og/home.jpg');
   const wanted = new Set(['tvorba/2026/rano-k3f9a', 'tvorba/2026/og.jpg', 'fotky/portret', 'og.jpg']);
   assert.deepEqual(staleOutputs(siteDir, wanted), [
     { rel: '_cover', dir: true },
-    { rel: 'og', dir: true },
     { rel: 'tvorba/2025/stary-a1b2c', dir: true },
     { rel: 'tvorba/2026/_cover', dir: true },
     { rel: 'tvorba/2026/vecer-m7q2x', dir: true },
     { rel: 'tvorba/kolekce/plener/og.jpg', dir: false },
-    { rel: 'works', dir: true },
   ]);
 });
 

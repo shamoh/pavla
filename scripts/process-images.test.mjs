@@ -1171,7 +1171,7 @@ test('covers of years and the home page: own photo, cover, focus; share image on
   assert.equal(r.ok, true, r.problems.join('\n'));
   assert.ok(r.created.includes('_index.yaml'));
   const home = YAML.parse(await fs.readFile(path.join(siteDir, 'content/_index.yaml'), 'utf8'));
-  assert.match(home.description, /Maluji hlavně akvarelem/);
+  assert.match(home.description, /^Maluji pro radost, hlavně akvarelem/);
   // random covers: no share crops, no photos
   assert.ok(!(await exists(path.join(siteDir, 'public/og.jpg'))));
   assert.ok(!(await exists(path.join(siteDir, 'public/og/years'))));

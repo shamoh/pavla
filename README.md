@@ -192,8 +192,8 @@ description: |
 
 Text vedle velkého obrazu na úvodní stránce a její úvodní obraz jsou v kořeni obsahového repa v `_index.yaml`
 (`HOME_SCHEMA`, pipeline `scripts/lib/home.mjs`): `description`, `cover`, `aspect`, `focus` a `private_note`, vlastní fotka
-`_cover.jpg`. Když soubor chybí, pipeline založí kostru s textem, který stránka měla předtím (`HOME_TEXT`), takže se
-nic nezmění. Veřejná kopie je `content/_index.yaml` (web `getHome`); bez ní web ukáže ten původní text. Nadpis
+`_cover.jpg`. Když soubor chybí, pipeline založí kostru s výchozím textem úvodu (`HOME_TEXT`, stejný jako ve skutečném obsahu), takže se
+nic nezmění. Veřejná kopie je `content/_index.yaml` (web `getHome`); bez ní web ukáže výchozí text `HOME_TEXT`. Nadpis
 „Barvy, voda a trochu náhody“ je dál v `src/pages/index.astro`. Vyzkoušení: `demo-content/_index.yaml`, `/`.
 - Vyzkoušení: `npm run demo`, `/tvorba/2026/` (text z `demo-content/roky/2026.yaml`) a `/tvorba/2025/` (bez textu).
 
@@ -434,7 +434,7 @@ Jediný zdroj pravdy o atributech popisů je `scripts/lib/schema.mjs` (`WORK_SCH
 **Soukromá poznámka a veřejná kopie:** `content/` v tomto repu je zrcadlo obsahového repa: stejné složky
 a jména souborů (`scripts/lib/site-content.mjs`), jen veřejné atributy. Rozpracovaná díla (`meta_draft: true`) se
 nekopírují, rok díla web bere z `date` a kolekci ze složky, stejně jako pipeline. Plný běh smaže v `content/`
-vše, co nezapsal (smazané, přejmenované a rozpracované položky i starší rozložení `content/works/` apod.).
+vše, co nezapsal (smazané, přejmenované a rozpracované položky).
 U díla se kopírují jen sdílené atributy (bez prefixu, `PUBLIC_WORK_FIELDS` = `publicKeys(WORK_SCHEMA)`), a to bez
 komentářů. Atributy `meta_…` a `private_…`, komentáře v yaml i jakákoli neznámá pole zůstávají
 jen v obsahovém repu. Nové veřejné pole stačí přidat do schématu bez prefixu. U kolekcí, roků, úvodu
@@ -795,7 +795,7 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
   s *Require status checks to pass* (`check`) a výjimkou pro správce (přímé pushe do `main`).
   Pull request připraví `node scripts/pull-request.mjs <soubor-popisu>` (`scripts/lib/pull-request.mjs`):
   - do `add-paths` dá jen výstupní cesty z `OUTPUT_PATHS` (`content`, `public/tvorba`, `public/fotky`,
-    `public/_cover`, `public/og.jpg` a staré složky `public/works`, `public/photos` … kvůli jejich smazání), a to jen ty,
+    `public/_cover`, `public/og.jpg`), a to jen ty,
     které existují nebo je git zná (smazaná složka). Chybějící cestu (např. `public/_cover`, dokud úvodní stránka nemá
     vlastní `_cover.jpg`) přeskočí, jinak by `git add` selhal a pull request by nevznikl; bez jediné složky se pull
     request přeskočí. Nová výstupní složka pipeline = doplnit do `OUTPUT_PATHS`,
