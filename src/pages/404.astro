@@ -1,11 +1,33 @@
 ---
+// Page not found: a light joke on an unpainted picture and a few works of the author's selection instead.
+// Search engines leave it out (noindex, no canonical).
 import Base from '../layouts/Base.astro';
-import { url } from '../lib/site';
+import WorkCard from '../components/WorkCard.astro';
+import { getWorks, url } from '../lib/site';
+import { coverCandidates } from '../../scripts/lib/works.mjs';
+
+const SHOWN = 3;
+const picks = coverCandidates(getWorks()).slice(0, SHOWN);
 ---
-<Base title="Nenalezeno">
-  <h1>Tahle stránka se rozpila</h1>
-  <p class="muted">Možná byla přesunuta. <a href={url('/tvorba/')}>Zpět na tvorbu</a>.</p>
+<Base title="Obraz, který ještě nevznikl" description="Tenhle obraz ještě nebyl namalován." noindex>
+  <section class="unpainted">
+    <p class="eyebrow">Chyba 404</p>
+    <h1>Tenhle obraz ještě nebyl namalován</h1>
+    <p>
+      Na téhle adrese zatím zůstal jen čistý papír. Možná se obraz přestěhoval, možná na něj teprve
+      čeká štětec a sklenice s vodou.
+    </p>
+    <p class="muted">
+      Mezitím se podívejte na <a href={url('/tvorba/?featured=1')}>výběr autorky</a>,
+      nebo <a href={url('/tvorba/')}>na celou tvorbu</a>.
+    </p>
+  </section>
+  {picks.length > 0 && <div class="grid">{picks.map((w) => <WorkCard work={w} />)}</div>}
 </Base>
+<style>
+  .unpainted { max-width: 38rem; padding: 32px 0 56px; }
+  .grid { columns: 3 300px; column-gap: 36px; }
+</style>
 <script>
   // A renamed work keeps its ID: an old detail URL ending with "-<id>/" is sent to the permanent short link.
   import { idFromPath } from '../../scripts/lib/works.mjs';

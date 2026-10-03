@@ -5,6 +5,7 @@ import Img from '../../../components/Img.astro';
 import { collectionUrl, detailCaption, getCollection, workShareImage, getWorks, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
 import { isOnSale, wantsMockups } from '../../../../scripts/lib/works.mjs';
 import { EVENTS } from '../../../../scripts/lib/analytics.mjs';
+import { artworkLd, breadcrumbLd, graphLd, workDescription } from '../../../../scripts/lib/seo.mjs';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -36,8 +37,20 @@ const views = [
 }));
 // Landscape mockups are stacked, portrait ones sit side by side.
 const mockupsWide = mockups.every((m) => m.width >= m.height);
+// For search engines: the work as a work of art by the author, and where it lies on the site.
+const share = workShareImage(work);
+const path = `/tvorba/${work.year}/${work.key}/`;
+const jsonLd = graphLd(
+  artworkLd(work, site, { path, image: new URL(share.src, site.url).href }),
+  breadcrumbLd(site, [
+    { name: 'Úvod', path: '/' },
+    { name: 'Tvorba', path: '/tvorba/' },
+    collection ? { name: collection.title, path: `/tvorba/kolekce/${collection.slug}/` } : { name: String(work.year), path: `/tvorba/${work.year}/` },
+    { name: work.title, path },
+  ]),
+);
 ---
-<Base title={work.title} description={work.description?.trim() || `${work.title} — ${work.technique}`} image={workShareImage(work)}>
+<Base title={work.title} description={workDescription(work, site)} image={share} type="article" jsonLd={jsonLd}>
   <p class="back"><a href={url('/tvorba/')}>← Tvorba</a> · <a href={url(`/tvorba/${work.year}/`)}>{work.year}</a></p>
   <article class="work">
     <a class="zoom" href={views[0].src} data-view="0" title="Zvětšit">

@@ -2,19 +2,22 @@
 import Base from '../layouts/Base.astro';
 import WorkCard from '../components/WorkCard.astro';
 import Cover from '../components/Cover.astro';
-import { coverShareImage, coverWorkId, getHome, getWorks, site, url } from '../lib/site';
+import { coverShareImage, coverWorkId, getHome, getWorks, photoImageUrl, site, url } from '../lib/site';
+import { graphLd, personLd, websiteLd } from '../../scripts/lib/seo.mjs';
 import { hiddenInList } from '../../scripts/lib/random-pick.mjs';
 
 const RECENT = 6;
 const works = getWorks();
-// Text and cover from uvod.yaml of the content repository (content/home.yaml): its own photo, `cover`, or one of the
+// Text and cover from _index.yaml in the root of the content repository (content/_index.yaml): its own photo, `cover`, or one of the
 // newest works of the author's selection at random per visit.
 const home = getHome();
 // "Nejnovější" below: the newest works except the one on the cover; one more is rendered for when the cover is one of them.
 const recent = works.slice(0, RECENT + 1);
 const recentHidden = hiddenInList(recent.map((w) => w.id), coverWorkId(home.cover), RECENT);
+// For search engines: the site and its author (with her portrait and her profiles elsewhere).
+const jsonLd = graphLd(websiteLd(site), personLd(site, { image: photoImageUrl('portret') ?? undefined }));
 ---
-<Base image={coverShareImage(home.cover)}>
+<Base description={home.description} image={coverShareImage(home.cover)} jsonLd={jsonLd}>
   {home.cover ? (
     <section class="hero">
       <Cover cover={home.cover} sizes="(max-width: 900px) 100vw, 60vw" eager exclude="#recent" show={RECENT} />

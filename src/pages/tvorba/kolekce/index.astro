@@ -2,12 +2,18 @@
 // Overview of all collections: /tvorba/kolekce/ (the one with the newest work first).
 import Base from '../../../layouts/Base.astro';
 import Cover from '../../../components/Cover.astro';
-import { collectionShareImage, collectionUrl, getCollections, url } from '../../../lib/site';
+import { collectionShareImage, collectionUrl, getCollections, site, url } from '../../../lib/site';
+import { breadcrumbLd, collectionPageLd, graphLd } from '../../../../scripts/lib/seo.mjs';
 
 const collections = getCollections();
 const plural = (n: number) => (n === 1 ? 'dílo' : n >= 2 && n <= 4 ? 'díla' : 'děl');
+const description = 'Obrazy seskupené podle plenérů, výletů a témat: co vzniklo na jednom místě nebo patří k sobě.';
+const jsonLd = graphLd(
+  collectionPageLd(site, { path: '/tvorba/kolekce/', name: 'Kolekce', description, items: collections, itemPath: (c) => `/tvorba/kolekce/${c.slug}/` }),
+  breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Tvorba', path: '/tvorba/' }, { name: 'Kolekce', path: '/tvorba/kolekce/' }]),
+);
 ---
-<Base title="Kolekce" description="Obrazy seskupené podle plenérů a témat." image={collections[0] && collectionShareImage(collections[0])}>
+<Base title="Kolekce" description={description} image={collections[0] && collectionShareImage(collections[0])} jsonLd={jsonLd}>
   <p class="back"><a href={url('/tvorba/')}>← Tvorba</a></p>
   <h1>Kolekce</h1>
   {collections.length === 0 && <p class="muted">Zatím tu žádná kolekce není.</p>}

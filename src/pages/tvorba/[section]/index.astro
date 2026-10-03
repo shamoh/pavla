@@ -6,6 +6,7 @@ import Base from '../../../layouts/Base.astro';
 import WorkGallery from '../../../components/WorkGallery.astro';
 import Cover from '../../../components/Cover.astro';
 import { coverShareImage, getWorks, getYear, getYears, site, workUrl, type Work } from '../../../lib/site';
+import { breadcrumbLd, collectionPageLd, graphLd } from '../../../../scripts/lib/seo.mjs';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -20,6 +21,11 @@ const target = redirect && workUrl(redirect);
 // Year page: the author's text about the year (optional) and its cover (roky/<year>.yaml of the content repository).
 const yearPage = year ? getYear(year) : undefined;
 const text = yearPage?.description;
+const yearDescription = text || `Akvarely a kresby z roku ${year} – ${site.author}.`;
+const jsonLd = year ? graphLd(
+  collectionPageLd(site, { path: `/tvorba/${year}/`, name: `Tvorba ${year}`, description: yearDescription, items: works!, itemPath: (w: Work) => `/tvorba/${w.year}/${w.key}/` }),
+  breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Tvorba', path: '/tvorba/' }, { name: String(year), path: `/tvorba/${year}/` }]),
+) : null;
 ---
 {redirect ? (
   <html lang="cs">
@@ -33,7 +39,7 @@ const text = yearPage?.description;
     <body><a href={target}>{redirect.title}</a></body>
   </html>
 ) : (
-  <Base title={`Tvorba ${year}`} description={text || `Akvarely a kresby z roku ${year}.`} image={coverShareImage(yearPage!.cover)}>
+  <Base title={`Tvorba ${year}`} description={yearDescription} image={coverShareImage(yearPage!.cover)} jsonLd={jsonLd}>
     <header class="intro">
       <div>
         <h1>Tvorba {year}</h1>

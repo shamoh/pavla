@@ -1,11 +1,12 @@
 ---
 // A collection of works (e.g. one plein-air trip): /tvorba/kolekce/<slug>/
-// Cover (cropped to 3:2 around `focus`): the collection's own photo (_uvod.jpg in the collection folder of the content repository),
+// Cover (cropped to 3:2 around `focus`): the collection's own photo (_cover.jpg in the collection folder of the content repository),
 // otherwise `cover: <id>` or `cover: <id>#<detail>` from its YAML, otherwise its newest work.
 import Base from '../../../layouts/Base.astro';
 import WorkGallery from '../../../components/WorkGallery.astro';
 import Cover from '../../../components/Cover.astro';
-import { collectionShareImage, getCollections, url, type Collection } from '../../../lib/site';
+import { collectionShareImage, getCollections, site, url, type Collection } from '../../../lib/site';
+import { breadcrumbLd, collectionPageLd, graphLd } from '../../../../scripts/lib/seo.mjs';
 
 export function getStaticPaths() {
   return getCollections().map((collection) => ({ params: { collection: collection.slug }, props: { collection } }));
@@ -13,8 +14,14 @@ export function getStaticPaths() {
 interface Props { collection: Collection }
 const { collection } = Astro.props;
 const { title, description, works } = collection;
+const path = `/tvorba/kolekce/${collection.slug}/`;
+const pageDescription = description?.trim() || `${title} – kolekce akvarelů a kreseb, ${site.author}.`;
+const jsonLd = graphLd(
+  collectionPageLd(site, { path, name: title, description: pageDescription, items: works, itemPath: (w) => `/tvorba/${w.year}/${w.key}/` }),
+  breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Tvorba', path: '/tvorba/' }, { name: 'Kolekce', path: '/tvorba/kolekce/' }, { name: title, path }]),
+);
 ---
-<Base title={title} description={description?.trim() || `Kolekce ${title}`} image={collectionShareImage(collection)}>
+<Base title={title} description={pageDescription} image={collectionShareImage(collection)} jsonLd={jsonLd}>
   <p class="back"><a href={url('/tvorba/')}>← Tvorba</a></p>
   <header class="intro">
     <div>

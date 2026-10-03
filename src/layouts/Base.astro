@@ -1,9 +1,15 @@
 ---
 import { analyticsId, site, url, version, type ShareImage } from '../lib/site';
 import { gtagConfigScript, gtagSrc } from '../../scripts/lib/analytics.mjs';
+import { jsonLdText, summarize, verificationMeta } from '../../scripts/lib/seo.mjs';
 
-interface Props { title?: string; description?: string; image?: ShareImage }
-const { title, description = `${site.author} — ${site.tagline.toLowerCase()}.`, image } = Astro.props;
+/**
+ * `type`: og:type ('article' for a work); `noindex`: a page search engines should leave out (404), without canonical;
+ * `jsonLd`: structured data of the page (scripts/lib/seo.mjs graphLd), null for none.
+ */
+interface Props { title?: string; description?: string; image?: ShareImage; type?: 'website' | 'article'; noindex?: boolean; jsonLd?: object | null }
+const { title, description: own, image, type = 'website', noindex = false, jsonLd = null } = Astro.props;
+const description = summarize(own || `${site.author} — ${site.tagline.toLowerCase()}.`);
 const fullTitle = title ? `${title} · ${site.title}` : `${site.title} — ${site.tagline}`;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const nav = [
@@ -12,6 +18,7 @@ const nav = [
   { href: '/kontakt', label: 'Kontakt' },
 ];
 const ogImage = image ? new URL(image.src, site.url).href : undefined;
+const canonical = new URL(Astro.url.pathname, site.url).href;
 ---
 <!doctype html>
 <html lang="cs">
@@ -20,10 +27,15 @@ const ogImage = image ? new URL(image.src, site.url).href : undefined;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={new URL(Astro.url.pathname, site.url).href} />
+    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
+    {verificationMeta(site.verification).map((m) => <meta name={m.name} content={m.content} />)}
+    <meta name="author" content={site.author} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={site.title} />
+    <meta property="og:locale" content="cs_CZ" />
+    {!noindex && <meta property="og:url" content={canonical} />}
     {ogImage && (
       <>
         <meta property="og:image" content={ogImage} />
@@ -39,6 +51,7 @@ const ogImage = image ? new URL(image.src, site.url).href : undefined;
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Work+Sans:wght@300;400;500&display=swap&subset=latin-ext"
       rel="stylesheet"
     />
+    {jsonLd && <script type="application/ld+json" set:html={jsonLdText(jsonLd)} />}
     {analyticsId && (
       <>
         <!-- Visitor statistics (Google Analytics 4), production build only: scripts/lib/analytics.mjs -->

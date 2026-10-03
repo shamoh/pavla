@@ -1,9 +1,18 @@
 ---
 import Base from '../layouts/Base.astro';
 import Photo from '../components/Photo.astro';
-import { site } from '../lib/site';
+import { photoImageUrl, site } from '../lib/site';
+import { breadcrumbLd, graphLd, personLd } from '../../scripts/lib/seo.mjs';
+
+const description = 'Maluji pro radost už dlouhé roky. Nejvíc mě chytil akvarel, na procházkách skicuji tužkou a brush penem. Kdo jsem a jak maluji.';
+// For search engines: a profile page about the author.
+const jsonLd = graphLd(
+  { '@type': 'ProfilePage', '@id': new URL('/o-mne/', site.url).href, url: new URL('/o-mne/', site.url).href, name: `O mně – ${site.author}`, inLanguage: 'cs', mainEntity: { '@id': new URL('/#autorka', site.url).href } },
+  personLd(site, { image: photoImageUrl('portret') ?? undefined }),
+  breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'O mně', path: '/o-mne/' }]),
+);
 ---
-<Base title="O mně">
+<Base title="O mně" description={description} jsonLd={jsonLd}>
   <div class="about">
     <header>
       <p class="eyebrow">O mně</p>
@@ -13,16 +22,23 @@ import { site } from '../lib/site';
     <Photo name="o-mne-uvod" sizes="(max-width: 1100px) 100vw, 1100px" eager class="lead" aspect="2 / 1" />
     <div class="body">
       <div class="text">
-        <!-- TODO: own text, a few paragraphs in the first person. -->
+        <!-- Own text in the first person; the list of texts to review is kept with the content of the site. -->
         <p>
-          Maluji hlavně akvarelem. Chodím do výtvarného kroužku, jezdím na plenéry a mezi tím maluji doma —
-          krajinu, květiny, co zrovna zaujme.
+          Maluji pro radost. Je to moje velká vášeň a dlouholetý koníček – chvíle, kdy se svět zpomalí
+          a zbude jen papír, barva a voda.
         </p>
         <p>
-          Na akvarelu mě baví, že se nedá úplně ovládat. Voda si vždycky trochu dělá, co chce, a právě
-          to bývá na obraze nejhezčí.
+          Posledních pár let mě nejvíc chytil akvarel. Baví mě, že se nedá úplně ovládat: voda si vždycky
+          trochu dělá, co chce, a právě to bývá na obraze nejhezčí.
         </p>
-        <p class="muted">Časem bych ráda nabízela i kurzy a workshopy — novinky najdete tady a na Instagramu.</p>
+        <p>
+          Na procházky a plenéry s sebou nosím malý skicák. Kromě rychlých akvarelů v něm přibývají skici
+          tužkou a brush penem – krajina, stromy, zvířata, cokoli, co mě cestou zastaví.
+        </p>
+        <p class="muted">
+          Obrazy maluji hlavně pro sebe. Když vám ale některý přiroste k srdci, ráda ho pustím dál, do dobrých
+          rukou – stačí se ozvat.
+        </p>
       </div>
       <Photo name="portret" sizes="(max-width: 800px) 100vw, 300px" class="portrait" />
     </div>

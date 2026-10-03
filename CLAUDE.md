@@ -19,28 +19,45 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   přes `CONTENT_DIR` v `.env` (mimo git), na GitHubu ho předá workflow obsahového repa.
 - Obsahové repo: `tvorba/[<kolekce>/]<slug>.yaml` + master fotka,
   bez složek roků; rok díla = rok jeho `date` (`scripts/lib/content.mjs`). V tomto repu jsou výstupy dál podle roků.
-- `npm run images` (`scripts/process-images.mjs`) z něj generuje `content/works/<rok>/<slug>-<id>.yaml`
-  (kopie, needitovat) a `public/works/<rok>/<slug>-<id>/`; exporty pro Instagram a Fler jdou do `export/` obsahového repa.
+- Systémové soubory obsahu mají všude dvě jména (`INDEX_FILE`, `COVER_NAME` v `scripts/lib/content.mjs`):
+  `_index.yaml` = popis místa, kde leží (kořen = úvodní stránka, složka kolekce = kolekce), `_cover.<ext>` = jeho
+  vlastní úvodní fotka. Stará jména (`RETIRED_NAMES`: `_kolekce.yaml`, `_uvod.*`, `uvod.yaml`, `uvod.*`) = chyba,
+  žádná migrace a vedle nich se nezakládá kostra. Složky a jména děl zůstávají česky (`tvorba/`, `roky/`, `fotky/`).
+- `npm run images` (`scripts/process-images.mjs`) z něj generuje `content/` = zrcadlo obsahového repa (stejné složky
+  a jména, jen veřejné atributy, `scripts/lib/site-content.mjs`, needitovat; plný běh smaže vše, co nezapsal)
+  a obrázky v `public/` ve složce své stránky (= adresa, `scripts/lib/site-images.mjs`): dílo
+  `public/tvorba/<rok>/<slug>-<id>/`, rok `public/tvorba/<rok>/_cover/` + `og.jpg`, kolekce
+  `public/tvorba/kolekce/<slug>/_cover/` + `og.jpg`, úvod `public/_cover/` + `public/og.jpg`, fotky `public/fotky/<název>/`;
+  plný běh smaže vše, co nevyrobil (`staleOutputs`, i staré `public/works/` apod.).
+  Exporty pro Instagram a Fler jdou do `export/` obsahového repa.
+  Web čte kopie přes `readCopies`: rok díla z `date`, kolekce ze složky (žádný atribut `collection`).
 - Každé dílo má trvalé 5znakové `id` (začíná písmenem, viz `scripts/lib/works.mjs`). URL: `/tvorba/<rok>/<slug>-<id>/`.
-- Web načítá díla přes `src/lib/site.ts#getWorks`; `draft: true` a dílo bez `info.json` se nezobrazí.
-- Veřejná kopie yaml obsahuje jen pole z `PUBLIC_WORK_FIELDS` (`scripts/lib/works.mjs`) / `PUBLIC_COLLECTION_FIELDS`,
-  bez komentářů. `private_note` a neznámá pole nesmí nikdy do repa `pavla` (je veřejné). Nové veřejné pole = přidat do seznamu.
+- Web načítá díla přes `src/lib/site.ts#getWorks`; `meta_draft: true` a dílo bez `info.json` se nezobrazí.
+- Atributy popisů mají skupiny podle prefixu (`attributeGroup`, `compareKeys` v `scripts/lib/schema.mjs`), v souboru
+  v pořadí `meta_*` (jen obsahové repo, řídí zpracování), sdílené bez prefixu (`id` první, pak abecedně; kopírují se 1:1),
+  `private_*` (jen obsahové repo; vlastní `private_…` smí přidat kdokoli, bez `NEZNÁMÝ`) / `derived_*` (jen toto repo,
+  odvozuje pipeline; v obsahovém repu = chyba; teď `derived_modified` díla = den poslední změny veřejných údajů
+  nebo obrázků, `lastmod` v mapě webu). Uvnitř skupiny abecedně. Přejmenovaný atribut (`renamed` ve schématu,
+  `draft` → `meta_draft`, `instagram` → `meta_instagram`) = chyba, soubor se nemění, žádná migrace.
+- Veřejná kopie yaml obsahuje jen sdílené atributy (`publicKeys(<schéma>)` = `PUBLIC_WORK_FIELDS` / `PUBLIC_COLLECTION_FIELDS`
+  / `PUBLIC_YEAR_FIELDS` / `PUBLIC_HOME_FIELDS` / `PUBLIC_PHOTO_FIELDS`, nikdy ručně),
+  bez komentářů. `meta_*`, `private_*` a neznámá pole nesmí nikdy do repa `pavla` (je veřejné).
 - Stav prodeje: `isOnSale` = `available` | `reserved` a musí mít `price` (kontrola v pipeline). Jen tato díla
   mají Fler exporty a filtr „neprodané“; `not-for-sale` a `sold` nikdy.
 - Mockupy jen s `mockups: true` v popisu díla (výchozí false), nezávisle na stavu prodeje (`wantsMockups`);
   Fler mockupy jen u díla na prodej, které mockupy má.
-- Exporty: Instagram jen u díla s `instagram: true` (výchozí false), originál (`-clean`) + detailní fotky, nikdy mockupy. Fler jen díla na prodej:
+- Exporty: Instagram jen u díla s `meta_instagram: true` (výchozí false), originál (`-clean`) + detailní fotky, nikdy mockupy. Fler jen díla na prodej:
   originál + mockupy, vše s vodoznakem. Při přegenerování se staré exporty díla mažou (`clearExports`),
   plný běh navíc porovná `export/` s `expectedExports` a smaže vše navíc (`planExportPrune`), i bez přegenerování.
 - Kolekce = složka `tvorba/<kolekce>/` obsahového repa (slug = slugify názvu, např. `2026-plener-sumava`, i přes víc let)
-  s `_kolekce.yaml` a volitelnou `_uvod.jpg`; dílo do ní patří umístěním (max. jedna), `collection:` v yaml díla je chyba,
-  do veřejné kopie ho doplní pipeline. Složka jménem díla vedle něj = detailní fotky. Pipeline `scripts/lib/collections.mjs`,
+  s `_index.yaml` a volitelnou `_cover.jpg`; dílo do ní patří umístěním (max. jedna), `collection:` v yaml díla je chyba,
+  veřejná kopie leží ve stejné složce. Složka jménem díla vedle něj = detailní fotky. Pipeline `scripts/lib/collections.mjs`,
   web `getCollections` a `/tvorba/kolekce/<slug>/`.
   Úvodní obraz kolekce, roku i úvodní stránky: jedno pravidlo (`scripts/lib/covers.mjs`, web `resolveCover`,
-  komponenta `Cover.astro`): vlastní fotka (`_uvod.jpg`, `roky/<rok>.jpg`, `uvod.jpg`) > `cover: <id>` nebo
+  komponenta `Cover.astro`): vlastní fotka (`_cover.jpg` kolekce, `roky/<rok>.jpg`, `_cover.jpg` v kořeni) > `cover: <id>` nebo
   `<id>#<detail>` > náhodně z výběru autorky > nejnovější dílo. Vše se ukáže celé; vybraný obraz (vlastní fotka nebo
   `cover`) s `aspect` nebo `focus` se ořízne (`coverCrop`, chybějící = `"1:1"` / `[50, 50]`; stejný výřez je `og:image`
-  v `public/og/…`). Náhodný se neořezává, `aspect`/`focus` u něj = chyba; v kostrách prázdné. Každá výstupní složka pipeline v tomto repu musí být
+  v `og.jpg` ve složce stránky). Náhodný se neořezává, `aspect`/`focus` u něj = chyba; v kostrách prázdné. Každá výstupní složka pipeline v tomto repu musí být
   v `OUTPUT_PATHS` (`scripts/lib/pull-request.mjs`; do PR jdou jen ty z nich, které existují nebo je git zná).
 - Detailní fotky díla: `tvorba/[<kolekce>/]<slug>/*.jpg` (obsahové repo) → `detail-<název>-<šířka>.*` a `info.json#details`;
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
@@ -51,9 +68,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (`Cover.astro`, vede na zobrazené dílo); stránka ukáže náhodného skriptem `scripts/lib/random-pick.mjs`
   (vložený, bez přeblikávání), `og:image` je vždy první kandidát. Web pipeline (`coverSource`) musí vybírat stejně.
 - Text o roce: `roky/<rok>.yaml` obsahového repa (`YEAR_SCHEMA`, `scripts/lib/years.mjs`), kostru pipeline založí
-  ke každému roku s díly; veřejná kopie `content/years/<rok>.yaml` (`description`, `cover`, `aspect`, `focus`), web `getYear`.
-- Úvodní stránka: `uvod.yaml` v kořeni obsahového repa (`HOME_SCHEMA`, `scripts/lib/home.mjs`; text `description`,
-  `cover`, `aspect`, `focus`), kostra s původním textem `HOME_TEXT`; veřejná kopie `content/home.yaml`, web `getHome`.
+  ke každému roku s díly; veřejná kopie `content/roky/<rok>.yaml` (`description`, `cover`, `aspect`, `focus`), web `getYear`.
+- Úvodní stránka: `_index.yaml` v kořeni obsahového repa (`HOME_SCHEMA`, `scripts/lib/home.mjs`; text `description`,
+  `cover`, `aspect`, `focus`), kostra s původním textem `HOME_TEXT`; veřejná kopie `content/_index.yaml`, web `getHome`.
 - Každý výpis děl se stránkuje, v prohlížeči nad vyfiltrovaným seznamem (`paginate`); návštěvník volí počet
   na stránku (`gallery.pageSizes`, `?perPage=`, pamatuje se v `localStorage`, ale odkaz s `perPage`/`page` má vždy
   přednost) a může stránkování jednorázově vypnout („Zobrazit vše“, `?page=all`, nepamatuje se).
@@ -61,17 +78,18 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `missing` (hodnota pro doplnění do existujícího souboru, musí znamenat totéž co chybějící atribut) a technický
   komentář (česky, typ, hodnoty, příklady). Pipeline z něj staví kostry a při každém běhu srovná všechny popisy
   (`scripts/lib/metadata-yaml.mjs`): doplní chybějící atributy s `DOPLNIT`, srovná pořadí a technické komentáře,
-  neznámé označí `NEZNÁMÝ`. Povinný atribut s konečnou výchozí hodnotou (`settled: true`: `draft`, `tags`, `instagram`,
+  neznámé označí `NEZNÁMÝ`. Povinný atribut s konečnou výchozí hodnotou (`settled: true`: `meta_draft`, `tags`, `meta_instagram`,
   `mockups`, `featured`) nikdy nemá `DOPLNIT`. Nepovinný atribut (`commented: true` + `example`: `support`, `details`,
   `caption`, `private_note`, `price`, `fler`, `cover`, `aspect`, `focus`) je v souboru zakomentovaný (`# price: 2500`) pod technickým komentářem s `NEPOVINNÉ.`, bez
-  `DOPLNIT`; prázdná hodnota = zakomentovat. Nový atribut = záznam ve schématu (+ `PUBLIC_*_FIELDS`, když je veřejný), README obou rep
+  `DOPLNIT`; prázdná hodnota = zakomentovat. Nový atribut = záznam ve schématu (prefix určí skupinu), README obou rep
   a testovací data; změna znění komentáře = staré znění do `previous`. `DOPLNIT` nikdy neodstraňovat za lidi.
-- Testovacích děl (`pavla/demo/`) musí být vždy víc, než je nejmenší počet na stránku (aspoň 15 při 12).
+- Testovacích děl (`pavla/demo-content/`) musí být vždy víc, než je nejmenší počet na stránku (aspoň 15 při 12).
 - Náhledy pro sdílení (`og:image` + rozměry): dílo = `og.jpg` celý obraz na papíře (nikdy neořezávat),
   úvodní obraz kolekce/roku/úvodu = ořez vybraného (`aspect`/`focus`), vlastní fotka nebo detail celé na papíře, jinak `og.jpg`
   díla (`coverShareSource`); helpery `*ShareImage` v `src/lib/site.ts`.
 - Mockupy: scény v `mockups/scenes.yaml` (kalibrace px/cm), výběr a vykreslení `scripts/lib/mockups.mjs`.
-- Ostatní fotky: `fotky/<název>.jpg` obsahového repa → `public/photos/<název>/`, na stránce `<Photo name="…" />`;
+- Ostatní fotky: `fotky/<název>.jpg` obsahového repa → `public/fotky/<název>/` (obrázky), popis (`alt`, `caption`,
+  `focus`) → `content/fotky/<název>.yaml`; na stránce `<Photo name="…" />`;
   `aspect` ořízne na poměr stran kolem `focus: [x, y]` (%) z yaml fotky. O mně: `o-mne-uvod` (2:1) a `portret`.
 - Automatika: workflow obsahového repa spouští tuto pipeline a otevírá PR do tohoto repa (větev `obsah/aktualizace`,
   auto-merge po projití „Kontroly kódu“, větev se po sloučení maže);
@@ -79,7 +97,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `scripts/pull-request.mjs` (`scripts/lib/pull-request.mjs`, `OUTPUT_PATHS`); text PR nikdy nejmenuje obsahové repo.
   „Zkušební běh zpracování“ (`.github/workflows/dry-run.yml`, každou neděli na testovacích datech, nic nepushne)
   prochází tytéž kroky: změna kroků zpracování obsahu = stejná změna ve `dry-run.yml`.
-  Týdenní kontrola (token, selhané běhy, zkušební běh, nasazení, čekající PR, neznámé atributy):
+  Týdenní kontrola (token, selhané běhy, zkušební běh, nasazení, čekající PR, neznámé atributy, chybějící obrázky
+  nasazeného webu `scripts/lib/site-check.mjs`):
   `scripts/check-health.mjs` + `scripts/lib/health.mjs`, spouští ji obsahové repo.
   Workflow kontroluje `actionlint` (job `workflows` v `check.yml`); po každé úpravě workflow ho spusť i lokálně.
 - Deploy workflow tohoto repa obrázky negeneruje, jen staví web z toho, co je commitnuté.
@@ -87,6 +106,11 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   originály nikdy nepřepisuje, výstup do `upravene/`; ruční rohy a další výřezy v `<fotka>.orez.yaml`, `--white-balance`, `--width`, `--margin` (výchozí okraj podkladu kolem listu, aby byly vidět okraje papíru).
   S okrajem zapíše do JPEGu polohu listu (XMP `pavla:sheet`, `scripts/lib/sheet-box.mjs`); pipeline podle ní
   pro mockupy (web i Fler) ořízne master na holý papír, jinde okraj zůstává.
+- Vyhledávače (`scripts/lib/seo.mjs`, `Base.astro` props `description`, `type`, `noindex`, `jsonLd`): každá stránka má
+  vlastní titulek a popis (max. 160 znaků) a strukturovaná data schema.org (JSON-LD, `graphLd`): `VisualArtwork`
+  u díla, `CollectionPage` u výpisů, `Person`/`WebSite`/`ProfilePage`/`ContactPage`, všude `BreadcrumbList`.
+  Obraz na prodej uvádí jen dostupnost, **nikdy cenu** (rozhodnutí 2026-10). Nová stránka = popis + JSON-LD
+  + do `STATIC_PAGES` (mapa webu). `robots.txt` a 404 (`noindex`) generuje web; ověřovací kódy `site.verification`.
 - Návštěvnost: Google Analytics 4 (`analytics.googleMeasurementId` v `site.config.yaml`, `scripts/lib/analytics.mjs`,
   značka v `Base.astro`), jen produkční build skutečného webu, nikdy dev ani testovací data; URL i s parametry filtrů.
   Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `email_click`); nový parametr události = zapsat do README
@@ -99,13 +123,15 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   vždy lokálně `npm run demo:build` (a výsledek zkontrolovat).
 
 ## Testovací a skutečná data
-- Testovací (demo) data žijí **jen** v `pavla/demo/` (yaml + recept `demo/images.yaml`) a zpracovávají se přes
+- Testovací (demo) data žijí **jen** v `pavla/demo-content/`: vymyšlené obsahové repo se stejnou strukturou jako
+  skutečné (yaml + recept `demo-content/images.yaml`, značka `demo-content.yaml`), zpracovávají se přes
   `npm run demo` do `.demo/` (mimo git). Skutečná data jsou **jen** v obsahovém repu; web v produkci se staví
   jen z nich (i když jsou prázdná).
 - **Nikdy netvoř testovací/ukázková data v obsahovém repu** (díla, kolekce, fotky, obrázky), ani „dočasně“.
-  Nové testovací případy = nové soubory v `pavla/demo/` s `demo-` jménem a `demo: true`.
-- Pipeline to hlídá (`scripts/lib/demo.mjs`): skutečná data s `demo-…`/`demo: true` = chyba, testovací data bez
-  úplného označení = chyba. Kontrolu neobcházej ani nevypínej.
+  Nové testovací případy = nové soubory v `pavla/demo-content/`, díla a kolekce s `demo-` jménem.
+- Pipeline to hlídá (`scripts/lib/demo.mjs`): skutečná data se značkou `demo-content.yaml` nebo s dílem či kolekcí
+  `demo-…` = chyba; testovací data bez značky nebo s dílem či kolekcí bez `demo-` = chyba. Atribut `demo` neexistuje.
+  Kontrolu neobcházej ani nevypínej.
 - Ověřování nových funkcí dělej na testovacích datech (`npm run demo:build`), ne úpravou skutečného obsahu.
 
 ## Pravidla
@@ -115,7 +141,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Minimalistický design: papírové tóny, serif nadpisy (Cormorant Garamond), Work Sans text. Obraz má vždy přednost před UI.
 - Vodoznak pro Fler: jen jméno, nikdy URL ani @handle (pravidla Fleru).
 - Mockupy musí držet reálné měřítko podle `size_cm`.
-- Před commitem: `npm test`, `npm run build` a `npm run demo:build` musí projít.
+- Před commitem: `npm test`, `npm run build` a `npm run demo:build` musí projít; `npm run check:images` (a pro testovací
+  web `SITE_DATA_DIR=.demo/site npm run check:images`) ověří, že žádný obrázek, na který stránky odkazují, nechybí.
+- Mapa webu `/sitemap.xml` (`scripts/lib/sitemap.mjs`): nová stránka v `src/pages` bez dat za sebou = do `STATIC_PAGES`.
 - README obou rep (toto technicky, obsahové repo pro Pavlu a pro jeho automatiku) musí **vždy obsahovat kompletní popis všech
   vlastností**: celou strukturu, každou schopnost webu i pipeline (včetně voleb, parametrů v URL, kontrol a chyb),
   jak ji nastavit a jak ji lokálně vyzkoušet. Nic, co web nebo pipeline umí, nesmí v README chybět.
