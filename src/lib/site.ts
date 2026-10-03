@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
-import { coverCandidates, dateYear, detailKey, isValidId, workKey } from '../../scripts/lib/works.mjs';
+import { coverCandidates, dateYear, detailKey, formatSizeCm, isValidId, workKey } from '../../scripts/lib/works.mjs';
 import { photoFocus } from '../../scripts/lib/photos.mjs';
 import { readCopies } from '../../scripts/lib/site-content.mjs';
 import { HOME_PAGE_DIR, collectionPageDir, coverDir, ogFile, photoDir, workImageDir, yearPageDir } from '../../scripts/lib/site-images.mjs';
@@ -258,7 +258,8 @@ export function getHome(): { description?: string; cover: Cover | null } {
 
 export const getYears = () => [...new Set(getWorks().map((w) => w.year))].sort((a, b) => b - a);
 
-export const formatSize = (s?: [number, number]) => (s ? `${s[0]} × ${s[1]} cm` : '');
+/** "29,5 × 29,5 cm": Czech decimal comma (scripts/lib/works.mjs formatSizeCm). */
+export const formatSize = (s?: [number, number]) => formatSizeCm(s);
 export const formatPrice = (p?: number) =>
   p ? new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK', maximumFractionDigits: 0 }).format(p) : '';
 export const url = (p: string) => `${import.meta.env.BASE_URL.replace(/\/$/, '')}${p}`;

@@ -1,10 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  ID_LENGTH, PUBLIC_WORK_FIELDS, expectedExports, exportPattern, generateId, idFromPath, isOnSale, isValidId, parseWorkKey, planExportPrune, planPrune,
-  publicFields, slugify, wantsMockups, splitExt, titleFromName, validSize, validateWorks, workKey,
-  coverCandidates, FEATURED_PICK,
-} from './works.mjs';
+import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planExportPrune, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, validateWorks, validSize, wantsMockups, workKey } from './works.mjs';
 
 /** Deterministic "random" returning the given values in a loop. */
 const sequence = (...values) => {
@@ -253,4 +249,11 @@ test('coverCandidates: the newest works of the author\'s selection, at most FEAT
   assert.deepEqual(coverCandidates([]), []);
   // the pipeline passes its own accessor (featured lives in data)
   assert.deepEqual(coverCandidates([{ id: 'x', data: {} }, { id: 'y', data: { featured: true } }], (w) => w.data.featured === true).map((w) => w.id), ['y']);
+});
+
+test('formatSizeCm: Czech decimal comma, whole numbers as they are, nothing without a valid size', () => {
+  assert.equal(formatSizeCm([29.5, 29.5]), '29,5 × 29,5 cm');
+  assert.equal(formatSizeCm([16.5, 4]), '16,5 × 4 cm');
+  assert.equal(formatSizeCm([42, 30]), '42 × 30 cm');
+  for (const bad of [undefined, null, [0, 0], [30], 'A4']) assert.equal(formatSizeCm(bad), '', String(bad));
 });

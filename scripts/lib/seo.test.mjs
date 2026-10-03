@@ -22,6 +22,7 @@ test('workDescription: the own text, otherwise made of technique, support, size 
   assert.equal(workDescription(work, site), 'Ovce – akvarel, 42 × 30 cm, 2026. Pavla Kramolišová.');
   assert.equal(workDescription({ ...work, support: 'papír Arches 300 g' }, site), 'Ovce – akvarel, papír Arches 300 g, 42 × 30 cm, 2026. Pavla Kramolišová.');
   assert.equal(workDescription({ title: 'Skica', year: 2025 }, site), 'Skica – 2025. Pavla Kramolišová.');
+  assert.equal(workDescription({ ...work, size_cm: [29.5, 29.5] }, site), 'Ovce – akvarel, 29,5 × 29,5 cm, 2026. Pavla Kramolišová.');
 });
 
 test('artworkLd: a VisualArtwork by the author, with size in cm; on sale only availability, never a price', () => {
@@ -30,6 +31,8 @@ test('artworkLd: a VisualArtwork by the author, with size in cm; on sale only av
   assert.equal(ld.url, 'https://web.test/tvorba/2026/ovce-v39nd/');
   assert.deepEqual(ld.creator, { '@id': authorId(site) });
   assert.equal(ld.width.value, 42);
+  // structured data keep numbers (29.5), only the texts use the Czech comma
+  assert.equal(artworkLd({ ...work, size_cm: [29.5, 40] }, site, { path: '/x/' }).width.value, 29.5);
   assert.equal(ld.height.unitCode, 'CMT');
   assert.equal(ld.dateCreated, '2026-09-26');
   assert.equal(ld.offers, undefined, 'not for sale: no offer');

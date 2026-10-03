@@ -3,6 +3,8 @@
 // Pure functions, used by the pages (src/pages) through src/layouts/Base.astro; texts are Czech.
 // A work on sale tells only that it is available, never its price (the price stays on the page itself).
 
+import { formatSizeCm } from './works.mjs';
+
 const SCHEMA = 'https://schema.org';
 
 /** The site's address without a trailing slash. */
@@ -25,8 +27,6 @@ export function summarize(text, max = 160) {
   return `${cut.slice(0, cut.lastIndexOf(' ') > max / 2 ? cut.lastIndexOf(' ') : cut.length).replace(/[\s,;:–—-]+$/, '')}…`;
 }
 
-/** "42 × 30 cm" from [42, 30], '' without a valid size. */
-const sizeText = (s) => (Array.isArray(s) && s.length === 2 && s.every((n) => n > 0) ? `${s[0]} × ${s[1]} cm` : '');
 
 /**
  * Description of a work page: its own text, otherwise made of what is known (the support as written, never
@@ -34,7 +34,7 @@ const sizeText = (s) => (Array.isArray(s) && s.length === 2 && s.every((n) => n 
  */
 export function workDescription(work, site) {
   if (work.description?.trim()) return summarize(work.description);
-  const facts = [work.technique, work.support, sizeText(work.size_cm), work.year].filter(Boolean).join(', ');
+  const facts = [work.technique, work.support, formatSizeCm(work.size_cm), work.year].filter(Boolean).join(', ');
   return summarize(`${work.title}${facts ? ` – ${facts}` : ''}. ${site.author}.`);
 }
 

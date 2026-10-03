@@ -162,6 +162,9 @@ function validateDetailCaptions(w, where) {
 /** True for [width, height] with two positive numbers. */
 export const validSize = (s) => Array.isArray(s) && s.length === 2 && s.every((n) => typeof n === 'number' && n > 0);
 
+/** Size of a work as Czech text with a decimal comma, e.g. "29,5 × 29,5 cm" from [29.5, 29.5]; '' without a valid size. */
+export const formatSizeCm = (s) => (validSize(s) ? `${s.map((n) => String(n).replace('.', ',')).join(' × ')} cm` : '');
+
 const formatDate = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d));
 
 /**

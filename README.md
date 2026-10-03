@@ -342,7 +342,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `fler` | odkaz na Fler, tlačítko „Koupit na Fleru“ |
 | `mockups` | `true` = mockupy, nezávisle na prodeji (výchozí `false`) |
 | `price` | Kč, povinná u `available` a `reserved` |
-| `size_cm` | `[šířka, výška]` v cm; drží měřítko mockupu na stěně |
+| `size_cm` | `[šířka, výška]` v cm (desetinné číslo s tečkou, např. `[29.5, 40]`); drží měřítko mockupu na stěně. Na webu a v popisech pro vyhledávače s desetinnou čárkou („29,5 × 40 cm“, `formatSizeCm`), ve strukturovaných datech jako číslo |
 | `status` | `available` \| `reserved` \| `sold` \| `not-for-sale` |
 | `support` | podklad, nepovinné |
 | `tags` | štítky (filtr v galerii) |
