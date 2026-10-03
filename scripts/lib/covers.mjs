@@ -1,5 +1,5 @@
 // The cover of a place (a collection, a year, the home page), one rule for all of them:
-//   1. its own photo (the collection's _uvod.jpg, roky/<year>.jpg, uvod.jpg),
+//   1. its own photo (the collection's _cover.jpg, roky/<year>.jpg, _cover.jpg in the content root),
 //   2. `cover: <id>`: a published work of the place, or `cover: <id>#<detail>`: one of its detail photos,
 //   3. otherwise one of the newest works of the author's selection (featured) at random per visit,
 //   4. otherwise the newest work.
@@ -74,7 +74,7 @@ export function coverProblems({ where, data, photoPath, works, inScope = () => t
   if (photoPath) problems.push(`${where}: cover ${cover} and the cover photo ${path.basename(photoPath)} both set, keep one`);
   else if (!work) problems.push(`${where}: cover ${cover}: ${id} is not the id of any work`);
   else if (!inScope(work)) problems.push(`${where}: cover ${cover} (${work.data.title}) is not in ${scope}`);
-  else if (work.data.draft) problems.push(`${where}: cover ${cover} (${work.data.title}) is a draft, it is not on the web`);
+  else if (work.data.meta_draft) problems.push(`${where}: cover ${cover} (${work.data.title}) is a draft, it is not on the web`);
   else if (detail !== null && !(work.details ?? []).some((d) => d.name === detail)) {
     problems.push(`${where}: cover ${cover}: ${work.data.title} has no detail photo "${detail}" (folder ${WORKS_SUBDIR}/${work.dir ? `${work.dir}/` : ''}${work.slug}/)`);
   }
@@ -90,7 +90,7 @@ export function coverShareSource({ photoPath, data, works }) {
   if (photoPath) return { source: photoPath, crop: coverCrop(data, true) };
   if (!hasCoverRef(data)) return null;
   const { id, detail } = parseCoverRef(data.cover);
-  const work = works.find((w) => w.id === id && !w.data.draft);
+  const work = works.find((w) => w.id === id && !w.data.meta_draft);
   if (!work) return null;
   const crop = coverCrop(data);
   const source = detail ? work.details?.find((d) => d.name === detail)?.path : work.masterPath;

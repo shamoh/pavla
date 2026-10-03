@@ -27,13 +27,11 @@ test('prepareYears: a skeleton for each year with works, every attribute, text e
   assert.deepEqual([again.created, again.updated], [[], []]);
 });
 
-test('prepareYears keeps a text of a year without works, reads it, marks test data skeletons', async () => {
+test('prepareYears keeps a text of a year without works and reads it', async () => {
   await fs.mkdir(path.join(dir, 'roky'));
   await fs.writeFile(file('2024.yaml'), 'description: |\n  Rok plenérů.\n');
-  const r = await prepareYears(dir, ['2025'], { demo: true });
+  const r = await prepareYears(dir, ['2025']);
   assert.deepEqual(r.years.map((y) => [y.year, y.data.description]), [['2024', 'Rok plenérů.\n'], ['2025', '']]);
-  assert.equal(YAML.parse(await fs.readFile(file('2025.yaml'), 'utf8')).demo, true);
-  assert.equal(YAML.parse(await fs.readFile(file('2024.yaml'), 'utf8')).demo, undefined, 'only new skeletons');
   assert.ok(r.updated.some((u) => u.startsWith('roky/2024.yaml')), 'brought in line with the schema');
 });
 

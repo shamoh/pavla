@@ -1,8 +1,8 @@
 // Collections of works (e.g. one plein-air trip, or a theme across years): every folder in <contentDir>/tvorba/
 // is a collection, its works lie in it (see scripts/lib/content.mjs). Its slug (the web address) is slugify(folder
 // name), e.g. "2026-plener-sumava"; the year is just a part of the name, a collection may span several years.
-//   tvorba/<collection>/_kolekce.yaml   title, description, optional `cover` and `focus` (private_note stays private)
-//   tvorba/<collection>/_uvod.jpg       optional cover photo
+//   tvorba/<collection>/_index.yaml     title, description, optional `cover` and `focus` (private_note stays private)
+//   tvorba/<collection>/_cover.jpg      optional cover photo
 // Cover of a collection: its own photo, otherwise `cover: <work id>` (the work) or `cover: <work id>#<detail>`
 // (one of its detail photos), otherwise its newest work. The cover is shown cropped to 3:2 around `focus: [x, y]` (%).
 
@@ -11,7 +11,7 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { COLLECTION_META, WORKS_SUBDIR, keepInLine } from './content.mjs';
 import { skeleton } from './metadata-yaml.mjs';
-import { COLLECTION_SCHEMA, fieldKeys } from './schema.mjs';
+import { COLLECTION_SCHEMA, fieldKeys, publicKeys } from './schema.mjs';
 import { coverProblems, coverShareSource, parseCoverRef } from './covers.mjs';
 import { isValidSlug, titleFromName } from './works.mjs';
 
@@ -19,8 +19,8 @@ import { isValidSlug, titleFromName } from './works.mjs';
 export const LEGACY_COLLECTIONS_SUBDIR = 'kolekce';
 
 /** Fields of a collection copied to the public site repository (private_note stays private). */
-export const PUBLIC_COLLECTION_FIELDS = ['title', 'description', 'cover', 'aspect', 'focus'];
-/** Every attribute of _kolekce.yaml (COLLECTION_SCHEMA in scripts/lib/schema.mjs). */
+export const PUBLIC_COLLECTION_FIELDS = publicKeys(COLLECTION_SCHEMA);
+/** Every attribute of a collection's _index.yaml (COLLECTION_SCHEMA in scripts/lib/schema.mjs). */
 export const COLLECTION_FIELDS = fieldKeys(COLLECTION_SCHEMA);
 
 
@@ -40,7 +40,8 @@ export const collectionMetaPath = (dir) => path.join(WORKS_SUBDIR, dir, COLLECTI
 
 /**
  * Reads the collections (folders from prepareContent) and returns { collections, created, updated, problems }.
- * A folder without _kolekce.yaml gets a skeleton; every _kolekce.yaml is brought in line with COLLECTION_SCHEMA.
+ * A folder without _index.yaml gets a skeleton (not when it has a file under a former name, see prepareContent);
+ * every _index.yaml is brought in line with COLLECTION_SCHEMA.
  * Collection: { slug, dir, data, coverPath, yamlPath }.
  */
 export async function prepareCollections(contentDir, folders = []) {
@@ -67,6 +68,7 @@ export async function prepareCollections(contentDir, folders = []) {
       continue;
     }
     bySlug.set(f.slug, f.dir);
+    if (!f.metaPath && f.retired) continue; // reported by prepareContent; a skeleton would hide the renamed file
     let text;
     if (f.metaPath) {
       text = await fs.readFile(f.metaPath, 'utf8');

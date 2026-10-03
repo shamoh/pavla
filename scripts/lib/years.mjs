@@ -7,12 +7,12 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { keepInLine } from './content.mjs';
 import { skeleton } from './metadata-yaml.mjs';
-import { YEAR_SCHEMA, fieldKeys } from './schema.mjs';
+import { YEAR_SCHEMA, fieldKeys, publicKeys } from './schema.mjs';
 import { IMAGE_EXTENSIONS, splitExt } from './works.mjs';
 
 export const YEARS_SUBDIR = 'roky';
 /** Fields copied to the public site repository; the private note never is. */
-export const PUBLIC_YEAR_FIELDS = ['description', 'cover', 'aspect', 'focus'];
+export const PUBLIC_YEAR_FIELDS = publicKeys(YEAR_SCHEMA);
 /** Every attribute of a year's YAML (YEAR_SCHEMA). */
 export const YEAR_FIELDS = fieldKeys(YEAR_SCHEMA);
 
@@ -20,9 +20,8 @@ export const YEAR_FIELDS = fieldKeys(YEAR_SCHEMA);
  * Reads roky/*.yaml, writes skeletons for the given years (those with works) that have none, brings every file in
  * line with YEAR_SCHEMA and returns { years: [{ year, data, yamlPath, coverPath }], created, updated, problems }.
  * `coverPath`: the year's own cover photo roky/<year>.jpg (or .jpeg, .png…), null without one.
- * `demo`: the content is the test data, new skeletons are marked `demo: true`.
  */
-export async function prepareYears(contentDir, withWorks = [], { demo = false } = {}) {
+export async function prepareYears(contentDir, withWorks = []) {
   const root = path.join(contentDir, YEARS_SUBDIR);
   const years = [];
   const created = [];
@@ -52,7 +51,7 @@ export async function prepareYears(contentDir, withWorks = [], { demo = false } 
   for (const year of [...new Set(withWorks.map(String))].sort()) {
     if (byYear.has(year)) continue;
     await fs.mkdir(root, { recursive: true });
-    await fs.writeFile(path.join(root, `${year}.yaml`), skeleton(YEAR_SCHEMA, demo ? { demo: true } : {}));
+    await fs.writeFile(path.join(root, `${year}.yaml`), skeleton(YEAR_SCHEMA));
     created.push(`${YEARS_SUBDIR}/${year}.yaml`);
     byYear.set(year, `${year}.yaml`);
   }

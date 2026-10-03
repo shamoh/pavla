@@ -5,7 +5,7 @@ import { coverCrop, coverProblems, coverShareSource, hasCoverRef, hasFocus, pars
 const works = [
   { id: 'k3f9a', slug: 'rano', dir: '', year: '2026', data: { title: 'Ráno' }, masterPath: '/m/rano.jpg', details: [{ name: '1-mlha', path: '/m/rano/1-mlha.jpg' }] },
   { id: 'm7q2x', slug: 'vecer', dir: '', year: '2025', data: { title: 'Večer' }, masterPath: '/m/vecer.jpg', details: [] },
-  { id: 'd4r4f', slug: 'skica', dir: '', year: '2026', data: { title: 'Skica', draft: true }, masterPath: '/m/skica.jpg', details: [] },
+  { id: 'd4r4f', slug: 'skica', dir: '', year: '2026', data: { title: 'Skica', meta_draft: true }, masterPath: '/m/skica.jpg', details: [] },
 ];
 const in2026 = { inScope: (w) => w.year === '2026', scope: '2026' };
 

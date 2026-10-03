@@ -6,8 +6,8 @@
 //   <contentDir>/tvorba/<slug>/*.jpg                   detail photos of that work (a folder named like a work next to it)
 //   <contentDir>/tvorba/<collection>/                  any other folder is a collection; its slug is slugify(folder name),
 //                                                      e.g. "2026-plener-sumava"; a collection may span several years
-//     _kolekce.yaml                                    description of the collection (see scripts/lib/collections.mjs)
-//     _uvod.jpg                                        optional cover photo of the collection
+//     _index.yaml                                      description of the collection (see scripts/lib/collections.mjs)
+//     _cover.jpg                                       optional cover photo of the collection
 //     <name>.jpg + <slug>.yaml, <slug>/*.jpg           works of the collection and their detail photos
 // Collections cannot be nested. Names starting with "." or "_" are not works.
 
@@ -19,9 +19,24 @@ import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA 
 import { IMAGE_EXTENSIONS, dateYear, generateId, isValidId, slugify, splitExt, titleFromName } from './works.mjs';
 
 export const WORKS_SUBDIR = 'tvorba';
+// System files share two names wherever they are: _index.yaml describes the place it lies in (the content root =
+// the home page, a collection folder = the collection), _cover.<ext> is that place's own cover photo.
+export const INDEX_FILE = '_index.yaml';
+export const COVER_NAME = '_cover';
 /** Files of a collection folder that are not works. */
-export const COLLECTION_META = '_kolekce.yaml';
-export const COLLECTION_COVER = '_uvod';
+export const COLLECTION_META = INDEX_FILE;
+export const COLLECTION_COVER = COVER_NAME;
+/** Former names of the system files: a file still named so is an error, never silently ignored or migrated. */
+export const RETIRED_NAMES = { index: ['_kolekce.yaml', 'uvod.yaml'], cover: ['_uvod', 'uvod'] };
+
+/** Problem of a system file under its former name, or null. `rel`: the folder of the file ('' = the content root). */
+export function retiredNameProblem(rel, file, { index, cover }) {
+  const { base, ext } = splitExt(file);
+  const where = [rel, file].filter(Boolean).join('/');
+  if (index.includes(file)) return `${where}: renamed to ${INDEX_FILE}, rename the file`;
+  if (cover.includes(base) && IMAGE_EXTENSIONS.includes(ext)) return `${where}: renamed to ${COVER_NAME}.${ext}, rename the file`;
+  return null;
+}
 
 const isHidden = (name) => name.startsWith('.') || name.startsWith('_');
 const byName = (a, b) => a.name.localeCompare(b.name);
@@ -33,7 +48,7 @@ const byName = (a, b) => a.name.localeCompare(b.name);
 async function readFolder(worksRoot, rel, allowCollections) {
   const dir = path.join(worksRoot, rel);
   const where = (name) => [WORKS_SUBDIR, rel, name].filter(Boolean).join('/');
-  const group = { dir: rel, yamls: new Map(), images: new Map(), details: new Map(), meta: null, cover: null };
+  const group = { dir: rel, yamls: new Map(), images: new Map(), details: new Map(), meta: null, cover: null, retired: false };
   const problems = [];
   const collections = [];
   const folders = [];
@@ -42,6 +57,8 @@ async function readFolder(worksRoot, rel, allowCollections) {
     const { base, ext } = splitExt(file);
     if (rel && item.isFile() && file === COLLECTION_META) { group.meta = file; continue; }
     if (rel && item.isFile() && base === COLLECTION_COVER && IMAGE_EXTENSIONS.includes(ext)) { group.cover = file; continue; }
+    const retired = rel && item.isFile() && retiredNameProblem(where(''), file, { index: ['_kolekce.yaml'], cover: ['_uvod'] });
+    if (retired) { problems.push(retired); group.retired = true; continue; }
     if (isHidden(file)) continue;
     if (item.isDirectory()) { folders.push(file); continue; }
     if (ext === 'yaml' || ext === 'yml') {
@@ -149,10 +166,11 @@ const isoDay = (d) => d.toISOString().slice(0, 10);
 /**
  * Scans the content repository, writes skeletons and IDs where needed, brings every work's YAML in line with
  * WORK_SCHEMA and returns { works, collectionFolders, created, assigned, updated, pending, problems }.
- * `pending`: published works (draft: false) that still have values marked DOPLNIT ("<file>: <keys>").
+ * `pending`: published works (meta_draft: false) that still have values marked DOPLNIT ("<file>: <keys>").
  * A work: { slug, dir (folder in tvorba/, '' without a collection), collection (slug or null), year (from its date,
  * null when the date is not valid), id, data, text, yamlPath, masterPath, details }.
- * A collection folder: { slug, dir, metaPath (null when there is no _kolekce.yaml yet), coverPath }.
+ * A collection folder: { slug, dir, metaPath (null when there is no _index.yaml yet), coverPath,
+ * retired (a system file under its former name: reported, no skeleton is written) }.
  * Options: today (Date, the date of new skeletons), random (for deterministic IDs in tests).
  */
 export async function prepareContent(contentDir, { today = new Date(), random } = {}) {
@@ -210,7 +228,7 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
     const file = path.relative(contentDir, e.yamlPath);
     e.text = await keepInLine(e.text, WORK_SCHEMA, file, e.yamlPath, updated, problems);
     e.data = YAML.parse(e.text) ?? {};
-    const todo = e.data.draft === true ? [] : todoKeys(e.text);
+    const todo = e.data.meta_draft === true ? [] : todoKeys(e.text);
     if (todo.length) pending.push(`${file}: ${todo.join(', ')}`);
   }
 
@@ -234,6 +252,7 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
     dir: g.dir,
     metaPath: g.meta ? path.join(worksRoot, g.dir, g.meta) : null,
     coverPath: g.cover ? path.join(worksRoot, g.dir, g.cover) : null,
+    retired: g.retired,
   }));
   return { works, collectionFolders, created, assigned, updated, pending, problems };
 }
@@ -252,7 +271,7 @@ export async function findUnknownAttributes(contentDir) {
   }
   const yearsDir = path.join(contentDir, 'roky');
   for (const f of (await fs.readdir(yearsDir).catch(() => [])).sort()) if (/\.ya?ml$/.test(f)) files.push([path.join('roky', f), YEAR_SCHEMA]);
-  if (await fs.access(path.join(contentDir, 'uvod.yaml')).then(() => true, () => false)) files.push(['uvod.yaml', HOME_SCHEMA]);
+  if (await fs.access(path.join(contentDir, INDEX_FILE)).then(() => true, () => false)) files.push([INDEX_FILE, HOME_SCHEMA]);
   const photosDir = path.join(contentDir, 'fotky');
   const photos = await fs.readdir(photosDir).catch(() => []);
   for (const f of photos.sort()) if (/\.ya?ml$/.test(f)) files.push([path.join('fotky', f), PHOTO_SCHEMA]);

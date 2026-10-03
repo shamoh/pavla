@@ -14,8 +14,8 @@ afterEach(() => fs.rm(dir, { recursive: true, force: true }));
 
 test('prepareHome writes a skeleton with the text the home page had, every attribute, DOPLNIT', async () => {
   const r = await prepareHome(dir);
-  assert.deepEqual(r.created, ['uvod.yaml']);
-  const text = await fs.readFile(path.join(dir, 'uvod.yaml'), 'utf8');
+  assert.deepEqual(r.created, ['_index.yaml']);
+  const text = await fs.readFile(path.join(dir, '_index.yaml'), 'utf8');
   assert.deepEqual(schemaKeysIn(text, HOME_SCHEMA), HOME_FIELDS);
   assert.match(text, /\n# aspect: "3:2"\n/, 'optional attributes commented out');
   assert.equal(r.home.data.description, HOME_TEXT);
@@ -25,23 +25,37 @@ test('prepareHome writes a skeleton with the text the home page had, every attri
   assert.deepEqual([again.created, again.updated, again.problems], [[], [], []]);
 });
 
-test('prepareHome finds uvod.jpg, keeps a hand-written file and marks test data skeletons', async () => {
-  await fs.writeFile(path.join(dir, 'uvod.yaml'), 'description: Ahoj.\n');
-  await fs.writeFile(path.join(dir, 'uvod.jpg'), 'x');
+test('prepareHome finds _cover.jpg and keeps a hand-written file', async () => {
+  await fs.writeFile(path.join(dir, '_index.yaml'), 'description: Ahoj.\n');
+  await fs.writeFile(path.join(dir, '_cover.jpg'), 'x');
   const r = await prepareHome(dir);
   assert.equal(r.home.data.description, 'Ahoj.');
-  assert.equal(r.home.coverPath, path.join(dir, 'uvod.jpg'));
-  assert.ok(r.updated.some((u) => u.startsWith('uvod.yaml')), 'brought in line with the schema');
-  const other = await fs.mkdtemp(path.join(os.tmpdir(), 'home-'));
-  assert.equal((await prepareHome(other, { demo: true })).home.data.demo, true);
-  await fs.rm(other, { recursive: true, force: true });
+  assert.equal(r.home.coverPath, path.join(dir, '_cover.jpg'));
+  assert.ok(r.updated.some((u) => u.startsWith('_index.yaml')), 'brought in line with the schema');
 });
 
 test('prepareHome reports two home photos and a description that is not text', async () => {
-  await fs.writeFile(path.join(dir, 'uvod.yaml'), 'description: [a]\n');
-  await fs.writeFile(path.join(dir, 'uvod.jpg'), 'x');
-  await fs.writeFile(path.join(dir, 'uvod.png'), 'x');
+  await fs.writeFile(path.join(dir, '_index.yaml'), 'description: [a]\n');
+  await fs.writeFile(path.join(dir, '_cover.jpg'), 'x');
+  await fs.writeFile(path.join(dir, '_cover.png'), 'x');
   const { problems } = await prepareHome(dir);
-  assert.match(problems.join('\n'), /uvod\.yaml: description must be text/);
+  assert.match(problems.join('\n'), /_index\.yaml: description must be text/);
   assert.match(problems.join('\n'), /more than one home cover photo/);
+});
+
+test('prepareHome refuses the former names uvod.yaml and uvod.jpg and writes no skeleton next to them', async () => {
+  await fs.writeFile(path.join(dir, 'uvod.yaml'), 'description: Můj text.\n');
+  await fs.writeFile(path.join(dir, 'uvod.jpg'), 'x');
+  const r = await prepareHome(dir);
+  assert.deepEqual(r.problems, ['uvod.jpg: renamed to _cover.jpg, rename the file', 'uvod.yaml: renamed to _index.yaml, rename the file']);
+  assert.equal(r.home, null);
+  assert.deepEqual(r.created, []);
+  assert.equal(await fs.access(path.join(dir, '_index.yaml')).then(() => true, () => false), false, 'no skeleton hides the text');
+  assert.equal(await fs.readFile(path.join(dir, 'uvod.yaml'), 'utf8'), 'description: Můj text.\n', 'the old file is left alone');
+
+  // renamed: fine again; a leftover old photo next to the new file is still reported
+  await fs.rename(path.join(dir, 'uvod.yaml'), path.join(dir, '_index.yaml'));
+  const again = await prepareHome(dir);
+  assert.equal(again.home.data.description, 'Můj text.');
+  assert.deepEqual(again.problems, ['uvod.jpg: renamed to _cover.jpg, rename the file']);
 });

@@ -61,8 +61,8 @@ test('readTree: a folder named like a work holds its details, any other folder i
   await write('rano/2-lodka.jpg');
   await write('rano/1 Květ.JPG');
   await write('rano/.DS_Store');
-  await write('2026 Plenér Šumava/_kolekce.yaml', 'title: Plenér');
-  await write('2026 Plenér Šumava/_uvod.jpg');
+  await write('2026 Plenér Šumava/_index.yaml', 'title: Plenér');
+  await write('2026 Plenér Šumava/_cover.jpg');
   await write('2026 Plenér Šumava/slat.jpg');
   await write('2026 Plenér Šumava/slat/detail.jpg');
   const { groups, problems } = await readTree(worksDir());
@@ -72,8 +72,8 @@ test('readTree: a folder named like a work holds its details, any other folder i
     { name: '2-lodka', file: '2-lodka.jpg' },
   ]);
   const plener = group(groups, '2026 Plenér Šumava');
-  assert.equal(plener.meta, '_kolekce.yaml');
-  assert.equal(plener.cover, '_uvod.jpg');
+  assert.equal(plener.meta, '_index.yaml');
+  assert.equal(plener.cover, '_cover.jpg');
   assert.deepEqual([...plener.images.keys()], ['slat'], 'the cover photo is no work');
   assert.deepEqual(plener.details.get('slat').files, [{ name: 'detail', file: 'detail.jpg' }]);
 });
@@ -95,7 +95,7 @@ test('prepareContent creates a draft skeleton for a new image, dated today', asy
   assert.deepEqual(r.created, ['tvorba/rano-u-rybnika.yaml']);
   const data = YAML.parse(await read('rano-u-rybnika.yaml'));
   assert.ok(isValidId(data.id));
-  assert.equal(data.draft, true);
+  assert.equal(data.meta_draft, true);
   assert.equal(data.title, 'Ráno u rybníka');
   assert.equal(String(data.date), '2026-07-01');
   const [w] = r.works;
@@ -108,7 +108,7 @@ test('prepareContent creates a draft skeleton for a new image, dated today', asy
 test('prepareContent: works of a collection folder, their collection and years come from folder and date', async () => {
   await write('2025-2026 Zima/prosinec.yaml', 'id: k3f9a\ntitle: P\ndate: 2025-12-30\n');
   await write('2025-2026 Zima/leden.jpg');
-  await write('2025-2026 Zima/_uvod.jpg');
+  await write('2025-2026 Zima/_cover.jpg');
   await write('sam.yaml', 'id: m4g8b\ntitle: S\ndate: nevím\n');
   const r = await prepareContent(dir, { today: new Date('2026-01-02T12:00:00Z') });
   assert.deepEqual(r.created, ['tvorba/2025-2026 Zima/leden.yaml']);
@@ -117,7 +117,7 @@ test('prepareContent: works of a collection folder, their collection and years c
   assert.deepEqual([bySlug.leden.collection, bySlug.leden.year], ['2025-2026-zima', '2026']);
   assert.equal(bySlug.sam.year, null, 'no valid date, no year');
   assert.deepEqual(r.collectionFolders, [{
-    slug: '2025-2026-zima', dir: '2025-2026 Zima', metaPath: null, coverPath: path.join(worksDir(), '2025-2026 Zima', '_uvod.jpg'),
+    slug: '2025-2026-zima', dir: '2025-2026 Zima', metaPath: null, coverPath: path.join(worksDir(), '2025-2026 Zima', '_cover.jpg'), retired: false,
   }]);
 });
 
@@ -130,8 +130,10 @@ test('prepareContent assigns missing ids and is idempotent', async () => {
   const id = YAML.parse(await read('rano.yaml')).id;
   assert.ok(isValidId(id));
   assert.notEqual(id, 'm7q2x');
-  // the comment on top stays the file's comment, the id gets its technical comment right above it
-  assert.match(await read('rano.yaml'), /^# Popis\n\n# Trvalý kód obrazu[^\n]*\n# [^\n]*\nid: /);
+  // the comment on top stays the file's comment (meta_ attributes come first), the id gets its technical comment
+  const text = await read('rano.yaml');
+  assert.match(text, /^# Popis\n\n# true = rozpracovaný[^\n]*\nmeta_draft: false\n/);
+  assert.match(text, /\n\n# Trvalý kód obrazu[^\n]*\n# [^\n]*\nid: /);
 
   const second = await prepareContent(dir);
   assert.deepEqual(second.assigned, []);
@@ -169,12 +171,13 @@ test('prepareContent returns detail photo paths of a work (none when there is no
 });
 
 test('findUnknownAttributes lists typos in works, collections and photos, changes nothing', async () => {
-  await write('rano.yaml', 'id: k3f9a\ntitle: Ráno\nmockup: true\n');
-  await write('plener/_kolekce.yaml', 'title: Plenér\nkryt: k3f9a\n');
+  // an own private_ attribute is not unknown
+  await write('rano.yaml', 'id: k3f9a\ntitle: Ráno\nmockup: true\nprivate_kupec: teta\n');
+  await write('plener/_index.yaml', 'title: Plenér\nkryt: k3f9a\n');
   await write('plener/vecer.yaml', 'id: m7q2x\ntitle: Večer\n');
   await fs.mkdir(path.join(dir, 'fotky'));
   await fs.writeFile(path.join(dir, 'fotky/portret.yaml'), 'alt: Pavla\npopis: x\n');
   const before = await read('rano.yaml');
-  assert.deepEqual(await findUnknownAttributes(dir), ['tvorba/rano.yaml: mockup', 'tvorba/plener/_kolekce.yaml: kryt', 'fotky/portret.yaml: popis']);
+  assert.deepEqual(await findUnknownAttributes(dir), ['tvorba/rano.yaml: mockup', 'tvorba/plener/_index.yaml: kryt', 'fotky/portret.yaml: popis']);
   assert.equal(await read('rano.yaml'), before);
 });
