@@ -1,9 +1,9 @@
-# Dry run of the content workflow (the one that runs the pipeline on the real content) on the test data (demo/):
-#   1. the test content is built from demo/ into .demo/content (like a checkout of the content repository),
+# Dry run of the content workflow (the one that runs the pipeline on the real content) on the test data (demo-content/):
+#   1. the test content is built from demo-content/ into .demo/content (like a checkout of the content repository),
 #   2. the pipeline runs on it as on a branch (--prepare-only) and as on main, writing into this checkout,
 #   3. the pull request is prepared by the same script as the content workflow (scripts/pull-request.mjs) and its
 #      paths are added and committed the way peter-evans/create-pull-request does it,
-#   in two rounds: first without the cover photos of collections (so public/collections does not exist, like
+#   in two rounds: first without the cover photos of collections (so no public/tvorba/kolekce/<slug>/_cover exists, like
 #   before the first real cover photo), then with them (the folder appears).
 # Everything stays in the runner: nothing is pushed, no pull request is opened, the content repository is not needed.
 # It runs weekly, so a broken step shows up before real content hits it; the weekly health check
@@ -47,14 +47,14 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Test content (demo/ into .demo/content)
+      - name: Test content (demo-content/ into .demo/content)
         run: node scripts/demo.mjs --content-only
 
       - name: Set the cover photos of collections aside
         run: |
           mkdir -p "$RUNNER_TEMP/covers"
           cd "$CONTENT_DIR"
-          find tvorba -name '_uvod.*' -print0 | while IFS= read -r -d '' f; do
+          find tvorba -name '_cover.*' -print0 | while IFS= read -r -d '' f; do
             mkdir -p "$RUNNER_TEMP/covers/$(dirname "$f")"
             mv "$f" "$RUNNER_TEMP/covers/$f"
           done

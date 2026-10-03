@@ -25,7 +25,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # Obrázky se generují lokálně (originály nejsou v gitu); CI jen staví web z public/works.
+      # Obrázky se generují lokálně (originály nejsou v gitu); CI jen staví web z vygenerovaných public/ a content/.
       - run: npm run build
       - uses: actions/upload-pages-artifact@v5
         with:

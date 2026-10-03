@@ -11,10 +11,10 @@ on:
     branches: [main]
     paths-ignore:
       - 'content/**'
-      - 'public/works/**'
-      - 'public/photos/**'
-      - 'public/collections/**'
-      - 'public/og/**'
+      - 'public/tvorba/**'
+      - 'public/fotky/**'
+      - 'public/_cover/**'
+      - 'public/og.jpg'
       - '**/*.md'
   pull_request:
   workflow_dispatch:
