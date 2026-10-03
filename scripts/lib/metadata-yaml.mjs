@@ -1,11 +1,15 @@
 // Keeps the content YAML files (works, collections, photos) in line with their schema (scripts/lib/schema.mjs):
-//   - every attribute of the schema is there, in schema order; a missing one is added with its default value,
+//   - every attribute of the schema is there, in schema order (meta_, shared with id first, private_; see
+//     compareKeys in scripts/lib/schema.mjs); a missing one is added with its default value,
 //   - right above each attribute stands its technical comment, worded as in the schema; "DOPLNIT" in front of it
 //     marks a value that still needs checking (added by the pipeline, removed by people),
-//   - an attribute whose default is final (`settled` in the schema: draft, tags, switches) is never marked DOPLNIT,
+//   - an attribute whose default is final (`settled` in the schema: meta_draft, tags, switches) is never marked DOPLNIT,
 //     an old DOPLNIT there goes,
 //   - an author's own comment above an attribute stays, above the technical one,
-//   - attributes the schema does not know stay too, at the end, marked "NEZNÁMÝ",
+//   - attributes the schema does not know stay too, at the end, marked "NEZNÁMÝ"; an own private_ attribute is no
+//     unknown one: it stays without a technical comment among the private_ attributes, alphabetically,
+//   - a former name of an attribute (`renamed` in the schema) or a derived_ attribute is a problem: the file is left
+//     as it is (it is never migrated silently),
 //   - a commented-out attribute (`commented` in the schema: optional, off by default) is there as a comment line
 //     "# key: <example>" under its technical comment starting with "NEPOVINNÉ.", never marked DOPLNIT; removing "# " switches it on. An empty
 //     value of such an attribute means the same as its absence, so it is commented out again,
@@ -16,7 +20,7 @@
 
 import { isDeepStrictEqual } from 'node:util';
 import YAML from 'yaml';
-import { LEGACY_COMMENTS, TODO, UNKNOWN_DOC, docLines } from './schema.mjs';
+import { LEGACY_COMMENTS, TODO, UNKNOWN_DOC, attributeGroup, compareKeys, docLines } from './schema.mjs';
 
 const STRINGIFY = { lineWidth: 0, nullStr: '', flowCollectionPadding: false };
 
@@ -46,7 +50,11 @@ const docVariants = (field) => [
   docLines(field),
   // a commented-out attribute's comment from before it was one (without the OPTIONAL mark)
   ...(field.commented ? [Array.isArray(field.doc) ? field.doc : [field.doc]] : []),
-  ...(field.previous ?? []).map((d) => (Array.isArray(d) ? d : [d])),
+  // older wordings, and for a commented-out attribute also as written in the file (with the OPTIONAL mark)
+  ...(field.previous ?? []).flatMap((d) => {
+    const doc = Array.isArray(d) ? d : [d];
+    return field.commented ? [docLines({ ...field, doc }), doc] : [doc];
+  }),
 ];
 
 /** Placeholder key of a commented-out attribute while the document is rebuilt, replaced by the comment line after. */
@@ -120,21 +128,39 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
   const pairs = doc.contents?.items ?? [];
   const byKey = new Map(pairs.map((p) => [String(p.key?.value ?? p.key), p]));
   const known = new Map(schema.fields.map((f) => [f.key, f]));
+  const wrong = [
+    ...Object.entries(schema.renamed ?? {}).filter(([old]) => byKey.has(old)).map(([old, now]) => `${old}: renamed to ${now}, rename it`),
+    ...[...byKey.keys()].filter((k) => attributeGroup(k) === 'derived')
+      .map((k) => `${k}: derived_ attributes are made by the pipeline for the site, they do not belong here`),
+  ];
+  if (wrong.length) return { text: original, changed: false, added: [], unknown: [], problem: wrong.join('; ') };
+  // the author's own private_ attributes: kept like known ones, without a technical comment
+  const ownPrivate = [...byKey.keys()].filter((k) => !known.has(k) && attributeGroup(k) === 'private');
 
   let top = toLines(doc.commentBefore);
   const items = [];
   const added = [];
   const expected = { ...before };
 
-  const place = (pair, field, index) => {
-    const docs = field ? docVariants(field) : [[UNKNOWN_DOC]];
+  /** `ownAttribute`: an own private_ attribute of the author (no technical comment, not unknown). */
+  const place = (pair, field, index, ownAttribute = false) => {
+    const docs = field ? docVariants(field) : ownAttribute ? [] : [[UNKNOWN_DOC]];
     let lines = toLines(pair.key.commentBefore);
+    // the YAML parser gives the file's comment to the first attribute of the file; up to the first empty line it is
+    // the file's comment, wherever the attribute ends up in the schema order (e.g. after commented-out ones)
+    if (pair === pairs[0] && !doc.commentBefore) {
+      const blank = lines.indexOf('');
+      if (blank > 0) {
+        top = [...top, ...lines.slice(0, blank)];
+        lines = lines.slice(blank + 1);
+      }
+    }
     // a known attribute may still carry the NEZNÁMÝ mark from before it was known
-    if (field) lines = splitComment(lines, [[UNKNOWN_DOC]]).own;
+    if (field || ownAttribute) lines = splitComment(lines, [[UNKNOWN_DOC]]).own;
     const split = splitComment(lines, docs);
     let own = split.own;
     // before technical comments existed, the comment above the first attribute was the file's comment
-    if (index === 0 && !split.found && pairs[0] === pair && own.length && !doc.commentBefore) {
+    if (!split.found && pairs[0] === pair && own.length && !doc.commentBefore && !top.length) {
       top = [...top, ...own];
       own = [];
     }
@@ -147,7 +173,7 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
       if (YAML.isCollection(pair.value)) pair.value.commentBefore = undefined;
       pair.value.spaceBefore = false;
     }
-    const doc_ = field ? docLines(field) : [UNKNOWN_DOC];
+    const doc_ = field ? docLines(field) : ownAttribute ? [] : [UNKNOWN_DOC];
     // DOPLNIT stays until people remove it, except on attributes whose default is final (`settled`)
     pair.key.commentBefore = toComment([...own, ...technical(doc_, field ? split.todo && !field.settled : false)]);
     pair.key.spaceBefore = index > 0;
@@ -163,7 +189,17 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
     items.push(placeholder);
   };
 
-  for (const field of schema.fields) {
+  // schema order; the own private_ attributes go among the private_ ones of the schema, alphabetically (compareKeys)
+  const entries = schema.fields.map((field) => ({ key: field.key, field }));
+  for (const key of [...ownPrivate].sort(compareKeys)) {
+    const before = entries.findIndex((e) => attributeGroup(e.key) === 'private' && compareKeys(key, e.key) < 0);
+    entries.splice(before === -1 ? entries.length : before, 0, { key, field: null });
+  }
+  for (const { key, field } of entries) {
+    if (!field) {
+      place(byKey.get(key), null, items.length, true);
+      continue;
+    }
     const pair = byKey.get(field.key);
     if (field.commented && (!pair || isEmptyValue(pair.value))) {
       let own = commentedOwn.get(field.key) ?? [];
@@ -193,7 +229,7 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
   const unknown = [];
   for (const pair of pairs) {
     const key = String(pair.key?.value ?? pair.key);
-    if (known.has(key)) continue;
+    if (known.has(key) || ownPrivate.includes(key)) continue;
     place(pair, null, items.length);
     unknown.push(key);
   }

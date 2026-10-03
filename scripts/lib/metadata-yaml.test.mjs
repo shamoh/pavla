@@ -136,7 +136,7 @@ test('skeleton: every attribute with its skeleton default, DOPLNIT everywhere ex
 test('the real schemas: skeletons contain every attribute; DOPLNIT on all but generated, settled and commented-out ones', () => {
   for (const s of [WORK_SCHEMA, COLLECTION_SCHEMA, PHOTO_SCHEMA, YEAR_SCHEMA, HOME_SCHEMA]) {
     const text = skeleton(s, { id: 'k3f9a', title: 'X', date: '2026-06-14', alt: 'X' });
-    assert.deepEqual(schemaKeysIn(text, s), fieldKeys(s).filter((k) => k !== 'demo'), s.name);
+    assert.deepEqual(schemaKeysIn(text, s), fieldKeys(s), s.name);
     const marked = text.split('\n').filter((l) => l.startsWith(`# ${TODO} `)).length;
     const toCheck = s.fields.filter((f) => !f.generated && !f.optional && !f.settled && !f.commented);
     assert.equal(marked, toCheck.length, s.name);
@@ -189,6 +189,15 @@ test('commented-out attribute: an older wording of its comment is replaced', () 
   assert.doesNotMatch(r.text, /starý text/);
 });
 
+test('commented-out attribute: an older wording written with the OPTIONAL mark is replaced, not doubled', () => {
+  for (const line of ['# crop: "3:2"', 'crop: "2:1"']) {
+    const r = normalizeMetadata(`title: A\n\n# NEPOVINNÉ. Ořez, starý text.\n${line}\n\nnote: ""\n`, withOff);
+    assert.doesNotMatch(r.text, /starý text/, line);
+    assert.equal(r.text.match(/NEPOVINNÉ/g).length, 1, line);
+    assert.equal(normalizeMetadata(r.text, withOff).changed, false, line);
+  }
+});
+
 test('settled attribute: its default is final, never marked DOPLNIT, an old DOPLNIT goes', () => {
   const settled = { header: [], fields: [
     { key: 'title', doc: 'Název.', value: '' },
@@ -200,4 +209,35 @@ test('settled attribute: its default is final, never marked DOPLNIT, an old DOPL
   assert.deepEqual(added.added, ['draft']);
   const old = normalizeMetadata(`title: A\n# ${TODO} true = skryté.\ndraft: true\n`, settled);
   assert.match(old.text, /\n# true = skryté\.\ndraft: true\n/);
+});
+
+test('own private_ attributes: kept among the private_ ones alphabetically, without NEZNÁMÝ, also when known before', () => {
+  const r = normalizeMetadata(`id: k3f9a\n# ${UNKNOWN_DOC}\nprivate_zzz: z\nprivate_kupec: teta\ntitle: A\nprivate_note: n\n`, WORK_SCHEMA);
+  assert.equal(r.problem, null);
+  assert.deepEqual(r.unknown, []);
+  const keys = Object.keys(YAML.parse(r.text));
+  assert.deepEqual(keys.slice(-3), ['private_kupec', 'private_note', 'private_zzz']);
+  assert.doesNotMatch(r.text, /NEZNÁMÝ/);
+  assert.match(r.text, /\n\nprivate_kupec: teta\n/, 'no technical comment above an own attribute');
+  assert.equal(normalizeMetadata(r.text, WORK_SCHEMA).changed, false, 'idempotent');
+});
+
+test('a former name or a derived_ attribute is a problem; the file stays as it is', () => {
+  const old = 'title: A\ndraft: true\ninstagram: false\n';
+  const r = normalizeMetadata(old, WORK_SCHEMA);
+  assert.equal(r.problem, 'draft: renamed to meta_draft, rename it; instagram: renamed to meta_instagram, rename it');
+  assert.equal(r.text, old);
+  assert.equal(r.changed, false);
+  assert.match(normalizeMetadata('title: A\nderived_collection: x\n', WORK_SCHEMA).problem, /^derived_collection: derived_ attributes are made by the pipeline/);
+});
+
+test('the comment of the file stays on top when its first attribute moves down (schema order)', () => {
+  const r = normalizeMetadata('# Můj obraz.\n\ntitle: A\nid: k3f9a\n', WORK_SCHEMA);
+  assert.match(r.text, /^# Můj obraz\.\n\n# true = rozpracovaný/);
+  assert.equal(r.text.match(/Můj obraz/g).length, 1);
+  // a skeleton starting with commented-out attributes is in line right away
+  for (const s of [YEAR_SCHEMA, HOME_SCHEMA, COLLECTION_SCHEMA]) {
+    const text = skeleton(s, { title: 'X' });
+    assert.equal(normalizeMetadata(text, s).changed, false, s.name);
+  }
 });

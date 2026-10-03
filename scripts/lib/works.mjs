@@ -1,7 +1,7 @@
 // Pure helpers shared by the image pipeline and the Astro site.
 // No filesystem access here, so everything is easy to unit test.
 
-import { WORK_SCHEMA, fieldKeys } from './schema.mjs';
+import { WORK_SCHEMA, fieldKeys, publicKeys } from './schema.mjs';
 
 /** Characters used for work IDs: lowercase letters and digits without look-alikes (0/o, 1/l/i). */
 export const ID_ALPHABET = '23456789abcdefghjkmnpqrstuvwxyz';
@@ -99,14 +99,14 @@ export function validateWorks(works) {
     else if (!isValidYear(String(dateYear(w.data.date))) || !/^\d{4}-\d{2}-\d{2}/.test(formatDate(w.data.date))) {
       problems.push(`${where}: date must be a day like 2026-06-14 (the year of the work comes from it), not "${formatDate(w.data.date)}"`);
     }
-    if (!w.data?.draft && w.data?.size_cm !== undefined && w.data.size_cm !== null && !validSize(w.data.size_cm)) {
+    if (!w.data?.meta_draft && w.data?.size_cm !== undefined && w.data.size_cm !== null && !validSize(w.data.size_cm)) {
       problems.push(`${where}: size_cm must be [width, height] in cm, both greater than 0`);
     }
-    if (!w.data?.draft && isOnSale(w.data?.status) && !(typeof w.data.price === 'number' && w.data.price > 0)) {
+    if (!w.data?.meta_draft && isOnSale(w.data?.status) && !(typeof w.data.price === 'number' && w.data.price > 0)) {
       problems.push(`${where}: status "${w.data.status}" needs a price (price: <Kč>)`);
     }
     problems.push(...validateDetailCaptions(w, where));
-    for (const flag of ['instagram', 'mockups']) {
+    for (const flag of ['meta_instagram', 'mockups']) {
       if (w.data?.[flag] !== undefined && w.data[flag] !== null && typeof w.data[flag] !== 'boolean') {
         problems.push(`${where}: ${flag} must be true or false`);
       }
@@ -125,18 +125,15 @@ export const ON_SALE_STATUSES = ['available', 'reserved'];
 export const isOnSale = (status) => ON_SALE_STATUSES.includes(status);
 
 /**
- * Fields of a work that are copied to the public site repository. Anything else (private_note,
- * unknown keys) stays in the private content repository.
+ * Fields of a work that are copied to the public site repository (a draft is not copied at all): the shared ones,
+ * without a prefix (scripts/lib/schema.mjs). meta_ and private_ attributes and unknown keys stay in the content repository.
  */
-export const PUBLIC_WORK_FIELDS = [
-  'id', 'draft', 'title', 'date', 'technique', 'support', 'size_cm', 'tags',
-  'status', 'price', 'fler', 'featured', 'collection', 'description', 'details', 'mockups',
-];
+export const PUBLIC_WORK_FIELDS = publicKeys(WORK_SCHEMA);
 
 /** Every attribute a work's YAML supports (WORK_SCHEMA in scripts/lib/schema.mjs). */
 export const WORK_FIELDS = fieldKeys(WORK_SCHEMA);
 
-/** Picks the public fields of `data` (in PUBLIC_WORK_FIELDS order), leaving out the rest. */
+/** Picks the public fields of `data` (in the order of `fields`), leaving out the rest. */
 export function publicFields(data, fields) {
   const out = {};
   for (const f of fields) if (data?.[f] !== undefined) out[f] = data[f];
@@ -217,12 +214,12 @@ export function planExportPrune(files, wanted) {
 /** True when the author asked for mockups of a work (`mockups: true`), independent of whether it is for sale. */
 export const wantsMockups = (data) => data?.mockups === true;
 
-/** True when the author asked for Instagram exports of a work (`instagram: true`). */
-export const wantsInstagram = (data) => data?.instagram === true;
+/** True when the author asked for Instagram exports of a work (`meta_instagram: true`). */
+export const wantsInstagram = (data) => data?.meta_instagram === true;
 
 /**
  * Export suffixes a work should have, per platform (see planExportPrune).
- * Instagram: only works with `instagram: true`, the original on paper and every detail photo, never mockups.
+ * Instagram: only works with `meta_instagram: true`, the original on paper and every detail photo, never mockups.
  * Fler: only works on sale, the original and every mockup. `mockupScenes` null = unknown (no web images yet).
  */
 export function expectedExports({ status, details, mockupScenes, instagram = false }) {

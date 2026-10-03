@@ -115,7 +115,7 @@ test('validateWorks reports bad slug, id and missing fields', () => {
 
 test('validateWorks checks size only for published works', () => {
   assert.equal(validateWorks([work({ data: { size_cm: [0, 0] } })]).length, 1);
-  assert.deepEqual(validateWorks([work({ data: { size_cm: [0, 0], draft: true } })]), []);
+  assert.deepEqual(validateWorks([work({ data: { size_cm: [0, 0], meta_draft: true } })]), []);
 });
 
 test('planPrune returns generated entries that are no longer wanted', () => {
@@ -137,7 +137,8 @@ test('isOnSale is true for available and reserved works only', () => {
 
 test('publicFields keeps public work fields and drops the private note and unknown keys', () => {
   const data = { id: 'k3f9a', title: 'Ráno', private_note: 'jen pro mě', poznamka: 'taky soukromé', collection: 'plener', price: 0 };
-  assert.deepEqual(publicFields(data, PUBLIC_WORK_FIELDS), { id: 'k3f9a', title: 'Ráno', price: 0, collection: 'plener' });
+  // the collection is the folder of the public copy, never an attribute
+  assert.deepEqual(publicFields(data, PUBLIC_WORK_FIELDS), { id: 'k3f9a', title: 'Ráno', price: 0 });
   assert.ok(!PUBLIC_WORK_FIELDS.includes('private_note'));
   assert.deepEqual(publicFields(null, PUBLIC_WORK_FIELDS), {});
 });
@@ -149,7 +150,7 @@ test('validateWorks requires a positive price for works on sale, except drafts',
     assert.equal(validateWorks([work({ data: { status, price: 0 } })]).length, 1);
     assert.equal(validateWorks([work({ data: { status, price: '3200' } })]).length, 1);
     assert.deepEqual(validateWorks([work({ data: { status, price: 3200 } })]), []);
-    assert.deepEqual(validateWorks([work({ data: { status, draft: true } })]), []);
+    assert.deepEqual(validateWorks([work({ data: { status, meta_draft: true } })]), []);
   }
   for (const status of ['sold', 'not-for-sale', undefined]) assert.deepEqual(validateWorks([work({ data: { status } })]), []);
 });

@@ -1,7 +1,14 @@
-// Every attribute of the content YAML files (a work, a collection's _kolekce.yaml, a photo in fotky/), in order,
-// with its default value and its technical comment. The single source of truth: skeletons of new files are built
-// from it and the pipeline brings every existing file in line with it (scripts/lib/metadata-yaml.mjs).
-// A new attribute = a new entry here (and, when public, in PUBLIC_WORK_FIELDS / PUBLIC_COLLECTION_FIELDS).
+// Every attribute of the content YAML files (a work, a collection's _index.yaml, a photo in fotky/), with its default
+// value and its technical comment. The single source of truth: skeletons of new files are built from it and the
+// pipeline brings every existing file in line with it (scripts/lib/metadata-yaml.mjs).
+// A new attribute = a new entry here; its prefix decides where it is used (attributeGroup below).
+//
+// Groups of attributes by prefix, in this order in every file (alphabetically within a group, `id` first):
+//   meta_<name>      content repository only: controls the processing (meta_draft, meta_instagram), never copied
+//   <name>           shared: valid in both repositories, copied 1:1 to the public copy (content/ of the site repo)
+//   private_<name>   content repository only, never copied; any private_ attribute may be added freely
+//   derived_<name>   site repository only: made by the pipeline (from other attributes or the place of a file);
+//                    one in the content repository is an error
 //
 // Comments are Czech: Pavla reads and edits these files. A technical comment describes the attribute in general
 // (type, allowed values, examples); it stands right above the attribute and is the same in every file.
@@ -13,48 +20,78 @@
 //          generated (set by the pipeline, never marked DOPLNIT), optional (only kept when present, never added),
 //          block (a new value is written as a block text |), previous (older wordings of doc) }
 
+export const META_PREFIX = 'meta_';
+export const PRIVATE_PREFIX = 'private_';
+export const DERIVED_PREFIX = 'derived_';
+
+/** Group of an attribute by its prefix: 'meta' | 'shared' | 'private' | 'derived'. */
+export function attributeGroup(key) {
+  if (key.startsWith(META_PREFIX)) return 'meta';
+  if (key.startsWith(PRIVATE_PREFIX)) return 'private';
+  if (key.startsWith(DERIVED_PREFIX)) return 'derived';
+  return 'shared';
+}
+
+const GROUP_ORDER = { meta: 0, shared: 1, private: 2, derived: 2 };
+
+/** Order of attributes in a file: meta_, shared (`id` first), private_ / derived_; alphabetically within a group. */
+export function compareKeys(a, b) {
+  const group = GROUP_ORDER[attributeGroup(a)] - GROUP_ORDER[attributeGroup(b)];
+  if (group) return group;
+  if (a === 'id' || b === 'id') return a === b ? 0 : a === 'id' ? -1 : 1;
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** The fields of a schema in file order (compareKeys). */
+function ordered(fields) {
+  return [...fields].sort((x, y) => compareKeys(x.key, y.key));
+}
+
 /** Prefix of a technical comment whose value still needs checking; the pipeline adds it, people remove it. */
 export const TODO = 'DOPLNIT';
 /** Technical comment of an attribute the pipeline does not know (a typo?); it is kept, at the end of the file. */
 export const UNKNOWN_DOC = 'NEZNÁMÝ atribut: pipeline ho nezná (překlep?) a nepoužije ho. Oprav jeho název, nebo řádek smaž.';
 
-const demo = {
-  key: 'demo',
-  optional: true,
-  doc: 'Jen testovací data (repo pavla, složka demo/): true = testovací položka. Ve skutečném obsahu být nesmí.',
-  value: true,
-};
+/** Current wording of the technical comment of `cover`, for the own cover photo `photo`. */
+const coverDoc = (scope, photo) => [
+  `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
+  `vede na to dílo. Nebo místo toho vlastní fotka ${photo} (bez odkazu). Ukáže se celý, s aspect nebo focus oříznutý.`,
+  'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
+];
+
+/** Older wordings of the technical comment of `cover`, for the own cover photo `photo`. */
+const coverOlderDocs = (scope, photo) => [
+  [
+    `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
+    `vede na to dílo. Nebo místo toho vlastní fotka ${photo} (bez odkazu). Ukáže se celý, s aspect a focus oříznutý.`,
+    'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
+  ],
+  [
+    `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
+    `vede na to dílo. Nebo místo toho vlastní fotka ${photo} (bez odkazu). Ukáže se celý, s focus oříznutý na 3:2.`,
+    'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
+  ],
+  ...[photo, photo.replace(/ vedle tohoto souboru$/, ' (vedle tohoto souboru)')].map((p) => [
+    `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
+    `vede na to dílo. Nebo místo toho vlastní fotka ${p} (bez odkazu). Obojí se ořízne na 3:2 kolem focus.`,
+    'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
+  ]),
+];
 
 /**
  * `cover` of a place (collection, year, home page), see scripts/lib/covers.mjs. `scope`: which works it may name,
- * `photo`: the file of its own cover photo; `previous`: older wordings of the comment.
+ * `photo`: the file of its own cover photo, `formerPhotos`: its former names (every wording with them is recognised
+ * and replaced); `previous`: older wordings of the comment.
  */
-const coverField = (scope, photo, previous) => ({
+const coverField = (scope, photo, previous, formerPhotos = []) => ({
   key: 'cover',
   commented: true,
   example: 'k3f9a',
-  doc: [
-    `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
-    `vede na to dílo. Nebo místo toho vlastní fotka ${photo} (bez odkazu). Ukáže se celý, s aspect nebo focus oříznutý.`,
-    'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
-  ],
+  doc: coverDoc(scope, photo),
   value: '',
   previous: [
-    [
-      `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
-      `vede na to dílo. Nebo místo toho vlastní fotka ${photo} (bez odkazu). Ukáže se celý, s aspect a focus oříznutý.`,
-      'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
-    ],
-    [
-      `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
-      `vede na to dílo. Nebo místo toho vlastní fotka ${photo} (bez odkazu). Ukáže se celý, s focus oříznutý na 3:2.`,
-      'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
-    ],
-    ...[photo, photo.replace(/ vedle tohoto souboru$/, ' (vedle tohoto souboru)')].map((p) => [
-      `Vybraný úvodní obraz: id díla ${scope} (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;`,
-      `vede na to dílo. Nebo místo toho vlastní fotka ${p} (bez odkazu). Obojí se ořízne na 3:2 kolem focus.`,
-      'Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.',
-    ]),
+    ...coverOlderDocs(scope, photo),
+    ...formerPhotos.flatMap((p) => [coverDoc(scope, p), ...coverOlderDocs(scope, p)]),
     ...(previous ? [previous] : []),
   ],
 });
@@ -130,9 +167,11 @@ export const WORK_SCHEMA = {
   name: 'work',
   header: [
     'Popis obrazu – kostru vytvořila pipeline podle fotky.',
-    `Zkontroluj a doplň hodnoty označené ${TODO}, pak slovo ${TODO} smaž. Dokud je draft: true, obraz se na webu nezobrazí.`,
+    `Zkontroluj a doplň hodnoty označené ${TODO}, pak slovo ${TODO} smaž. Dokud je meta_draft: true, obraz se na webu nezobrazí.`,
   ],
-  fields: [
+  // former names of attributes: a file still using one is an error (rename it), never migrated silently
+  renamed: { draft: 'meta_draft', instagram: 'meta_instagram' },
+  fields: ordered([
     {
       key: 'id',
       generated: true,
@@ -142,8 +181,7 @@ export const WORK_SCHEMA = {
       ],
       value: null,
     },
-    demo,
-    { key: 'draft', settled: true, doc: 'true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.', value: true, missing: false },
+    { key: 'meta_draft', settled: true, doc: 'true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.', value: true, missing: false },
     { key: 'title', doc: 'Název obrazu, jak ho uvidí návštěvníci webu.', value: '' },
     {
       key: 'date',
@@ -198,7 +236,7 @@ export const WORK_SCHEMA = {
       value: '',
     },
     {
-      key: 'instagram',
+      key: 'meta_instagram',
       settled: true,
       doc: 'true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.',
       value: false,
@@ -251,7 +289,7 @@ export const WORK_SCHEMA = {
       doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',
       value: '',
     },
-  ],
+  ]),
 };
 
 export const COLLECTION_SCHEMA = {
@@ -259,11 +297,10 @@ export const COLLECTION_SCHEMA = {
   header: [
     'Kolekce – kostru vytvořila pipeline pro tuto složku.',
     'Obrazy kolekce jsou soubory v této složce. Adresa kolekce na webu je název složky (bez diakritiky).',
-    'Úvodní fotka kolekce (nepovinná): _uvod.jpg vedle tohoto souboru.',
+    'Úvodní fotka kolekce (nepovinná): _cover.jpg vedle tohoto souboru.',
     `Zkontroluj a doplň hodnoty označené ${TODO}, pak slovo ${TODO} smaž.`,
   ],
-  fields: [
-    demo,
+  fields: ordered([
     { key: 'title', doc: 'Název kolekce na webu, např. Plenér Šumava 2026.', value: '' },
     {
       key: 'description',
@@ -272,10 +309,10 @@ export const COLLECTION_SCHEMA = {
       value: 'Pár vět o kolekci: kde a kdy obrazy vznikly.\n',
       missing: null,
     },
-    coverField('z kolekce', '_uvod.jpg', [
+    coverField('z kolekce', '_cover.jpg', [
       'Úvodní obraz: id díla z kolekce (např. k3f9a) nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer.',
       'Nepovinné: bez něj vlastní fotka _uvod.jpg, jinak nejnovější dílo. Dílo s draft: true nejde.',
-    ]),
+    ], ['_uvod.jpg']),
     aspectField,
     focusField([
       'Úvodní obraz se ořízne na 3:2; [zleva %, shora %] = co zůstane vidět,',
@@ -288,7 +325,7 @@ export const COLLECTION_SCHEMA = {
       doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',
       value: '',
     },
-  ],
+  ]),
 };
 
 export const PHOTO_SCHEMA = {
@@ -297,8 +334,7 @@ export const PHOTO_SCHEMA = {
     'Popis fotky – kostru vytvořila pipeline.',
     `Zkontroluj a doplň hodnoty označené ${TODO}, pak slovo ${TODO} smaž.`,
   ],
-  fields: [
-    demo,
+  fields: ordered([
     {
       key: 'alt',
       doc: 'Co je na fotce (pro nevidomé a vyhledávače), např. „Pavla maluje v ateliéru“.',
@@ -313,7 +349,7 @@ export const PHOTO_SCHEMA = {
       ],
       value: [50, 50],
     },
-  ],
+  ]),
 };
 
 export const YEAR_SCHEMA = {
@@ -322,8 +358,7 @@ export const YEAR_SCHEMA = {
     'Rok – kostru vytvořila pipeline pro rok, ve kterém jsou obrazy (název souboru je rok).',
     'Text i úvodní obraz jsou nepovinné. Po vyplnění slovo DOPLNIT smaž.',
   ],
-  fields: [
-    demo,
+  fields: ordered([
     {
       key: 'description',
       doc: [
@@ -342,10 +377,10 @@ export const YEAR_SCHEMA = {
       doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',
       value: '',
     },
-  ],
+  ]),
 };
 
-/** The text of the home page as it was before it moved into uvod.yaml: the value of a new skeleton. */
+/** The text of the home page as it was before it moved into the content repository: the value of a new skeleton. */
 export const HOME_TEXT = 'Maluji hlavně akvarelem — v kroužku, na plenérech a doma u stolu. Tady najdete, co mi právě\n'
   + 'uschlo na papíře, i to, co už visí jinde.\n';
 
@@ -355,8 +390,7 @@ export const HOME_SCHEMA = {
     'Úvodní stránka webu – kostru vytvořila pipeline.',
     'Úvodní obraz je nepovinný. Po kontrole hodnot slovo DOPLNIT smaž.',
   ],
-  fields: [
-    demo,
+  fields: ordered([
     {
       key: 'description',
       block: true,
@@ -366,7 +400,7 @@ export const HOME_SCHEMA = {
       ],
       value: HOME_TEXT,
     },
-    coverField('z celé tvorby', 'uvod.jpg vedle tohoto souboru'),
+    coverField('z celé tvorby', '_cover.jpg vedle tohoto souboru', undefined, ['uvod.jpg vedle tohoto souboru']),
     aspectField,
     focusField(),
     {
@@ -376,11 +410,13 @@ export const HOME_SCHEMA = {
       doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',
       value: '',
     },
-  ],
+  ]),
 };
 
-/** Keys of a schema, without the ones only test data have. */
-export const fieldKeys = (schema) => schema.fields.filter((f) => f.key !== 'demo').map((f) => f.key);
+/** Keys of a schema. */
+export const fieldKeys = (schema) => schema.fields.map((f) => f.key);
+/** Keys of a schema copied to the public copy: the shared ones (without a prefix), in file order. */
+export const publicKeys = (schema) => fieldKeys(schema).filter((k) => attributeGroup(k) === 'shared');
 
 /** Lines of a technical comment. */
 /** Mark in front of the technical comment of a commented-out (optional, off by default) attribute. */
