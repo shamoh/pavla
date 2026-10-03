@@ -19,6 +19,8 @@ export const config = YAML.parse(fs.readFileSync(path.join(root, 'site.config.ya
 export const site = config.site as {
   url: string; title: string; tagline: string; author: string;
   email: string; instagram: string; fler: string;
+  /** Where the author lives and paints, shown on the contact page; empty = nothing. */
+  location?: string;
   /** Codes proving to search engines that the site is ours (meta tags, scripts/lib/seo.mjs verificationMeta). */
   verification?: { google?: string; bing?: string; seznam?: string };
 };

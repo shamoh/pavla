@@ -722,6 +722,9 @@ používají tyto názvy; dokud fotka neexistuje, na stránce prostě chybí:
 | `portret.jpg` | O mně, vedle textu, úzký sloupec (ideálně fotka na výšku) |
 | `kontakt.jpg` | Kontakt, vedle kontaktů, oříznutá na šířku 4:3 podle `focus` |
 
+Kontakt ukazuje z `site.config.yaml` e-mail (`site.email`), Instagram (`site.instagram`), obchůdek na Fleru
+(`site.fler`) a místo, kde autorka žije a maluje (`site.location`, „Žiji a maluji“); prázdná hodnota = položka chybí.
+
 Přípona může být i `.jpeg`, `.png` apod. Další fotku lze na libovolnou stránku
 přidat komponentou `<Photo name="…" />`.
 
@@ -860,7 +863,7 @@ Co web dělá, aby mu vyhledávače rozuměly (`scripts/lib/seo.mjs`, `src/layou
   text, jinak věta s názvem; Tvorba, Kolekce, O mně a Kontakt mají vlastní. Žádné dvě stránky nemají stejný titulek
   ani popis.
 - **Strukturovaná data** (schema.org jako JSON-LD v `<script type="application/ld+json">`, `graphLd`):
-  úvod = web (`WebSite`) a autorka (`Person` s portrétem a odkazy na Instagram a Fler), O mně = `ProfilePage`,
+  úvod = web (`WebSite`) a autorka (`Person` s portrétem, odkazy na Instagram a Fler a místem `homeLocation` ze `site.location`), O mně = `ProfilePage`,
   Kontakt = `ContactPage`, dílo = `VisualArtwork` (název, popis, obrázek, technika, podklad, rozměry v cm, datum,
   autorka), Tvorba, rok, kolekce a Kolekce = `CollectionPage` se seznamem děl; všude drobečková navigace
   (`BreadcrumbList`). **Obraz na prodej uvádí jen dostupnost (`available` = InStock, `reserved` =

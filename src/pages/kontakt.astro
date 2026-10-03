@@ -4,7 +4,7 @@ import Photo from '../components/Photo.astro';
 import { site } from '../lib/site';
 import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
 
-const description = 'Zaujal vás obraz, nebo jen chcete pozdravit? Napište mi – a když se vám některý obraz zalíbí, domluvíme se.';
+const description = 'Zaujal vás obraz, nebo jen chcete pozdravit? Napište mi – a když se vám některý obraz zalíbí, domluvíme se. Žiji a maluji v Roztokách.';
 // For search engines: the contact page of the author.
 const jsonLd = graphLd(
   { '@type': 'ContactPage', '@id': new URL('/kontakt/', site.url).href, url: new URL('/kontakt/', site.url).href, name: `Kontakt – ${site.author}`, inLanguage: 'cs', about: { '@id': new URL('/#autorka', site.url).href } },
@@ -20,6 +20,7 @@ const jsonLd = graphLd(
         {site.email && <li><span class="eyebrow">E-mail</span><a href={`mailto:${site.email}`}>{site.email}</a></li>}
         {site.instagram && <li><span class="eyebrow">Instagram</span><a href={`https://www.instagram.com/${site.instagram}/`} rel="me">@{site.instagram}</a></li>}
         {site.fler && <li><span class="eyebrow">Obchůdek</span><a href={site.fler}>Fler</a></li>}
+        {site.location && <li><span class="eyebrow">Žiji a maluji</span><span class="value">{site.location}</span></li>}
       </ul>
     </div>
     <!-- Landscape 4:3 crop around the photo's focus, so it does not tower over the short text next to it. -->
@@ -32,5 +33,5 @@ const jsonLd = graphLd(
   @media (max-width: 800px) { .contact-page { grid-template-columns: 1fr; } }
   .contact { list-style: none; padding: 0; margin: 40px 0 0; display: grid; gap: 28px; }
   .contact li { display: flex; flex-direction: column; gap: 4px; }
-  .contact a { font-family: var(--serif); font-size: 1.7rem; text-decoration: none; }
+  .contact a, .contact .value { font-family: var(--serif); font-size: 1.7rem; text-decoration: none; }
 </style>

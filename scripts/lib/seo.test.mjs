@@ -50,6 +50,9 @@ test('personLd and websiteLd: one author node, her profiles elsewhere, the site 
   assert.deepEqual(person.sameAs, ['https://www.instagram.com/pavla.k/'], 'an empty Fler address is left out');
   assert.equal(person.image, 'https://web.test/p.jpg');
   assert.equal(personLd(site).image, undefined);
+  assert.equal(person.homeLocation, undefined, 'no place without site.location');
+  assert.deepEqual(personLd({ ...site, location: 'Roztoky' }).homeLocation,
+    { '@type': 'Place', name: 'Roztoky', address: { '@type': 'PostalAddress', addressLocality: 'Roztoky', addressCountry: 'CZ' } });
   const web = websiteLd(site);
   assert.equal(web.inLanguage, 'cs');
   assert.deepEqual(web.author, { '@id': person['@id'] });

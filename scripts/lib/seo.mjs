@@ -47,6 +47,7 @@ export function personLd(site, { image } = {}) {
     url: absolute(site, '/o-mne/'),
     description: 'Amatérská malířka, která maluje pro radost, hlavně akvarelem; na procházkách skicuje i tužkou a brush penem.',
     knowsAbout: ['akvarel', 'kresba', 'skicování', 'plenér'],
+    ...(site.location && { homeLocation: { '@type': 'Place', name: site.location, address: { '@type': 'PostalAddress', addressLocality: site.location, addressCountry: 'CZ' } } }),
     ...(image && { image }),
     sameAs: [site.instagram && `https://www.instagram.com/${site.instagram}/`, site.fler].filter(Boolean),
   };

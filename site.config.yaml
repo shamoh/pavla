@@ -7,6 +7,7 @@ site:
   tagline: Akvarely pro radost
   author: Pavla Kramolišová
   email: pavla@kramolis.cz
+  location: Roztoky                       # kde Pavla žije a maluje, zobrazí se v Kontaktu; prázdné = nic
   instagram: pavla.kramolisova
   fler: ""                               # URL obchůdku na Fleru, až bude
   verification:                          # ověření webu u vyhledávačů značkou <meta> (jen když ověřuješ touto cestou,
