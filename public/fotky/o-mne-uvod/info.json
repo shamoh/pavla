@@ -1,0 +1,12 @@
+{
+  "width": 2048,
+  "height": 1536,
+  "widths": [
+    480,
+    960,
+    1600,
+    2048
+  ],
+  "dominant": "rgb(168,200,232)",
+  "fingerprint": "a2bc7830166395cd"
+}
