@@ -4,7 +4,8 @@
 //   - the latest weekly dry run of that workflow on the test data ("Zkušební běh zpracování", pavla) did not fail,
 //   - the latest commit on pavla/main was deployed,
 //   - the content pull request (obsah/aktualizace) does not wait for a merge too long,
-//   - no description of the content has an attribute the pipeline does not know (NEZNÁMÝ).
+//   - no description of the content has an attribute the pipeline does not know (NEZNÁMÝ),
+//   - every image the pages of the deployed site refer to exists (scripts/lib/site-check.mjs).
 // Pure functions; the GitHub API calls live in scripts/check-health.mjs.
 // Messages are Czech: they end up on the run page and in an issue e-mailed to the owner.
 

@@ -2,10 +2,14 @@
 // Health check of the content automation, run weekly by a workflow of the content repository.
 // Env: TOKEN (the PAVLA_TOKEN secret), RUNS_TOKEN + REPO (token with actions:read on the content repository and its
 // name, e.g. github.token and github.repository), CONTENT_DIR (a checkout of the content repository, optional).
+// The images of the deployed site are checked at site.url of site.config.yaml (`--site-url <url>` overrides it,
+// e.g. a locally served build).
 // Exit code 1 when something needs attention; the report goes to stdout, the run page and the step output.
 
 import fs from 'node:fs/promises';
+import YAML from 'yaml';
 import { findUnknownAttributes } from './lib/content.mjs';
+import { checkSiteImages, evaluateSiteImages } from './lib/site-check.mjs';
 import {
   DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, formatReport,
 } from './lib/health.mjs';
@@ -33,6 +37,7 @@ const guarded = async (label, fn) => {
 
 const args = process.argv.slice(2);
 const arg = (name, fallback) => (args.includes(name) ? Number(args[args.indexOf(name) + 1]) : fallback);
+const textArg = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 
 let token;
 if (!process.env.TOKEN) token = evaluateToken({ status: 0 });
@@ -68,7 +73,13 @@ const unknown = process.env.CONTENT_DIR
   ? await guarded('popisy obrazů', async () => evaluateUnknownAttributes(await findUnknownAttributes(process.env.CONTENT_DIR)))
   : evaluateUnknownAttributes(null);
 
-const report = formatReport(token, runs, dryRun, deploy, pr, unknown);
+// Every image the pages of the deployed site refer to exists (a deploy without images, a pipeline that removed some).
+const siteImages = await guarded('obrázky webu', async () => {
+  const config = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
+  return evaluateSiteImages(await checkSiteImages(textArg('--site-url') ?? config.site.url, fetch));
+});
+
+const report = formatReport(token, runs, dryRun, deploy, pr, unknown, siteImages);
 console.log(report.text);
 if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, report.text);
 if (process.env.GITHUB_OUTPUT) await fs.appendFile(process.env.GITHUB_OUTPUT, `report<<EOF\n${report.text}EOF\n`);
