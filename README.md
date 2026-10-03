@@ -43,7 +43,7 @@ pavla/                                      (toto repo, veřejné)
     roky/<rok>.yaml                         rok
     fotky/<název>.yaml                      ostatní fotka (alt, caption, focus)
   public/                                   vygenerované obrázky leží ve složce své stránky (= adresa, generuje pipeline,
-                                            scripts/lib/site-images.mjs); statické soubory webu (favicon.svg, CNAME) vedle:
+                                            scripts/lib/site-images.mjs); statické soubory webu (favicon.svg, favicon.ico, apple-touch-icon.png, CNAME) vedle:
     tvorba/<rok>/<slug>-<id>/               dílo: webové velikosti, detaily, mockupy, og.jpg + info.json
     tvorba/<rok>/_cover/, tvorba/<rok>/og.jpg      rok: vlastní úvodní fotka, obrázek pro sdílení vybraného obalu
     tvorba/kolekce/<slug>/_cover/, …/og.jpg totéž pro kolekci
@@ -727,6 +727,14 @@ Kontakt ukazuje z `site.config.yaml` e-mail (`site.email`), Instagram (`site.ins
 
 Přípona může být i `.jpeg`, `.png` apod. Další fotku lze na libovolnou stránku
 přidat komponentou `<Photo name="…" />`.
+
+## Ikona webu (favicon)
+
+Zdrojem je `public/favicon.svg` (moderní prohlížeče). Z něj `npm run favicons` (`scripts/favicons.mjs`,
+`scripts/lib/favicons.mjs`) vyrobí `public/favicon.ico` (16, 32 a 48 px; starší prohlížeče, čtečky a náhledy odkazů)
+a `public/apple-touch-icon.png` (180 px na papírovém podkladu; iPhone a iPad při uložení na plochu, SVG neumí).
+Po každé změně `favicon.svg` spusť `npm run favicons` a commitni všechny tři; odkazuje na ně `Base.astro`.
+Vyzkoušení: `npm run build`, v `dist/` jsou všechny tři soubory a v hlavičce stránek tři odkazy `rel="icon"` / `rel="apple-touch-icon"`.
 
 ```yaml
 # fotky/o-mne-uvod.yaml (obsahové repo)
