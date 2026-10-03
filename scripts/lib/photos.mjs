@@ -8,12 +8,14 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { keepInLine } from './content.mjs';
 import { skeleton } from './metadata-yaml.mjs';
-import { PHOTO_SCHEMA, fieldKeys } from './schema.mjs';
+import { PHOTO_SCHEMA, fieldKeys, publicKeys } from './schema.mjs';
 import { IMAGE_EXTENSIONS, isValidSlug, slugify, splitExt, titleFromName } from './works.mjs';
 
 export const PHOTOS_SUBDIR = 'fotky';
 /** Every attribute of a photo's YAML (PHOTO_SCHEMA in scripts/lib/schema.mjs). */
 export const PHOTO_FIELDS = fieldKeys(PHOTO_SCHEMA);
+/** Fields of a photo copied to the public site repository (content/fotky/<name>.yaml). */
+export const PUBLIC_PHOTO_FIELDS = publicKeys(PHOTO_SCHEMA);
 
 
 /**

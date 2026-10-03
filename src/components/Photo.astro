@@ -3,6 +3,7 @@
 // `aspect` (e.g. "2 / 1") crops the photo to that shape, centred on the photo's `focus` point from its YAML.
 import Img from './Img.astro';
 import { getPhoto } from '../lib/site';
+import { photoDir } from '../../scripts/lib/site-images.mjs';
 
 interface Props { name: string; sizes: string; eager?: boolean; class?: string; caption?: boolean; aspect?: string }
 const { name, sizes, eager, class: cls, caption = true, aspect } = Astro.props;
@@ -11,7 +12,7 @@ const [fx, fy] = photo?.focus ?? [50, 50];
 ---
 {photo && (
   <figure class:list={['photo', cls, { cropped: aspect }]} style={aspect ? `--aspect: ${aspect}; --focus: ${fx}% ${fy}%` : undefined}>
-    <Img base={`/photos/${name}`} image={photo} alt={photo.alt} sizes={sizes} eager={eager} />
+    <Img base={`/${photoDir(name)}`} image={photo} alt={photo.alt} sizes={sizes} eager={eager} />
     {caption && photo.caption && <figcaption>{photo.caption}</figcaption>}
   </figure>
 )}

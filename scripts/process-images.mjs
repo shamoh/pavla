@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 // Image pipeline. Reads works from the content repository and produces:
 // (<year> is the year of the work's date; the content repository has no year folders, see scripts/lib/content.mjs)
-//   content/works/<year>/<slug>-<id>.yaml              copy of the metadata for the site build (commit)
-//   public/works/<year>/<slug>-<id>/<width>.{avif,webp,jpg}, info.json   web images (commit)
-//   public/works/<year>/<slug>-<id>/mockup-<scene>-<width>.*              the work in an interior, only with `mockups: true` (commit);
+//   content/…                                          public copies of the descriptions, a mirror of the content
+//                                                      repository (see scripts/lib/site-content.mjs) (commit)
+//   public/tvorba/<year>/<slug>-<id>/<width>.{avif,webp,jpg}, info.json  web images of a work, in the folder of its page (commit)
+//   public/tvorba/<year>/<slug>-<id>/mockup-<scene>-<width>.*             the work in an interior, only with `mockups: true` (commit);
 //                                                                        from the bare sheet when the master shows surroundings
-//   public/works/<year>/<slug>-<id>/detail-<name>-<width>.*               detail photos of the work (commit)
-//   public/works/<year>/<slug>-<id>/og.jpg                                share image (og:image): the whole work on paper, 3:2 (commit)
-//   public/photos/<name>/<width>.{avif,webp,jpg}, info.json                other photos of the site (commit)
-//   content/collections/<slug>.yaml                                      copy of a collection description (commit)
-//   public/collections/<slug>/<width>.{avif,webp,jpg}, info.json          cover photo of a collection (commit)
-//   public/og/collections/<slug>.jpg                                     share image (og:image) of a collection: its cover
-//                                                                        cropped to 3:2 around `focus`, as on the page (commit)
+//   public/tvorba/<year>/<slug>-<id>/detail-<name>-<width>.*              detail photos of the work (commit)
+//   public/tvorba/<year>/<slug>-<id>/og.jpg                               share image (og:image): the whole work on paper, 3:2 (commit)
+//   public/fotky/<name>/<width>.{avif,webp,jpg}, info.json                 other photos of the site (commit)
+//   public/<page>/_cover/, public/<page>/og.jpg                            own cover photo and share image of the chosen cover of a
+//                                                                        collection (tvorba/kolekce/<slug>), year (tvorba/<year>) or
+//                                                                        the home page (the root); see scripts/lib/site-images.mjs (commit)
 //   <contentDir>/export/instagram/<year>/<key>-clean.jpg          Instagram, the original on paper, 4:5
 //   <contentDir>/export/instagram/<year>/<key>-detail-<name>.jpg  Instagram, a detail photo cropped to 4:5 (never mockups)
-//   (Instagram exports only for works with `instagram: true`; otherwise they are removed)
+//   (Instagram exports only for works with `meta_instagram: true`; otherwise they are removed)
 //
 // Copies for the public site repository contain only public fields: private_note never leaves the content repository.
 //   <contentDir>/export/fler/<year>/<key>.jpg                     Fler, the original with the author's name as watermark
@@ -33,19 +33,24 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
+import { isDeepStrictEqual } from 'node:util';
 import YAML from 'yaml';
 import { PUBLIC_COLLECTION_FIELDS, coverSource, prepareCollections, validateCollectionCovers } from './lib/collections.mjs';
 import { PUBLIC_YEAR_FIELDS, prepareYears } from './lib/years.mjs';
 import { PUBLIC_HOME_FIELDS, prepareHome } from './lib/home.mjs';
+import {
+  HOME_PAGE_DIR, OUTPUT_ROOTS, collectionPageDir, coverDir, ogFile, photoDir, staleOutputs, workImageDir, yearPageDir,
+} from './lib/site-images.mjs';
+import { HOME_COPY, MODIFIED, collectionCopyPath, photoCopyPath, staleCopies, workCopyPath, yearCopyPath } from './lib/site-content.mjs';
 import { coverProblems, coverShareSource } from './lib/covers.mjs';
 import { prepareContent } from './lib/content.mjs';
-import { demoProblems } from './lib/demo.mjs';
+import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
-import { focusCrop, photoFocus, preparePhotos } from './lib/photos.mjs';
+import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
 import { formatSummary } from './lib/summary.mjs';
 import {
-  PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, wantsInstagram, wantsMockups, planExportPrune, planPrune, publicFields, validateWorks, workKey,
+  PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, wantsInstagram, wantsMockups, planExportPrune, publicFields, validateWorks, workKey,
 } from './lib/works.mjs';
 
 /** Bump when the output format changes, so every work is regenerated once. */
@@ -214,30 +219,6 @@ async function photoSet(masterPath, dir, img, extra, { force, log, label }) {
   return true;
 }
 
-/** Removes the sub-folders of `root` not in `wanted` (and `root` itself when it ends up empty). */
-/** Removes files in `root` that are not in `wanted` (names), and `root` itself when it ends up empty. */
-async function pruneFiles(root, wanted, rel, pruned) {
-  if (!(await exists(root))) return;
-  for (const f of await fs.readdir(root)) {
-    if (!wanted.has(f)) {
-      await fs.rm(path.join(root, f));
-      pruned.push(`${rel}/${f}`);
-    }
-  }
-  if ((await fs.readdir(root)).length === 0) await fs.rmdir(root);
-}
-
-async function pruneDirs(root, wanted, rel, pruned) {
-  if (!(await exists(root))) return;
-  for (const e of await fs.readdir(root, { withFileTypes: true })) {
-    if (e.isDirectory() && !wanted.has(e.name)) {
-      await fs.rm(path.join(root, e.name), { recursive: true });
-      pruned.push(`${rel}/${e.name}/`);
-    }
-  }
-  if ((await fs.readdir(root)).length === 0) await fs.rmdir(root);
-}
-
 /** Removes every export of one work (both platforms), so a regeneration never leaves stale files behind. */
 async function clearExports(exportRoot, year, key) {
   const own = exportPattern(key);
@@ -263,6 +244,15 @@ async function listGenerated(root, ext) {
   return out;
 }
 
+/** Removes empty folders under `root`, deepest first, and `root` itself when it ends up empty. */
+async function removeEmptyDirs(root) {
+  if (!(await exists(root))) return;
+  for (const e of await fs.readdir(root, { withFileTypes: true })) {
+    if (e.isDirectory()) await removeEmptyDirs(path.join(root, e.name));
+  }
+  if ((await fs.readdir(root)).length === 0) await fs.rmdir(root);
+}
+
 async function removeEmptyYearDirs(root) {
   if (!(await exists(root))) return;
   for (const year of await fs.readdir(root, { withFileTypes: true })) {
@@ -275,7 +265,7 @@ async function removeEmptyYearDirs(root) {
  * Runs the whole pipeline. Returns a summary; throws on configuration errors.
  * Options: contentDir, siteDir, config, force, only (slugs), log, today, random, dataset, prepareOnly.
  * `prepareOnly` stops after skeletons, ids and checks: nothing is written to the site or the exports.
- * `dataset` 'real' (default) forbids test data in the content, 'demo' requires every item to be test data
+ * `dataset` 'real' (default) forbids test data in the content, 'demo' requires the content to be the test data
  * (see scripts/lib/demo.mjs; test data are processed by `npm run demo` into .demo/, never into this repo).
  */
 export async function run({
@@ -329,10 +319,10 @@ export async function run({
   const collections = await prepareCollections(contentDir, collectionFolders);
   created.push(...collections.created);
   updated.push(...collections.updated);
-  const years = await prepareYears(contentDir, works.map((w) => w.year).filter(Boolean), { demo: dataset === 'demo' });
+  const years = await prepareYears(contentDir, works.map((w) => w.year).filter(Boolean));
   created.push(...years.created);
   updated.push(...years.updated);
-  const home = await prepareHome(contentDir, { demo: dataset === 'demo' });
+  const home = await prepareHome(contentDir);
   created.push(...home.created);
   updated.push(...home.updated);
   created.forEach((p) => log(`+ new metadata skeleton: ${p}`));
@@ -346,7 +336,7 @@ export async function run({
     })),
     ...(home.home ? coverProblems({ where: home.home.yamlPath, data: home.home.data, photoPath: home.home.coverPath, works }) : []),
     ...validateCollectionCovers(collections.collections, works),
-    ...demoProblems({ works, collections: collections.collections, photos: photos.photos, years: years.years, home: home.home }, dataset),
+    ...demoProblems({ works, collections: collections.collections, marked: await exists(path.join(contentDir, DEMO_MARKER)) }, dataset),
   ];
   if (problems.length) {
     return { ok: false, problems, created, assigned, updated, pending, processed: 0, skipped: 0, missing: [], pruned: [], prepared: prepareOnly };
@@ -354,29 +344,51 @@ export async function run({
   if (prepareOnly) return { ok: true, problems: [], created, assigned, updated, pending, processed: 0, skipped: 0, missing: [], pruned: [], prepared: true };
   const { scenes, text: scenesText } = await loadScenes(scenesDir);
 
-  const metaRoot = path.join(siteDir, 'content/works');
-  const webRoot = path.join(siteDir, 'public/works');
+  const publicDir = path.join(siteDir, 'public');
   const exportRoot = path.join(contentDir, 'export');
+  // A draft never leaves the content repository: no metadata copy, no web images, no exports.
+  // Outputs it had while published are removed by the prune below.
+  const published = works.filter((w) => !w.data.meta_draft);
 
   let processed = 0, skipped = 0;
   const missing = [];
-  for (const w of works) {
-    if (only.length && !only.includes(w.slug)) continue;
-    const key = workKey(w.slug, w.id);
-    const rel = `${w.year}/${key}`;
+  // Public copies of the descriptions (content/, a mirror of the content repository): every path written by a full
+  // run; anything else under content/ is removed at the end.
+  const copies = new Set();
+  // Images in public/, where their page is (scripts/lib/site-images.mjs): every folder and file a full run produces,
+  // relative to public/; anything else under the output folders is removed at the end.
+  const outputs = new Set();
+  const writeCopy = async (rel, data, fields) => {
+    copies.add(rel);
+    await writeIfChanged(path.join(siteDir, rel), publicCopy(data, fields));
+  };
+  // The day of this run: derived_modified of a work whose public attributes or images change in it.
+  const day = (today ?? new Date()).toISOString().slice(0, 10);
+  /**
+   * Public copy of a work, in the same place as in the content repository (the collection is its folder), with
+   * derived_modified: the day its public attributes or its images last changed (lastmod of the sitemap); kept as
+   * it was when nothing changed.
+   */
+  const writeWorkCopy = async (w, imagesChanged) => {
+    const rel = workCopyPath(w.collection, w.slug);
+    const fields = publicFields(w.data, PUBLIC_WORK_FIELDS);
+    const old = await fs.readFile(path.join(siteDir, rel), 'utf8').then((t) => YAML.parse(t) ?? {}, () => null);
+    const { [MODIFIED]: before, ...oldFields } = old ?? {};
+    const modified = old && before && !imagesChanged && isDeepStrictEqual(oldFields, fields) ? before : day;
+    copies.add(rel);
+    await writeIfChanged(path.join(siteDir, rel), SYNC_HEADER + YAML.stringify({ ...fields, [MODIFIED]: modified }));
+  };
 
-    // Metadata copy for the site build, public fields only.
-    // the collection comes from the folder of the work, the site reads it from the copy
-    await writeIfChanged(path.join(metaRoot, `${rel}.yaml`), publicCopy({ ...w.data, collection: w.collection ?? undefined }, PUBLIC_WORK_FIELDS));
-
-    const webDir = path.join(webRoot, rel);
+  /** Web images and exports of a work; true when they were (re)generated in this run. */
+  const workImages = async (w, key, rel) => {
+    const webDir = path.join(publicDir, workImageDir(w.year, key));
     if (!w.masterPath) {
       // No master is fine as long as web images exist (another computer, CI).
       if (!(await exists(path.join(webDir, 'info.json')))) missing.push(rel);
-      continue;
+      return false;
     }
     // Outputs depend on the master, the size (mockup scale), the scenes, whether the work is on sale
-    // (Fler exports), `mockups`, `instagram` and the detail photos; not on price or description.
+    // (Fler exports), `mockups`, `meta_instagram` and the detail photos; not on price or description.
     const master = await fs.readFile(w.masterPath);
     const onSale = isOnSale(w.data.status);
     const instagram = wantsInstagram(w.data);
@@ -387,7 +399,7 @@ export async function run({
       ...details.flatMap((d) => [d.name, d.buf]),
     );
     const upToDate = (await readJson(path.join(webDir, 'info.json')))?.fingerprint === fingerprint;
-    if (upToDate && !force) { skipped++; continue; }
+    if (upToDate && !force) { skipped++; return false; }
 
     log(`→ ${rel}`);
     const m = await loadMaster(master);
@@ -396,7 +408,7 @@ export async function run({
     if (mockupsOn && !picked.length) log(`  ! no mockup scene is big enough for ${rel} (see mockups/scenes.yaml maxCm)`);
     const mockups = await web(webDir, m, img, { work: w.data, picked, details, fingerprint });
 
-    // Exports. Instagram: only when asked for (instagram: true), the original and the detail photos, never mockups.
+    // Exports. Instagram: only when asked for (meta_instagram: true), the original and the detail photos, never mockups.
     // Fler: only works on sale, the original and the mockups, all with the watermark.
     await clearExports(exportRoot, w.year, key);
     if (instagram) {
@@ -412,27 +424,25 @@ export async function run({
       for (const mk of mockups) await fler(path.join(flerDir, `${key}-mockup-${mk.scene}.jpg`), mk.buf, img);
     }
     processed++;
+    return true;
+  };
+
+  for (const w of published) {
+    if (only.length && !only.includes(w.slug)) continue;
+    const key = workKey(w.slug, w.id);
+    outputs.add(workImageDir(w.year, key));
+    const imagesChanged = await workImages(w, key, `${w.year}/${key}`);
+    await writeWorkCopy(w, imagesChanged);
   }
 
-  // Remove outputs of works that were deleted or renamed in the content repository.
   const pruned = [];
   if (!only.length) {
-    // No works is a valid state (before the first real work); the tvorba/ folder itself must exist (checked above).
-    const wanted = works.map((w) => `${w.year}/${workKey(w.slug, w.id)}`);
-    for (const rel of planPrune(await listGenerated(metaRoot, '.yaml'), wanted)) {
-      await fs.rm(path.join(metaRoot, `${rel}.yaml`));
-      pruned.push(`content/works/${rel}.yaml`);
-    }
-    for (const rel of planPrune(await listGenerated(webRoot), wanted)) {
-      await fs.rm(path.join(webRoot, rel), { recursive: true });
-      pruned.push(`public/works/${rel}/`);
-    }
-    // Stale exports, independent of whether the work was regenerated in this run: exports of deleted or
-    // renamed works, of detail photos and mockup scenes a work no longer has, Fler exports of works not on sale.
+    // Stale exports, independent of whether the work was regenerated in this run: exports of deleted, renamed
+    // or draft works, of detail photos and mockup scenes a work no longer has, Fler exports of works not on sale.
     const expected = new Map();
-    for (const w of works) {
+    for (const w of published) {
       const rel = `${w.year}/${workKey(w.slug, w.id)}`;
-      const info = await readJson(path.join(webRoot, rel, 'info.json'));
+      const info = await readJson(path.join(publicDir, workImageDir(w.year, workKey(w.slug, w.id)), 'info.json'));
       const mockupScenes = info ? (info.mockups ?? []).map((m) => m.scene) : null;
       expected.set(rel, expectedExports({ status: w.data.status, details: w.details.map((d) => d.name), mockupScenes, instagram: wantsInstagram(w.data) }));
     }
@@ -444,126 +454,82 @@ export async function run({
         pruned.push(`export/${sub}/${rel}`);
       }
     }
-    await removeEmptyYearDirs(metaRoot);
-    await removeEmptyYearDirs(webRoot);
     for (const sub of ['instagram', 'fler']) await removeEmptyYearDirs(path.join(exportRoot, sub));
   }
 
-  // Other photos (portrait, studio): public/photos/<name>/
-  const photosRoot = path.join(siteDir, 'public/photos');
+  // Other photos (portrait, studio): public/fotky/<name>/ (images), content/fotky/<name>.yaml (alt, caption, focus)
   for (const photo of photos.photos) {
     if (only.length && !only.includes(photo.name)) continue;
-    const extra = { alt: photo.data.alt ?? '', caption: photo.data.caption ?? '', focus: photoFocus(photo.data) };
-    if (await photoSet(photo.masterPath, path.join(photosRoot, photo.name), img, extra, { force, log, label: `fotky/${photo.name}` })) processed++;
+    await writeCopy(photoCopyPath(photo.name), photo.data, PUBLIC_PHOTO_FIELDS);
+    outputs.add(photoDir(photo.name));
+    if (await photoSet(photo.masterPath, path.join(publicDir, photoDir(photo.name)), img, {}, { force, log, label: `fotky/${photo.name}` })) processed++;
     else skipped++;
   }
-  if (!only.length) await pruneDirs(photosRoot, new Set(photos.photos.map((p) => p.name)), 'public/photos', pruned);
 
-  // Collections: content/collections/<slug>.yaml (public fields) and public/collections/<slug>/ (cover photo).
-  const collMetaRoot = path.join(siteDir, 'content/collections');
-  const coversRoot = path.join(siteDir, 'public/collections');
+  /**
+   * Own cover photo (_cover/) and share image of the chosen cover (og.jpg) in the folder of a page.
+   * `photoPath`: the own cover photo or null, `source`: coverShareSource/coverSource or null. One no longer used
+   * is removed by the final prune of a full run (and so reported), right away in a run of `only`.
+   */
+  const pageCover = async (pageDir, { photoPath, alt, source, label }) => {
+    const dir = path.join(publicDir, coverDir(pageDir));
+    if (photoPath) {
+      outputs.add(coverDir(pageDir));
+      if (await photoSet(photoPath, dir, img, { alt }, { force, log, label })) processed++;
+      else skipped++;
+    } else if (only.length) {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+    if (source) {
+      outputs.add(ogFile(pageDir));
+      await shareCrop(source, path.join(publicDir, ogFile(pageDir)), `og ${label}`);
+    } else if (only.length) {
+      await fs.rm(path.join(publicDir, ogFile(pageDir)), { force: true });
+    }
+  };
+
+  // Collections: content/tvorba/<slug>/_index.yaml (public fields); in public/tvorba/kolekce/<slug>/ the own cover
+  // photo (_cover/) and the share image of the cover (og.jpg) cropped exactly like the page shows it.
+  // Share images are cheap to render, so always rendered; written only when the bytes change.
   for (const c of collections.collections) {
     if (only.length && !only.includes(c.slug)) continue;
-    await writeIfChanged(path.join(collMetaRoot, `${c.slug}.yaml`), publicCopy(c.data, PUBLIC_COLLECTION_FIELDS));
-    const dir = path.join(coversRoot, c.slug);
-    if (!c.coverPath) await fs.rm(dir, { recursive: true, force: true });
-    else if (await photoSet(c.coverPath, dir, img, { alt: c.data.title ?? '' }, { force, log, label: `kolekce/${c.slug}` })) processed++;
-    else skipped++;
-  }
-  // Share images of collections: the cover cropped exactly like the page shows it (3:2 around `focus`).
-  // Cheap to render, so always rendered; written only when the bytes change.
-  const ogRoot = path.join(siteDir, 'public/og/collections');
-  const ogWanted = new Set();
-  for (const c of collections.collections) {
-    if (only.length && !only.includes(c.slug)) continue;
-    const source = coverSource(c, works);
-    if (!source) continue;
-    ogWanted.add(`${c.slug}.jpg`);
-    await shareCrop(source, path.join(ogRoot, `${c.slug}.jpg`), `og kolekce/${c.slug}`);
-  }
-  if (!only.length) {
-    if (await exists(ogRoot)) {
-      for (const f of await fs.readdir(ogRoot)) {
-        if (!ogWanted.has(f)) {
-          await fs.rm(path.join(ogRoot, f));
-          pruned.push(`public/og/collections/${f}`);
-        }
-      }
-      if ((await fs.readdir(ogRoot)).length === 0) {
-        await fs.rmdir(ogRoot);
-        const ogDir = path.dirname(ogRoot);
-        if ((await fs.readdir(ogDir)).length === 0) await fs.rmdir(ogDir);
-      }
-    }
-    const wanted = new Set(collections.collections.map((c) => c.slug));
-    if (await exists(collMetaRoot)) {
-      for (const f of await fs.readdir(collMetaRoot)) {
-        if (f.endsWith('.yaml') && !wanted.has(f.slice(0, -5))) {
-          await fs.rm(path.join(collMetaRoot, f));
-          pruned.push(`content/collections/${f}`);
-        }
-      }
-      if ((await fs.readdir(collMetaRoot)).length === 0) await fs.rmdir(collMetaRoot);
-    }
-    await pruneDirs(coversRoot, new Set(collections.collections.filter((c) => c.coverPath).map((c) => c.slug)), 'public/collections', pruned);
+    await writeCopy(collectionCopyPath(c.slug), c.data, PUBLIC_COLLECTION_FIELDS);
+    await pageCover(collectionPageDir(c.slug), { photoPath: c.coverPath, alt: c.data.title ?? '', source: coverSource(c, works), label: `kolekce/${c.slug}` });
   }
 
-  // Years: content/years/<year>.yaml (text and cover), public/years/<year>/ (own cover photo),
-  // public/og/years/<year>.jpg (share image of a chosen cover, 3:2 around focus).
-  const yearsRoot = path.join(siteDir, 'content/years');
-  const yearPhotosRoot = path.join(siteDir, 'public/years');
-  const yearOgRoot = path.join(siteDir, 'public/og/years');
-  const yearOgWanted = new Set();
+  // Years: content/roky/<year>.yaml (text and cover); in public/tvorba/<year>/ the own cover photo (_cover/) and the
+  // share image of a chosen cover (og.jpg, cropped around focus).
   for (const y of years.years) {
     if (only.length && !only.includes(y.year)) continue;
-    await writeIfChanged(path.join(yearsRoot, `${y.year}.yaml`), publicCopy(y.data, PUBLIC_YEAR_FIELDS));
-    const dir = path.join(yearPhotosRoot, y.year);
-    if (!y.coverPath) {
-      if (await exists(dir)) {
-        await fs.rm(dir, { recursive: true, force: true });
-        pruned.push(`public/years/${y.year}/`);
-      }
-    } else if (await photoSet(y.coverPath, dir, img, { alt: `Tvorba ${y.year}` }, { force, log, label: `roky/${y.year}` })) processed++;
-    else skipped++;
+    await writeCopy(yearCopyPath(y.year), y.data, PUBLIC_YEAR_FIELDS);
     const source = coverShareSource({ photoPath: y.coverPath, data: y.data, works: works.filter((w) => w.year === y.year) });
-    if (!source) continue;
-    yearOgWanted.add(`${y.year}.jpg`);
-    await shareCrop(source, path.join(yearOgRoot, `${y.year}.jpg`), `og roky/${y.year}`);
-  }
-  if (!only.length) {
-    await pruneDirs(yearPhotosRoot, new Set(years.years.filter((y) => y.coverPath).map((y) => y.year)), 'public/years', pruned);
-    await pruneFiles(yearOgRoot, yearOgWanted, 'public/og/years', pruned);
-  }
-  if (!only.length && (await exists(yearsRoot))) {
-    const wantedYears = new Set(years.years.map((y) => `${y.year}.yaml`));
-    for (const f of await fs.readdir(yearsRoot)) {
-      if (!wantedYears.has(f)) {
-        await fs.rm(path.join(yearsRoot, f));
-        pruned.push(`content/years/${f}`);
-      }
-    }
-    if ((await fs.readdir(yearsRoot)).length === 0) await fs.rmdir(yearsRoot);
+    await pageCover(yearPageDir(y.year), { photoPath: y.coverPath, alt: `Tvorba ${y.year}`, source, label: `roky/${y.year}` });
   }
 
-  // Home page: content/home.yaml (text and cover), public/home/ (own cover photo), public/og/home.jpg (chosen cover).
+  // Home page: content/_index.yaml (text and cover); public/_cover/ (own cover photo), public/og.jpg (chosen cover).
   if (home.home && !only.length) {
     const h = home.home;
-    await writeIfChanged(path.join(siteDir, 'content/home.yaml'), publicCopy(h.data, PUBLIC_HOME_FIELDS));
-    const dir = path.join(siteDir, 'public/home');
-    if (!h.coverPath) {
-      if (await exists(dir)) {
-        await fs.rm(dir, { recursive: true, force: true });
-        pruned.push('public/home/');
-      }
-    } else if (await photoSet(h.coverPath, dir, img, { alt: config.site?.title ?? '' }, { force, log, label: 'uvod' })) processed++;
-    else skipped++;
+    await writeCopy(HOME_COPY, h.data, PUBLIC_HOME_FIELDS);
     const source = coverShareSource({ photoPath: h.coverPath, data: h.data, works });
-    const ogFile = path.join(siteDir, 'public/og/home.jpg');
-    if (source) await shareCrop(source, ogFile, 'og uvod');
-    else if (await exists(ogFile)) {
-      await fs.rm(ogFile);
-      pruned.push('public/og/home.jpg');
+    await pageCover(HOME_PAGE_DIR, { photoPath: h.coverPath, alt: config.site?.title ?? '', source, label: 'uvod' });
+  }
+
+  // Images nobody produced in this full run: deleted, renamed or unpublished items, covers no longer used, the
+  // former layout (public/works/, public/og/ …).
+  if (!only.length) {
+    for (const { rel, dir } of staleOutputs(siteDir, outputs)) {
+      await fs.rm(path.join(publicDir, rel), { recursive: true, force: true });
+      pruned.push(`public/${rel}${dir ? '/' : ''}`);
     }
+    for (const root of OUTPUT_ROOTS) await removeEmptyDirs(path.join(publicDir, root)).catch(() => {});
+  }
+  // Public copies nobody wrote in this full run: deleted, renamed or unpublished items, or an older layout.
+  if (!only.length) {
+    for (const rel of staleCopies(siteDir, copies)) {
+      await fs.rm(path.join(siteDir, rel));
+      pruned.push(rel);
+    }
+    await removeEmptyDirs(path.join(siteDir, 'content'));
   }
   pruned.forEach((p) => log(`- removed ${p}`));
 

@@ -1,7 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
-import { coverCandidates, detailKey, parseWorkKey } from '../../scripts/lib/works.mjs';
+import { coverCandidates, dateYear, detailKey, isValidId, workKey } from '../../scripts/lib/works.mjs';
+import { photoFocus } from '../../scripts/lib/photos.mjs';
+import { readCopies } from '../../scripts/lib/site-content.mjs';
+import { HOME_PAGE_DIR, collectionPageDir, coverDir, ogFile, photoDir, workImageDir, yearPageDir } from '../../scripts/lib/site-images.mjs';
 import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
 import { HOME_TEXT } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
@@ -16,6 +19,8 @@ export const config = YAML.parse(fs.readFileSync(path.join(root, 'site.config.ya
 export const site = config.site as {
   url: string; title: string; tagline: string; author: string;
   email: string; instagram: string; fler: string;
+  /** Codes proving to search engines that the site is ours (meta tags, scripts/lib/seo.mjs verificationMeta). */
+  verification?: { google?: string; bing?: string; seznam?: string };
 };
 
 export type Status = 'available' | 'reserved' | 'sold' | 'not-for-sale';
@@ -64,9 +69,11 @@ export interface Work {
   mockups?: boolean;
   /** Captions of detail photos: "<detail photo name>: <caption>" (keys match via detailKey). */
   details?: Record<string, string>;
-  /** Slug of the collection (content/collections/<slug>.yaml), if the work belongs to one. */
+  /** Slug of the collection (the folder of content/tvorba/<slug>/), if the work belongs to one. */
   collection?: string;
   description?: string;
+  /** The day (YYYY-MM-DD) its public attributes or images last changed (derived_modified of the public copy). */
+  modified?: string;
   /** og: share image og.jpg in the work's folder (the whole work on paper, 3:2). */
   image: ImageSet & { mockups?: Mockup[]; details?: Detail[]; og?: { width: number; height: number } };
 }
@@ -89,48 +96,44 @@ export const statusLabel: Record<Status, string> = {
 };
 
 let cache: Work[] | null = null;
+let copiesCache: ReturnType<typeof readCopies> | null = null;
+/** The public copies of the descriptions (content/, a mirror of the content repository, scripts/lib/site-content.mjs). */
+const copies = () => (copiesCache ??= readCopies(dataRoot));
 
 /**
- * All published works (with generated images, not drafts), newest first.
- * Layout: content/works/<year>/<slug>-<id>.yaml and public/works/<year>/<slug>-<id>/info.json.
+ * All published works (with generated images; drafts never reach this repository), newest first.
+ * Layout: content/tvorba/[<collection>/]<slug>.yaml (the year comes from `date`, the collection from the folder)
+ * and public/tvorba/<year>/<slug>-<id>/info.json (the images lie in the folder of the work's page).
  */
 export function getWorks(): Work[] {
   if (cache) return cache;
-  const dir = path.join(dataRoot, 'content/works');
   const works: Work[] = [];
-  const years = fs.existsSync(dir) ? fs.readdirSync(dir).filter((y) => /^\d{4}$/.test(y)) : [];
-  for (const year of years) {
-    for (const file of fs.readdirSync(path.join(dir, year)).filter((f) => f.endsWith('.yaml'))) {
-      const key = file.replace(/\.yaml$/, '');
-      const parsed = parseWorkKey(key);
-      if (!parsed) {
-        console.warn(`[works] ${year}/${file}: file name is not "<slug>-<id>.yaml", skipped`);
-        continue;
-      }
-      const data = YAML.parse(fs.readFileSync(path.join(dir, year, file), 'utf8'));
-      if (data.id !== parsed.id) {
-        console.warn(`[works] ${year}/${file}: id in file (${data.id}) does not match file name, skipped`);
-        continue;
-      }
-      if (data.draft) continue;
-      const infoPath = path.join(dataRoot, 'public/works', year, key, 'info.json');
-      if (!fs.existsSync(infoPath)) {
-        console.warn(`[works] ${year}/${key}: images missing, run "npm run images", skipped`);
-        continue;
-      }
-      works.push({
-        ...data,
-        id: parsed.id,
-        slug: parsed.slug,
-        key,
-        date: new Date(data.date),
-        year: Number(year),
-        tags: data.tags ?? [],
-        collection: data.collection || undefined,
-        status: data.status ?? 'not-for-sale',
-        image: JSON.parse(fs.readFileSync(infoPath, 'utf8')),
-      });
+  for (const { slug, collection, data } of copies().works) {
+    const where = [collection, slug].filter(Boolean).join('/');
+    const year = dateYear(data.date);
+    if (!isValidId(data.id) || !Number.isInteger(year)) {
+      console.warn(`[works] ${where}: no valid id or date, skipped`);
+      continue;
     }
+    const key = workKey(slug, data.id);
+    const infoPath = path.join(dataRoot, 'public', workImageDir(year, key), 'info.json');
+    if (!fs.existsSync(infoPath)) {
+      console.warn(`[works] ${year}/${key}: images missing, run "npm run images", skipped`);
+      continue;
+    }
+    works.push({
+      ...data,
+      id: data.id,
+      slug,
+      key,
+      date: new Date(data.date),
+      year,
+      tags: data.tags ?? [],
+      collection: collection ?? undefined,
+      modified: data.derived_modified,
+      status: data.status ?? 'not-for-sale',
+      image: JSON.parse(fs.readFileSync(infoPath, 'utf8')),
+    });
   }
   cache = works.sort((a, b) => b.date.getTime() - a.date.getTime());
   return cache;
@@ -140,20 +143,17 @@ let collectionCache: Collection[] | null = null;
 
 /**
  * Collections with at least one published work, the one with the newest work first.
- * Layout: content/collections/<slug>.yaml and public/collections/<slug>/info.json (cover photo).
+ * Layout: content/tvorba/<slug>/_index.yaml and public/tvorba/kolekce/<slug>/ (own cover photo _cover/, og.jpg).
  */
 export function getCollections(): Collection[] {
   if (collectionCache) return collectionCache;
-  const dir = path.join(dataRoot, 'content/collections');
-  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.yaml')) : [];
   const works = getWorks();
   const collections: Collection[] = [];
-  for (const file of files) {
-    const slug = file.replace(/\.yaml$/, '');
-    const data = YAML.parse(fs.readFileSync(path.join(dir, file), 'utf8')) ?? {};
+  for (const { slug, data } of copies().collections) {
     const members = works.filter((w) => w.collection === slug);
     if (!members.length) continue;
-    const cover = resolveCover(members, data, `collections/${slug}`, `og/collections/${slug}.jpg`, data.title ?? slug)!;
+    const page = collectionPageDir(slug);
+    const cover = resolveCover(members, data, coverDir(page), ogFile(page), data.title ?? slug)!;
     collections.push({ slug, title: data.title ?? slug, description: data.description, cover, works: members });
   }
   collectionCache = collections.sort((a, b) => b.works[0].date.getTime() - a.works[0].date.getTime());
@@ -164,12 +164,19 @@ export const getCollection = (slug?: string) => (slug ? getCollections().find((c
 
 const photoCache = new Map<string, Photo | null>();
 
-/** A photo from public/photos/<name>/ (source: fotky/ of the content repository), or null while it does not exist. */
+/**
+ * A photo (source: fotky/ of the content repository): its images from public/fotky/<name>/info.json, its alt,
+ * caption and focus from content/fotky/<name>.yaml; null while it does not exist.
+ */
 export function getPhoto(name: string): Photo | null {
   if (!photoCache.has(name)) {
-    const infoPath = path.join(dataRoot, 'public/photos', name, 'info.json');
+    const infoPath = path.join(dataRoot, 'public', photoDir(name), 'info.json');
     if (!fs.existsSync(infoPath)) console.warn(`[photos] ${name}: not found, add fotky/${name}.jpg to the content repository and run "npm run images"`);
-    photoCache.set(name, fs.existsSync(infoPath) ? JSON.parse(fs.readFileSync(infoPath, 'utf8')) : null);
+    const data = copies().photos.get(name) ?? {};
+    const photo = fs.existsSync(infoPath)
+      ? { ...JSON.parse(fs.readFileSync(infoPath, 'utf8')), alt: data.alt ?? '', caption: data.caption ?? '', focus: photoFocus(data) }
+      : null;
+    photoCache.set(name, photo);
   }
   return photoCache.get(name)!;
 }
@@ -230,24 +237,23 @@ export function coverShareImage(c: Cover | null): ShareImage | undefined {
   return undefined;
 }
 
-/** A year page: the author's text about the year (content/years/<year>.yaml) and its cover. */
+/** A year page: the author's text about the year (content/roky/<year>.yaml) and its cover. */
 export function getYear(year: number): { description?: string; cover: Cover | null } {
-  const file = path.join(dataRoot, 'content/years', `${year}.yaml`);
-  const data = fs.existsSync(file) ? YAML.parse(fs.readFileSync(file, 'utf8')) ?? {} : {};
+  const data = copies().years.get(String(year)) ?? {};
   const text = typeof data.description === 'string' && data.description.trim() ? data.description.trim() : undefined;
   const works = getWorks().filter((w) => w.year === year);
-  return { description: text, cover: resolveCover(works, data, `years/${year}`, `og/years/${year}.jpg`, `Tvorba ${year}`) };
+  const page = yearPageDir(year);
+  return { description: text, cover: resolveCover(works, data, coverDir(page), ogFile(page), `Tvorba ${year}`) };
 }
 
 /**
- * The home page: its text (content/home.yaml; without the file, e.g. before the first pipeline run, the text the page
- * always had) and its cover.
+ * The home page: its text (content/_index.yaml; without the file, e.g. before the first pipeline run, the text the
+ * page always had) and its cover.
  */
 export function getHome(): { description?: string; cover: Cover | null } {
-  const file = path.join(dataRoot, 'content/home.yaml');
-  const data = fs.existsSync(file) ? YAML.parse(fs.readFileSync(file, 'utf8')) ?? {} : { description: HOME_TEXT };
+  const data = copies().home ?? { description: HOME_TEXT };
   const text = typeof data.description === 'string' && data.description.trim() ? data.description.trim() : undefined;
-  return { description: text, cover: resolveCover(getWorks(), data, 'home', 'og/home.jpg', site.title) };
+  return { description: text, cover: resolveCover(getWorks(), data, coverDir(HOME_PAGE_DIR), ogFile(HOME_PAGE_DIR), site.title) };
 }
 
 export const getYears = () => [...new Set(getWorks().map((w) => w.year))].sort((a, b) => b - a);
@@ -281,5 +287,13 @@ export const collectionShareImage = (c: Collection): ShareImage | undefined => c
 /** Page of a collection: /tvorba/kolekce/<slug>/ */
 export const collectionUrl = (slug: string) => url(`/tvorba/kolekce/${slug}/`);
 
+/** Absolute address of the largest web size up to 1600 px of another photo (fotky/), for structured data; null without it. */
+export function photoImageUrl(name: string): string | null {
+  const photo = getPhoto(name);
+  if (!photo) return null;
+  const width = [...photo.widths].filter((x) => x <= 1600).pop() ?? photo.widths[0];
+  return new URL(`/${photoDir(name)}/${width}.jpg`, site.url).href;
+}
+
 /** Folder with the web images of a work (without base URL, for og:image etc.). */
-export const workImagePath = (w: Work) => `/works/${w.year}/${w.key}`;
+export const workImagePath = (w: Work) => `/${workImageDir(w.year, w.key)}`;
