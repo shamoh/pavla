@@ -1,37 +1,42 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { demoProblems, isDemo } from './demo.mjs';
+import { DEMO_MARKER, demoProblems, isDemo } from './demo.mjs';
 
-test('isDemo: marked by the "demo-" name or by demo: true', () => {
-  assert.ok(isDemo('demo-kytice', {}));
-  assert.ok(isDemo('portret', { demo: true }));
-  assert.ok(!isDemo('kytice', {}));
-  assert.ok(!isDemo('kytice', { demo: 'yes' }));
-  assert.ok(!isDemo('pivonky-demo', null));
+test('isDemo: marked by the "demo-" name only', () => {
+  assert.ok(isDemo('demo-kytice'));
+  assert.ok(!isDemo('kytice'));
+  assert.ok(!isDemo('pivonky-demo'));
 });
 
 const set = {
-  works: [{ slug: 'demo-rano', data: { demo: true }, yamlPath: 'tvorba/demo-rano.yaml' }],
-  collections: [{ slug: 'demo-plener', data: { demo: true } }],
-  photos: [{ name: 'portret', data: { demo: true } }],
+  works: [{ slug: 'demo-rano', yamlPath: 'tvorba/demo-rano.yaml' }],
+  collections: [{ slug: 'demo-plener' }],
+  marked: true,
 };
 
-test('demoProblems: a fully marked test set is fine as demo and refused as real content', () => {
+test('demoProblems: a marked test set is fine as demo and refused as real content', () => {
   assert.deepEqual(demoProblems(set, 'demo'), []);
   const real = demoProblems(set, 'real');
   assert.equal(real.length, 3);
-  assert.match(real[0], /^tvorba\/demo-rano\.yaml: test data do not belong in the real content/);
-  assert.match(real[1], /^tvorba\/demo-plener\/_kolekce\.yaml/);
-  assert.match(real[2], /^fotky\/portret\.yaml/);
+  assert.match(real[0], new RegExp(`^${DEMO_MARKER.replace('.', '\\.')}: this content is the test data`));
+  assert.match(real[1], /^tvorba\/demo-rano\.yaml: test data do not belong in the real content/);
+  assert.match(real[2], /^tvorba\/demo-plener\/_index\.yaml/);
 });
 
-test('demoProblems: real content without test data is fine; half-marked test items are reported', () => {
-  const real = { works: [{ slug: 'rano', data: {} }], collections: [{ slug: 'plener', data: {} }], photos: [{ name: 'portret', data: {} }] };
+test('demoProblems: real content without test data is fine; test data without the marker or "demo-" names are reported', () => {
+  const real = { works: [{ slug: 'rano', yamlPath: 'r' }], collections: [{ slug: 'plener' }] };
   assert.deepEqual(demoProblems(real, 'real'), []);
-  const half = { works: [{ slug: 'demo-rano', data: {}, yamlPath: 'w' }, { slug: 'rano', data: { demo: true }, yamlPath: 'v' }], photos: [{ name: 'portret', data: {} }] };
-  assert.deepEqual(demoProblems(half, 'demo'), [
-    'w: every item of the test data needs "demo: true"',
-    'v: names of test works and collections start with "demo-"',
-    'fotky/portret.yaml: every item of the test data needs "demo: true"',
+  assert.deepEqual(demoProblems({}, 'real'), []);
+  assert.deepEqual(demoProblems({ ...real, marked: true }, 'demo'), [
+    'r: names of test works and collections start with "demo-"',
+    'tvorba/plener/_index.yaml: names of test works and collections start with "demo-"',
   ]);
+  assert.deepEqual(demoProblems({ ...set, marked: false }, 'demo'), [
+    `${DEMO_MARKER} missing: the test data are marked by this file in the root of the content`,
+  ]);
+});
+
+test('demoProblems: a single test work copied into the real content is refused even without the marker', () => {
+  const copied = { works: [{ slug: 'rano', yamlPath: 'a' }, { slug: 'demo-maky', yamlPath: 'b' }] };
+  assert.deepEqual(demoProblems(copied, 'real'), ['b: test data do not belong in the real content; test data live in pavla/demo-content (npm run demo)']);
 });

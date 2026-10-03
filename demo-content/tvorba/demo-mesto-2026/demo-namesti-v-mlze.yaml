@@ -1,0 +1,56 @@
+# true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.
+meta_draft: false
+
+# true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.
+meta_instagram: false
+
+# Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
+# Generuje ho pipeline, NIKDY neměnit. Hodí se napsat tužkou na zadní stranu obrazu.
+id: kkenp
+
+# Den vzniku ve tvaru 2026-06-14. Rok z něj určuje rok obrazu na webu (stránka roku, adresa).
+date: 2026-09-05
+
+# Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.
+description: |
+  Ranní náměstí, lampy ještě svítí.
+
+# NEPOVINNÉ. Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.
+# details: { 1-mlha: Ranní mlha nad vodou }
+
+# true = ve výběru autorky: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně
+# střídají obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover). false = ne.
+featured: false
+
+# NEPOVINNÉ. Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
+# fler: https://www.fler.cz/zbozi/…
+
+# testovací data: mockupy zapnuté výslovně
+# true = mockupy (obraz v rámu v interiéru) na webu, u obrazu na prodej i pro Fler; false = žádné.
+mockups: true
+
+# NEPOVINNÉ. Cena v Kč, např. 2500. Povinná u available a reserved.
+price: 2900
+
+# Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu:
+# podle rozměrů se dělají mockupy ve skutečné velikosti.
+size_cm: [32, 40]
+
+# Stav prodeje: available (k prodeji) | reserved (rezervováno) | sold (prodáno)
+# | not-for-sale (není na prodej, na webu bez štítku).
+status: available
+
+# NEPOVINNÉ. Podklad, např. papír Arches 300 g. Bez něj se na webu nezobrazí.
+support: papír 250 g
+
+# Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
+tags: [město, mlha]
+
+# Technika, např. akvarel, kresba tužkou, linoryt, kombinovaná technika. Podle ní se filtruje v galerii.
+technique: akvarel a tuš
+
+# Název obrazu, jak ho uvidí návštěvníci webu.
+title: Náměstí v mlze
+
+# NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+# private_note: kde obraz visí, komu patří

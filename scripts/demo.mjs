@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Test data (demo): prepares pavla/demo into .demo/ and runs the same pipeline as for the real content,
+// Test data (demo): prepares pavla/demo-content into .demo/ and runs the same pipeline as for the real content,
 // completely apart from it:
-//   demo/                       source: YAML of works, collections, photos + images.yaml (recipe of the images)
-//   .demo/content/              a content repository built from demo/ (YAML copies + rendered images)
+//   demo-content/               source: a made-up content repository (its YAML, the marker demo-content.yaml)
+//                               + images.yaml (recipe of the images, no binary files in git)
+//   .demo/content/              a content repository built from demo-content/ (YAML copies + rendered images)
 //   .demo/site/                 generated site data (content/, public/) and the built site (dist/)
 // The real content (the content repository) and this repo's content/ and public/ are never touched.
 //
@@ -17,15 +18,18 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import YAML from 'yaml';
 import { recipeProblems, renderDemoImages } from './lib/demo-images.mjs';
+import { INDEX_FILE } from './lib/content.mjs';
+import { DEMO_MARKER } from './lib/demo.mjs';
+import { LEGACY_ROOTS, OUTPUT_ROOTS } from './lib/site-images.mjs';
 import { run } from './process-images.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT_SUBDIRS = ['tvorba', 'fotky', 'roky'];
-/** Descriptions in the root of the content (the home page). */
-const CONTENT_FILES = ['uvod.yaml'];
+/** Files in the root of the content: the home page and the marker of the test data. */
+const CONTENT_FILES = [INDEX_FILE, DEMO_MARKER];
 const isContent = (f) => CONTENT_SUBDIRS.includes(f.split(path.sep)[0]) || CONTENT_FILES.includes(f);
 /** Generated folders of public/ that belong to the data, not to the site itself. */
-const GENERATED_PUBLIC = new Set(['works', 'photos', 'collections', 'og']);
+const GENERATED_PUBLIC = new Set([...OUTPUT_ROOTS, ...LEGACY_ROOTS]);
 
 async function listYaml(dir, rel = '') {
   const out = [];
@@ -45,7 +49,7 @@ async function listYaml(dir, rel = '') {
  * contentOnly (only build .demo/content, do not run the pipeline; returns { ok: true, contentDir }).
  */
 export async function prepareDemo({
-  demoDir = path.join(siteRoot, 'demo'),
+  demoDir = path.join(siteRoot, 'demo-content'),
   outDir = path.join(siteRoot, '.demo'),
   siteDir = siteRoot,
   config,
@@ -61,9 +65,9 @@ export async function prepareDemo({
   const dataDir = path.join(outDir, 'site');
 
   // 1. content: fresh copies of the YAML files and the rendered images (exports stay, the pipeline prunes them)
-  // (kolekce/ is the former home of collections, left over from older runs)
-  for (const sub of [...CONTENT_SUBDIRS, ...CONTENT_FILES, 'kolekce']) await fs.rm(path.join(contentDir, sub), { recursive: true, force: true });
-  for (const f of await fs.readdir(contentDir).catch(() => [])) if (/^uvod\.(jpe?g|png|webp)$/.test(f)) await fs.rm(path.join(contentDir, f));
+  // (kolekce/ and uvod.* are former names, left over from older runs)
+  for (const sub of [...CONTENT_SUBDIRS, ...CONTENT_FILES, 'kolekce', 'uvod.yaml']) await fs.rm(path.join(contentDir, sub), { recursive: true, force: true });
+  for (const f of await fs.readdir(contentDir).catch(() => [])) if (/^(_cover|uvod)\.(jpe?g|png|webp)$/.test(f)) await fs.rm(path.join(contentDir, f));
   await fs.mkdir(path.join(contentDir, 'tvorba'), { recursive: true });
   const yamls = (await listYaml(demoDir)).filter(isContent);
   for (const f of yamls) {
@@ -83,7 +87,7 @@ export async function prepareDemo({
   // 3. the same pipeline as for the real content, but it must only see test data
   const result = await run({ contentDir, siteDir: dataDir, config, log, dataset: 'demo' });
 
-  // 4. ids and skeletons written by the pipeline go back to demo/, so they stay stable
+  // 4. ids and skeletons written by the pipeline go back to demo-content/, so they stay stable
   for (const f of await listYaml(contentDir)) {
     if (!isContent(f)) continue;
     const text = await fs.readFile(path.join(contentDir, f), 'utf8');
@@ -91,7 +95,7 @@ export async function prepareDemo({
     if (source !== text) {
       await fs.mkdir(path.dirname(path.join(demoDir, f)), { recursive: true });
       await fs.writeFile(path.join(demoDir, f), text);
-      log(`+ demo/${f} updated by the pipeline`);
+      log(`+ demo-content/${f} updated by the pipeline`);
     }
   }
   return result;

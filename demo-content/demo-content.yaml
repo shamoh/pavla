@@ -1,0 +1,3 @@
+# Značka testovacích dat: tato složka je vymyšlené obsahové repo pro `npm run demo` (repo pavla).
+# Pipeline s --demo bez tohoto souboru odmítne běžet a obsah s ním odmítne jako skutečný.
+# Nemazat a nikdy nekopírovat do skutečného obsahu.

@@ -1,4 +1,4 @@
-// Images of the test data (pavla/demo/images.yaml): abstract "watercolour" blobs on paper, rendered from
+// Images of the test data (pavla/demo-content/images.yaml): abstract "watercolour" blobs on paper, rendered from
 // a fixed seed, so every `npm run demo` produces the same pictures and no binary files live in git.
 
 import fs from 'node:fs/promises';

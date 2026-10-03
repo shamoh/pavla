@@ -1,0 +1,9 @@
+# Co je na fotce (pro nevidomé a vyhledávače), např. „Pavla maluje v ateliéru“.
+alt: "Zástupná úvodní fotka stránky O mně (testovací data)"
+
+# NEPOVINNÉ. Popisek pod fotkou.
+caption: "Popisek pod fotkou (testovací data)"
+
+# Kam se fotka vycentruje, když ji stránka ořízne: [zleva %, shora %],
+# např. [50, 50] = střed, [80, 70] = vpravo dole.
+focus: [70, 60]
