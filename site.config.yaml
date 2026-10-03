@@ -12,7 +12,7 @@ site:
   verification:                          # ověření webu u vyhledávačů značkou <meta> (jen když ověřuješ touto cestou,
     google: ""                           #   DNS záznam ji nepotřebuje): kód z Google Search Console,
     bing: ""                             #   z Bing Webmaster Tools (msvalidate.01)
-    seznam: ""                           #   a ze Seznam Webmaster (seznam-wmt); prázdné = žádná značka
+    seznam: "pRmNbOEUVpe5jyTrqNiBs8sNsD5d9jP9"   #   a ze Seznam Webmaster (seznam-wmt); prázdné = žádná značka
 
 analytics:
   # Google Analytics 4 (služba pavla.kramolis.cz), měří jen produkční build skutečného webu,
