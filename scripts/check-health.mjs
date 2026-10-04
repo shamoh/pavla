@@ -8,10 +8,10 @@
 
 import fs from 'node:fs/promises';
 import YAML from 'yaml';
-import { findUnknownAttributes } from './lib/content.mjs';
+import { findUnknownAttributes, findUnknownTechniques } from './lib/content.mjs';
 import { checkSiteImages, evaluateSiteImages } from './lib/site-check.mjs';
 import {
-  DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, formatReport,
+  DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, formatReport,
 } from './lib/health.mjs';
 
 const SITE_REPO = 'shamoh/pavla';
@@ -72,6 +72,9 @@ const pr = await guarded('pull requesty webu', async () => {
 const unknown = process.env.CONTENT_DIR
   ? await guarded('popisy obrazů', async () => evaluateUnknownAttributes(await findUnknownAttributes(process.env.CONTENT_DIR)))
   : evaluateUnknownAttributes(null);
+const techniques = process.env.CONTENT_DIR
+  ? await guarded('techniky obrazů', async () => evaluateUnknownTechniques(await findUnknownTechniques(process.env.CONTENT_DIR)))
+  : evaluateUnknownTechniques(null);
 
 // Every image the pages of the deployed site refer to exists (a deploy without images, a pipeline that removed some).
 const siteImages = await guarded('obrázky webu', async () => {
@@ -79,7 +82,7 @@ const siteImages = await guarded('obrázky webu', async () => {
   return evaluateSiteImages(await checkSiteImages(textArg('--site-url') ?? config.site.url, fetch));
 });
 
-const report = formatReport(token, runs, dryRun, deploy, pr, unknown, siteImages);
+const report = formatReport(token, runs, dryRun, deploy, pr, unknown, techniques, siteImages);
 console.log(report.text);
 if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, report.text);
 if (process.env.GITHUB_OUTPUT) await fs.appendFile(process.env.GITHUB_OUTPUT, `report<<EOF\n${report.text}EOF\n`);

@@ -31,6 +31,7 @@ images:
   tvorba/demo-mesto-2026/demo-namesti-v-mlze.jpg: { size: [1600, 2000], palette: mesto, seed: 21 }
   tvorba/demo-kresby-2025-2026/demo-nadrazi.jpg: { size: [2000, 1400], palette: sediva, seed: 22 }
   tvorba/demo-maky.jpg: { size: [1600, 1600], palette: ovoce, seed: 23 }
+  tvorba/demo-lipa-u-kaple.jpg: { size: [2000, 1500], palette: sediva, seed: 25 }
   tvorba/demo-rozpracovane.jpg: { size: [1600, 1200], palette: voda, seed: 24 }
   tvorba/demo-bourka-nad-polem.jpg: { size: [2400, 1600], palette: voda, seed: 32 }
   tvorba/demo-plener-sumava-2026/_cover.jpg: { size: [2400, 1000], palette: plener, seed: 19 }

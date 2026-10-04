@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
-import { findUnknownAttributes, prepareContent, readTree, withId } from './content.mjs';
+import { findUnknownAttributes, findUnknownTechniques, prepareContent, readTree, withId } from './content.mjs';
 import { isValidId } from './works.mjs';
 
 let dir;
@@ -179,5 +179,17 @@ test('findUnknownAttributes lists typos in works, collections and photos, change
   await fs.writeFile(path.join(dir, 'fotky/portret.yaml'), 'alt: Pavla\npopis: x\n');
   const before = await read('rano.yaml');
   assert.deepEqual(await findUnknownAttributes(dir), ['tvorba/rano.yaml: mockup', 'tvorba/plener/_index.yaml: kryt', 'fotky/portret.yaml: popis']);
+  assert.equal(await read('rano.yaml'), before);
+});
+
+test('findUnknownTechniques lists techniques without an art form with their works, changes nothing', async () => {
+  await write('rano.yaml', 'id: k3f9a\ntitle: Ráno\ntechnique: akvarel a tuš\n');
+  await write('plener/vecer.yaml', 'id: m7q2x\ntitle: Večer\ntechnique: koláž\n');
+  await write('plener/noc.yaml', 'id: n4r8w\ntitle: Noc\ntechnique: koláž\n');
+  await write('plener/_index.yaml', 'title: Plenér\n');
+  await write('skica.yaml', 'id: p2s5t\ntitle: Skica\ntechnique: enkaustika\n');
+  await write('bez.yaml', 'id: q6u3v\ntitle: Bez techniky\ntechnique: ""\n');
+  const before = await read('rano.yaml');
+  assert.deepEqual(await findUnknownTechniques(dir), ['enkaustika: tvorba/skica.yaml', 'koláž: tvorba/plener/noc.yaml, tvorba/plener/vecer.yaml']);
   assert.equal(await read('rano.yaml'), before);
 });

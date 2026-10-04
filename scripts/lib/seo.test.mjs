@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  artworkLd, authorId, breadcrumbLd, collectionPageLd, graphLd, jsonLdText, personLd, robotsTxt, summarize,
-  verificationMeta, websiteLd, workDescription,
+  artform, artworkLd, authorId, breadcrumbLd, collectionPageLd, graphLd, jsonLdText, personLd, robotsTxt, summarize,
+  tagKeywords, verificationMeta, websiteLd, workDescription,
 } from './seo.mjs';
 
 const site = { url: 'https://web.test', title: 'Pavla Kramolišová', tagline: 'Akvarely a kresby', author: 'Pavla Kramolišová', instagram: 'pavla.k', fler: '' };
@@ -44,6 +44,32 @@ test('artworkLd: a VisualArtwork by the author, with size in cm; on sale only av
   assert.equal(artworkLd({ title: 'X' }, site, { path: '/x/' }).width, undefined, 'no size, no width');
 });
 
+test('artform: painting, drawing or print from the technique as written, the first rule wins, unknown = none', () => {
+  for (const t of ['akvarel', 'Akvarel', 'akvarel a tuš', 'kvaš', 'pastel']) assert.equal(artform(t), 'malba', t);
+  for (const t of ['kresba tužkou', 'brush pen', 'tuš perem']) assert.equal(artform(t), 'kresba', t);
+  for (const t of ['tisk z výšky', 'linoryt', 'suchá jehla – grafika']) assert.equal(artform(t), 'grafika', t);
+  assert.equal(artform('koláž'), undefined);
+  assert.equal(artform(undefined), undefined);
+});
+
+test('artworkLd: keywords from the tags and the art form, none without them', () => {
+  const ld = artworkLd({ ...work, tags: ['zvířata', 'plenér'] }, site, { path: '/x/' });
+  assert.equal(ld.keywords, 'zvířata, plenér');
+  assert.equal(ld.artform, 'malba');
+  assert.equal(ld.artMedium, 'akvarel');
+  const bare = artworkLd({ ...work, technique: 'koláž', tags: [] }, site, { path: '/x/' });
+  assert.equal(bare.keywords, undefined);
+  assert.equal(bare.artform, undefined);
+  assert.equal(artworkLd({ title: 'X' }, site, { path: '/x/' }).keywords, undefined);
+});
+
+test('tagKeywords: the most frequent tags first, then alphabetically, at most max, nothing without tags', () => {
+  const works = [{ tags: ['voda', 'krajina'] }, { tags: ['krajina', 'les'] }, { tags: ['zvířata'] }, {}];
+  assert.deepEqual(tagKeywords(works), ['krajina', 'les', 'voda', 'zvířata']);
+  assert.deepEqual(tagKeywords(works, 2), ['krajina', 'les']);
+  assert.deepEqual(tagKeywords([{ title: 'Kolekce' }]), []);
+});
+
 test('personLd and websiteLd: one author node, her profiles elsewhere, the site in Czech', () => {
   const person = personLd(site, { image: 'https://web.test/p.jpg' });
   assert.equal(person['@id'], 'https://web.test/#autorka');
@@ -61,6 +87,9 @@ test('personLd and websiteLd: one author node, her profiles elsewhere, the site 
 test('collectionPageLd and breadcrumbLd: items in order with absolute addresses', () => {
   const page = collectionPageLd(site, { path: '/tvorba/', name: 'Tvorba', description: 'Vše.', items: [work, { ...work, title: 'Rano', key: 'rano-k3f9a' }], itemPath: (w) => `/tvorba/2026/${w.key}/` });
   assert.equal(page.mainEntity.numberOfItems, 2);
+  assert.equal(page.keywords, undefined, 'works without tags, no keywords');
+  const tagged = collectionPageLd(site, { path: '/tvorba/', name: 'Tvorba', items: [{ ...work, tags: ['voda', 'krajina'] }, { ...work, tags: ['krajina'] }], itemPath: (w) => `/${w.key}/` });
+  assert.equal(tagged.keywords, 'krajina, voda');
   assert.deepEqual(page.mainEntity.itemListElement[1], { '@type': 'ListItem', position: 2, url: 'https://web.test/tvorba/2026/rano-k3f9a/', name: 'Rano' });
   const crumbs = breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Tvorba', path: '/tvorba/' }]);
   assert.deepEqual(crumbs.itemListElement.map((i) => [i.position, i.item]), [[1, 'https://web.test/'], [2, 'https://web.test/tvorba/']]);

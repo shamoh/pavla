@@ -441,19 +441,19 @@ jen v obsahovém repu. Nové veřejné pole stačí přidat do schématu bez pre
 a fotek platí totéž (`PUBLIC_COLLECTION_FIELDS`, `PUBLIC_YEAR_FIELDS`, `PUBLIC_HOME_FIELDS`, `PUBLIC_PHOTO_FIELDS`).
 
 **Testovací data** jsou úplně oddělená od skutečných (viz *Testovací data (demo)*):
-17 děl (16 publikovaných, 1 rozpracované), 4 kolekce a 3 zástupné fotky
+18 děl (17 publikovaných, 1 rozpracované), 4 kolekce a 3 zástupné fotky
 v `demo-content/`, zobrazené přes `npm run demo`.
 
 | Funkce | Kde ji testovací data ukazují |
 |---|---|
-| roky | 2025 (6 děl), 2026 (10 publikovaných) |
-| stránkování | `/tvorba/` má 16 děl = 2 stránky po 12, při 24 nebo 48 jedna; stránky roků (6 a 10 děl) se nestránkují |
+| roky | 2025 (6 děl), 2026 (11 publikovaných) |
+| stránkování | `/tvorba/` má 17 děl = 2 stránky po 12, při 24 nebo 48 jedna; stránky roků (6 a 11 děl) se nestránkují |
 | rozpracované dílo (`meta_draft`) | Rozpracovaný obraz: nesmí být nikde na webu |
 | `available` | Pivoňky, Zimní sad, Ráno u rybníka, Město v dešti, Náměstí v mlze, Máky, Bouřka nad polem |
 | `reserved` | Kočka na okně, Modravské slatě, Rybník v zimě |
 | `sold` | Jablka na stole, Šumava v mlze, Nádraží |
-| `not-for-sale` | Kytice z louky, Kvilda skica, Slunečnice |
-| techniky | akvarel, akvarel a tuš, pastel, kresba tužkou, kvaš (Slunečnice, Rybník v zimě) |
+| `not-for-sale` | Kytice z louky, Kvilda skica, Slunečnice, Lípa u kaple |
+| techniky | akvarel, akvarel a tuš, pastel, kresba tužkou, kvaš (Slunečnice, Rybník v zimě), linoryt (Lípa u kaple) |
 | tagy | krajina, voda, plenér, hory, květiny, zátiší, ovoce, zvířata, zima, město, déšť, mlha, léto (i kombinace) |
 | `featured` (výběr autorky, 9 děl) | Máky, Ráno u rybníka, Šumava v mlze, Nádraží, Rybník v zimě… (2026 a přelom roku), Pivoňky, Zimní sad, Kočka na okně, Jablka na stole (2025): úvodní stránka náhodně střídá všech 9, `/tvorba/?featured=1` je ukáže |
 | text o roce | `/tvorba/2026/` má text (`demo-content/roky/2026.yaml`), `/tvorba/2025/` ne (`description: ""`) |
@@ -461,7 +461,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail), Kytice z louky (+ 1 detail, není na prodej), Máky; ostatní díla žádný |
 | `mockups: true`, na prodej | Ráno u rybníka (+ detaily), Zimní sad, Město v dešti, Náměstí v mlze, Kočka na okně, Rybník v zimě |
 | `mockups: true`, ne na prodej | Kytice z louky (+ detail), Slunečnice, Šumava v mlze (prodáno) |
-| `mockups: false` | Pivoňky (na prodej, + detail), Bouřka nad polem, Modravské slatě (na prodej), Kvilda skica, Nádraží (prodáno), Máky (na prodej), Jablka na stole (prodáno), Rozpracovaný obraz |
+| `mockups: false` | Pivoňky (na prodej, + detail), Bouřka nad polem, Modravské slatě (na prodej), Kvilda skica, Nádraží (prodáno), Máky (na prodej), Lípa u kaple, Jablka na stole (prodáno), Rozpracovaný obraz |
 | `DOPLNIT` a neznámý atribut (`NEZNÁMÝ`) | Rozpracovaný obraz (`mockup: true` je schválně překlep) |
 | mockupy malého díla (≤ 35 cm) / většího | Kočka na okně / Zimní sad |
 | detailní fotky | Ráno u rybníka (2, s popisky), Kytice z louky (1, bez popisku), Pivoňky (1 široký) |
@@ -472,11 +472,12 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | rok: vlastní úvodní fotka, jen `focus` (ořez 1:1) | 2025 (`demo-content/roky/2025.yaml`, panorama `roky/2025.jpg`) |
 | úvodní stránka: text z `_index.yaml`, náhodný obraz | `demo-content/_index.yaml` |
 | kolekce přes víc let a přelom roku | `demo-kresby-2025-2026/`: Kočka na okně, Jablka na stole (2025), Rybník v zimě (prosinec 2025), Nádraží (únor 2026) |
-| díla bez kolekce | Zimní sad, Slunečnice, Máky, Bouřka nad polem |
+| díla bez kolekce | Zimní sad, Slunečnice, Máky, Bouřka nad polem, Lípa u kaple |
 | soukromá poznámka | Ráno u rybníka, Jablka na stole, kolekce Plenér Šumava 2026 |
 | vlastní `private_…` atribut (bez `NEZNÁMÝ`, abecedně mezi `private_`, nikdy na web) | Máky (`private_kupec`) |
 | `meta_…` atributy na začátku, sdílené (`id` první, abecedně), `private_…` na konci | každý popis v `demo-content/` |
 | `derived_modified` ve veřejné kopii, `lastmod` v mapě webu | každé dílo v `.demo/site/content/tvorba/`, `/sitemap.xml` |
+| strukturovaná data: druh díla `artform` malba / kresba / grafika, `keywords` ze štítků | Máky (malba), Nádraží (kresba), Lípa u kaple (grafika, linoryt) |
 | strukturovaná data: obraz na prodej jen s dostupností (`InStock` / `LimitedAvailability`), bez ceny | Máky (`available`), Kočka na okně (`reserved`) |
 | stránka 404 s výběrem autorky | libovolná neexistující adresa, např. `/tvorba/nic/` (v `npm run demo`) nebo `.demo/site/dist/404.html` |
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
@@ -768,7 +769,8 @@ Návštěvník může napsat z každé stránky; zprávu doručí [Web3Forms](ht
     Esc panel schová (s textem) nebo zavře. Na telefonu je panel spodní „šuplík“ (velký přes celou výšku).
   - Je to vždy tentýž formulář, změnou velikosti se text neztratí.
 - **Souvislost**: zpráva nese stránku, odkud vznikla („K obrazu: Ovce (2026)“, „Ke stránce: Kolekce“), křížkem jde
-  odebrat. Do e-mailu jde předmět `[pavla-web] <typ>: <obraz (id) nebo stránka>`, adresa stránky a u obrazu jeho id.
+  odebrat. Do e-mailu jde předmět `[pavla-web] <typ>: <obraz (id) nebo stránka>`, adresa stránky a u obrazu jeho id;
+  odesílatel je „Web <adresa webu>“ (`messageSender`, např. „Web pavla.kramolis.cz“), aby zpráva nevypadala jako od autorky.
 - **Typy zpráv** (`MESSAGE_TYPES`): Pozdrav nebo vzkaz · Dotaz na obraz · Zájem o koupi · Spolupráce, výstava, plenér ·
   Chyba na webu · Něco jiného. Předvybraný: na detailu díla na prodej „Zájem o koupi“, jinak u díla „Dotaz na obraz“,
   jinde „Pozdrav nebo vzkaz“. E-mail pro odpověď je povinný u dotazu na obraz a zájmu o koupi, jinak nepovinný.
@@ -839,7 +841,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | Změna | Jak ověřit |
 |---|---|
 | filtry | `/tvorba/`: klikej na filtry, sleduj URL; zkopíruj URL do nového okna, musí ukázat totéž. Testovací data mají pro každou kombinaci aspoň jedno dílo. |
-| stránkování | `/tvorba/`: 12 děl a stránky 1, 2; klikni na 2, v URL `?page=2`, zkopíruj do nového okna. Vyber filtr, vrátí tě na 1. stránku; `?page=99` se opraví na poslední. „Zobrazit vše (16)“: všech 16 děl, v URL `?page=all`; změň filtr, zůstane vše; „Zobrazit po stránkách“ vrátí 1. stránku. „Na stránku“ 24: všech 16 na jedné stránce, v URL `?perPage=24`; zpět na 12 parametr zmizí; `?perPage=13` se ignoruje. Paměť: zvol 24, otevři `/tvorba/` znovu bez parametrů (nebo stránku kolekce) → 24 a `?perPage=24` v URL; otevři `/tvorba/?page=2` → 12 na stránku (odkaz má přednost); zvol 12 → paměť se smaže. Smazat ručně: DevTools → Application → Local Storage → `pavla.gallery.perPage`. Menší první hodnota `gallery.pageSizes` (např. `[4, 12]`) ukáže mezery „…“. |
+| stránkování | `/tvorba/`: 12 děl a stránky 1, 2; klikni na 2, v URL `?page=2`, zkopíruj do nového okna. Vyber filtr, vrátí tě na 1. stránku; `?page=99` se opraví na poslední. „Zobrazit vše (17)“: všech 17 děl, v URL `?page=all`; změň filtr, zůstane vše; „Zobrazit po stránkách“ vrátí 1. stránku. „Na stránku“ 24: všech 17 na jedné stránce, v URL `?perPage=24`; zpět na 12 parametr zmizí; `?perPage=13` se ignoruje. Paměť: zvol 24, otevři `/tvorba/` znovu bez parametrů (nebo stránku kolekce) → 24 a `?perPage=24` v URL; otevři `/tvorba/?page=2` → 12 na stránku (odkaz má přednost); zvol 12 → paměť se smaže. Smazat ručně: DevTools → Application → Local Storage → `pavla.gallery.perPage`. Menší první hodnota `gallery.pageSizes` (např. `[4, 12]`) ukáže mezery „…“. |
 | náhledy pro sdílení | `grep -o '<meta property="og:image[^>]*>' dist/tvorba/2026/*/index.html` po `npm run build`; soubory `public/tvorba/*/*/og.jpg` a `public/tvorba/kolekce/*/og.jpg`. Online: po nasazení vlož odkaz do <https://www.opengraph.xyz/> nebo do Facebook Sharing Debuggeru. |
 | rozpracované dílo | „Rozpracovaný obraz“ nesmí být v galerii, v roce 2026 ani na adrese `/tvorba/dhsh5/` |
 | web bez děl | `mkdir -p /tmp/prazdny/public && cp public/favicon.svg /tmp/prazdny/public/ && SITE_DATA_DIR=/tmp/prazdny npx astro build`: úvodní stránka ukáže „Obrazy tu brzy přibudou.“ a odkaz na Instagram (bez `site.instagram` jen první větu) |
@@ -857,7 +859,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | obrázek pro sdílení kolekce | po `npm run images` otevři `public/tvorba/kolekce/*/og.jpg` (1200 × 800, stejný výřez jako na stránce, jen u vlastní fotky, detailu a `cover` s ořezem; ořez 2:1 Ze zahrady leží na papíře); změň `focus` nebo `aspect` kolekce Ze zahrady, `npm run images`, v logu `→ og kolekce/…` a výřez se posune. Na stránce kolekce je v `<meta property="og:image">`. |
 | starý název atributu | v `demo-content/tvorba/demo-maky.yaml` přepiš `meta_draft:` na `draft:`, `npm run demo:prepare`: chyba „draft: renamed to meta_draft, rename it“, soubor se nezmění (pak vrať) |
 | `derived_` v obsahu | do `demo-content/tvorba/demo-maky.yaml` přidej `derived_x: 1`, `npm run demo:prepare`: chyba „derived_ attributes are made by the pipeline…“ (pak smaž) |
-| vyhledávače | po `npm run demo:build`: `.demo/site/dist/robots.txt`, `.demo/site/dist/sitemap.xml` (s `lastmod`), ve zdroji stránek `<meta name="description">` a `application/ld+json` (dílo `VisualArtwork`, výpisy `CollectionPage`, úvod `WebSite` + `Person`); 404 má `noindex` |
+| vyhledávače | po `npm run demo:build`: `.demo/site/dist/robots.txt`, `.demo/site/dist/sitemap.xml` (s `lastmod`), ve zdroji stránek `<meta name="description">` a `application/ld+json` (dílo `VisualArtwork` s `keywords` a `artform`, výpisy `CollectionPage` s `keywords`, úvod `WebSite` + `Person`); 404 má `noindex` |
 | chybějící obrázek | smaž v `.demo/site/dist/tvorba/*/*/` jeden obrázek, `SITE_DATA_DIR=.demo/site npm run check:images`: vypíše ho se stránkou a skončí kódem 1 |
 | chyby v popisu | např. `date: 14. 6. 2026`, `collection: plener` v popisu díla, podsložka v kolekci bez díla, dvě složky se stejnou adresou, popisek v `details:` k neexistující fotce, `cover` s dílem z jiné kolekce nebo `focus: [120, 50]`: `npm run images` skončí chybou a nic nezapíše |
 
@@ -902,6 +904,9 @@ nepovinný). Kontroluje:
   takže otevřený déle = zaseknutý (neprošla „Kontrola kódu“ nebo auto-merge není zapnutý),
 - že žádný popis nemá neznámý atribut (`NEZNÁMÝ`, `findUnknownAttributes` v `scripts/lib/content.mjs`;
   bez `CONTENT_DIR` se tahle kontrola přeskočí),
+- že každá technika děl má druh díla pro vyhledávače (`artform` v `scripts/lib/seo.mjs`, `findUnknownTechniques`
+  v `scripts/lib/content.mjs`): nová technika bez pravidla v `ARTFORMS` vypíše techniku s díly, která ji mají
+  (bez `CONTENT_DIR` se přeskočí),
 - že na nasazeném webu existuje každý obrázek, na který jeho stránky odkazují (`scripts/lib/site-check.mjs`):
   projde web od úvodní stránky a od všech stránek mapy webu (`/sitemap.xml`) po vlastních odkazech, z `src`, `srcset`, `href`
   a `og:image` posbírá obrázky a na každý se zeptá (`HEAD`); vypíše chybějící obrázky se stránkou, která na ně
@@ -943,7 +948,9 @@ Co web dělá, aby mu vyhledávače rozuměly (`scripts/lib/seo.mjs`, `src/layou
 - **Strukturovaná data** (schema.org jako JSON-LD v `<script type="application/ld+json">`, `graphLd`):
   úvod = web (`WebSite`) a autorka (`Person` s portrétem, odkazy na Instagram a Fler a místem `homeLocation` ze `site.location`), O mně = `ProfilePage`,
   Kontakt = `ContactPage`, dílo = `VisualArtwork` (název, popis, obrázek, technika, podklad, rozměry v cm, datum,
-  autorka), Tvorba, rok, kolekce a Kolekce = `CollectionPage` se seznamem děl; všude drobečková navigace
+  autorka, klíčová slova `keywords` = štítky díla, druh díla `artform` podle techniky: `malba` / `kresba` / `grafika`,
+  neznámá technika žádný, `artform` v `scripts/lib/seo.mjs`), Tvorba, rok, kolekce a Kolekce = `CollectionPage` se seznamem děl
+  a klíčovými slovy ze štítků jeho děl (nejčastější první, nejvýš 20, `tagKeywords`); všude drobečková navigace
   (`BreadcrumbList`). **Obraz na prodej uvádí jen dostupnost (`available` = InStock, `reserved` =
   LimitedAvailability), nikdy cenu** (rozhodnutí 2026-10; cena zůstává jen na stránce).
 - **Open Graph**: `og:url`, `og:site_name`, `og:locale` (`cs_CZ`), `og:type` (`article` u díla), obrázek pro sdílení.

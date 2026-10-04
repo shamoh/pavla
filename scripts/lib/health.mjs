@@ -126,6 +126,21 @@ export function evaluateUnknownAttributes(found) {
   };
 }
 
+/**
+ * `found`: ["<technique>: <files>"] from findUnknownTechniques, or null when the content was not available to check.
+ * Not ok when a work has a technique without an art form for search engines (a new technique needs a rule).
+ */
+export function evaluateUnknownTechniques(found) {
+  if (found === null) return { ok: true, message: 'Techniky obrazů nebyly zkontrolovány (obsah není k dispozici).' };
+  if (!found.length) return { ok: true, message: 'Každá technika má druh díla pro vyhledávače.' };
+  return {
+    ok: false,
+    message: `Nová technika bez druhu díla (vyhledávače nepoznají, jestli je to malba, kresba, nebo grafika):\n`
+      + found.map((f) => `- ${f}`).join('\n')
+      + '\nDoplň pravidlo do ARTFORMS v scripts/lib/seo.mjs (repo pavla), nebo oprav překlep v technice.',
+  };
+}
+
 export const RENEW_TOKEN = [
   'Jak token obnovit:',
   '',

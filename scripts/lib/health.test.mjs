@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, formatReport, parseExpiration,
+  DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, formatReport, parseExpiration,
 } from './health.mjs';
 
 const now = new Date('2026-09-27T10:00:00Z');
@@ -137,6 +137,16 @@ test('unknown attributes: listed with the file, fine when there are none or the 
   assert.match(bad.message, /NEZNÁMÝ[\s\S]*\n- tvorba\/rano\.yaml: mockup\n- fotky\/portret\.yaml: popis\nOprav/);
   assert.equal(evaluateUnknownAttributes([]).ok, true);
   const skipped = evaluateUnknownAttributes(null);
+  assert.equal(skipped.ok, true);
+  assert.match(skipped.message, /nebyly zkontrolovány/);
+});
+
+test('evaluateUnknownTechniques: a technique without an art form needs a rule, nothing found is fine', () => {
+  const bad = evaluateUnknownTechniques(['koláž: tvorba/a.yaml, tvorba/b.yaml']);
+  assert.equal(bad.ok, false);
+  assert.match(bad.message, /\n- koláž: tvorba\/a\.yaml, tvorba\/b\.yaml\nDoplň pravidlo do ARTFORMS/);
+  assert.equal(evaluateUnknownTechniques([]).ok, true);
+  const skipped = evaluateUnknownTechniques(null);
   assert.equal(skipped.ok, true);
   assert.match(skipped.message, /nebyly zkontrolovány/);
 });

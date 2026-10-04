@@ -67,17 +67,39 @@ export function websiteLd(site) {
   };
 }
 
+/**
+ * The art form of a work (schema.org `artform`), from its technique as written: the first matching rule wins,
+ * so "akvarel a tuš" is a painting; an unknown technique has none.
+ */
+const ARTFORMS = [
+  [/tisk|ryt|grafik|lept|monotyp|sítotisk/i, 'grafika'],
+  [/akvarel|kvaš|olej|akryl|tempera|pastel|malb/i, 'malba'],
+  [/kresb|tužk|uhel|uhlem|brush pen|tuš|perem|fix/i, 'kresba'],
+];
+export const artform = (technique) => ARTFORMS.find(([pattern]) => pattern.test(technique ?? ''))?.[1];
+
+/**
+ * Keywords of a list of works (schema.org `keywords`): their tags, the most frequent first (then alphabetically),
+ * at most `max`; items without tags (e.g. collections) add nothing.
+ */
+export function tagKeywords(items, max = 20) {
+  const counts = new Map();
+  for (const tag of items.flatMap((it) => it.tags ?? [])) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  return [...counts].sort(([a, m], [b, n]) => n - m || a.localeCompare(b, 'cs')).slice(0, max).map(([tag]) => tag);
+}
+
 /** Availability of a work for schema.org: on sale and reserved only (no price, see the top of this file). */
 const AVAILABILITY = { available: `${SCHEMA}/InStock`, reserved: `${SCHEMA}/LimitedAvailability` };
 
 /**
  * A work as schema.org VisualArtwork. `work`: { title, key, year, date, technique, support, size_cm, status,
- * description }, `path`: its page, `image`: absolute address of its picture.
+ * description, tags }, `path`: its page, `image`: absolute address of its picture.
  */
 export function artworkLd(work, site, { path, image }) {
   const [width, height] = Array.isArray(work.size_cm) ? work.size_cm : [];
   const cm = (value) => ({ '@type': 'QuantitativeValue', value, unitCode: 'CMT', unitText: 'cm' });
   const availability = AVAILABILITY[work.status];
+  const form = artform(work.technique);
   return {
     '@type': 'VisualArtwork',
     '@id': `${absolute(site, path)}#dilo`,
@@ -85,10 +107,12 @@ export function artworkLd(work, site, { path, image }) {
     name: work.title,
     description: workDescription(work, site),
     ...(image && { image }),
+    ...(form && { artform: form }),
     ...(work.technique && { artMedium: work.technique }),
     ...(work.support && { artworkSurface: work.support }),
     ...(width > 0 && height > 0 && { width: cm(width), height: cm(height) }),
     ...(work.date && { dateCreated: new Date(work.date).toISOString().slice(0, 10) }),
+    ...(work.tags?.length && { keywords: work.tags.join(', ') }),
     inLanguage: 'cs',
     creator: { '@id': authorId(site) },
     isPartOf: { '@id': siteId(site) },
@@ -98,15 +122,17 @@ export function artworkLd(work, site, { path, image }) {
 
 /**
  * A page listing works or collections (all works, a year, a collection, the collections): `items` in order as an
- * ItemList, each { title }, its page from `itemPath(item)`.
+ * ItemList, each { title, tags }, its page from `itemPath(item)`; the tags of the works are its keywords.
  */
 export function collectionPageLd(site, { path, name, description, items, itemPath }) {
+  const keywords = tagKeywords(items);
   return {
     '@type': 'CollectionPage',
     '@id': absolute(site, path),
     url: absolute(site, path),
     name,
     ...(description && { description: summarize(description) }),
+    ...(keywords.length && { keywords: keywords.join(', ') }),
     inLanguage: 'cs',
     isPartOf: { '@id': siteId(site) },
     author: { '@id': authorId(site) },

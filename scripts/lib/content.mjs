@@ -15,6 +15,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
 import { normalizeMetadata, skeleton, todoKeys } from './metadata-yaml.mjs';
+import { artform } from './seo.mjs';
 import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA } from './schema.mjs';
 import { IMAGE_EXTENSIONS, dateYear, generateId, isValidId, slugify, splitExt, titleFromName } from './works.mjs';
 
@@ -282,4 +283,21 @@ export async function findUnknownAttributes(contentDir) {
     if (unknown.length) found.push(`${file}: ${unknown.join(', ')}`);
   }
   return found;
+}
+
+/**
+ * Techniques of the works for which search engines get no art form (`artform` in scripts/lib/seo.mjs knows no rule
+ * for them): ["<technique>: <file>, <file>"], sorted; a work without a technique is left out. Changes nothing.
+ */
+export async function findUnknownTechniques(contentDir) {
+  const { groups } = await readTree(path.join(contentDir, WORKS_SUBDIR));
+  const files = new Map();
+  for (const g of groups) {
+    for (const file of g.yamls.values()) {
+      const rel = path.join(WORKS_SUBDIR, g.dir, file);
+      const technique = String(YAML.parse(await fs.readFile(path.join(contentDir, rel), 'utf8'))?.technique ?? '').trim();
+      if (technique && !artform(technique)) files.set(technique, [...(files.get(technique) ?? []), rel]);
+    }
+  }
+  return [...files].sort(([a], [b]) => a.localeCompare(b, 'cs')).map(([technique, list]) => `${technique}: ${list.join(', ')}`);
 }

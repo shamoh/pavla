@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   MESSAGE_TYPES, contactLink, contextFromQuery, contextLabel, defaultType, isAccessKey, messageEventParams, messageSubject, messageType,
   mailtoLink, messagesMode, messagesSettings, needsEmail, pageContext, sitePath,
-  validateMessage, web3formsBody, workContext,
+  messageSender, validateMessage, web3formsBody, workContext,
 } from './messages.mjs';
 
 const KEY = '0f8a6c2e-1b3d-4e5f-9a7b-2c4d6e8f0a1b';
@@ -55,6 +55,7 @@ test('web3formsBody: subject, reply-to and the page; no address = no reply-to', 
   const body = web3formsBody(KEY, site, { type: 'work', text: ' Je ještě volný? ', email: 'a@b.cz' }, ovce);
   assert.equal(body.access_key, KEY);
   assert.equal(body.subject, '[pavla-web] Dotaz na obraz: Ovce (v39nd)');
+  assert.equal(body.from_name, 'Web web.test', 'the site, not the author, is the sender');
   assert.equal(body.replyto, 'a@b.cz');
   assert.equal(body['Zpráva'], 'Je ještě volný?');
   assert.equal(body['Stránka'], 'https://web.test/tvorba/2026/ovce-v39nd/');
@@ -63,6 +64,11 @@ test('web3formsBody: subject, reply-to and the page; no address = no reply-to', 
   const plain = web3formsBody(KEY, site, { type: 'greeting', text: 'Ahoj', email: '' }, null);
   assert.equal(plain.replyto, undefined);
   assert.equal(plain['Stránka'], undefined);
+});
+
+test('messageSender: the host of the site, without the scheme and the trailing slash', () => {
+  assert.equal(messageSender({ url: 'https://pavla.kramolis.cz/' }), 'Web pavla.kramolis.cz');
+  assert.equal(messageSender({ url: 'http://localhost:4321' }), 'Web localhost:4321');
 });
 
 test('contactLink and contextFromQuery: the context survives the trip to the contact page', () => {

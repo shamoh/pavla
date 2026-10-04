@@ -111,6 +111,9 @@ export function messageEventParams({ type, context }) {
   };
 }
 
+/** The sender of the e-mail, so a message from the site is not mistaken for one from the author: "Web pavla.kramolis.cz". */
+export const messageSender = (site) => `Web ${new URL(site.url).host}`;
+
 /**
  * The JSON body for Web3Forms. `site`: { title, url }; `fields`: { type, text, email }; `context` as above.
  * Fields other than the Web3Forms ones (access_key, subject, from_name, replyto, botcheck) show up in the e-mail as they are.
@@ -120,7 +123,7 @@ export function web3formsBody(accessKey, site, { type, text, email }, context) {
   return {
     access_key: accessKey,
     subject: messageSubject(type, context),
-    from_name: site.title,
+    from_name: messageSender(site),
     ...(mail && { replyto: mail, 'E-mail': mail }),
     'O čem': messageType(type).label,
     'Zpráva': String(text ?? '').trim(),

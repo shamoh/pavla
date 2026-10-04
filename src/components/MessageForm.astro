@@ -3,7 +3,7 @@
 // The same fields in both; src/lib/message-form.ts fills them from the draft and sends them.
 // Without JavaScript the live form posts straight to Web3Forms (the hidden fields below).
 import { messages, site, url } from '../lib/site';
-import { MESSAGE_TYPES, SENT_PATH, WEB3FORMS_URL } from '../../scripts/lib/messages.mjs';
+import { MESSAGE_TYPES, SENT_PATH, WEB3FORMS_URL, messageSender } from '../../scripts/lib/messages.mjs';
 
 interface Props {
   /** 'inline' on the contact page, 'panel' in the corner panel. */
@@ -52,7 +52,7 @@ const live = messages.mode === 'live';
       <>
         <input type="hidden" name="access_key" value={messages.accessKey} />
         <input type="hidden" name="subject" value="[pavla-web] Zpráva z webu" />
-        <input type="hidden" name="from_name" value={site.title} />
+        <input type="hidden" name="from_name" value={messageSender(site)} />
         <!-- Without JavaScript Web3Forms shows its own page after sending; this brings the visitor back here. -->
         <input type="hidden" name="redirect" value={new URL(url(SENT_PATH), site.url).href} />
       </>
