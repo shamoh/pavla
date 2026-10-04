@@ -1,12 +1,11 @@
 {
-  "width": 1600,
-  "height": 1600,
+  "width": 1536,
+  "height": 1024,
   "widths": [
     480,
     960,
-    1600,
-    1600
+    1536
   ],
-  "dominant": "rgb(200,248,248)",
-  "fingerprint": "f82db5921b4f1b39"
+  "dominant": "rgb(248,248,232)",
+  "fingerprint": "0fc803d2645b581a"
 }

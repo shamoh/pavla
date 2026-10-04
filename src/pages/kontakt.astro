@@ -27,8 +27,8 @@ const jsonLd = graphLd(
         {site.location && <li><span class="eyebrow">Žiji a maluji</span><span class="value">{site.location}</span></li>}
       </ul>
     </div>
-    <!-- Landscape 4:3 crop around the photo's focus, so it does not tower over the short text next to it. -->
-    <Photo name="kontakt" sizes="(max-width: 800px) 100vw, 40vw" class="contact-photo" aspect="4 / 3" />
+    <!-- Landscape 3:2 crop around the photo's focus (a 3:2 photo stays whole), so it does not tower over the short text next to it. -->
+    <Photo name="kontakt" sizes="(max-width: 800px) 100vw, 40vw" class="contact-photo" aspect="3 / 2" />
   </div>
 </Base>
 <style>

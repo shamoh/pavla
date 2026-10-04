@@ -721,7 +721,7 @@ používají tyto názvy; dokud fotka neexistuje, na stránce prostě chybí:
 |---|---|
 | `o-mne-uvod.jpg` | O mně, nahoře pod jménem přes celou šířku, oříznutá na 2:1 podle `focus` |
 | `portret.jpg` | O mně, vedle textu, úzký sloupec (ideálně fotka na výšku) |
-| `kontakt.jpg` | Kontakt, vedle kontaktů, oříznutá na šířku 4:3 podle `focus` |
+| `kontakt.jpg` | Kontakt, vedle kontaktů, oříznutá na šířku 3:2 podle `focus` (fotka 3:2 zůstane celá) |
 
 Kontakt ukazuje z `site.config.yaml` e-mail (`site.email`), Instagram (`site.instagram`), obchůdek na Fleru
 (`site.fler`) a místo, kde autorka žije a maluje (`site.location`, „Žiji a maluji“); prázdná hodnota = položka chybí.
