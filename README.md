@@ -721,7 +721,7 @@ používají tyto názvy; dokud fotka neexistuje, na stránce prostě chybí:
 |---|---|
 | `o-mne-uvod.jpg` | O mně, nahoře pod jménem přes celou šířku, oříznutá na 2:1 podle `focus` |
 | `portret.jpg` | O mně, vedle textu, úzký sloupec (ideálně fotka na výšku) |
-| `kontakt.jpg` | Kontakt, vedle kontaktů, oříznutá na šířku 3:2 podle `focus` (fotka 3:2 zůstane celá) |
+| `kontakt.jpg` | Kontakt, vedle kontaktů, oříznutá na šířku 3:2 podle `focus` (fotka 3:2 zůstane celá); bílý okraj přechází do papíru stránky (`blendEdge={10}`) |
 
 Kontakt ukazuje z `site.config.yaml` e-mail (`site.email`), Instagram (`site.instagram`), obchůdek na Fleru
 (`site.fler`) a místo, kde autorka žije a maluje (`site.location`, „Žiji a maluji“); prázdná hodnota = položka chybí.
@@ -751,6 +751,13 @@ focus: [85, 60]                                # bod [zleva %, shora %], který 
 jde do veřejné kopie `content/fotky/<název>.yaml` (spolu s `alt` a `caption`; `info.json` nese jen data
 obrázků) a na web jako CSS `object-position`. Bez `aspect` se fotka
 neořezává a `focus` nemá vliv.
+
+**Bílý okraj do papíru (`blendEdge`):** `<Photo name="…" blendEdge={10} />` u fotky s bílým okrajem (akvarel na
+papíře): tělo fotky zůstane beze změny, jen pás o hloubce 10 % šířky podél okrajů (nahoře a dole stejně hluboký)
+plynule přejde do kopie fotky prolnuté s papírem (`multiply`, bílá = barva papíru palety) a krajní třetina pásu
+té kopie plynule zmizí, takže po obvodu nezůstane linka. Jsou to dvě vrstvy téhož obrázku (stáhne se jednou),
+obě s maskou; bez zástupné barvy pod obrázkem. Na tmavé paletě se nic nemění.
+Vyzkoušení: fotka s bílým okrajem, `npm run build && npm run preview`, v patičce přepnout na Pergamen.
 
 ## Zprávy od návštěvníků (formulář, „Napište mi“)
 
@@ -805,7 +812,8 @@ Návštěvník si v patičce vybere barvy webu: **Automaticky** (podle světléh
   (`paper` pozadí, `paper2` plochy, `ink` text, `inkSoft` tlumený text, `line` linky, `accent` odkazy a zvýraznění,
   `ok` „k prodeji“, `error` chyby formuláře) a `picture` (síla stínu obrazů `shadow`, 1 = jako na Papíru; `edge` =
   jemná linka kolem obrazu na tmavém podkladu, jinak `null`). Z nich vznikne CSS (proměnné `--paper`, `--ink-soft`…,
-  `--shadow-soft` pro karty galerie, `--shadow-deep` pro úvodní obraz a dílo) i kroužky přepínače.
+  `--shadow-soft` pro karty galerie, `--shadow-deep` pro úvodní obraz a dílo, `--paper-blend` podle `scheme`)
+  i kroužky přepínače.
   **Nová paleta = nový záznam v `PALETTES`**, nic dalšího.
 - **Automaticky** = první světlá paleta ve dne, první tmavá v tmavém režimu systému (a mění se s ním).
 - **Kontrola** (`checkPalettes`, test): každá paleta má všechny barvy jako `#rrggbb`, unikátní `id` (ne `auto`),
@@ -816,6 +824,9 @@ Návštěvník si v patičce vybere barvy webu: **Automaticky** (podle světléh
   a barvu lišty prohlížeče (`theme-color`). Bez JavaScriptu rozhoduje systém a přepínač se neukáže.
 - **Přepínač**: `src/components/PalettePicker.astro` v patičce („Barvy“ a kroužky v barvě papíru palety, Automaticky
   napůl světlý a tmavý), popisek při najetí myší; změna pošle událost `palette_change` (viz *Návštěvnost*).
+- **Bílé okraje fotky do barvy papíru** (`--paper-blend`, `paperBlend`): na světlé paletě `multiply` (bílá převezme
+  barvu papíru), na tmavé `normal` (beze změny). Používá ho `<Photo … blendEdge={10} />` (viz *Ostatní fotky*),
+  zatím jen fotka `kontakt` na Kontaktu.
 - Barvy, které se s paletou nemění: prohlížeč obrazů (zvětšení díla) je vždy tmavý; obrázky z pipeline (`og.jpg`,
   mockupy, `apple-touch-icon.png`) mají světlý papír natvrdo.
 - Vyzkoušení: `npm run demo`, v patičce přepnout kroužky na úvodu, v `/tvorba/`, na detailu díla, `/kontakt/`

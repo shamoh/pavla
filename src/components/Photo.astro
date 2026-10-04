@@ -1,18 +1,37 @@
 ---
 // A photo from fotky/<name>.jpg of the content repository. Renders nothing while the photo does not exist yet.
 // `aspect` (e.g. "2 / 1") crops the photo to that shape, centred on the photo's `focus` point from its YAML.
+// `blendEdge` (percent of the width, e.g. 10) melts a white paper edge into the page: the body of the photo stays
+// as it is, only a band of that depth along the edges fades into a copy blended with the paper (--paper-blend,
+// scripts/lib/palettes.mjs; on dark paper the copy is not blended, so nothing changes); the outermost rim (a third
+// of the band) of that copy fades out as well, so no line remains where the photo ends.
 import Img from './Img.astro';
 import { getPhoto } from '../lib/site';
 import { photoDir } from '../../scripts/lib/site-images.mjs';
 
-interface Props { name: string; sizes: string; eager?: boolean; class?: string; caption?: boolean; aspect?: string }
-const { name, sizes, eager, class: cls, caption = true, aspect } = Astro.props;
+interface Props { name: string; sizes: string; eager?: boolean; class?: string; caption?: boolean; aspect?: string; blendEdge?: number }
+const { name, sizes, eager, class: cls, caption = true, aspect, blendEdge } = Astro.props;
 const photo = getPhoto(name);
 const [fx, fy] = photo?.focus ?? [50, 50];
+// The band is as deep at the top and bottom as at the sides: its share of the height grows with the shown ratio.
+const [aw, ah] = (aspect ?? '').split('/').map(Number);
+const ratio = aw > 0 && ah > 0 ? aw / ah : photo ? photo.width / photo.height : 1;
+const style = [
+  aspect && `--aspect: ${aspect}; --focus: ${fx}% ${fy}%`,
+  blendEdge && `--edge-x: ${blendEdge}%; --edge-y: ${+(blendEdge * ratio).toFixed(2)}%`,
+  blendEdge && `--rim-x: ${+(blendEdge / 3).toFixed(2)}%; --rim-y: ${+((blendEdge / 3) * ratio).toFixed(2)}%`,
+].filter(Boolean).join('; ');
 ---
 {photo && (
-  <figure class:list={['photo', cls, { cropped: aspect }]} style={aspect ? `--aspect: ${aspect}; --focus: ${fx}% ${fy}%` : undefined}>
-    <Img base={`/${photoDir(name)}`} image={photo} alt={photo.alt} sizes={sizes} eager={eager} />
+  <figure class:list={['photo', cls, { cropped: aspect }]} style={style || undefined}>
+    {blendEdge ? (
+      <div class="blend-edge">
+        <Img base={`/${photoDir(name)}`} image={photo} alt="" sizes={sizes} eager={eager} class="blend-under" />
+        <Img base={`/${photoDir(name)}`} image={photo} alt={photo.alt} sizes={sizes} eager={eager} class="blend-body" />
+      </div>
+    ) : (
+      <Img base={`/${photoDir(name)}`} image={photo} alt={photo.alt} sizes={sizes} eager={eager} />
+    )}
     {caption && photo.caption && <figcaption>{photo.caption}</figcaption>}
   </figure>
 )}
@@ -20,5 +39,21 @@ const [fx, fy] = photo?.focus ?? [50, 50];
   .photo { margin: 0; }
   .cropped :global(picture) { aspect-ratio: var(--aspect); overflow: hidden; }
   .cropped :global(img) { height: 100%; object-fit: cover; object-position: var(--focus); }
+  /* Two layers of the same image (downloaded once): below blended with the paper, its rim fading out; on top the
+     photo as it is, fading out towards the edges. The blend sits on the masked layer itself and nothing in between
+     may form its own group, or the blend would not reach the page. */
+  .blend-edge { position: relative; }
+  .blend-edge :global(picture) {
+    background: none;
+    --fade-x: linear-gradient(to right, transparent, #000 var(--x), #000 calc(100% - var(--x)), transparent);
+    --fade-y: linear-gradient(to bottom, transparent, #000 var(--y), #000 calc(100% - var(--y)), transparent);
+    -webkit-mask-image: var(--fade-x), var(--fade-y);
+    -webkit-mask-composite: source-in;
+    mask-image: var(--fade-x), var(--fade-y);
+    mask-composite: intersect;
+  }
+  .blend-edge :global(.blend-under) { position: absolute; inset: 0; --x: var(--rim-x); --y: var(--rim-y); mix-blend-mode: var(--paper-blend); }
+  .blend-edge :global(.blend-under img) { height: 100%; object-fit: cover; }
+  .blend-edge :global(.blend-body) { position: relative; --x: var(--edge-x); --y: var(--edge-y); }
   figcaption { margin-top: 10px; font-size: 0.85rem; color: var(--ink-soft); }
 </style>

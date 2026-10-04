@@ -96,10 +96,18 @@ export function pictureShadows({ shadow, edge }) {
   };
 }
 
+/**
+ * How a picture with white paper edges (e.g. the photo on Kontakt) blends into the page: --paper-blend. On light
+ * paper `multiply` turns its white into the colour of the paper; on dark paper it would darken the whole picture,
+ * so it stays as it is (`normal`).
+ */
+export const paperBlend = (scheme) => (scheme === 'light' ? 'multiply' : 'normal');
+
 const block = (p) => [
   `color-scheme:${p.scheme}`,
   ...Object.entries(p.colors).map(([t, c]) => `${tokenVar(t)}:${c}`),
   ...Object.entries(pictureShadows(p.picture)).map(([k, v]) => `${k}:${v}`),
+  `--paper-blend:${paperBlend(p.scheme)}`,
 ].join(';');
 
 /**

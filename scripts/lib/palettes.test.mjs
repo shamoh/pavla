@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {
-  AUTO, PALETTES, PALETTE_KEY, checkPalettes, contrast, paletteCss, paletteEventParams, paletteScript, pictureShadows, resolvePalette, tokenVar,
+  AUTO, PALETTES, PALETTE_KEY, checkPalettes, contrast, paletteCss, paletteEventParams, paletteScript, paperBlend, pictureShadows, resolvePalette, tokenVar,
 } from './palettes.mjs';
 
 const fake = (id, scheme, over = {}) => ({ id, label: id, scheme, colors: { ...PALETTES[0].colors, ...over }, picture: { shadow: 1, edge: null } });
@@ -103,6 +103,14 @@ test('pictureShadows: the light strength as it was, stronger on dark paper with 
   assert.equal(pictureShadows({ shadow: 10, edge: null })['--shadow-deep'].includes('/ 1)'), true, 'an alpha never exceeds 1');
   assert.match(paletteCss(), /:root\[data-palette="noc"\]\{[^}]*--shadow-deep:0 0 0 1px/);
   assert.match(checkPalettes([{ ...fake('a', 'light'), picture: { shadow: 0 } }, PALETTES[2]]).join('\n'), /a: picture.shadow must be a positive number/);
+});
+
+test('paperBlend: white edges melt into light paper (multiply), dark paper keeps the picture as it is', () => {
+  assert.equal(paperBlend('light'), 'multiply');
+  assert.equal(paperBlend('dark'), 'normal');
+  const css = paletteCss();
+  for (const p of PALETTES) assert.match(css, new RegExp(`:root\\[data-palette="${p.id}"\\]\\{[^}]*--paper-blend:${paperBlend(p.scheme)}`));
+  assert.match(css, /@media \(prefers-color-scheme: dark\)\{:root\{[^}]*--paper-blend:normal/);
 });
 
 test('paletteEventParams: the chosen palette, auto for anything else', () => {
