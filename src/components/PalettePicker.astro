@@ -1,0 +1,66 @@
+---
+// Colour switcher in the footer: "Automaticky" (light or dark by the system) and every palette of
+// scripts/lib/palettes.mjs as a small dot in its own paper colour. The choice is applied and remembered by the
+// inline script of Base.astro (window.pavlaPalette); this only shows the dots and passes the clicks on.
+import { AUTO, PALETTES, resolvePalette } from '../../scripts/lib/palettes.mjs';
+
+const light = resolvePalette(AUTO, false).colors;
+const dark = resolvePalette(AUTO, true).colors;
+const options = [
+  { id: AUTO, label: 'Automaticky (podle systému)', fill: `linear-gradient(135deg, ${light.paper} 50%, ${dark.paper} 50%)`, ring: light.line },
+  ...PALETTES.map((p) => ({ id: p.id, label: p.label, fill: p.colors.paper, ring: p.colors.line })),
+];
+---
+<!-- Hidden until the script below finds the switcher API: without JavaScript the dots could do nothing. -->
+<span class="palettes" role="group" aria-label="Barvy webu" data-palette-picker hidden>
+  <span class="caption" aria-hidden="true">Barvy</span>
+  {options.map((o) => (
+    <button
+      type="button"
+      class="dot"
+      data-palette-option={o.id}
+      aria-pressed="false"
+      aria-label={`Barvy webu: ${o.label}`}
+      title={o.label}
+      style={`--fill: ${o.fill}; --ring: ${o.ring}`}
+    ></button>
+  ))}
+</span>
+
+<style>
+  .palettes { display: inline-flex; align-items: center; gap: 7px; }
+  .caption { margin-right: 2px; }
+  .dot {
+    width: 16px; height: 16px; padding: 0; border-radius: 50%; cursor: pointer;
+    background: var(--fill); border: 1px solid var(--ring);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 18%, transparent);
+    transition: box-shadow .15s, transform .15s;
+  }
+  .dot:hover { transform: scale(1.15); }
+  .dot:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--ink); }
+  .dot[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--ink); }
+</style>
+
+<script>
+  // The inline script in <head> owns the choice; here the dots only reflect it and pass clicks on.
+  import { EVENTS, trackEvent } from '../../scripts/lib/analytics.mjs';
+  import { paletteEventParams } from '../../scripts/lib/palettes.mjs';
+
+  type Api = { get(): string; set(choice: string): void };
+  const api = (window as unknown as { pavlaPalette?: Api }).pavlaPalette;
+  const dots = [...document.querySelectorAll<HTMLButtonElement>('[data-palette-option]')];
+  function show(choice: string) {
+    for (const d of dots) d.setAttribute('aria-pressed', String(d.dataset.paletteOption === choice));
+  }
+  if (api) {
+    document.querySelector<HTMLElement>('[data-palette-picker]')?.removeAttribute('hidden');
+    show(api.get());
+    for (const d of dots) d.addEventListener('click', () => {
+      const choice = d.dataset.paletteOption!;
+      if (choice === api.get()) return;
+      api.set(choice);
+      trackEvent(EVENTS.palette, paletteEventParams(choice));
+    });
+    document.addEventListener('palettechange', (e) => show((e as CustomEvent<{ choice: string }>).detail.choice));
+  }
+</script>

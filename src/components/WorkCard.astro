@@ -26,7 +26,7 @@ const { work, eager, hidden } = Astro.props;
 </a>
 <style>
   .card { display: block; text-decoration: none; break-inside: avoid; margin-bottom: 36px; }
-  .card :global(picture) { box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px -12px rgba(0,0,0,.18); transition: transform .25s ease; }
+  .card :global(picture) { box-shadow: var(--shadow-soft); transition: transform .25s ease; }
   .card:hover :global(picture) { transform: translateY(-3px); }
   .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-top: 12px; }
   .title { font-family: var(--serif); font-size: 1.35rem; width: 100%; line-height: 1.2; }

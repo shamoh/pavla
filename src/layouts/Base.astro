@@ -4,6 +4,8 @@ import { analyticsId, messages, site, url, version, type ShareImage } from '../l
 import { gtagConfigScript, gtagSrc } from '../../scripts/lib/analytics.mjs';
 import { jsonLdText, summarize, verificationMeta } from '../../scripts/lib/seo.mjs';
 import { contactLink, pageContext } from '../../scripts/lib/messages.mjs';
+import { PALETTES, paletteCss, paletteScript } from '../../scripts/lib/palettes.mjs';
+import PalettePicker from '../components/PalettePicker.astro';
 
 /**
  * `type`: og:type ('article' for a work); `noindex`: a page search engines should leave out (404), without canonical;
@@ -35,6 +37,10 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Colour palette: the CSS of all palettes and the visitor's choice, applied before the first paint. -->
+    <meta name="theme-color" content={PALETTES[0].colors.paper} />
+    <style is:inline set:html={paletteCss()} />
+    <script is:inline set:html={paletteScript()} />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
@@ -85,13 +91,14 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
       </nav>
     </header>
     <main><slot /></main>
-    <footer class="site-footer">
+    <footer class:list={['site-footer', { 'with-launcher': withMessages }]}>
       <span>
         © {new Date().getFullYear()} {site.author}
         <!-- Build version: calendar versioning, the version is the build time (YY.MMDD.HHMM, Prague time). -->
         <span class="version">· <time datetime={version.iso} title={version.title}>{version.label}</time></span>
       </span>
       <span class="links">
+        <PalettePicker />
         {site.instagram && <a href={`https://www.instagram.com/${site.instagram}/`} rel="me">Instagram</a>}
         {site.fler && <a href={site.fler}>Fler</a>}
         {withMessages && <a href={url(contactLink(messageContext))} data-message-open="">Napsat k této stránce</a>}
@@ -114,24 +121,12 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
 
 <style is:global>
   [hidden] { display: none !important; }
+  /* Colours: the palettes in scripts/lib/palettes.mjs (inline in <head>, before this). */
   :root {
-    --paper: #f7f4ee;
-    --paper-2: #efeae0;
-    --ink: #2b2724;
-    --ink-soft: #6d655c;
-    --line: #ddd5c7;
-    --accent: #4f7a8a;
-    --ok: #4f7a5a;
     --serif: 'Cormorant Garamond', Georgia, serif;
     --sans: 'Work Sans', system-ui, sans-serif;
     --gutter: clamp(16px, 4vw, 48px);
     --max: 1320px;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --paper: #1c1a18; --paper-2: #252220; --ink: #ece6dc; --ink-soft: #a89f93;
-      --line: #3a3531; --accent: #8fb7c4; --ok: #93bf9c;
-    }
   }
   * { box-sizing: border-box; }
   input[type='checkbox'] { accent-color: var(--ink); }
@@ -166,7 +161,9 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
     border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
     font-size: 0.85rem; color: var(--ink-soft);
   }
-  .site-footer .links { display: flex; gap: 20px; }
+  .site-footer .links { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+  /* Room under the footer for the floating "Napište mi" launcher, so it never covers the footer links. */
+  .site-footer.with-launcher { padding-bottom: 88px; }
   .site-footer .version { opacity: 0.6; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
   .site-footer .version time { cursor: help; }
 

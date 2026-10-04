@@ -44,9 +44,9 @@ const href = crop && link ? crop.href : undefined;
 ) : null}
 {cover.kind === 'random' && cover.works.length > 1 && <script is:inline set:html={randomPickScript} />}
 <style>
-  .cover :global(picture) { box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 24px 48px -24px rgba(0,0,0,.3); }
+  .cover :global(picture) { box-shadow: var(--shadow-deep); }
   .cover .pick, .cover .frame { display: block; }
-  .cropped { aspect-ratio: var(--aspect); overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 24px 48px -24px rgba(0,0,0,.3); }
+  .cropped { aspect-ratio: var(--aspect); overflow: hidden; box-shadow: var(--shadow-deep); }
   .cropped .frame, .cropped :global(picture) { height: 100%; box-shadow: none; }
   .cropped :global(img) { width: 100%; height: 100%; object-fit: cover; object-position: var(--focus); }
 </style>

@@ -793,6 +793,34 @@ Návštěvník může napsat z každé stránky; zprávu doručí [Web3Forms](ht
   o náhledu; `/kontakt/` formulář na stránce; `/kontakt/?stranka=/tvorba/&nazev=Tvorba` souvislost „Ke stránce: Tvorba“.
   V DevTools → Console (úroveň Verbose) `[analytics] message_sent {…}`. Skutečné doručení jen na nasazeném webu.
 
+## Barvy webu (palety)
+
+Návštěvník si v patičce vybere barvy webu: **Automaticky** (podle světlého/tmavého režimu systému, výchozí),
+**Papír** (světlá), **Pergamen** (zažloutlý papír) nebo **Noc** (tmavá). Volba se pamatuje v `localStorage`
+(`pavla.palette`, nic uloženo = Automaticky) a platí na všech stránkách.
+
+- **Palety** jsou jen v `scripts/lib/palettes.mjs` (`PALETTES`): `id`, `label`, `scheme` (`light`/`dark`), osm barev
+  (`paper` pozadí, `paper2` plochy, `ink` text, `inkSoft` tlumený text, `line` linky, `accent` odkazy a zvýraznění,
+  `ok` „k prodeji“, `error` chyby formuláře) a `picture` (síla stínu obrazů `shadow`, 1 = jako na Papíru; `edge` =
+  jemná linka kolem obrazu na tmavém podkladu, jinak `null`). Z nich vznikne CSS (proměnné `--paper`, `--ink-soft`…,
+  `--shadow-soft` pro karty galerie, `--shadow-deep` pro úvodní obraz a dílo) i kroužky přepínače.
+  **Nová paleta = nový záznam v `PALETTES`**, nic dalšího.
+- **Automaticky** = první světlá paleta ve dne, první tmavá v tmavém režimu systému (a mění se s ním).
+- **Kontrola** (`checkPalettes`, test): každá paleta má všechny barvy jako `#rrggbb`, unikátní `id` (ne `auto`),
+  kladnou sílu stínu, a každá barva textu (`ink`, `inkSoft`, `accent`, `ok`, `error`) má proti `paper` kontrast
+  aspoň 4,5 : 1 (WCAG AA). Aspoň jedna světlá a jedna tmavá paleta. Nečitelná paleta neprojde `npm test`.
+- **Bez probliknutí**: CSS všech palet a malý skript (`paletteScript`) jsou vložené v `<head>` (`Base.astro`) před
+  vykreslením; skript nastaví `data-palette` (zobrazená paleta) a `data-palette-choice` (volba) na `<html>`
+  a barvu lišty prohlížeče (`theme-color`). Bez JavaScriptu rozhoduje systém a přepínač se neukáže.
+- **Přepínač**: `src/components/PalettePicker.astro` v patičce („Barvy“ a kroužky v barvě papíru palety, Automaticky
+  napůl světlý a tmavý), popisek při najetí myší; změna pošle událost `palette_change` (viz *Návštěvnost*).
+- Barvy, které se s paletou nemění: prohlížeč obrazů (zvětšení díla) je vždy tmavý; obrázky z pipeline (`og.jpg`,
+  mockupy, `apple-touch-icon.png`) mají světlý papír natvrdo.
+- Vyzkoušení: `npm run demo`, v patičce přepnout kroužky na úvodu, v `/tvorba/`, na detailu díla, `/kontakt/`
+  (formulář, chybová hláška po prázdném odeslání) a s otevřeným panelem „Napište mi“; volba zůstane po přechodu na
+  jinou stránku i po obnovení; „Automaticky“ se řídí režimem systému (macOS: Nastavení → Vzhled). V DevTools → Console
+  (Verbose) `[analytics] palette_change {"palette":"noc"}`.
+
 ## Lokální vyzkoušení
 
 Obě repa vedle sebe, v tomto repu jednou `npm ci`.
@@ -959,13 +987,14 @@ analytics:
   | `fler_click` | klik na „Koupit na Fleru“ u díla | `work_id`, `work_title` |
   | `email_click` | jen odkazy `mailto:`: klik na e-mailovou adresu na Kontaktu (kdo píše rovnou z pošty místo formuláře); bez formuláře zpráv i klik na „Napsat autorce“ u díla. Předmět e-mailu má stejný tvar jako odeslaná zpráva (`[pavla-web] Pozdrav nebo vzkaz`, u díla `[pavla-web] Dotaz na obraz: <název> (<id>)` / `Zájem o koupi: …`) | u díla `work_id`, `work_title`, na Kontaktu žádné |
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
+  | `palette_change` | návštěvník v patičce přepne barvy webu (jen skutečná změna, ne opakovaný klik na tutéž) | `palette` (`papir`, `pergamen`, `noc`, `auto`) |
 
   Tlačítka nesou `data-track="<událost>"`, `data-work-id` a `data-work-title`; posluchač kliků je v `Base.astro`,
   filtr v `WorkGallery.astro`. Nové tlačítko se sleduje přidáním stejných atributů a názvu do `EVENTS`.
 - **Jednorázově v GA** (bez toho se parametry v přehledech neukážou, jen počty událostí):
   *Administrátor → Vlastní definice → Vytvořit vlastní dimenzi*, rozsah **Událost**, pro každý parametr zvlášť:
   `tag` (Štítek), `technique` (Technika), `year` (Rok), `collection` (Kolekce), `status` (Stav filtru),
-  `featured` (Výběr autorky), `work_id` (ID díla), `work_title` (Název díla), `message_type` (Typ zprávy); a *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru,
+  `featured` (Výběr autorky), `work_id` (ID díla), `work_title` (Název díla), `message_type` (Typ zprávy), `palette` (Barvy webu); a *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru,
   jednotka Standardní). Data se v nich ukazují až od chvíle registrace, zpětně ne.
   Přehledy: *Přehledy → Zapojení → Události* (počty a proklik na parametry) nebo *Průzkum* (tabulka např.
   Událost × Technika).

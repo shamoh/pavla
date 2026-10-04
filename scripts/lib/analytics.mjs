@@ -45,6 +45,7 @@ export const EVENTS = {
   fler: 'fler_click', // work_id, work_title
   email: 'email_click', // the address on the contact page; "Napsat autorce" of a work (work_id, work_title) without messages
   message: 'message_sent', // message_type, work_id and work_title (a message about a work)
+  palette: 'palette_change', // palette: the chosen colours (papir, pergamen, noc, auto)
 };
 
 /** Parameters of gallery_filter: the active filters (empty ones left out) and how many works match. */

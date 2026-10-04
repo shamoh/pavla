@@ -142,6 +142,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   Anglicky je kód (názvy, komentáře, hlášky pipeline). Tohle záměrně přebíjí globální pravidlo „README anglicky“.
 - Texty na webu jsou česky, s diakritikou, ve 1. osobě autorky.
 - Minimalistický design: papírové tóny, serif nadpisy (Cormorant Garamond), Work Sans text. Obraz má vždy přednost před UI.
+- Barvy jen z palet (`scripts/lib/palettes.mjs`, Papír / Pergamen / Noc, volba v patičce): v CSS vždy proměnné
+  (`var(--paper)`, `var(--shadow-deep)`…), nikdy barva natvrdo; nová paleta = záznam v `PALETTES` (test hlídá kontrast).
 - Vodoznak pro Fler: jen jméno, nikdy URL ani @handle (pravidla Fleru).
 - Mockupy musí držet reálné měřítko podle `size_cm`.
 - Před commitem: `npm test`, `npm run build` a `npm run demo:build` musí projít; `npm run check:images` (a pro testovací
