@@ -1,0 +1,116 @@
+---
+// "Napište mi" on every page except the contact page: a small launcher in the bottom right corner and the message
+// panel above the page. The panel is compact (a few words, like a chat), can grow from the same corner for a longer
+// text, shrink back and minimize; it is always the same form, so the text is never lost. Looks and states:
+// scripts/lib/message-draft.mjs (PANEL_STATES), behaviour: src/lib/message-form.ts.
+import MessageForm from './MessageForm.astro';
+
+interface Props {
+  /** What this page is, for a message about it (scripts/lib/messages.mjs workContext / pageContext). */
+  context: object | null;
+}
+const { context } = Astro.props;
+---
+<div class="msg" data-message-panel data-context={JSON.stringify(context)} data-state="closed">
+  <button type="button" class="launcher" data-msg-launcher aria-haspopup="dialog" aria-controls="msg-panel" aria-expanded="false">
+    <svg class="pen" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4.5 19.5l1-4.2L16 4.8a1.6 1.6 0 0 1 2.3 0l.9.9a1.6 1.6 0 0 1 0 2.3L8.7 18.5l-4.2 1z" />
+      <path d="M14.5 6.3l3.2 3.2" />
+    </svg>
+    <span class="label" data-msg-launcher-label>Napište mi</span>
+    <span class="dot" aria-hidden="true"></span>
+  </button>
+  <p class="tip" data-msg-tip role="tooltip" hidden>Napište mi k této stránce – dotaz, vzkaz nebo chybu na webu.</p>
+
+  <section id="msg-panel" class="panel" role="dialog" aria-labelledby="msg-title" data-msg-panel hidden>
+    <header>
+      <h2 id="msg-title">Napište mi</h2>
+      <div class="tools">
+        <button type="button" data-msg-action="expand" aria-label="Zvětšit pro delší text" title="Zvětšit">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7" /></svg>
+        </button>
+        <button type="button" data-msg-action="shrink" aria-label="Zmenšit" title="Zmenšit">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10h-5V5M14 10l6-6M5 14h5v5M10 14l-6 6" /></svg>
+        </button>
+        <button type="button" data-msg-action="minimize" aria-label="Schovat, rozepsaný text zůstane" title="Schovat (text zůstane)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18h12" /></svg>
+        </button>
+        <button type="button" data-msg-action="close" aria-label="Zavřít" title="Zavřít">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </div>
+    </header>
+    <div class="confirm" data-msg-confirm hidden>
+      <span>Zahodit rozepsanou zprávu?</span>
+      <button type="button" class="link" data-msg-action="discard">Zahodit</button>
+      <button type="button" class="link" data-msg-action="keep">Psát dál</button>
+    </div>
+    <MessageForm variant="panel" />
+  </section>
+</div>
+
+<style>
+  .msg { --msg-edge: clamp(14px, 2.5vw, 28px); }
+  .launcher {
+    position: fixed; right: var(--msg-edge); bottom: var(--msg-edge); z-index: 40;
+    display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px 9px 13px;
+    font: 400 0.9rem/1 var(--sans); letter-spacing: 0.02em; color: var(--ink);
+    background: var(--paper); border: 1px solid var(--line); border-radius: 99px; cursor: pointer;
+    box-shadow: 0 6px 20px -10px rgb(0 0 0 / 0.35);
+    transition: transform .25s ease, opacity .25s ease, border-color .15s, background .15s;
+  }
+  .launcher:hover, .launcher:focus-visible { border-color: var(--ink); background: var(--paper-2); outline: none; }
+  .launcher .pen { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+  .launcher .dot { display: none; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .msg[data-state='minimized'] .launcher .dot { display: inline-block; }
+  .msg[data-state='compact'] .launcher, .msg[data-state='expanded'] .launcher { opacity: 0; pointer-events: none; transform: translateY(8px); }
+  .msg.tucked .launcher { transform: translateY(calc(100% + var(--msg-edge) + 8px)); }
+
+  .tip {
+    position: fixed; right: var(--msg-edge); bottom: calc(var(--msg-edge) + 52px); z-index: 40; margin: 0;
+    max-width: 240px; padding: 9px 13px; font-size: 0.82rem; line-height: 1.45; color: var(--paper);
+    background: var(--ink); border-radius: 6px; box-shadow: 0 6px 20px -10px rgb(0 0 0 / 0.4);
+  }
+  .tip::after { content: ''; position: absolute; right: 26px; bottom: -5px; width: 10px; height: 10px; background: inherit; transform: rotate(45deg); }
+
+  .panel {
+    position: fixed; right: var(--msg-edge); bottom: var(--msg-edge); z-index: 41;
+    display: flex; flex-direction: column; width: min(360px, calc(100vw - 2 * var(--msg-edge)));
+    max-height: calc(100dvh - 2 * var(--msg-edge)); padding: 14px 18px 16px;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: 0 18px 50px -18px rgb(0 0 0 / 0.4);
+    transition: width .25s ease, height .25s ease;
+  }
+  .msg[data-state='expanded'] .panel { width: min(620px, calc(100vw - 2 * var(--msg-edge))); height: min(78dvh, 720px); }
+  .panel header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .panel h2 { font-size: 1.45rem; margin: 0; }
+  .tools { display: flex; gap: 2px; margin-right: -6px; }
+  .tools button {
+    width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 6px;
+    background: transparent; color: var(--ink-soft); cursor: pointer;
+  }
+  .tools button:hover, .tools button:focus-visible { background: var(--paper-2); color: var(--ink); outline: none; }
+  .tools svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .msg[data-state='compact'] [data-msg-action='shrink'], .msg[data-state='expanded'] [data-msg-action='expand'] { display: none; }
+
+  .confirm {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; padding: 8px 12px;
+    font-size: 0.88rem; background: var(--paper-2); border-radius: 6px;
+  }
+  .confirm[hidden] { display: none; }
+  .confirm .link { border: 0; background: none; padding: 0; font: inherit; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+  /* Phones: the panel is a sheet from the bottom edge, a third of the screen or (expanded) almost all of it. */
+  @media (max-width: 640px) {
+    .launcher { padding: 12px; }
+    .launcher .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .msg[data-state='minimized'] .launcher .label { position: static; width: auto; height: auto; clip: auto; }
+    .msg[data-state='minimized'] .launcher { padding: 10px 14px 10px 12px; }
+    .tip { bottom: calc(var(--msg-edge) + 56px); }
+    .panel { right: 0; bottom: 0; width: 100%; border-radius: 14px 14px 0 0; border-bottom: 0; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+    .msg[data-state='expanded'] .panel { width: 100%; height: calc(100dvh - 40px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .launcher, .panel { transition: none; }
+  }
+</style>

@@ -9,6 +9,7 @@ import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
 import { HOME_TEXT } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
 import { measurementIdFor } from '../../scripts/lib/analytics.mjs';
+import { messagesSettings } from '../../scripts/lib/messages.mjs';
 import { execSync } from 'node:child_process';
 
 const root = process.cwd();
@@ -198,6 +199,14 @@ export const version = buildVersion(new Date(), currentCommit());
 
 /** Google Analytics measurement ID for this build, null when it must not measure (dev server, test data). */
 export const analyticsId = measurementIdFor(config.analytics, { production: import.meta.env.PROD, demo: Boolean(process.env.SITE_DATA_DIR) });
+
+/**
+ * Messages from visitors (scripts/lib/messages.mjs messagesSettings): `mode` 'live' = sent by Web3Forms, 'preview' = the
+ * test data without a key (the form works, nothing is sent), null = no form; the keys are public by design.
+ */
+export const messages = messagesSettings(config.messages, { demo: Boolean(process.env.SITE_DATA_DIR) }) as {
+  mode: 'live' | 'preview' | null; accessKey: string;
+};
 
 /** Years that have at least one published work, newest first. */
 /**

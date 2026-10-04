@@ -1,14 +1,21 @@
 ---
-import { analyticsId, site, url, version, type ShareImage } from '../lib/site';
+import MessagePanel from '../components/MessagePanel.astro';
+import { analyticsId, messages, site, url, version, type ShareImage } from '../lib/site';
 import { gtagConfigScript, gtagSrc } from '../../scripts/lib/analytics.mjs';
 import { jsonLdText, summarize, verificationMeta } from '../../scripts/lib/seo.mjs';
+import { contactLink, pageContext } from '../../scripts/lib/messages.mjs';
 
 /**
  * `type`: og:type ('article' for a work); `noindex`: a page search engines should leave out (404), without canonical;
  * `jsonLd`: structured data of the page (scripts/lib/seo.mjs graphLd), null for none.
+ * `message`: what a message from this page is about (scripts/lib/messages.mjs; default: the page by its title),
+ * `messagePanel`: false on the contact page, which has the form itself.
  */
-interface Props { title?: string; description?: string; image?: ShareImage; type?: 'website' | 'article'; noindex?: boolean; jsonLd?: object | null }
-const { title, description: own, image, type = 'website', noindex = false, jsonLd = null } = Astro.props;
+interface Props {
+  title?: string; description?: string; image?: ShareImage; type?: 'website' | 'article'; noindex?: boolean; jsonLd?: object | null;
+  message?: object | null; messagePanel?: boolean;
+}
+const { title, description: own, image, type = 'website', noindex = false, jsonLd = null, messagePanel = true } = Astro.props;
 const description = summarize(own || `${site.author} — ${site.tagline.toLowerCase()}.`);
 const fullTitle = title ? `${title} · ${site.title}` : `${site.title} — ${site.tagline}`;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
@@ -19,6 +26,9 @@ const nav = [
 ];
 const ogImage = image ? new URL(image.src, site.url).href : undefined;
 const canonical = new URL(Astro.url.pathname, site.url).href;
+// "Napište mi": the panel in the corner and the footer link (to the contact page without JavaScript).
+const withMessages = Boolean(messages.mode) && messagePanel;
+const messageContext = Astro.props.message !== undefined ? Astro.props.message : pageContext(Astro.url.pathname, title ?? site.title);
 ---
 <!doctype html>
 <html lang="cs">
@@ -84,8 +94,10 @@ const canonical = new URL(Astro.url.pathname, site.url).href;
       <span class="links">
         {site.instagram && <a href={`https://www.instagram.com/${site.instagram}/`} rel="me">Instagram</a>}
         {site.fler && <a href={site.fler}>Fler</a>}
+        {withMessages && <a href={url(contactLink(messageContext))} data-message-open="">Napsat k této stránce</a>}
       </span>
     </footer>
+    {withMessages && <MessagePanel context={messageContext} />}
   </body>
 </html>
 

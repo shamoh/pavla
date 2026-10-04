@@ -43,7 +43,8 @@ export function gtagConfigScript(id) {
 export const EVENTS = {
   filter: 'gallery_filter', // tag, technique, year, collection, status (only the active ones), results
   fler: 'fler_click', // work_id, work_title
-  email: 'email_click', // work_id, work_title
+  email: 'email_click', // the address on the contact page; "Napsat autorce" of a work (work_id, work_title) without messages
+  message: 'message_sent', // message_type, work_id and work_title (a message about a work)
 };
 
 /** Parameters of gallery_filter: the active filters (empty ones left out) and how many works match. */

@@ -2,10 +2,11 @@
 import Base from '../../../layouts/Base.astro';
 import Picture from '../../../components/Picture.astro';
 import Img from '../../../components/Img.astro';
-import { collectionUrl, detailCaption, getCollection, workShareImage, getWorks, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
+import { collectionUrl, detailCaption, getCollection, workShareImage, getWorks, messages, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
 import { isOnSale, wantsMockups } from '../../../../scripts/lib/works.mjs';
 import { EVENTS } from '../../../../scripts/lib/analytics.mjs';
 import { artworkLd, breadcrumbLd, graphLd, workDescription } from '../../../../scripts/lib/seo.mjs';
+import { defaultType, mailtoLink, workContext } from '../../../../scripts/lib/messages.mjs';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -14,7 +15,6 @@ export function getStaticPaths() {
 interface Props { work: Work; prev?: Work; next?: Work }
 const { work, prev, next } = Astro.props;
 const date = work.date.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
-const mail = site.email && `mailto:${site.email}?subject=${encodeURIComponent(`Zájem o obraz „${work.title}“`)}`;
 
 const collection = getCollection(work.collection);
 
@@ -40,6 +40,10 @@ const mockupsWide = mockups.every((m) => m.width >= m.height);
 // For search engines: the work as a work of art by the author, and where it lies on the site.
 const share = workShareImage(work);
 const path = `/tvorba/${work.year}/${work.key}/`;
+// A message from this page is about the work: a question, or interest in buying when it is for sale.
+const message = workContext({ ...work, onSale: isOnSale(work.status) }, path);
+// Without the form: an e-mail with the same subject as a message would have.
+const mail = site.email && mailtoLink(site.email, defaultType(message), message);
 const jsonLd = graphLd(
   artworkLd(work, site, { path, image: new URL(share.src, site.url).href }),
   breadcrumbLd(site, [
@@ -50,7 +54,7 @@ const jsonLd = graphLd(
   ]),
 );
 ---
-<Base title={work.title} description={workDescription(work, site)} image={share} type="article" jsonLd={jsonLd}>
+<Base title={work.title} description={workDescription(work, site)} image={share} type="article" jsonLd={jsonLd} message={message}>
   <p class="back"><a href={url('/tvorba/')}>← Tvorba</a> · <a href={url(`/tvorba/${work.year}/`)}>{work.year}</a></p>
   <article class="work">
     <a class="zoom" href={views[0].src} data-view="0" title="Zvětšit">
@@ -85,7 +89,8 @@ const jsonLd = graphLd(
       {work.status === 'available' && (
         <div class="actions">
           {work.fler && <a class="btn" href={work.fler} data-track={EVENTS.fler} data-work-id={work.id} data-work-title={work.title}>Koupit na Fleru</a>}
-          {mail && <a class="btn ghost" href={mail} data-track={EVENTS.email} data-work-id={work.id} data-work-title={work.title}>Napsat autorce</a>}
+          {messages.mode && <button type="button" class="btn ghost" data-message-open={defaultType(message)}>Zeptat se na obraz</button>}
+          {!messages.mode && mail && <a class="btn ghost" href={mail} data-track={EVENTS.email} data-work-id={work.id} data-work-title={work.title}>Napsat autorce</a>}
         </div>
       )}
       {mockups.length > 0 && (
@@ -192,6 +197,8 @@ const jsonLd = graphLd(
   .price { font-family: var(--serif); font-size: 1.5rem; }
   .actions { display: flex; flex-wrap: wrap; gap: 12px; }
   .btn.ghost { border-color: var(--line); }
+  button.btn { background: transparent; color: var(--ink); font: inherit; font-size: 0.92rem; cursor: pointer; }
+  button.btn:hover { background: var(--ink); color: var(--paper); }
   .tags { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.9rem; margin-top: 28px; }
   .tags a { color: var(--accent); text-decoration: none; }
   .mockups { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line); }

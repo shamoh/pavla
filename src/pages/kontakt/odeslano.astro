@@ -1,0 +1,18 @@
+---
+// After sending a message without JavaScript, Web3Forms brings the visitor here (the `redirect` field of MessageForm.astro,
+// SENT_PATH in scripts/lib/messages.mjs). With JavaScript the thanks are shown in the form itself.
+// Search engines leave it out (noindex), so it is not in the sitemap.
+import Base from '../../layouts/Base.astro';
+import { url } from '../../lib/site';
+---
+<Base title="Zpráva odeslána" description="Děkuji, zpráva je na cestě." noindex messagePanel={false}>
+  <section class="sent">
+    <p class="eyebrow">Kontakt</p>
+    <h1>Děkuji, zpráva je na cestě</h1>
+    <p>Ozvu se, jakmile to půjde.</p>
+    <p class="muted">Mezitím se můžete vrátit <a href={url('/tvorba/')}>k obrazům</a>, nebo <a href={url('/')}>na úvod</a>.</p>
+  </section>
+</Base>
+<style>
+  .sent { max-width: 38rem; padding: 32px 0 56px; }
+</style>

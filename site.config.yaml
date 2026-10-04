@@ -20,6 +20,12 @@ analytics:
   # ne `npm run dev` ani web z testovacích dat. Prázdné = bez statistik. Ukládá cookies _ga.
   googleMeasurementId: G-HPZNHYZ2MQ
 
+messages:
+  # Zprávy od návštěvníků (formulář na Kontaktu a panel „Napište mi“ na ostatních stránkách) posílá Web3Forms
+  # e-mailem. accessKey = klíč z web3forms.com (veřejný, říká jen, kam zprávu doručit). Prázdné = bez formuláře
+  # (Kontakt ukáže jen adresu). Web z testovacích dat ukáže vždy jen náhled, který nic neodesílá.
+  accessKey: 667747d9-fb8d-4d52-9af7-d622adef05a0
+
 gallery:
   pageSizes: [12, 24, 48]                # počty děl na stránku, které si návštěvník může vybrat; první je výchozí
 

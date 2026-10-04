@@ -751,6 +751,48 @@ jde do veřejné kopie `content/fotky/<název>.yaml` (spolu s `alt` a `caption`;
 obrázků) a na web jako CSS `object-position`. Bez `aspect` se fotka
 neořezává a `focus` nemá vliv.
 
+## Zprávy od návštěvníků (formulář, „Napište mi“)
+
+Návštěvník může napsat z každé stránky; zprávu doručí [Web3Forms](https://web3forms.com) e-mailem, web nemá server.
+
+- **Nastavení** v `site.config.yaml` → `messages`:
+  - `accessKey`: klíč Web3Forms (UUID; vznikne zadáním e-mailu na web3forms.com, je veřejný, říká jen, kam doručit).
+    Všechny zprávy jdou na tuto jednu adresu; třídění (např. přeposlání hlášení chyb) řeší filtr v poště.
+    Prázdný = žádný formulář: Kontakt ukáže jen adresy a u díla zůstane „Napsat autorce“ (`mailto:`).
+    Neplatný klíč (ne UUID) zastaví build chybou.
+- **Kontakt** (`/kontakt/`): formulář přímo na stránce, pod ním kontakty na jednom řádku.
+- **Ostatní stránky**: štítek „Napište mi“ vpravo dole (na telefonu jen ikona, při posouvání dolů se schová,
+  nahoru se vrátí); při první návštěvě záložky na pár vteřin vysvětlivka, jinak při najetí myší. Otevře panel:
+  - **malý** (výchozí, jako chat), **velký** (⤢, roste ze stejného rohu pro delší text, ⤡ zpět), **schovaný**
+    (—, štítek ukáže „Rozepsaná zpráva •“), **zavřený** (×; s textem se nejdřív zeptá „Zahodit rozepsanou zprávu?“).
+    Esc panel schová (s textem) nebo zavře. Na telefonu je panel spodní „šuplík“ (velký přes celou výšku).
+  - Je to vždy tentýž formulář, změnou velikosti se text neztratí.
+- **Souvislost**: zpráva nese stránku, odkud vznikla („K obrazu: Ovce (2026)“, „Ke stránce: Kolekce“), křížkem jde
+  odebrat. Do e-mailu jde předmět `[pavla-web] <typ>: <obraz (id) nebo stránka>`, adresa stránky a u obrazu jeho id.
+- **Typy zpráv** (`MESSAGE_TYPES`): Pozdrav nebo vzkaz · Dotaz na obraz · Zájem o koupi · Spolupráce, výstava, plenér ·
+  Chyba na webu · Něco jiného. Předvybraný: na detailu díla na prodej „Zájem o koupi“, jinak u díla „Dotaz na obraz“,
+  jinde „Pozdrav nebo vzkaz“. E-mail pro odpověď je povinný u dotazu na obraz a zájmu o koupi, jinak nepovinný.
+- **Detail díla**: tlačítko „Zeptat se na obraz“ otevře panel k tomuto obrazu (místo dřívějšího „Napsat autorce“).
+- **Rozepsaná zpráva** se drží v `sessionStorage` záložky (přechod na jinou stránku i obnovení stránky ji zachová,
+  zavření záložky ji smaže, nikam se neposílá); nese i souvislost, odkud začala, a velikost panelu.
+- **Po odeslání**: poděkování v panelu, koncept se smaže, panel se za 4 s schová; událost `message_sent` (GA).
+  Při chybě text zůstane a ukáže se e-mail `site.email` jako náhradní cesta.
+- **Bez JavaScriptu**: odkaz „Napsat k této stránce“ v patičce vede na Kontakt se souvislostí v adrese
+  (`/kontakt/?stranka=…&nazev=…&obraz=<id>`); formulář odešle přímo na Web3Forms a ti vrátí návštěvníka
+  na `/kontakt/odeslano/` (poděkování, `noindex`, není v mapě webu).
+- **Spam**: skryté pole `botcheck` (vyplní ho jen robot; zpráva se pak „odešle“ naoko a nic neodejde).
+- **Testovací data** (`npm run demo`, `npm run demo:build`): vždy jen **náhled**, i s vyplněným klíčem: formulář
+  funguje, ale nic neodešle a poděkování to řekne. Skutečný web posílá jen produkční build s klíčem.
+- Kód: `scripts/lib/messages.mjs` (typy, souvislost, předmět, kontrola, data pro Web3Forms, nastavení),
+  `scripts/lib/message-draft.mjs` (stavy panelu, koncept), `src/lib/message-form.ts` (chování v prohlížeči),
+  `src/components/MessageForm.astro`, `src/components/MessagePanel.astro`, zapojení v `Base.astro` (props `message`,
+  `messagePanel`), `src/pages/kontakt.astro`, `src/pages/kontakt/odeslano.astro`.
+- Vyzkoušení: `npm run demo`, na `/tvorba/` štítek vpravo dole, otevřít, napsat, ⤢ / ⤡ / —, přejít na jinou stránku
+  (štítek „Rozepsaná zpráva“, po otevření text i souvislost zůstanou), × → „Zahodit“; na `/tvorba/2025/demo-pivonky-vjr39/`
+  „Zeptat se na obraz“ (souvislost a „Zájem o koupi“, bez e-mailu nejde odeslat); odeslání ukáže poděkování s poznámkou
+  o náhledu; `/kontakt/` formulář na stránce; `/kontakt/?stranka=/tvorba/&nazev=Tvorba` souvislost „Ke stránce: Tvorba“.
+  V DevTools → Console (úroveň Verbose) `[analytics] message_sent {…}`. Skutečné doručení jen na nasazeném webu.
+
 ## Lokální vyzkoušení
 
 Obě repa vedle sebe, v tomto repu jednou `npm ci`.
@@ -915,14 +957,15 @@ analytics:
   |---|---|---|
   | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav); ne stránkování ani počet na stránku | aktivní filtry `tag`, `technique`, `year`, `collection`, `status`, `featured` (prázdné se neposílají) a `results` (kolik děl odpovídá) |
   | `fler_click` | klik na „Koupit na Fleru“ u díla | `work_id`, `work_title` |
-  | `email_click` | klik na „Napsat autorce“ u díla (jen když je v `site.email` adresa) | `work_id`, `work_title` |
+  | `email_click` | jen odkazy `mailto:`: klik na e-mailovou adresu na Kontaktu (kdo píše rovnou z pošty místo formuláře); bez formuláře zpráv i klik na „Napsat autorce“ u díla. Předmět e-mailu má stejný tvar jako odeslaná zpráva (`[pavla-web] Pozdrav nebo vzkaz`, u díla `[pavla-web] Dotaz na obraz: <název> (<id>)` / `Zájem o koupi: …`) | u díla `work_id`, `work_title`, na Kontaktu žádné |
+  | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
 
   Tlačítka nesou `data-track="<událost>"`, `data-work-id` a `data-work-title`; posluchač kliků je v `Base.astro`,
   filtr v `WorkGallery.astro`. Nové tlačítko se sleduje přidáním stejných atributů a názvu do `EVENTS`.
 - **Jednorázově v GA** (bez toho se parametry v přehledech neukážou, jen počty událostí):
   *Administrátor → Vlastní definice → Vytvořit vlastní dimenzi*, rozsah **Událost**, pro každý parametr zvlášť:
   `tag` (Štítek), `technique` (Technika), `year` (Rok), `collection` (Kolekce), `status` (Stav filtru),
-  `featured` (Výběr autorky), `work_id` (ID díla), `work_title` (Název díla); a *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru,
+  `featured` (Výběr autorky), `work_id` (ID díla), `work_title` (Název díla), `message_type` (Typ zprávy); a *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru,
   jednotka Standardní). Data se v nich ukazují až od chvíle registrace, zpětně ne.
   Přehledy: *Přehledy → Zapojení → Události* (počty a proklik na parametry) nebo *Průzkum* (tabulka např.
   Událost × Technika).

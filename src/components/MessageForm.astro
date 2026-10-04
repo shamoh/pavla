@@ -1,0 +1,126 @@
+---
+// The message form: inline on the contact page, inside the panel (MessagePanel.astro) everywhere else.
+// The same fields in both; src/lib/message-form.ts fills them from the draft and sends them.
+// Without JavaScript the live form posts straight to Web3Forms (the hidden fields below).
+import { messages, site, url } from '../lib/site';
+import { MESSAGE_TYPES, SENT_PATH, WEB3FORMS_URL } from '../../scripts/lib/messages.mjs';
+
+interface Props {
+  /** 'inline' on the contact page, 'panel' in the corner panel. */
+  variant: 'inline' | 'panel';
+}
+const { variant } = Astro.props;
+const id = (name: string) => `msg-${variant}-${name}`;
+const live = messages.mode === 'live';
+---
+<form
+  class:list={['msg-form', variant]}
+  method="post"
+  action={live ? WEB3FORMS_URL : undefined}
+  data-message-form={variant}
+  data-mode={messages.mode}
+  data-access-key={messages.accessKey}
+  data-site-title={site.title}
+  data-site-url={site.url}
+  data-site-email={site.email}
+  novalidate
+>
+  <div class="fields" data-msg-fields>
+    <p class="context" data-msg-context hidden>
+      <span data-msg-context-label></span>
+      <button type="button" class="remove" data-msg-context-remove aria-label="Zpráva se netýká této stránky" title="Netýká se této stránky">×</button>
+    </p>
+    <label class="field">
+      <span class="eyebrow">O čem píšete</span>
+      <select name="type" id={id('type')}>
+        {MESSAGE_TYPES.map((t) => <option value={t.id}>{t.label}</option>)}
+      </select>
+    </label>
+    <label class="field grow">
+      <span class="eyebrow">Zpráva</span>
+      <textarea name="message" id={id('text')} rows={variant === 'inline' ? 6 : 3} required placeholder={variant === 'panel' ? 'Pár slov stačí…' : undefined}></textarea>
+      <span class="error" data-error-for="text" aria-live="polite"></span>
+    </label>
+    <label class="field">
+      <span class="eyebrow">Váš e-mail <span class="hint" data-msg-email-hint>(abych mohla odpovědět)</span></span>
+      <input type="email" name="email" id={id('email')} autocomplete="email" inputmode="email" />
+      <span class="error" data-error-for="email" aria-live="polite"></span>
+    </label>
+    <!-- Robots fill every field; people never see this one. -->
+    <input type="checkbox" name="botcheck" class="trap" tabindex="-1" autocomplete="off" aria-hidden="true" />
+    {live && (
+      <>
+        <input type="hidden" name="access_key" value={messages.accessKey} />
+        <input type="hidden" name="subject" value="[pavla-web] Zpráva z webu" />
+        <input type="hidden" name="from_name" value={site.title} />
+        <!-- Without JavaScript Web3Forms shows its own page after sending; this brings the visitor back here. -->
+        <input type="hidden" name="redirect" value={new URL(url(SENT_PATH), site.url).href} />
+      </>
+    )}
+    <div class="send">
+      <button type="submit" class="btn">Odeslat</button>
+      <span class="status" data-msg-status aria-live="polite"></span>
+    </div>
+    <p class="privacy">
+      Zprávu doručí Web3Forms, použiji ji jen k odpovědi.
+    </p>
+  </div>
+  <div class="done" data-msg-done hidden tabindex="-1">
+    <p class="thanks">Děkuji, zpráva je na cestě.</p>
+    <p class="muted" data-msg-done-note></p>
+  </div>
+</form>
+
+<style>
+  .msg-form { display: flex; flex-direction: column; gap: 0; }
+  .fields { display: flex; flex-direction: column; gap: 18px; }
+  .panel .fields { gap: 12px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .hint { text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
+  select, textarea, input[type='email'] {
+    font: inherit; font-size: 1rem; color: var(--ink); background: transparent;
+    border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 6px 0; width: 100%;
+    transition: border-color .15s;
+  }
+  textarea { resize: vertical; min-height: 4.8em; line-height: 1.5; }
+  select { appearance: none; padding-right: 22px; cursor: pointer;
+    background: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%) right 8px center / 5px 5px no-repeat,
+      linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%) right 3px center / 5px 5px no-repeat; }
+  select option { background: var(--paper); color: var(--ink); }
+  select:focus, textarea:focus, input:focus { outline: none; border-bottom-color: var(--ink); }
+  select:focus-visible, textarea:focus-visible, input:focus-visible { box-shadow: 0 1px 0 0 var(--ink); }
+  .error { color: #a4513c; font-size: 0.85rem; min-height: 0; }
+  .error:empty { display: none; }
+  .trap { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  .send { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+  .send .btn { background: transparent; color: var(--ink); font: inherit; font-size: 0.92rem; cursor: pointer; }
+  .send .btn:hover { background: var(--ink); color: var(--paper); }
+  .send .btn:disabled { opacity: 0.5; cursor: progress; }
+  .status { font-size: 0.85rem; color: var(--ink-soft); }
+  .privacy { font-size: 0.78rem; color: var(--ink-soft); margin: 0; }
+  .context {
+    display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; margin: 0;
+    font-size: 0.82rem; color: var(--ink-soft); background: var(--paper-2); border-radius: 99px; padding: 3px 4px 3px 12px;
+  }
+  .context .remove {
+    border: 0; background: transparent; color: inherit; font: inherit; font-size: 1rem; line-height: 1;
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+  }
+  .context .remove:hover { background: var(--line); color: var(--ink); }
+  .done { padding: 8px 0; outline: none; }
+  .thanks { font-family: var(--serif); font-size: 1.6rem; margin: 0 0 6px; }
+  .inline .thanks { font-size: 2rem; }
+
+  /* Panel: the message field takes what the panel gives it, so the expanded panel is mostly for writing. */
+  .panel { flex: 1; min-height: 0; }
+  .panel .fields { flex: 1; min-height: 0; }
+  .panel .grow { flex: 1; min-height: 0; }
+  .panel textarea { flex: 1; resize: none; }
+  .panel .privacy { font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+
+<script>
+  // One script for every form on the page: the panel (if the page has it) and the inline form of the contact page.
+  import { mountMessages } from '../lib/message-form';
+  mountMessages();
+</script>

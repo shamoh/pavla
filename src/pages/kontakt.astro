@@ -1,8 +1,11 @@
 ---
 import Base from '../layouts/Base.astro';
 import Photo from '../components/Photo.astro';
-import { site } from '../lib/site';
+import MessageForm from '../components/MessageForm.astro';
+import { messages, site } from '../lib/site';
 import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
+import { EVENTS } from '../../scripts/lib/analytics.mjs';
+import { mailtoLink } from '../../scripts/lib/messages.mjs';
 
 const description = 'Zaujal vás obraz, nebo jen chcete pozdravit? Napište mi – a když se vám některý obraz zalíbí, domluvíme se. Žiji a maluji v Roztokách.';
 // For search engines: the contact page of the author.
@@ -11,13 +14,14 @@ const jsonLd = graphLd(
   breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Kontakt', path: '/kontakt/' }]),
 );
 ---
-<Base title="Kontakt" description={description} jsonLd={jsonLd}>
+<Base title="Kontakt" description={description} jsonLd={jsonLd} messagePanel={false}>
   <div class="contact-page">
     <div>
       <h1>Kontakt</h1>
       <p>Zaujal vás obraz nebo jen chcete pozdravit?</p>
-      <ul class="contact">
-        {site.email && <li><span class="eyebrow">E-mail</span><a href={`mailto:${site.email}`}>{site.email}</a></li>}
+      {messages.mode && <MessageForm variant="inline" />}
+      <ul class:list={['contact', { compact: messages.mode }]}>
+        {site.email && <li><span class="eyebrow">E-mail</span><a href={mailtoLink(site.email, 'greeting', null)} data-track={EVENTS.email}>{site.email}</a></li>}
         {site.instagram && <li><span class="eyebrow">Instagram</span><a href={`https://www.instagram.com/${site.instagram}/`} rel="me">@{site.instagram}</a></li>}
         {site.fler && <li><span class="eyebrow">Obchůdek</span><a href={site.fler}>Fler</a></li>}
         {site.location && <li><span class="eyebrow">Žiji a maluji</span><span class="value">{site.location}</span></li>}
@@ -33,5 +37,9 @@ const jsonLd = graphLd(
   @media (max-width: 800px) { .contact-page { grid-template-columns: 1fr; } }
   .contact { list-style: none; padding: 0; margin: 40px 0 0; display: grid; gap: 28px; }
   .contact li { display: flex; flex-direction: column; gap: 4px; }
+  .contact-page :global(.msg-form) { margin-top: 32px; max-width: 34rem; }
+  /* Under the form the addresses are one quiet line, so they do not outshout it. */
+  .contact.compact { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 14px 32px; }
+  .contact.compact a, .contact.compact .value { font-size: 1.25rem; }
   .contact a, .contact .value { font-family: var(--serif); font-size: 1.7rem; text-decoration: none; }
 </style>
