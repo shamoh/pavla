@@ -70,6 +70,8 @@ jobs:
           path: .previews/
           retention-days: 14
           if-no-files-found: ignore
+          # the folder starts with a dot: upload-artifact skips such "hidden" files unless asked to (only previews in it)
+          include-hidden-files: true
 
       - name: Pipeline as on main
         run: npm run images -- --demo
