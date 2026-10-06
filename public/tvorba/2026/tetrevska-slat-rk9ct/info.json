@@ -1,13 +1,13 @@
 {
-  "width": 2327,
-  "height": 3233,
+  "width": 2370,
+  "height": 3277,
   "widths": [
     480,
     960,
     1600,
-    2327
+    2370
   ],
-  "dominant": "rgb(152,168,168)",
+  "dominant": "rgb(168,168,168)",
   "transparent": true,
   "mockups": [
     {
@@ -52,5 +52,5 @@
     "width": 1200,
     "height": 800
   },
-  "fingerprint": "4287652eac2aaccd"
+  "fingerprint": "4527167dab4202b4"
 }
