@@ -54,7 +54,7 @@ import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
-import { cutOut, prepareCorners, previewOf } from './lib/corners.mjs';
+import { cutOut, prepareCorners, previewOf, trimTransparent } from './lib/corners.mjs';
 import { EDGE_DEFAULTS, cutsSheet, edgeLook, innerRegion } from './lib/edges.mjs';
 import { PALETTES } from './lib/palettes.mjs';
 import { formatSummary } from './lib/summary.mjs';
@@ -63,7 +63,7 @@ import {
 } from './lib/works.mjs';
 
 /** Bump when the output format changes, so every work is regenerated once. */
-const PIPELINE_VERSION = 7;
+const PIPELINE_VERSION = 8;
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -92,16 +92,26 @@ async function writeIfChanged(file, text) {
 // `sheet`: where the bare paper lies when the master also shows its surroundings (XMP written by
 // `npm run straighten`, see scripts/lib/sheet-box.mjs); null for a master that is the sheet itself.
 // `corners` (meta_corners of a work, scripts/lib/edges.mjs): everything outside them becomes transparent, fading in
-// over `edges.feather`; then `buf` is a PNG with alpha and `transparent` is true.
+// over `edges.feather`, and the image is trimmed to the smallest rectangle holding the whole cut work
+// (trimTransparent: no transparent surroundings along a straight side); then `buf` is a PNG with alpha,
+// `transparent` is true, `width`/`height` are those of the trimmed image, `full` the size of the photo and `offset`
+// where the trimmed image lies in it (corners and the XMP sheet are in the photo's coordinates).
 async function loadMaster(input, { corners, edges } = {}) {
   let buf = await sharp(input).rotate().toColorspace('srgb').toBuffer();
   const meta = await sharp(buf).metadata();
   const sheet = parseSheetXmp((await sharp(input).metadata()).xmp);
   const transparent = cutsSheet(corners);
-  if (transparent) buf = await cutOut(buf, corners, edges);
+  const full = { width: meta.width, height: meta.height };
+  let offset = { left: 0, top: 0 }, size = full;
+  if (transparent) {
+    const trimmed = await trimTransparent(await cutOut(buf, corners, edges));
+    buf = trimmed.buf;
+    offset = { left: trimmed.left, top: trimmed.top };
+    size = { width: trimmed.width, height: trimmed.height };
+  }
   // the bare sheet of the mockups stays as far from the edge as the cut (at least 2 px: a JPEG bleeds at an edge)
   const inset = Math.max(2, Math.round((edges?.inset ?? EDGE_DEFAULTS.inset) * Math.min(meta.width, meta.height)));
-  return { buf, width: meta.width, height: meta.height, sheet, corners: transparent ? corners : null, transparent, inset };
+  return { buf, ...size, full, offset, sheet, corners: transparent ? corners : null, transparent, inset };
 }
 
 /**
@@ -110,13 +120,16 @@ async function loadMaster(input, { corners, edges } = {}) {
  * else the whole master.
  */
 function mockupSource(m) {
+  // both regions are in the photo's coordinates; the buffer may be trimmed (m.offset)
   const regions = [
-    m.corners && innerRegion(m.corners, m.width, m.height, m.inset),
-    m.sheet && boxRegion(m.sheet, m.width, m.height),
+    m.corners && innerRegion(m.corners, m.full.width, m.full.height, m.inset),
+    m.sheet && boxRegion(m.sheet, m.full.width, m.full.height),
   ].filter(Boolean);
   if (!regions.length) return m.buf;
-  const left = Math.max(...regions.map((r) => r.left)), top = Math.max(...regions.map((r) => r.top));
-  const right = Math.min(...regions.map((r) => r.left + r.width)), bottom = Math.min(...regions.map((r) => r.top + r.height));
+  const left = Math.max(0, Math.max(...regions.map((r) => r.left)) - m.offset.left);
+  const top = Math.max(0, Math.max(...regions.map((r) => r.top)) - m.offset.top);
+  const right = Math.min(m.width, Math.min(...regions.map((r) => r.left + r.width)) - m.offset.left);
+  const bottom = Math.min(m.height, Math.min(...regions.map((r) => r.top + r.height)) - m.offset.top);
   return sharp(m.buf).extract({ left, top, width: Math.max(1, right - left), height: Math.max(1, bottom - top) }).removeAlpha().toBuffer();
 }
 

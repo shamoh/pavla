@@ -91,11 +91,15 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Ořez podlahy: `meta_corners` díla (`photo` + rohy `tl`/`tr`/`br`/`bl` v px dovnitř, `false` = neořezávat) najde
   pipeline u každého díla s fotkou bez atributu (i zveřejněného, i `--prepare-only`; `scripts/lib/corners.mjs`,
   detekce a maska `scripts/lib/edges.mjs`), ruční hodnotu nikdy nepřepíše, jiný rozměr fotky = chyba. Vně rohů
-  průhledné s prolnutím (`images.edges`): web AVIF/WebP průhledné (`transparent` v `info.json`, třída `cutout`:
+  průhledné s prolnutím (`images.edges`) a obrázek oříznutý na nejmenší obdélník s celým listem (`trimTransparent`;
+  mockup přepočítá rohy i `pavla:sheet` o posun `offset`): web AVIF/WebP průhledné (`transparent` v `info.json`, třída `cutout`:
   bez `--ph`, stín jen `filter: var(--drop-…)`, nikdy `box-shadow`), JPEG na papíře první palety, og/Instagram na
   svém pozadí, Fler bílá, mockup jen vnitřní obdélník (průnik s `pavla:sheet`). Náhledy ořezu draftů do
   `.previews/` (mimo git), workflow obsahového repa i `dry-run.yml` je nahrají jako artefakt `nahledy-orezu`.
-  `npm run preview -- <fotka|složka>` (`scripts/preview.mjs`): tentýž náhled pro libovolné fotky, obsah jen čte,
+  `npm run preview -- <fotka|složka>` (`scripts/preview.mjs`): tentýž náhled (`<slug>-<id>.jpg`) + samotný ořez s
+  průhledností (`<slug>-<id>.png`, oříznutý jako web, max. 1600 px, čáry 1, 3, 5 a 10 % od krajů ve čtyřech barvách, v rozích jejich poloha v px fotky jako `meta_corners`; čáry z `images.edges.guides`) + `<slug>-<id>-original.jpg`
+  (fotka v plné velikosti, odstraněné a průhledné šrafované, zeleně hranice plné neprůhlednosti, růžově hranice oříznutého obrázku, uprostřed panel: schéma,
+  rozměry, odstraněno celkem / z rohů / z inset a prolnutí, nastavení, použité `meta_corners`) pro libovolné fotky, obsah jen čte,
   chybějící rohy najde a vypíše jako yaml; `--write` je zapíše jen do popisů zadaných fotek bez `meta_corners`.
   Náhled i výpis ukazují ořez rohů v % fotky, nad `images.edges.suspicious` (5 %) červeně / `!`, na konci výpisu souhrn podezřelých fotek;
   `--only-suspicious` = jen podezřelé (ne s `--write`). Souhrn běhu („Nalezené rohy listu“) značí podezřelé `⚠`. Originální fotky obsahového repa pipeline nikdy nemění.

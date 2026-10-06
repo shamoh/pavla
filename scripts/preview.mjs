@@ -15,16 +15,18 @@
 //
 // For every photo: the corners from meta_corners of its description (<slug>.yaml next to it); without them (or
 // with corners of another photo) the corners are detected and printed as YAML, ready to be copied into the
-// description. Then the same preview as the pipeline makes for drafts: <out>/<slug>.jpg, the result on light
-// and dark paper side by side, with a thin line along the corners and how much each corner cuts (% of the photo,
-// red above images.edges.suspicious); the same shares are printed, "!" marks a suspicious corner, and at the end
+// description. Then two files, named <slug>-<id> like the work's folder on the site: <out>/<slug>-<id>.jpg, the same
+// preview as the pipeline makes for drafts, the result on light and dark paper side by side, with a thin line along the corners and how much each corner cuts (% of the photo,
+// red above images.edges.suspicious), and <out>/<slug>-<id>.png, the cut work alone with its transparent
+// surroundings (at most 1600 px wide), and <out>/<slug>-<id>-original.jpg, the original photo in its full size with what
+// the cut removes or makes transparent lightly hatched; the same shares are printed, "!" marks a suspicious corner, and at the end
 // the photos with a suspicious corner are listed once more. Settings: images.edges in site.config.yaml.
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import YAML from 'yaml';
-import { cornersYaml, detectFile, masterSize, previewOf, withCorners } from './lib/corners.mjs';
+import { cornersYaml, cutImageOf, detectFile, guidesProblems, hatchedOriginalOf, masterSize, previewOf, withCorners } from './lib/corners.mjs';
 import { CORNER_KEYS, EDGE_DEFAULTS, cornerShares, cornersProblems, cutsSheet, percent } from './lib/edges.mjs';
 import { IMAGE_EXTENSIONS, slugify, splitExt } from './lib/works.mjs';
 
@@ -53,14 +55,14 @@ export async function listMasters(target) {
 /**
  * Corners of one master: from its description when they fit the photo, otherwise detected.
  * Returns { value, source: 'yaml' | 'off' | 'detected', note, yamlPath, text (of the description, null without one),
- * writable (detected for a description without meta_corners: --write may add them) }.
+ * id (of the work, null without one), writable (detected for a description without meta_corners: --write may add them) }.
  */
 export async function cornersFor(photo, search = EDGE_DEFAULTS.search) {
   const yamlPath = path.join(path.dirname(photo), `${slugify(splitExt(path.basename(photo)).base)}.yaml`);
   const text = await fs.readFile(yamlPath, 'utf8').catch(() => null);
   const data = text === null ? null : YAML.parse(text) ?? {};
   const own = data?.meta_corners;
-  const base = { yamlPath, text, writable: false };
+  const base = { yamlPath, text, writable: false, id: data?.id ?? null };
   if (own === false) return { ...base, value: false, source: 'off', note: 'meta_corners: false, nothing is cut' };
   if (own !== undefined) {
     const { width, height } = await masterSize(photo);
@@ -122,6 +124,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     if (args.includes('--out') && !opt('--out')) throw new Error('--out needs a folder');
     const config = YAML.parse(await fs.readFile(path.join(siteRoot, 'site.config.yaml'), 'utf8'));
     const edges = { ...EDGE_DEFAULTS, ...config.images?.edges };
+    const wrong = guidesProblems(edges.guides);
+    if (wrong.length) throw new Error(wrong[0]);
     const outDir = path.resolve(cwd, opt('--out') ?? path.join(siteRoot, '.previews'));
     const photos = await listMasters(path.resolve(cwd, target));
     if (!photos.length) throw new Error(`no photos in ${target}`);
@@ -137,12 +141,17 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         if (!onlySuspicious) console.log(`· ${rel}: ${note}\n`);
         continue;
       }
-      const name = `${slugify(splitExt(path.basename(photo)).base)}.jpg`;
+      // <slug>-<id> like the work's folder on the site (just <slug> before the work has an id)
+      const key = [slugify(splitExt(path.basename(photo)).base), found.id].filter(Boolean).join('-');
+      const name = `${key}.jpg`;
       const doubtful = cutsSheet(value) && cornerShares(value, edges.suspicious).suspicious.length > 0;
       if (onlySuspicious && !doubtful) continue;
       await fs.writeFile(path.join(outDir, name), await previewOf(photo, value, edges));
+      await fs.writeFile(path.join(outDir, `${key}.png`), await cutImageOf(photo, value, edges));
+      await fs.writeFile(path.join(outDir, `${key}-original.jpg`), await hatchedOriginalOf(photo, value, edges));
       console.log(`→ ${rel}: ${note}${cutsSheet(value) ? '' : ' (the sheet fills the photo, nothing is cut)'}`);
-      console.log(`  preview: ${path.relative(cwd, path.join(outDir, name))}`);
+      const shown = (f) => path.relative(cwd, path.join(outDir, f));
+      console.log(`  preview: ${shown(name)} (light and dark), ${shown(`${key}.png`)} (transparent), ${shown(`${key}-original.jpg`)} (original, cut hatched)`);
       if (cutsSheet(value)) {
         console.log(`  cut (% of the photo, ! = more than ${percent(edges.suspicious)}): ${sharesLine(value, edges.suspicious)}`);
         if (doubtful) flagged.push({ rel, name, value });

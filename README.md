@@ -1110,7 +1110,10 @@ kalendářní verzování (CalVer): verze **je** čas, kdy se web sestavil, ve f
 Fotka obrazu bývá trochu křivá a kolem listu je vidět podlaha (nebo okraj podkladu, který nechává
 `npm run straighten`). Pipeline proto **najde čtyři rohy listu** a všechno vně čtyřúhelníku mezi nimi
 **na webu zprůhlední**: obraz pak leží přímo na papíru stránky, v každé paletě (Papír, Pergamen, Noc).
-Výsledek nemusí být obdélník, kopíruje skutečný (pootočený, zkosený) list.
+Výsledek nemusí být obdélník, kopíruje skutečný (pootočený, zkosený) list. Obrázek se pak **zmenší na nejmenší
+obdélník, ve kterém je celý list** (`trimTransparent` v `scripts/lib/corners.mjs`): z obrazu nic neubude a průhledný
+okraj zůstane jen tam, kde ho šikmý list potřebuje (podél rovné strany žádný, u pootočeného listu klíny v rozích).
+Rozměry v `info.json` jsou rozměry oříznutého obrázku.
 
 **Rohy v popisu díla** (`meta_corners`, jen obsahové repo, do veřejné kopie se nekopíruje):
 
@@ -1146,7 +1149,9 @@ přímek. Roh mimo fotku (list pokračuje za její okraj) = 0, roh dál než čt
 o kousek víc, `feather` (výchozí 1 %) je šířka pásu podél hrany, ve kterém list plynule přechází do průhlednosti
 (maska `maskSvg`, `cutOut` v `scripts/lib/corners.mjs`). Změna těchto dvou hodnot přegeneruje díla s rohy (`edgeLook`).
 `search` (jak daleko od okraje fotky hledat hranu, výchozí 10 %) a `suspicious` (od kolika procent je ořez rohu
-v náhledech podezřelý, výchozí 5 %) obrázky nemění, takže nic nepřegenerují.
+v náhledech podezřelý, výchozí 5 %) obrázky nemění, takže nic nepřegenerují; stejně tak
+`guides` (vzdálenosti čar v náhledu ořezu od krajů, 1–4 podíly, výchozí `[0.01, 0.03, 0.05, 0.1]`, jinak
+`npm run preview` skončí chybou).
 
 **Kde se co použije:**
 
@@ -1187,7 +1192,8 @@ npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s po
 
   ```
   → ../obsah/tvorba/rano-u-rybnika.jpg: no meta_corners in rano-u-rybnika.yaml, detected
-    preview: .previews/rano-u-rybnika.jpg
+    preview: .previews/rano-u-rybnika-k3f9a.jpg (light and dark), .previews/rano-u-rybnika-k3f9a.png (transparent),
+             .previews/rano-u-rybnika-k3f9a-original.jpg (original, cut hatched)
     cut (% of the photo, ! = more than 5.0 %): tl 2.5 % · 1.7 %, tr 0.7 % · 2.3 %, br 1.1 % · 1.6 %, bl 1.0 % · 1.4 %
     meta_corners:
       photo: [3673, 2785]
@@ -1208,8 +1214,25 @@ npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s po
   nic jiného v souboru se nezmění). Jen do popisu, který `meta_corners` ještě nemá: ruční hodnotu, `false`
   ani rohy jiné fotky nepřepíše (vypíše „not written: … already has meta_corners“), fotce bez popisu ho nezaloží
   (to udělá pipeline i s rohy). Na konci vypíše, do kolika popisů zapsal.
-- Náhled je stejný jako u pipeline (`previewOf` v `scripts/lib/corners.mjs`, nastavení `images.edges`):
-  `<out>/<slug>.jpg`, pro každé dílo bez ohledu na `meta_draft`. `meta_corners: false` náhled nemá. Plný běh
+- Pro každé dílo (bez ohledu na `meta_draft`) vzniknou tři soubory pojmenované `<slug>-<id>` jako složka díla na webu
+  (dílo bez `id` jen `<slug>`): `<out>/<slug>-<id>.jpg` je stejný náhled jako u pipeline (`previewOf` v
+  `scripts/lib/corners.mjs`, nastavení `images.edges`; světlé a tmavé pozadí, čára rohů, procenta ořezu) a
+  `<out>/<slug>-<id>.png` je samotné ořezané dílo s průhledným okolím, oříznuté na list jako na webu, nejvýš 1600 px
+  široké, se čtyřmi rámečky čar 1 % (zelená), 3 % (tyrkysová), 5 % (žlutá) a 10 % (růžová) od každého kraje obrázku
+  (vzdálenosti z `images.edges.guides`, barvy a rohy `GUIDE_STYLES`, `gridSvg`, `cutImageOf`). V každém rohu je popisek v barvě jednoho z nich: kde se jeho čáry křižují
+  v **pixelech původní fotky** od jejího rohu, tedy v jednotkách `meta_corners` (`1,0 %: tl [80, 80] px` vlevo nahoře,
+  `3,0 %: tr […] px` vpravo nahoře, `5,0 %: bl […] px` vlevo dole, `10,0 %: br […] px` vpravo dole; `guideDistances`;
+  započítaná je i odříznutá podlaha): hodnotu jde zkopírovat do daného rohu `meta_corners`, aby ořez vedl po té čáře.
+  Třetí soubor `<out>/<slug>-<id>-original.jpg` je původní fotka v plné velikosti, na které je růžově zlehka šrafované
+  všechno, co ořez odstraní nebo zprůhlední (v pásu prolnutí šrafování slábne podle toho, jak list nabírá
+  neprůhlednost), světle zelenou čarou vnitřní hranice šrafování (odtud je list plně neprůhledný; obkreslená podle
+  masky, `edgeOverlay`), plnou růžovou čarou hranice oříznutého obrázku (kde obrázek na webu končí) a uprostřed panel
+  (`infoPanelSvg`, `cutInfo`): schéma fotky (odstraněná část červeně šrafovaná, oříznutý obrázek, čtyřúhelník rohů
+  tečkovaně) a pod ním rozměr fotky, rozměr obrázku po ořezu, kolik se odstranilo z každé strany celkem, z toho rohy
+  (menší ze dvou rohů dané strany) a z toho `inset` a prolnutí (`removedSides`), nastavení `inset` a `feather` v %
+  i px s vysvětlením prolnutí a `meta_corners`, ze kterých obrázek vznikl (`hatchedOriginalOf`). To vše proto, aby šlo
+  ořez prohlédnout na jakémkoli pozadí. Soubory se při každém spuštění přepíšou; prohlížeč obrázků (Náhled na Macu)
+  může ukazovat starou verzi, dokud soubor znovu neotevřeš. `meta_corners: false` náhled nemá. Plný běh
   `npm run images` složku `.previews/` vyprázdní (nechá v ní jen náhledy draftů).
 
 **Vyzkoušení:** `npm run demo` (testovací data mají list vyfocený nakřivo na podlaze, viz *Testovací data*),

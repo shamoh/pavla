@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
-import { cornersYaml, cutOut, cutPreview, describeCorners, detectFile, masterSize, prepareCorners, previewOf, withCorners } from './corners.mjs';
+import { cornersYaml, cutImageOf, cutOut, cutPreview, describeCorners, cutInfo, edgeOverlay, GUIDES, guideDistances, guideLabelsSvg, guidesOf, guidesProblems, hatchedOriginalOf, infoPanelSvg, removedSides, trimTransparent, detectFile, masterSize, prepareCorners, previewOf, withCorners } from './corners.mjs';
 
 let tmp;
 beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-corners-')); });
@@ -188,4 +188,175 @@ test('prepareCorners: a suspicious detected cut is marked in the summary, with t
   assert.match((await prepareCorners(tmp, works, { suspicious: 0.01 })).detected[0], /⚠ PODEZŘELÝ ořez \(víc než 1,0 %\)/);
   const again = [await work('vecer', 'meta_draft: true\nid: m7q2x\n')];
   assert.doesNotMatch((await prepareCorners(tmp, again, { suspicious: 0.1 })).detected[0], /PODEZŘELÝ/);
+});
+
+test('cutImageOf: the cut work trimmed like the site gets it, PNG with alpha, at most 1600 px wide, lines 1, 3, 5 and 10 % in', async () => {
+  // big enough that the info panel in the middle leaves the lines near the borders free
+  const file = path.join(tmp, 'c.jpg');
+  await floorPhoto(file, 1200, 900, SHEET.map(([x, y]) => [x * 3, y * 3]));
+  const value = await detectFile(file);
+  const png = await cutImageOf(file, value);
+  const meta = await sharp(png).metadata();
+  assert.deepEqual([meta.format, meta.hasAlpha], ['png', true]);
+  // the sheet spans x 54–1128, y 48–852 of the photo: trimmed to it (never enlarged)
+  assert.ok(meta.width >= 1050 && meta.width <= 1086 && meta.height >= 780 && meta.height <= 816, `${meta.width}×${meta.height}`);
+  const { data, info } = await sharp(png).raw().toBuffer({ resolveWithObject: true });
+  const at = (x, y) => [...data.subarray((y * info.width + x) * 4, (y * info.width + x) * 4 + 4)];
+  // a line of each guide in from the left and the right, between the corner labels and the info panel in the middle
+  const colour = { '#00ff66': [0, 255, 102], '#00e5ff': [0, 229, 255], '#ffe600': [255, 230, 0], '#ff00cc': [255, 0, 204] };
+  const like = (p, hex) => p[3] > 150 && colour[hex].every((c, i) => Math.abs(p[i] - c) < 70);
+  const y = Math.round(info.height * 0.12);
+  for (const [share, hex] of [[0.01, '#00ff66'], [0.03, '#00e5ff'], [0.05, '#ffe600'], [0.1, '#ff00cc']]) {
+    assert.ok(like(at(Math.round(info.width * share), y), hex), `${share * 100} % in from the left`);
+    assert.ok(like(at(Math.min(info.width - 1, Math.round(info.width * (1 - share))), y), hex), `${share * 100} % in from the right`);
+    assert.ok(like(at(Math.round(info.width * 0.45), Math.round(info.height * share)), hex), `${share * 100} % in from the top`);
+  }
+  assert.ok(!like(at(Math.round(info.width * 0.15), y), '#ff00cc'), 'no grid any more');
+  assert.equal((await sharp(await cutImageOf(file, value, undefined, { width: 200 })).metadata()).width, 200);
+  // other guides from images.edges.guides: two lines only
+  const two = await cutImageOf(file, value, { guides: [0.02, 0.2] });
+  const raw = await sharp(two).raw().toBuffer({ resolveWithObject: true });
+  const at2 = (x, yy) => [...raw.data.subarray((yy * raw.info.width + x) * 4, (yy * raw.info.width + x) * 4 + 4)];
+  const y2 = Math.round(raw.info.height * 0.12);
+  assert.ok(like(at2(Math.round(raw.info.width * 0.02), y2), '#00ff66'), 'the first guide at 2 %');
+  assert.ok(like(at2(Math.round(raw.info.width * 0.2), Math.round(raw.info.height * 0.05)), '#00e5ff'), 'the second at 20 %');
+  assert.ok(!like(at2(Math.round(raw.info.width * 0.05), y2), '#ffe600'), 'no third');
+});
+
+test('guidesProblems and guidesOf: 1 to 4 shares between 0 and 0.5, each with its colour and corner', () => {
+  assert.deepEqual(guidesProblems([0.01, 0.03, 0.05, 0.1]), []);
+  for (const wrong of [[], [0.01, 0.02, 0.03, 0.04, 0.05], [0], [0.5], ['1 %'], 0.01]) {
+    assert.match(guidesProblems(wrong).join(''), /images\.edges\.guides must be a list of 1 to 4 shares/, JSON.stringify(wrong));
+  }
+  assert.deepEqual(guidesOf([0.02, 0.2]), [{ share: 0.02, colour: '#00ff66', corner: 'tl' }, { share: 0.2, colour: '#00e5ff', corner: 'tr' }]);
+  assert.deepEqual(GUIDES.map((g) => g.share), [0.01, 0.03, 0.05, 0.1]);
+});
+
+test('hatchedOriginalOf: the original in full size, the cut hatched, the border of the trimmed image, the info panel', async () => {
+  const file = path.join(tmp, 'h.jpg');
+  await floorPhoto(file, 400, 300, SHEET);
+  const value = await detectFile(file);
+  const { data: orig } = await sharp(file).raw().toBuffer({ resolveWithObject: true });
+  const read = async (buf) => (await sharp(buf).raw().toBuffer({ resolveWithObject: true })).data;
+  const changed = (data, x, y) => { const i = (y * 400 + x) * 3; return Math.abs(data[i] - orig[i]) + Math.abs(data[i + 2] - orig[i + 2]) > 50; };
+  // the colour of the corner line (#ff00cc), a little dimmed by the JPEG
+  const pink = (data, x, y) => { const i = (y * 400 + x) * 3; return data[i] > 170 && data[i + 1] < 90 && data[i + 2] > 120; };
+
+  const plain = await hatchedOriginalOf(file, value, undefined, { info: false });
+  const meta = await sharp(plain).metadata();
+  assert.deepEqual([meta.format, meta.width, meta.height], ['jpeg', 400, 300]);
+  const data = await read(plain);
+  let hatched = 0;
+  for (let x = 0; x < 15; x++) for (let y = 0; y < 300; y++) if (changed(data, x, y)) hatched++;
+  assert.ok(hatched > 300, `the floor on the left is hatched (${hatched})`);
+  let middle = 0;
+  for (let x = 150; x < 250; x++) for (let y = 100; y < 200; y++) if (changed(data, x, y)) middle++;
+  assert.equal(middle, 0, 'the work itself is not');
+  // the trimmed image (the sheet spans x 18–376) has a solid border: a pink column near x 18–24 down the middle
+  let border = 0;
+  for (let x = 14; x < 30; x++) if (pink(data, x, 150) && pink(data, x, 120) && pink(data, x, 180)) border++;
+  assert.ok(border > 0, 'the left border of the trimmed image');
+
+  // the inner border of the hatching, light green: inside the sheet near its left edge, never in the middle
+  // light green (#7cff7c), 1 px on this small photo, mixed with the white paper by the JPEG
+  const green = (x, y) => { const i = (y * 400 + x) * 3; return data[i + 1] > 225 && data[i + 1] - data[i] > 30 && data[i + 1] - data[i + 2] > 30; };
+  let edge = 0;
+  for (let x = 20; x < 50; x++) if (green(x, 150)) edge++;
+  assert.ok(edge > 0, 'the green line along the left edge of the sheet');
+  let greenMiddle = 0;
+  for (let x = 150; x < 250; x++) for (let y = 100; y < 200; y++) if (green(x, y)) greenMiddle++;
+  assert.equal(greenMiddle, 0);
+
+  // with the info panel (default): the middle is covered by the dark panel
+  const withInfo = await read(await hatchedOriginalOf(file, value));
+  let dark = 0;
+  for (let x = 150; x < 250; x++) for (let y = 100; y < 200; y++) { const i = (y * 400 + x) * 3; if (withInfo[i] < orig[i] - 40) dark++; }
+  assert.ok(dark > 1000, `the info panel in the middle (${dark})`);
+
+  const zero = { photo: [400, 300], tl: [0, 0], tr: [0, 0], br: [0, 0], bl: [0, 0] };
+  assert.equal((await sharp(await hatchedOriginalOf(file, zero)).metadata()).width, 400, 'nothing to hatch: the original (with the panel)');
+});
+
+test('trimTransparent: the smallest rectangle holding everything not fully transparent; nothing to trim = as it is', async () => {
+  const sheet = await sharp({ create: { width: 60, height: 40, channels: 4, background: { r: 200, g: 200, b: 200, alpha: 1 } } }).png().toBuffer();
+  const buf = await sharp({ create: { width: 100, height: 80, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: sheet, left: 10, top: 25 }]).png().toBuffer();
+  const t = await trimTransparent(buf);
+  assert.deepEqual([t.left, t.top, t.width, t.height], [10, 25, 60, 40]);
+  assert.deepEqual(Object.values(await sharp(t.buf).metadata()).length > 0 && [(await sharp(t.buf).metadata()).width, (await sharp(t.buf).metadata()).height], [60, 40]);
+  const same = await trimTransparent(sheet);
+  assert.equal(same.buf, sheet);
+  assert.deepEqual([same.left, same.top, same.width, same.height], [0, 0, 60, 40]);
+});
+
+test('guideDistances: where the 1, 3, 5 and 10 % lines cross, in pixels of the photo from its corner, like meta_corners', () => {
+  // a 1000 × 500 photo, the trimmed image lies at x 20–820, y 10–410
+  const d = guideDistances({ left: 20, top: 10, width: 800, height: 400 }, [1000, 500]);
+  assert.deepEqual(d.map(({ share, corner, at }) => [share, corner, at]), [
+    [0.01, 'tl', [28, 14]], // 20 + 8, 10 + 4
+    [0.03, 'tr', [204, 22]], // 1000 − (20 + 776), 10 + 12
+    [0.05, 'bl', [60, 110]], // 20 + 40, 500 − (10 + 380)
+    [0.1, 'br', [260, 130]], // 1000 − (20 + 720), 500 − (10 + 360)
+  ]);
+  // nothing trimmed: just the share of the photo
+  assert.deepEqual(guideDistances({ left: 0, top: 0, width: 1000, height: 500 }, [1000, 500])[0].at, [10, 5]);
+});
+
+test('removedSides: what the trimmed image lacks, by the corners (the smaller of each side) and by inset and feather', () => {
+  const value = { photo: [1000, 500], tl: [30, 15], tr: [200, 20], br: [190, 100], bl: [25, 95] };
+  assert.deepEqual(removedSides({ left: 32, top: 22, width: 774, height: 380 }, [1000, 500], value), {
+    total: [32, 22, 194, 98],
+    corners: [25, 15, 190, 95],
+    edges: [7, 7, 4, 3],
+  });
+  assert.deepEqual(removedSides({ left: 0, top: 0, width: 1000, height: 500 }, [1000, 500], false).corners, [0, 0, 0, 0]);
+});
+
+test('cutInfo: the photo, the trimmed image, what was removed on every side and why, the edge settings, the corners used', () => {
+  const value = { photo: [1000, 500], tl: [30, 15], tr: [200, 20], br: [190, 100], bl: [25, 95] };
+  assert.deepEqual(cutInfo({ left: 32, top: 22, width: 774, height: 380 }, [1000, 500], value, { inset: 0.002, feather: 0.01 }), [
+    'Fotka: 1000 × 500 px',
+    'Obrázek po ořezu: 774 × 380 px',
+    'Odstraněno celkem: vlevo 32 · nahoře 22 · vpravo 194 · dole 98 px',
+    'z toho rohy (meta_corners): vlevo 25 · nahoře 15 · vpravo 190 · dole 95 px',
+    'z toho inset a prolnutí: vlevo 7 · nahoře 7 · vpravo 4 · dole 3 px',
+    'inset 0,2 % = 1,0 px · prolnutí (feather) 1,0 % = 5,0 px, z kratší strany 500 px',
+    'Prolnutí: list přechází do průhlednosti v pásu šířky prolnutí uvnitř rohů,',
+    'jeho vnější část je úplně průhledná a odstřihne se také.',
+    'meta_corners: tl [30, 15] · tr [200, 20] · br [190, 100] · bl [25, 95]',
+  ]);
+  const zero = { photo: [1000, 500], tl: [0, 0], tr: [0, 0], br: [0, 0], bl: [0, 0] };
+  assert.equal(cutInfo({ left: 0, top: 0, width: 1000, height: 500 }, [1000, 500], zero).at(-1), 'meta_corners: nic neořezávají');
+});
+
+test('infoPanelSvg: a scheme of the photo (removed parts, trimmed image, corners) and the lines of cutInfo', () => {
+  const value = { photo: [1000, 500], tl: [30, 15], tr: [200, 20], br: [190, 100], bl: [25, 95] };
+  const svg = infoPanelSvg(800, 400, { left: 20, top: 10, width: 800, height: 400 }, [1000, 500], value);
+  assert.match(svg, /fill="url\(#removed\)"/, 'the photo with the removed parts hatched');
+  assert.match(svg, /<polygon points="[^"]+" fill="none"[^>]*stroke-dasharray/, 'the corners dotted');
+  for (const line of cutInfo({ left: 20, top: 10, width: 800, height: 400 }, [1000, 500], value)) assert.ok(svg.includes(`>${line}</text>`), line);
+  assert.doesNotMatch(infoPanelSvg(800, 400, { left: 0, top: 0, width: 1000, height: 500 }, [1000, 500], false), /<polygon/, 'no corners, no quadrilateral');
+});
+
+test('guideLabelsSvg: one label per corner, in the colour of its line', () => {
+  const svg = guideLabelsSvg(800, 600, guideDistances({ left: 20, top: 10, width: 800, height: 400 }, [1000, 500]));
+  assert.match(svg, /text-anchor="start"[^>]*fill="#00ff66"[^>]*>1,0 %: tl \[28, 14\] px</);
+  assert.match(svg, /text-anchor="end"[^>]*fill="#00e5ff"[^>]*>3,0 %: tr \[204, 22\] px</);
+  assert.match(svg, /text-anchor="start"[^>]*fill="#ffe600"[^>]*>5,0 %: bl \[60, 110\] px</);
+  assert.match(svg, /text-anchor="end"[^>]*fill="#ff00cc"[^>]*>10,0 %: br \[260, 130\] px</);
+  assert.equal((svg.match(/<text /g) ?? []).length, 4);
+});
+
+test('edgeOverlay: the edge of the fully opaque area, widened to the stroke', () => {
+  // 10 × 6, opaque in x 3–7, y 1–4
+  const alpha = Buffer.alloc(60);
+  for (let y = 1; y <= 4; y++) for (let x = 3; x <= 7; x++) alpha[y * 10 + x] = 255;
+  alpha[2 * 10 + 5] = 255; // inside
+  const on = (o, x, y) => o[(y * 10 + x) * 4 + 3] === 255;
+  const thin = edgeOverlay(alpha, 10, 6, 1, [1, 2, 3]);
+  assert.ok(on(thin, 3, 1) && on(thin, 7, 4) && on(thin, 5, 1), 'the opaque pixels at the edge');
+  assert.ok(!on(thin, 5, 2) && !on(thin, 1, 1), 'not inside, not outside');
+  assert.deepEqual([...thin.subarray((1 * 10 + 3) * 4, (1 * 10 + 3) * 4 + 4)], [1, 2, 3, 255]);
+  const wide = edgeOverlay(alpha, 10, 6, 3, [1, 2, 3]);
+  assert.ok(on(wide, 2, 1) && on(wide, 5, 2), 'widened by one pixel to both sides');
 });

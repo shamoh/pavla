@@ -1263,15 +1263,20 @@ test('corners: the floor is transparent on the web, paper in the JPEG, white for
   assert.equal(info.transparent, true);
   assert.equal(info.dominant.startsWith('rgb('), true);
   const w = info.widths[info.widths.length - 1];
-  // AVIF and WebP: transparent corner, opaque middle
+  // trimmed to the sheet (x 18–376, y 16–284 of the 400 × 300 photo): only the wedges of the sheet askew stay around it
+  assert.ok(info.width >= 350 && info.width <= 362 && info.height >= 260 && info.height <= 272, `${info.width}×${info.height}`);
+  // AVIF and WebP: transparent wedges, opaque middle
   for (const ext of ['webp', 'avif']) {
-    const meta = await sharp(path.join(dir, `${w}.${ext}`)).metadata();
-    assert.equal(meta.hasAlpha, true, ext);
-    assert.equal((await pixel(path.join(dir, `${w}.${ext}`), 1, 1))[3], 0, `${ext}: the floor is transparent`);
-    assert.equal((await pixel(path.join(dir, `${w}.${ext}`), Math.round(w / 2), Math.round((w * 3) / 8)))[3], 255, `${ext}: the work is not`);
+    const file = path.join(dir, `${w}.${ext}`);
+    assert.equal((await sharp(file).metadata()).hasAlpha, true, ext);
+    const { data, info: size } = await sharp(file).raw().toBuffer({ resolveWithObject: true });
+    let clear = 0;
+    for (let i = 3; i < data.length; i += 4) if (data[i] === 0) clear++;
+    assert.ok(clear > 0, `${ext}: the floor is transparent`);
+    assert.equal((await pixel(file, Math.round(size.width / 2), Math.round(size.height / 2)))[3], 255, `${ext}: the work is not`);
   }
-  // JPEG: the paper of the first palette instead of the floor
-  const corner = await pixel(path.join(dir, `${w}.jpg`), 1, 1);
+  // JPEG: the paper of the first palette instead of the floor (the top right wedge: the sheet's corner lies lower)
+  const corner = await pixel(path.join(dir, `${w}.jpg`), w - 2, 1);
   assert.ok(corner.every((c, i) => Math.abs(c - [0xf7, 0xf4, 0xee][i]) < 8), `jpeg corner ${corner}`);
   // exports: no floor anywhere; Fler on white
   const key = path.basename(dir);
