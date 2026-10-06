@@ -1,6 +1,6 @@
 {
-  "width": 3621,
-  "height": 2575,
+  "width": 3470,
+  "height": 2460,
   "widths": [
     480,
     960,
@@ -8,6 +8,7 @@
     2400
   ],
   "dominant": "rgb(184,184,168)",
+  "transparent": true,
   "mockups": [
     {
       "scene": "loznice",
@@ -51,5 +52,5 @@
     "width": 1200,
     "height": 800
   },
-  "fingerprint": "9f040bcde0e2e2cc"
+  "fingerprint": "4d3ff51e3e2ede0c"
 }

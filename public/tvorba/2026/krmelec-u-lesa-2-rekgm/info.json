@@ -1,6 +1,6 @@
 {
-  "width": 2703,
-  "height": 3775,
+  "width": 2602,
+  "height": 3650,
   "widths": [
     480,
     960,
@@ -8,6 +8,7 @@
     2400
   ],
   "dominant": "rgb(168,152,136)",
+  "transparent": true,
   "mockups": [
     {
       "scene": "obyvak-vecer",
@@ -51,5 +52,5 @@
     "width": 1200,
     "height": 800
   },
-  "fingerprint": "cdd2753e5a429ff5"
+  "fingerprint": "389bff367637453f"
 }
