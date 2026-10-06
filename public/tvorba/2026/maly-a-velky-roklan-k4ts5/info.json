@@ -1,11 +1,11 @@
 {
-  "width": 2396,
-  "height": 1714,
+  "width": 2436,
+  "height": 1741,
   "widths": [
     480,
     960,
     1600,
-    2396
+    2400
   ],
   "dominant": "rgb(136,136,120)",
   "transparent": true,
@@ -52,5 +52,5 @@
     "width": 1200,
     "height": 800
   },
-  "fingerprint": "c4b9425a6f33c25b"
+  "fingerprint": "da85ad9810f0f9e2"
 }
