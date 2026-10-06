@@ -23,7 +23,7 @@
 //   <contentDir>/export/fler/<year>/<key>-mockup-<scene>.jpg      Fler, the mockups with the same watermark
 //   (Fler exports only for works on sale: available or reserved; otherwise they are removed)
 //   <contentDir>/tvorba/…/<slug>.yaml  meta_corners (corners of the sheet) written when missing (scripts/lib/corners.mjs)
-//   .previews/<slug>-<id>.jpg          cut previews of drafts on light and dark paper (outside git; on GitHub the
+//   .previews/<slug>-<id>-backgrounds.jpg  cut previews of drafts on light and dark paper (outside git; on GitHub the
 //                                      artifact "nahledy-orezu" of the content workflow's run)
 //
 // Usage:  npm run images             (only works whose outputs are missing or older than the master)
@@ -412,7 +412,7 @@ export async function run({
   for (const w of works) {
     if (w.data.meta_draft !== true || !w.masterPath || !cutsSheet(w.data.meta_corners)) continue;
     if (only.length && !only.includes(w.slug)) continue;
-    const name = `${w.slug}-${w.id}.jpg`;
+    const name = `${w.slug}-${w.id}-backgrounds.jpg`;
     await fs.mkdir(previewDir, { recursive: true });
     await fs.writeFile(path.join(previewDir, name), await previewOf(w.masterPath, w.data.meta_corners, edges));
     previews.push(name);

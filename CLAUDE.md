@@ -96,12 +96,14 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   bez `--ph`, stín jen `filter: var(--drop-…)`, nikdy `box-shadow`), JPEG na papíře první palety, og/Instagram na
   svém pozadí, Fler bílá, mockup jen vnitřní obdélník (průnik s `pavla:sheet`). Náhledy ořezu draftů do
   `.previews/` (mimo git), workflow obsahového repa i `dry-run.yml` je nahrají jako artefakt `nahledy-orezu`.
-  `npm run preview -- <fotka|složka>` (`scripts/preview.mjs`): tentýž náhled (`<slug>-<id>.jpg`) + samotný ořez s
-  průhledností (`<slug>-<id>.png`, oříznutý jako web, max. 1600 px, čáry 1, 3, 5 a 10 % od krajů ve čtyřech barvách, v rozích jejich poloha v px fotky jako `meta_corners`; čáry z `images.edges.guides`) + `<slug>-<id>-original.jpg`
-  (fotka v plné velikosti, odstraněné a průhledné šrafované, zeleně hranice plné neprůhlednosti, růžově hranice oříznutého obrázku, uprostřed panel: schéma,
-  rozměry, odstraněno celkem / z rohů / z inset a prolnutí, nastavení, použité `meta_corners`) pro libovolné fotky, obsah jen čte,
+  `npm run preview -- <fotka|složka>` (`scripts/preview.mjs`): tentýž náhled (`<slug>-<id>-backgrounds.jpg`, i u pipeline) +
+  `<slug>-<id>-frames.jpg` (celá neoříznutá fotka v plné velikosti, rámečky čar podíl šířky / výšky od každého kraje z `images.edges.guides`,
+  u každé čáry jen vzdálenost od kraje v px fotky jako `meta_corners`, popisky po schodech) + `<slug>-<id>-cut.jpg`
+  (fotka v plné velikosti bez šrafování, tenké čáry rohů, insetu, konce prolnutí, plné neprůhlednosti a oříznutého obrázku, `CUT_COLOURS`;
+  na každé straně u každé čáry popisek s čísly panelu, rozložené podél strany, nad čarami; u rohů jejich hodnoty; uprostřed panel: schéma,
+  rozměry, odstraněno celkem / z rohů / z inset a prolnutí, nastavení, použité `meta_corners`; žádné SVG `<pattern>`, na velké fotce trvá sekundy) pro libovolné fotky, obsah jen čte,
   chybějící rohy najde a vypíše jako yaml; `--write` je zapíše jen do popisů zadaných fotek bez `meta_corners`.
-  Náhled i výpis ukazují ořez rohů v % fotky, nad `images.edges.suspicious` (5 %) červeně / `!`, na konci výpisu souhrn podezřelých fotek;
+  Náhled i výpis ukazují ořez rohů v % fotky (náhled po řádcích „zleva 2,5 % = 93 px“ / „shora …“, i px z `meta_corners`), nad `images.edges.suspicious` (5 %) červeně (jen ten řádek) / `!`, na konci výpisu souhrn podezřelých fotek;
   `--only-suspicious` = jen podezřelé (ne s `--write`). Souhrn běhu („Nalezené rohy listu“) značí podezřelé `⚠`. Originální fotky obsahového repa pipeline nikdy nemění.
 - Ostatní fotky: `fotky/<název>.jpg` obsahového repa → `public/fotky/<název>/` (obrázky), popis (`alt`, `caption`,
   `focus`) → `content/fotky/<název>.yaml`; na stránce `<Photo name="…" />`;

@@ -63,4 +63,4 @@ images:
     inset: 0.002                         # o kolik víc oříznout dovnitř listu (podíl kratší strany)
     search: 0.1                          # jak daleko od okraje fotky hledat hranu listu (podíl rozměru)
     suspicious: 0.05                     # roh, který ořízne víc (podíl šířky / výšky), je v náhledech podezřelý (červeně, !)
-    guides: [0.01, 0.03, 0.05, 0.1]     # čáry v náhledu ořezu (PNG) tak daleko od krajů (podíl), nejvýš čtyři
+    guides: [0.003, 0.006, 0.01, 0.015, 0.02, 0.025, 0.03, 0.04, 0.05]  # čáry náhledu -frames: podíl šířky / výšky od každého kraje fotky

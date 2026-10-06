@@ -1150,8 +1150,8 @@ o kousek víc, `feather` (výchozí 1 %) je šířka pásu podél hrany, ve kter
 (maska `maskSvg`, `cutOut` v `scripts/lib/corners.mjs`). Změna těchto dvou hodnot přegeneruje díla s rohy (`edgeLook`).
 `search` (jak daleko od okraje fotky hledat hranu, výchozí 10 %) a `suspicious` (od kolika procent je ořez rohu
 v náhledech podezřelý, výchozí 5 %) obrázky nemění, takže nic nepřegenerují; stejně tak
-`guides` (vzdálenosti čar v náhledu ořezu od krajů, 1–4 podíly, výchozí `[0.01, 0.03, 0.05, 0.1]`, jinak
-`npm run preview` skončí chybou).
+`guides` (čáry náhledu `-frames.jpg`: podíly šířky, resp. výšky fotky od každého kraje, libovolně mnoho mezi 0 a 0,5,
+výchozí `[0.003, 0.006, 0.01, 0.015, 0.02, 0.025, 0.03, 0.04, 0.05]`, jinak `npm run preview` skončí chybou).
 
 **Kde se co použije:**
 
@@ -1167,8 +1167,10 @@ v náhledech podezřelý, výchozí 5 %) obrázky nemění, takže nic nepřegen
 | detailní fotky | beze změny (rohy patří jen hlavní fotce) |
 
 **Náhled ořezu rozpracovaných děl:** pro každé dílo s `meta_draft: true` a rohy, které něco ořezávají, vznikne
-`.previews/<slug>-<id>.jpg` (mimo git): výsledek na papíru a na tmavém papíru (paleta Noc) vedle sebe, s tenkou
-čarou čtyřúhelníku rohů a u každého rohu s tím, kolik ořízne (vodorovně · svisle v % fotky; nad `images.edges.suspicious`, výchozí 5 %, červeně). Na světlém je vidět zbylá podlaha, na tmavém i to, kolik papíru se odřízlo. Plný běh
+`.previews/<slug>-<id>-backgrounds.jpg` (mimo git): výsledek na papíru a na tmavém papíru (paleta Noc) vedle sebe, s tenkou
+čarou čtyřúhelníku rohů a u každého rohu se dvěma řádky, odkud a kolik ořízne: `zleva 2,5 % = 93 px` a `shora 1,7 % = 46 px`
+(zleva/zprava v % šířky, shora/zdola v % výšky fotky a v px fotky = hodnota `meta_corners`; `cutLabelLines`). Řádek nad
+`images.edges.suspicious` (výchozí 5 %) je červeně, druhý řádek téhož rohu ne. Na světlém je vidět zbylá podlaha, na tmavém i to, kolik papíru se odřízlo. Plný běh
 složku vždy vyprázdní a naplní znovu (zveřejněné dílo náhled nemá). Na GitHubu ji workflow obsahového repa
 nahraje jako artefakt **„nahledy-orezu“** na stránku běhu (dole, *Artifacts*, ke stažení jako zip, 14 dní);
 souhrn běhu náhledy vyjmenuje. Jinou složku dá `run({ previewDir })`.
@@ -1192,8 +1194,8 @@ npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s po
 
   ```
   → ../obsah/tvorba/rano-u-rybnika.jpg: no meta_corners in rano-u-rybnika.yaml, detected
-    preview: .previews/rano-u-rybnika-k3f9a.jpg (light and dark), .previews/rano-u-rybnika-k3f9a.png (transparent),
-             .previews/rano-u-rybnika-k3f9a-original.jpg (original, cut hatched)
+    preview: .previews/rano-u-rybnika-k3f9a-backgrounds.jpg (light and dark), .previews/rano-u-rybnika-k3f9a-cut.jpg (cut lines),
+             .previews/rano-u-rybnika-k3f9a-frames.jpg (frame lines)
     cut (% of the photo, ! = more than 5.0 %): tl 2.5 % · 1.7 %, tr 0.7 % · 2.3 %, br 1.1 % · 1.6 %, bl 1.0 % · 1.4 %
     meta_corners:
       photo: [3673, 2785]
@@ -1215,22 +1217,35 @@ npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s po
   ani rohy jiné fotky nepřepíše (vypíše „not written: … already has meta_corners“), fotce bez popisu ho nezaloží
   (to udělá pipeline i s rohy). Na konci vypíše, do kolika popisů zapsal.
 - Pro každé dílo (bez ohledu na `meta_draft`) vzniknou tři soubory pojmenované `<slug>-<id>` jako složka díla na webu
-  (dílo bez `id` jen `<slug>`): `<out>/<slug>-<id>.jpg` je stejný náhled jako u pipeline (`previewOf` v
-  `scripts/lib/corners.mjs`, nastavení `images.edges`; světlé a tmavé pozadí, čára rohů, procenta ořezu) a
-  `<out>/<slug>-<id>.png` je samotné ořezané dílo s průhledným okolím, oříznuté na list jako na webu, nejvýš 1600 px
-  široké, se čtyřmi rámečky čar 1 % (zelená), 3 % (tyrkysová), 5 % (žlutá) a 10 % (růžová) od každého kraje obrázku
-  (vzdálenosti z `images.edges.guides`, barvy a rohy `GUIDE_STYLES`, `gridSvg`, `cutImageOf`). V každém rohu je popisek v barvě jednoho z nich: kde se jeho čáry křižují
-  v **pixelech původní fotky** od jejího rohu, tedy v jednotkách `meta_corners` (`1,0 %: tl [80, 80] px` vlevo nahoře,
-  `3,0 %: tr […] px` vpravo nahoře, `5,0 %: bl […] px` vlevo dole, `10,0 %: br […] px` vpravo dole; `guideDistances`;
-  započítaná je i odříznutá podlaha): hodnotu jde zkopírovat do daného rohu `meta_corners`, aby ořez vedl po té čáře.
-  Třetí soubor `<out>/<slug>-<id>-original.jpg` je původní fotka v plné velikosti, na které je růžově zlehka šrafované
-  všechno, co ořez odstraní nebo zprůhlední (v pásu prolnutí šrafování slábne podle toho, jak list nabírá
-  neprůhlednost), světle zelenou čarou vnitřní hranice šrafování (odtud je list plně neprůhledný; obkreslená podle
-  masky, `edgeOverlay`), plnou růžovou čarou hranice oříznutého obrázku (kde obrázek na webu končí) a uprostřed panel
-  (`infoPanelSvg`, `cutInfo`): schéma fotky (odstraněná část červeně šrafovaná, oříznutý obrázek, čtyřúhelník rohů
-  tečkovaně) a pod ním rozměr fotky, rozměr obrázku po ořezu, kolik se odstranilo z každé strany celkem, z toho rohy
-  (menší ze dvou rohů dané strany) a z toho `inset` a prolnutí (`removedSides`), nastavení `inset` a `feather` v %
-  i px s vysvětlením prolnutí a `meta_corners`, ze kterých obrázek vznikl (`hatchedOriginalOf`). To vše proto, aby šlo
+  (dílo bez `id` jen `<slug>`) a s příponou podle účelu:
+  - `<out>/<slug>-<id>-backgrounds.jpg` je stejný náhled jako u pipeline (`previewOf` v `scripts/lib/corners.mjs`,
+    nastavení `images.edges`; světlé a tmavé pozadí, čára rohů, u rohů ořez v % a px).
+  - `<out>/<slug>-<id>-cut.jpg` je původní fotka v plné velikosti (nic se na ní nešrafuje ani nezakrývá) s čarami
+    ořezu (`cutOriginalOf`, `cutLinesSvg`, barvy `CUT_COLOURS`): bílá plná = čtyřúhelník rohů `meta_corners`, žlutá
+    čárkovaná = `inset` dovnitř od rohů (tady začíná prolnutí, list je ještě průhledný), modrá čárkovaná = `inset` +
+    `feather` dovnitř (konec pásu prolnutí), růžová = hranice plně neprůhledného listu (obkreslená podle skutečné masky,
+    `edgeOverlay`; kvůli rozmazání masky leží asi pětinu prolnutí za modrou), světle zelená plná = hranice oříznutého
+    obrázku (`trimTransparent`, kde obrázek na webu končí). Čáry jsou tenké (kratší strana / 1000 px), aby se čáry
+    vzdálené jen pár pixelů neslily. Na **každé straně** má každá čára popisek ve své barvě na tmavém podkladu, posazený
+    přímo na ní a otočený podél strany: `rohy 46 · 64 px` (oba rohy té strany), `obrázek 53 px = rohy 46 + okraj 7`
+    (kolik se z té strany odstranilo celkem, z toho rohy a `inset` s prolnutím, `removedSides`), `inset 5,6 px`,
+    `prolnutí 27,9 px` a `plná barva`. Popisky jsou podél strany rozložené (15, 32, 50, 68 a 85 % její délky), takže se
+    nepřekrývají, a leží nad všemi čarami. U každého rohu je uvnitř obrazu jeho hodnota (`tl [93, 46]`). Uprostřed panel
+    (`infoPanelSvg`, `cutInfo`): schéma fotky (odstraněná část červeně šrafovaná, oříznutý obrázek, čtyřúhelník rohů
+    tečkovaně) a pod ním rozměr fotky, rozměr obrázku po ořezu, kolik se odstranilo z každé strany celkem, z toho rohy
+    (menší ze dvou rohů dané strany) a z toho `inset` a prolnutí, nastavení `inset` a `feather` v % i px s vysvětlením
+    prolnutí a `meta_corners`, ze kterých obrázek vznikl.
+  - `<out>/<slug>-<id>-frames.jpg` je celá **neoříznutá** fotka v plné velikosti (vidět jsou všechny její původní okraje)
+    s rámečky čar (`framesOf`, `frameLines`, `framesSvg`): pro každý podíl z `images.edges.guides` (výchozí 0,3; 0,6;
+    1; 1,5; 2; 2,5; 3; 4 a 5 %) dvě svislé čáry ve vzdálenosti podílu **šířky** od levého a pravého kraje a dvě
+    vodorovné ve vzdálenosti podílu **výšky** od horního a dolního kraje. Barvy se střídají (zelená, žlutá, modrá,
+    růžová; `FRAME_COLOURS`), aby sousední čáry byly odlišné. U každé čáry je v její barvě napsaná její vzdálenost od
+    nejbližšího kraje v pixelech fotky (`37 px`), tedy v jednotkách `meta_corners`; procenta se nepíšou. Popisky jdou
+    po schodech (každá další čára o řádek či sloupec dál: svislých kolem poloviny výšky, vodorovných kolem poloviny
+    šířky) a kreslí se až po všech čarách, takže se nepřekrývají a žádná čára přes ně nevede.
+  Náhledy fotky 3673 × 2785 px (všechny tři soubory) trvají asi 4 s; šrafy schématu i jiné výplně se kreslí
+  přímo, ne SVG vzorem (`<pattern>`), jehož vykreslení na fotku této velikosti trvá sekundy.
+  To vše proto, aby šlo
   ořez prohlédnout na jakémkoli pozadí. Soubory se při každém spuštění přepíšou; prohlížeč obrázků (Náhled na Macu)
   může ukazovat starou verzi, dokud soubor znovu neotevřeš. `meta_corners: false` náhled nemá. Plný běh
   `npm run images` složku `.previews/` vyprázdní (nechá v ní jen náhledy draftů).

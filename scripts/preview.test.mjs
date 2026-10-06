@@ -123,7 +123,7 @@ test('npm run preview --only-suspicious: previews and output only of the photos 
   const out = path.join(tmp, 'out');
   const r = cli('tvorba', '--out', out, '--only-suspicious');
   assert.equal(r.status, 0, r.stderr);
-  assert.deepEqual((await fs.readdir(out)).sort(), ['vecer-original.jpg', 'vecer.jpg', 'vecer.png']);
+  assert.deepEqual((await fs.readdir(out)).sort(), ['vecer-backgrounds.jpg', 'vecer-cut.jpg', 'vecer-frames.jpg']);
   assert.doesNotMatch(r.stdout, /rano/);
   assert.match(r.stdout, /→ tvorba\/vecer\.jpg/);
   assert.match(r.stdout, /Check first: 1 photo\(s\)/);
@@ -131,7 +131,7 @@ test('npm run preview --only-suspicious: previews and output only of the photos 
   // without the switch both
   const all = cli('tvorba', '--out', path.join(tmp, 'all'));
   assert.equal(all.status, 0, all.stderr);
-  assert.deepEqual((await fs.readdir(path.join(tmp, 'all'))).sort(), ['rano-original.jpg', 'rano.jpg', 'rano.png', 'vecer-original.jpg', 'vecer.jpg', 'vecer.png']);
+  assert.deepEqual((await fs.readdir(path.join(tmp, 'all'))).sort(), ['rano-backgrounds.jpg', 'rano-cut.jpg', 'rano-frames.jpg', 'vecer-backgrounds.jpg', 'vecer-cut.jpg', 'vecer-frames.jpg']);
 });
 
 test('npm run preview: --only-suspicious and --write together are refused, nothing is written', async () => {
@@ -143,21 +143,15 @@ test('npm run preview: --only-suspicious and --write together are refused, nothi
   assert.equal(await fs.readFile(path.join(tmp, 'tvorba/rano.yaml'), 'utf8'), 'title: Ráno\n');
 });
 
-test('npm run preview: <slug>-<id>.jpg (light and dark) and <slug>-<id>.png (the cut work, transparent around it)', async () => {
+test('npm run preview: <slug>-<id>-backgrounds.jpg, -cut.jpg and -frames.jpg (the whole photo with the frame lines)', async () => {
   await photo('tvorba/rano.jpg');
   await fs.writeFile(path.join(tmp, 'tvorba/rano.yaml'), 'id: k3f9a\ntitle: Ráno\n');
   const out = path.join(tmp, 'out');
   const r = cli('tvorba/rano.jpg', '--out', out);
   assert.equal(r.status, 0, r.stderr);
-  assert.deepEqual((await fs.readdir(out)).sort(), ['rano-k3f9a-original.jpg', 'rano-k3f9a.jpg', 'rano-k3f9a.png']);
-  assert.match(r.stdout, /preview: out\/rano-k3f9a\.jpg \(light and dark\), out\/rano-k3f9a\.png \(transparent\), out\/rano-k3f9a-original\.jpg \(original, cut hatched\)/);
-  assert.equal((await sharp(path.join(out, 'rano-k3f9a-original.jpg')).metadata()).width, 400, 'the original in its full size');
-  const png = await sharp(path.join(out, 'rano-k3f9a.png')).metadata();
-  assert.deepEqual([png.format, png.hasAlpha], ['png', true]);
-  assert.ok(png.width < 400, 'trimmed to the sheet, like the site gets it');
-  const { data, info } = await sharp(path.join(out, 'rano-k3f9a.png')).raw().toBuffer({ resolveWithObject: true });
-  let clear = 0;
-  for (let i = 3; i < data.length; i += 4) if (data[i] === 0) clear++;
-  assert.ok(clear > 0, 'the wedges of a sheet askew stay transparent');
-  assert.equal(data[(Math.round(info.height * 0.45) * info.width + Math.round(info.width * 0.45)) * 4 + 3], 255, 'the sheet is not');
+  assert.deepEqual((await fs.readdir(out)).sort(), ['rano-k3f9a-backgrounds.jpg', 'rano-k3f9a-cut.jpg', 'rano-k3f9a-frames.jpg']);
+  assert.match(r.stdout, /preview: out\/rano-k3f9a-backgrounds\.jpg \(light and dark\), out\/rano-k3f9a-cut\.jpg \(cut lines\), out\/rano-k3f9a-frames\.jpg \(frame lines\)/);
+  assert.equal((await sharp(path.join(out, 'rano-k3f9a-cut.jpg')).metadata()).width, 400, 'the original in its full size');
+  const frames = await sharp(path.join(out, 'rano-k3f9a-frames.jpg')).metadata();
+  assert.deepEqual([frames.format, frames.width, frames.height], ['jpeg', 400, 300], 'the whole photo, never cut');
 });

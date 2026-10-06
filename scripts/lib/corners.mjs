@@ -7,7 +7,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
-import { CORNER_KEYS, EDGE_DEFAULTS, cornerShares, cornersProblems, cutsSheet, detectCorners, maskSvg, percent, quad } from './edges.mjs';
+import { CORNER_KEYS, EDGE_DEFAULTS, cornerShares, cornersProblems, cutsSheet, detectCorners, insetQuad, maskSvg, percent, quad } from './edges.mjs';
 import { PALETTES } from './palettes.mjs';
 import { normalizeMetadata } from './metadata-yaml.mjs';
 import { WORK_SCHEMA } from './schema.mjs';
@@ -116,17 +116,36 @@ export async function cutPreview(cut, value, backgrounds, { width = 800, pad = 2
     .toBuffer();
 }
 
-/** SVG texts of how much each corner cuts, inside the corners of a width × height preview (none without a cut). */
+/** From which border of the photo each corner cuts: [horizontally, vertically] (Czech, for people). */
+const CUT_FROM = { tl: ['zleva', 'shora'], tr: ['zprava', 'shora'], br: ['zprava', 'zdola'], bl: ['zleva', 'zdola'] };
+
+/**
+ * Lines of the label of corner `k` of a cut preview: how far in it cuts from each border, as a share of the photo's
+ * width / height and in its pixels (the value of meta_corners), e.g. "zleva 2,5 % = 93 px"; `suspicious` per line
+ * (more than `limit`, images.edges.suspicious).
+ */
+export function cutLabelLines(value, k, limit = EDGE_DEFAULTS.suspicious) {
+  const { shares } = cornerShares(value, limit);
+  return [0, 1].map((axis) => ({
+    text: `${CUT_FROM[k][axis]} ${percent(shares[k][axis], true)} = ${value[k][axis]} px`,
+    suspicious: shares[k][axis] > limit,
+  }));
+}
+
+/**
+ * SVG texts of how much each corner cuts (cutLabelLines), two lines inside each corner of a width × height preview
+ * (none without a cut): white on a dark halo, a suspicious line red on a white one.
+ */
 function cutLabels(value, width, height, limit) {
   if (!cutsSheet(value)) return '';
-  const { shares, suspicious } = cornerShares(value, limit);
-  const m = 8, size = 14;
-  const at = { tl: [m, m + size, 'start'], tr: [width - m, m + size, 'end'], br: [width - m, height - m, 'end'], bl: [m, height - m, 'start'] };
+  const m = 8, size = 14, row = Math.round(size * 1.3);
+  const at = { tl: [m, m + size, 'start'], tr: [width - m, m + size, 'end'], br: [width - m, height - m - row, 'end'], bl: [m, height - m - row, 'start'] };
   return CORNER_KEYS.map((k) => {
     const [x, y, anchor] = at[k];
-    // white on a dark halo; a suspicious corner red on a white one
-    const [fill, halo] = suspicious.includes(k) ? ['#d00000', '#ffffff'] : ['#ffffff', '#000000'];
-    return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="DejaVu Sans, Arial, sans-serif" font-size="${size}" font-weight="bold" fill="${fill}" stroke="${halo}" stroke-width="3" paint-order="stroke">${percent(shares[k][0], true)} · ${percent(shares[k][1], true)}</text>`;
+    return cutLabelLines(value, k, limit).map(({ text, suspicious }, i) => {
+      const [fill, halo] = suspicious ? ['#d00000', '#ffffff'] : ['#ffffff', '#000000'];
+      return `<text x="${x}" y="${y + i * row}" text-anchor="${anchor}" font-family="DejaVu Sans, Arial, sans-serif" font-size="${size}" font-weight="bold" fill="${fill}" stroke="${halo}" stroke-width="3" paint-order="stroke">${text}</text>`;
+    }).join('');
   }).join('');
 }
 
@@ -172,48 +191,72 @@ export async function trimTransparent(buf) {
   return { buf: await sharp(buf).extract(region).png({ compressionLevel: 2 }).toBuffer(), ...region };
 }
 
-/** Colour and label corner of the guides of the cut preview, in the order of images.edges.guides (at most four). */
-export const GUIDE_STYLES = [
-  { colour: '#00ff66', corner: 'tl' },
-  { colour: '#00e5ff', corner: 'tr' },
-  { colour: '#ffe600', corner: 'bl' },
-  { colour: '#ff00cc', corner: 'br' },
-];
+/** Colours of the frame lines (images.edges.guides), in turn, so neighbouring lines always differ. */
+export const FRAME_COLOURS = ['#00ff66', '#ffe600', '#00e5ff', '#ff00cc'];
 
-/** Problems of images.edges.guides: a list of 1–4 shares, each above 0 and below 0.5. */
+/** Problems of images.edges.guides: a non-empty list of shares, each above 0 and below 0.5. */
 export function guidesProblems(shares) {
-  const ok = Array.isArray(shares) && shares.length >= 1 && shares.length <= GUIDE_STYLES.length
-    && shares.every((s) => typeof s === 'number' && s > 0 && s < 0.5);
-  return ok ? [] : [`images.edges.guides must be a list of 1 to ${GUIDE_STYLES.length} shares between 0 and 0.5, e.g. [0.01, 0.03, 0.05, 0.1]`];
+  const ok = Array.isArray(shares) && shares.length >= 1 && shares.every((s) => typeof s === 'number' && s > 0 && s < 0.5);
+  return ok ? [] : ['images.edges.guides must be a list of shares between 0 and 0.5, e.g. [0.002, 0.01, 0.05]'];
 }
 
 /**
- * Guide lines of the cut preview (images.edges.guides): lines `share` in from every border of the image, each in its
- * own bright colour, and the corner where its label (guideDistances) goes, one corner each; to read how much
- * surroundings are left.
+ * Frame lines of a width × height photo (images.edges.guides): for each share a frame of four lines, the vertical
+ * ones `share` of the width in from the left and the right border, the horizontal ones `share` of the height in from
+ * the top and the bottom; `x` and `y` are those distances in pixels, as meta_corners counts them. Colours in turn.
  */
-export const guidesOf = (shares = EDGE_DEFAULTS.guides) => shares.map((share, i) => ({ share, ...GUIDE_STYLES[i] }));
-
-export const GUIDES = guidesOf();
+export const frameLines = (width, height, shares = EDGE_DEFAULTS.guides) => shares.map((share, i) => ({
+  share, colour: FRAME_COLOURS[i % FRAME_COLOURS.length], x: Math.round(share * width), y: Math.round(share * height),
+}));
 
 /**
- * Where the lines of each guide cross near its corner, as meta_corners of that corner would hold it: pixels of the
- * photo, from its corner towards the middle, always >= 0 (the trimmed-away surroundings included). `region`: the
- * trimmed image in the photo ({ left, top, width, height }, trimTransparent), `photo`: [width, height]. Each guide
- * is labelled in its own corner, so the labels never overlap.
+ * SVG of the frame lines (frameLines) over a width × height photo, each labelled with its distance from the nearest
+ * border in pixels, in its colour. Labels go in steps (one row or column further for every next line), so they never
+ * overlap however close the lines are: those of the vertical lines next to them around the middle of the height,
+ * those of the horizontal ones next to them around the middle of the width.
  */
-export function guideDistances(region, [photoWidth, photoHeight], guides = GUIDES) {
-  const { left, top, width, height } = region;
-  const x = { l: (s) => left + s * width, r: (s) => photoWidth - (left + (1 - s) * width) };
-  const y = { t: (s) => top + s * height, b: (s) => photoHeight - (top + (1 - s) * height) };
-  return guides.map(({ share, colour, corner }) => ({
-    share, colour, corner, at: [Math.round(x[corner[1]](share)), Math.round(y[corner[0]](share))],
-  }));
+export function framesSvg(width, height, lines) {
+  const short = Math.min(width, height);
+  const stroke = Math.max(1, Math.round(short / 1500)), size = Math.max(10, Math.round(short / 110)), gap = Math.round(size / 3);
+  const row = Math.round(size * 1.25), column = Math.round(size * 0.62 * (`${Math.max(0, ...lines.flatMap((l) => [l.x, l.y]))} px`.length + 1));
+  // the middle of a stroke on whole pixels, the stroke covering pixel `d` (counted from 0 at the border)
+  const mid = (d) => d + (stroke % 2 ? 0.5 : 0);
+  const top = height / 2 - (lines.length * row) / 2 + size, left = width / 2 - (lines.length * column) / 2;
+  const text = (x, y, anchor, colour, d) => `<text x="${x}" y="${y}" text-anchor="${anchor}" fill="${colour}">${d} px</text>`;
+  const at = ({ x, y }) => [mid(x), mid(width - 1 - x), mid(y), mid(height - 1 - y)];
+  const strokes = lines.map((line) => {
+    const [l, r, t, b] = at(line);
+    return `<g stroke="${line.colour}" stroke-width="${stroke}"><line x1="${l}" y1="0" x2="${l}" y2="${height}"/><line x1="${r}" y1="0" x2="${r}" y2="${height}"/>`
+      + `<line x1="0" y1="${t}" x2="${width}" y2="${t}"/><line x1="0" y1="${b}" x2="${width}" y2="${b}"/></g>`;
+  });
+  // all the labels over all the lines, so no line crosses a label
+  const labels = lines.map((line, i) => {
+    const { colour, x, y } = line;
+    const [l, r, t, b] = at(line);
+    return text(l + stroke + gap, top + i * row, 'start', colour, x) + text(r - stroke - gap, top + i * row, 'end', colour, x)
+      + text(left + i * column, t + stroke + gap + size, 'start', colour, y) + text(left + i * column, b - stroke - gap, 'start', colour, y);
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${strokes.join('')}`
+    + `<g font-family="DejaVu Sans, Arial, sans-serif" font-size="${size}" font-weight="bold" stroke-linejoin="round">`
+    + `${labels.join('').replace(/<text /g, `<text stroke="#000" stroke-width="${Math.max(2, Math.round(size / 6))}" paint-order="stroke" `)}</g></svg>`;
+}
+
+/**
+ * The whole master photo `file` (oriented, never cut, in its full size) with the frame lines of `shares`
+ * (images.edges.guides, framesSvg): to read how far in from each border the sheet lies, in the pixels of meta_corners.
+ * A JPEG buffer.
+ */
+export async function framesOf(file, shares = EDGE_DEFAULTS.guides) {
+  const photo = await sharp(file).rotate().toColorspace('srgb').removeAlpha().toBuffer();
+  const { width, height } = await sharp(photo).metadata();
+  return sharp(photo).composite([{ input: Buffer.from(framesSvg(width, height, frameLines(width, height, shares))) }])
+    .jpeg({ quality: 88, mozjpeg: true })
+    .toBuffer();
 }
 
 /**
  * How much of every side was removed [left, top, right, bottom], in pixels of the photo: `total` (what the trimmed
- * image lacks, region as in guideDistances), `corners` (by the corners alone: the smaller of the two corners of that
+ * image lacks, `region`: the trimmed image in the photo, { left, top, width, height }, trimTransparent), `corners` (by the corners alone: the smaller of the two corners of that
  * side, as the edge of the sheet runs between them) and `edges` (the rest: inset and the fully transparent outer part
  * of the feather).
  */
@@ -232,7 +275,7 @@ const px1 = (n) => n.toFixed(1).replace('.', ',');
 /**
  * Lines of the info panel of a cut preview (Czech, for people): the size of the photo, of the trimmed image, how much
  * was removed on every side and why (removedSides), the settings of the edge (images.edges: inset, feather) and the
- * meta_corners it was made with. `region` as in guideDistances.
+ * meta_corners it was made with. `region` as in removedSides.
  */
 export function cutInfo(region, [photoWidth, photoHeight], value, edges = EDGE_DEFAULTS) {
   const { inset = EDGE_DEFAULTS.inset, feather = EDGE_DEFAULTS.feather } = edges ?? {};
@@ -273,57 +316,83 @@ export function infoPanelSvg(width, height, region, [photoWidth, photoHeight], v
     ? quad(value, photoWidth, photoHeight).map(([x, y]) => `${r(sx + x * s)},${r(sy + y * s)}`).join(' ')
     : null;
   const texts = lines.map((l, i) => `<text x="${r(px + panelWidth / 2)}" y="${r(sy + schemeHeight + pad + (i + 0.8) * lineHeight)}" text-anchor="middle">${l}</text>`);
+  // the removed parts hatched "/" 6 px apart: plain lines clipped to the scheme (an SVG pattern takes seconds to render)
+  const step = 6 * Math.SQRT2, hatch = [];
+  for (let k = 0; k < schemeWidth + schemeHeight; k += step) {
+    hatch.push(`<line x1="${r(sx + k)}" y1="${r(sy)}" x2="${r(sx + k - schemeHeight)}" y2="${r(sy + schemeHeight)}"/>`);
+  }
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`
-    + '<defs><pattern id="removed" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">'
-    + '<rect width="6" height="6" fill="#ff4040" fill-opacity="0.25"/><line x1="0" y1="0" x2="0" y2="6" stroke="#ff4040" stroke-width="3"/></pattern></defs>'
+    + `<defs><clipPath id="scheme"><rect x="${r(sx)}" y="${r(sy)}" width="${r(schemeWidth)}" height="${r(schemeHeight)}"/></clipPath></defs>`
     + `<rect x="${r(px)}" y="${r(py)}" width="${r(panelWidth)}" height="${r(panelHeight)}" rx="${pad / 2}" fill="#000" fill-opacity="0.72"/>`
-    + `<rect x="${r(sx)}" y="${r(sy)}" width="${r(schemeWidth)}" height="${r(schemeHeight)}" fill="url(#removed)" stroke="#ffffff" stroke-width="1"/>`
+    + `<g id="removed" clip-path="url(#scheme)"><rect x="${r(sx)}" y="${r(sy)}" width="${r(schemeWidth)}" height="${r(schemeHeight)}" fill="#ff4040" fill-opacity="0.25"/>`
+    + `<g stroke="#ff4040" stroke-width="3">${hatch.join('')}</g></g>`
+    + `<rect x="${r(sx)}" y="${r(sy)}" width="${r(schemeWidth)}" height="${r(schemeHeight)}" fill="none" stroke="#ffffff" stroke-width="1"/>`
     + `<rect x="${r(sx + region.left * s)}" y="${r(sy + region.top * s)}" width="${r(region.width * s)}" height="${r(region.height * s)}" fill="#3a3a3a" stroke="#ffffff" stroke-width="1"/>`
     + (quadPoints ? `<polygon points="${quadPoints}" fill="none" stroke="#ffffff" stroke-width="1" stroke-dasharray="2 2"/>` : '')
     + `<g font-family="DejaVu Sans, Arial, sans-serif" font-size="${size}" fill="#ffffff">${texts.join('')}</g></svg>`;
 }
 
-/** SVG texts of guideDistances in their corners of a width × height image, in the colour of their lines. */
-export function guideLabelsSvg(width, height, distances) {
-  const size = Math.max(12, Math.round(width / 70)), m = Math.round(size * 0.8);
-  const place = { tl: [m, m + size, 'start'], tr: [width - m, m + size, 'end'], bl: [m, height - m, 'start'], br: [width - m, height - m, 'end'] };
-  const texts = distances.map(({ share, corner, colour, at }) => {
-    const [x, y, anchor] = place[corner];
-    return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="DejaVu Sans, Arial, sans-serif" font-size="${size}" font-weight="bold" fill="${colour}" stroke="#000" stroke-width="${Math.max(3, size / 5)}" paint-order="stroke">${percent(share, true)}: ${corner} [${at.join(', ')}] px</text>`;
-  });
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${texts.join('')}</svg>`;
-}
+/** Colours of the lines of the cut preview (cutOriginalOf, cutLinesSvg). */
+export const CUT_COLOURS = { corners: '#ffffff', image: '#7cff7c', inset: '#ffe600', feather: '#00e5ff', opaque: '#ff00cc' };
 
-/** SVG of the GUIDES lines over a width × height image: each guide `share` in from all four borders. */
-export function gridSvg(width, height, guides = GUIDES) {
-  // on whole pixels, so a line is sharp (one pixel, not two half ones)
-  const at = (share, size) => Math.min(size - 1, Math.round(share * size)) + 0.5;
-  const groups = guides.map(({ share, colour }) => {
-    const lines = [share, 1 - share].flatMap((s) => {
-      const x = at(s, width), y = at(s, height);
-      return [`<line x1="${x}" y1="0" x2="${x}" y2="${height}"/>`, `<line x1="0" y1="${y}" x2="${width}" y2="${y}"/>`];
-    });
-    return `<g stroke="${colour}" stroke-width="1" stroke-opacity="0.8">${lines.join('')}</g>`;
-  });
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${groups.join('')}</svg>`;
-}
+/** The four sides of a quad [tl, tr, br, bl] as [from, to] in reading direction, in the order of removedSides: left, top, right, bottom. */
+const quadSides = ([tl, tr, br, bl]) => [[bl, tl], [tl, tr], [tr, br], [bl, br]];
+
+/** Shares along a side where the labels of its lines go, one each, in the order of the lines in cutLinesSvg. */
+const LABEL_AT = [0.15, 0.32, 0.5, 0.68, 0.85];
 
 /**
- * The cut work alone as the site gets it (trimmed to its smallest transparent surroundings, trimTransparent), at
- * most `width` wide (the largest web size), with lines 1 %, 3 %, 5 % and 10 % in from every border, each in its colour
- * (GUIDES) and in every corner where one of them lies as meta_corners would hold it (guideDistances):
- * a PNG buffer, to look at the cut on any background.
+ * SVG of the lines of the cut over the width × height photo, each with labels in its colour on every side (the numbers
+ * of the info panel where they belong): the corners (meta_corners, both corners of the side in px), the border of the
+ * trimmed image (`region`, removedSides: in total = by the corners + by inset and feather), the inset line (where the
+ * sheet starts to show, inset px) and the end of the feather (inset + feather in, from there the sheet in full,
+ * feather px); the edge of the fully opaque area is traced by cutOriginalOf, here only labelled. Labels sit on their
+ * lines on a dark plate, staggered along the side so they never overlap, over all the lines; corner values at the corners.
  */
-export async function cutImageOf(file, value, edges, { width = 1600 } = {}) {
-  const cut = await cutMaster(file, value, edges);
-  const full = await sharp(cut).metadata();
-  const trimmed = cutsSheet(value) ? await trimTransparent(cut) : { buf: cut, left: 0, top: 0, width: full.width, height: full.height };
-  const small = await sharp(trimmed.buf).resize({ width, withoutEnlargement: true }).png().toBuffer();
-  const { width: w, height: h } = await sharp(small).metadata();
-  const photo = [full.width, full.height];
-  const guides = guidesOf(edges?.guides ?? EDGE_DEFAULTS.guides);
-  const labels = guideLabelsSvg(w, h, guideDistances(trimmed, photo, guides));
-  return sharp(small).composite([{ input: Buffer.from(gridSvg(w, h, guides)) }, { input: Buffer.from(labels) }]).png().toBuffer();
+export function cutLinesSvg(width, height, region, value, edges = EDGE_DEFAULTS) {
+  const { inset = EDGE_DEFAULTS.inset, feather = EDGE_DEFAULTS.feather } = edges ?? {};
+  const short = Math.min(width, height);
+  const stroke = Math.max(1, Math.round(short / 1000)), size = Math.max(11, Math.round(short / 110));
+  const corners = quad(value, width, height);
+  const insetPx = inset * short, featherPx = feather * short;
+  const insetLine = insetQuad(corners, insetPx), featherLine = insetQuad(corners, insetPx + featherPx);
+  const { left, top, width: w, height: h } = region;
+  const image = [[left, top], [left + w, top], [left + w, top + h], [left, top + h]];
+  const removed = removedSides(region, [width, height], value);
+  const own = [[value.tl[0], value.bl[0]], [value.tl[1], value.tr[1]], [value.tr[0], value.br[0]], [value.bl[1], value.br[1]]];
+  const r = (n) => n.toFixed(1);
+  const polygon = (points, colour, dash) => `<polygon points="${points.map(([x, y]) => `${r(x)},${r(y)}`).join(' ')}" fill="none" stroke="${colour}" stroke-width="${stroke}"`
+    + `${dash ? ` stroke-dasharray="${stroke * 6} ${stroke * 4}"` : ''}/>`;
+  // a label on a dark plate (wide enough by an estimate of the text), so no line shows through it
+  const label = (x, y, angle, colour, text) => {
+    const w = text.length * size * 0.6 + size;
+    return `<g transform="translate(${r(x)} ${r(y)}) rotate(${r(angle)})"><rect x="${r(-w / 2)}" y="${r(-size * 0.7)}" width="${r(w)}" height="${r(size * 1.4)}" rx="${r(size / 4)}" fill="#000" fill-opacity="0.7"/>`
+      + `<text text-anchor="middle" dominant-baseline="central" fill="${colour}">${text}</text></g>`;
+  };
+  // labels of every side, in the order of LABEL_AT; the edge of the fully opaque area (traced on the mask) lies about
+  // a fifth of the feather inside the feather line: the blur reaches full opacity only there
+  const labels = [0, 1, 2, 3].map((i) => [
+    [quadSides(corners)[i], CUT_COLOURS.corners, `rohy ${own[i].join(' · ')} px`],
+    [quadSides(image)[i], CUT_COLOURS.image, `obrázek ${removed.total[i]} px = rohy ${removed.corners[i]} + okraj ${removed.edges[i]}`],
+    [quadSides(insetLine)[i], CUT_COLOURS.inset, `inset ${px1(insetPx)} px`],
+    [quadSides(featherLine)[i], CUT_COLOURS.feather, `prolnutí ${px1(featherPx)} px`],
+    [quadSides(insetQuad(corners, insetPx + featherPx * 1.2))[i], CUT_COLOURS.opaque, 'plná barva'],
+  ].map(([[a, b], colour, text], j) => {
+    const t = LABEL_AT[j], x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t;
+    const angle = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+    return label(x, y, angle, colour, text);
+  }).join(''));
+  // the corner values inside each corner, along its diagonal
+  const middle = [corners.reduce((n, p) => n + p[0], 0) / 4, corners.reduce((n, p) => n + p[1], 0) / 4];
+  const cornerLabels = CORNER_KEYS.map((k, i) => {
+    const [x, y] = corners[i], d = Math.hypot(middle[0] - x, middle[1] - y) || 1, reach = size * 5;
+    const at = [x + ((middle[0] - x) / d) * reach, y + ((middle[1] - y) / d) * reach];
+    return label(at[0], at[1], 0, CUT_COLOURS.corners, `${k} [${value[k].join(', ')}]`);
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`
+    + polygon(corners, CUT_COLOURS.corners) + polygon(insetLine, CUT_COLOURS.inset, true) + polygon(featherLine, CUT_COLOURS.feather, true)
+    + `<g font-family="DejaVu Sans, Arial, sans-serif" font-size="${size}" font-weight="bold">`
+    + `${labels.join('')}${cornerLabels.join('')}</g></svg>`;
 }
 
 /**
@@ -366,13 +435,12 @@ export function edgeOverlay(alpha, width, height, stroke, [r, g, b]) {
 }
 
 /**
- * The original photo in its full size with everything the cut removes or makes (partly) transparent lightly hatched
- * in the colour of the corner line (the stronger, the more transparent it becomes), the inner border of the hatching
- * (where the work becomes fully opaque) light green, the border of the trimmed image (trimTransparent) as a solid
- * line and, with `info`, the info panel in the middle (infoPanelSvg: a scheme, sizes,
+ * The original photo in its full size with the edge of the fully opaque work (from there the sheet in full, traced
+ * on the mask), the border of the trimmed image (trimTransparent) as a solid light green line, with `lines` the lines of the corners, inset and feather with their labels (cutLinesSvg) and,
+ * with `info`, the info panel in the middle (infoPanelSvg: a scheme, sizes,
  * what was removed and why, the edge settings, the meta_corners used). A JPEG buffer.
  */
-export async function hatchedOriginalOf(file, value, edges, { info = true } = {}) {
+export async function cutOriginalOf(file, value, edges, { info = true, lines: labelled = true } = {}) {
   const original = await sharp(file).rotate().toColorspace('srgb').removeAlpha().toBuffer();
   const { width, height } = await sharp(original).metadata();
   const panel = (region) => (info ? [{ input: Buffer.from(infoPanelSvg(width, height, region, [width, height], value, edges)) }] : []);
@@ -383,25 +451,18 @@ export async function hatchedOriginalOf(file, value, edges, { info = true } = {}
   const cut = await cutOut(original, value, edges);
   const region = await trimTransparent(cut);
   const alpha = await sharp(cut).extractChannel(3).raw().toBuffer();
-  const gap = Math.max(8, Math.round(Math.min(width, height) / 90)), stroke = Math.max(2, Math.round(gap / 4));
-  const hatch = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><defs>`
-    + `<pattern id="h" width="${gap}" height="${gap}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">`
-    + `<line x1="0" y1="0" x2="0" y2="${gap}" stroke="#ff00cc" stroke-width="${stroke}"/></pattern></defs>`
-    + '<rect width="100%" height="100%" fill="url(#h)"/></svg>';
-  const lines = await sharp(Buffer.from(hatch)).resize(width, height, { fit: 'fill' }).ensureAlpha().raw().toBuffer();
-  // lightly: the lines at most 70 % opaque, weighted by how transparent the cut makes the pixel
-  for (let i = 0; i < width * height; i++) lines[i * 4 + 3] = Math.round((lines[i * 4 + 3] * (255 - alpha[i]) * 0.7) / 255);
-  // the inner border of the hatching, where the work becomes fully opaque: traced on the mask itself
-  const opaqueEdge = edgeOverlay(alpha, width, height, stroke, [0x7c, 0xff, 0x7c]);
+  // the edge of the fully opaque work: traced on the mask itself; thin lines, so the lines of the corners, inset and feather a few pixels apart stay apart
+  const thin = Math.max(1, Math.round(Math.min(width, height) / 1000));
+  const opaqueEdge = edgeOverlay(alpha, width, height, thin, [0xff, 0x00, 0xcc]);
   // the border of the trimmed image: where the site's image ends
-  const half = stroke / 2;
+  const half = thin / 2;
   const border = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`
-    + `<rect x="${region.left + half}" y="${region.top + half}" width="${Math.max(1, region.width - stroke)}" height="${Math.max(1, region.height - stroke)}" fill="none" stroke="#ff00cc" stroke-width="${stroke}"/></svg>`;
+    + `<rect x="${region.left + half}" y="${region.top + half}" width="${Math.max(1, region.width - thin)}" height="${Math.max(1, region.height - thin)}" fill="none" stroke="${CUT_COLOURS.image}" stroke-width="${thin}"/></svg>`;
   return sharp(original)
     .composite([
-      { input: lines, raw: { width, height, channels: 4 } },
       { input: opaqueEdge, raw: { width, height, channels: 4 } },
       { input: Buffer.from(border) },
+      ...(labelled ? [{ input: Buffer.from(cutLinesSvg(width, height, region, value, edges)) }] : []),
       ...panel(region),
     ])
     .jpeg({ quality: 88, mozjpeg: true })

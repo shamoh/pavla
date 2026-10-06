@@ -15,18 +15,20 @@
 //
 // For every photo: the corners from meta_corners of its description (<slug>.yaml next to it); without them (or
 // with corners of another photo) the corners are detected and printed as YAML, ready to be copied into the
-// description. Then two files, named <slug>-<id> like the work's folder on the site: <out>/<slug>-<id>.jpg, the same
-// preview as the pipeline makes for drafts, the result on light and dark paper side by side, with a thin line along the corners and how much each corner cuts (% of the photo,
-// red above images.edges.suspicious), and <out>/<slug>-<id>.png, the cut work alone with its transparent
-// surroundings (at most 1600 px wide), and <out>/<slug>-<id>-original.jpg, the original photo in its full size with what
-// the cut removes or makes transparent lightly hatched; the same shares are printed, "!" marks a suspicious corner, and at the end
-// the photos with a suspicious corner are listed once more. Settings: images.edges in site.config.yaml.
+// description. Then three files, named <slug>-<id> like the work's folder on the site and a suffix by their purpose:
+// <out>/<slug>-<id>-backgrounds.jpg, the same preview as the pipeline makes for drafts, the result on light and dark
+// paper side by side, with a thin line along the corners and how much each corner cuts (% of the photo, red above
+// images.edges.suspicious); <out>/<slug>-<id>-cut.jpg, the original photo in its full size with the lines of the cut
+// (corners, inset, feather, the trimmed image), each labelled on every side; <out>/<slug>-<id>-frames.jpg, the whole photo in its full size with frame
+// lines in from every border (images.edges.guides), each labelled with its distance in pixels. The same shares are
+// printed, "!" marks a suspicious corner, and at the end the photos with a suspicious corner are listed once more.
+// Settings: images.edges in site.config.yaml.
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import YAML from 'yaml';
-import { cornersYaml, cutImageOf, detectFile, guidesProblems, hatchedOriginalOf, masterSize, previewOf, withCorners } from './lib/corners.mjs';
+import { cornersYaml, detectFile, framesOf, guidesProblems, cutOriginalOf, masterSize, previewOf, withCorners } from './lib/corners.mjs';
 import { CORNER_KEYS, EDGE_DEFAULTS, cornerShares, cornersProblems, cutsSheet, percent } from './lib/edges.mjs';
 import { IMAGE_EXTENSIONS, slugify, splitExt } from './lib/works.mjs';
 
@@ -143,15 +145,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       }
       // <slug>-<id> like the work's folder on the site (just <slug> before the work has an id)
       const key = [slugify(splitExt(path.basename(photo)).base), found.id].filter(Boolean).join('-');
-      const name = `${key}.jpg`;
+      const name = `${key}-backgrounds.jpg`;
       const doubtful = cutsSheet(value) && cornerShares(value, edges.suspicious).suspicious.length > 0;
       if (onlySuspicious && !doubtful) continue;
       await fs.writeFile(path.join(outDir, name), await previewOf(photo, value, edges));
-      await fs.writeFile(path.join(outDir, `${key}.png`), await cutImageOf(photo, value, edges));
-      await fs.writeFile(path.join(outDir, `${key}-original.jpg`), await hatchedOriginalOf(photo, value, edges));
+      await fs.writeFile(path.join(outDir, `${key}-cut.jpg`), await cutOriginalOf(photo, value, edges));
+      await fs.writeFile(path.join(outDir, `${key}-frames.jpg`), await framesOf(photo, edges.guides));
       console.log(`→ ${rel}: ${note}${cutsSheet(value) ? '' : ' (the sheet fills the photo, nothing is cut)'}`);
       const shown = (f) => path.relative(cwd, path.join(outDir, f));
-      console.log(`  preview: ${shown(name)} (light and dark), ${shown(`${key}.png`)} (transparent), ${shown(`${key}-original.jpg`)} (original, cut hatched)`);
+      console.log(`  preview: ${shown(name)} (light and dark), ${shown(`${key}-cut.jpg`)} (cut lines), ${shown(`${key}-frames.jpg`)} (frame lines)`);
       if (cutsSheet(value)) {
         console.log(`  cut (% of the photo, ! = more than ${percent(edges.suspicious)}): ${sharesLine(value, edges.suspicious)}`);
         if (doubtful) flagged.push({ rel, name, value });

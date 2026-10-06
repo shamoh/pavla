@@ -1239,9 +1239,9 @@ test('corners: prepare only finds the corners of every work and writes a cut pre
   assert.ok(corners.tl[0] >= 20 && corners.tl[0] <= 30 && corners.tl[1] >= 12 && corners.tl[1] <= 22, JSON.stringify(corners));
   // a draft whose photo has no floor needs no preview, a published work never gets one
   const id = await idOf('2026', 'rozpracovany');
-  assert.deepEqual(r.previews, [`rozpracovany-${id}.jpg`]);
-  assert.deepEqual(await fs.readdir(previewDir), [`rozpracovany-${id}.jpg`]);
-  const meta = await sharp(path.join(previewDir, `rozpracovany-${id}.jpg`)).metadata();
+  assert.deepEqual(r.previews, [`rozpracovany-${id}-backgrounds.jpg`]);
+  assert.deepEqual(await fs.readdir(previewDir), [`rozpracovany-${id}-backgrounds.jpg`]);
+  const meta = await sharp(path.join(previewDir, `rozpracovany-${id}-backgrounds.jpg`)).metadata();
   assert.equal(meta.format, 'jpeg');
   assert.ok(meta.width > meta.height * 2, 'light and dark side by side');
   for (const p of ['content', 'public']) assert.ok(!(await exists(path.join(siteDir, p))), p);
