@@ -1,13 +1,14 @@
 {
-  "width": 2477,
-  "height": 1776,
+  "width": 2396,
+  "height": 1714,
   "widths": [
     480,
     960,
     1600,
-    2400
+    2396
   ],
   "dominant": "rgb(136,136,120)",
+  "transparent": true,
   "mockups": [
     {
       "scene": "komoda",
@@ -51,5 +52,5 @@
     "width": 1200,
     "height": 800
   },
-  "fingerprint": "cb72837e9a7aa854"
+  "fingerprint": "c4b9425a6f33c25b"
 }

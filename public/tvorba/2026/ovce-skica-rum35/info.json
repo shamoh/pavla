@@ -1,6 +1,6 @@
 {
-  "width": 2900,
-  "height": 2099,
+  "width": 2794,
+  "height": 2004,
   "widths": [
     480,
     960,
@@ -8,11 +8,12 @@
     2400
   ],
   "dominant": "rgb(184,184,168)",
+  "transparent": true,
   "mockups": [],
   "details": [],
   "og": {
     "width": 1200,
     "height": 800
   },
-  "fingerprint": "93c6e353d647e5df"
+  "fingerprint": "548d5580d2ebffd7"
 }
