@@ -45,6 +45,7 @@ const href = crop && link ? crop.href : undefined;
 {cover.kind === 'random' && cover.works.length > 1 && <script is:inline set:html={randomPickScript} />}
 <style>
   .cover :global(picture) { box-shadow: var(--shadow-deep); }
+  .cover :global(picture.cutout) { box-shadow: none; filter: var(--drop-deep); }
   .cover .pick, .cover .frame { display: block; }
   .cropped { aspect-ratio: var(--aspect); overflow: hidden; box-shadow: var(--shadow-deep); }
   .cropped .frame, .cropped :global(picture) { height: 100%; box-shadow: none; }

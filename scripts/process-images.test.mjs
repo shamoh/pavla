@@ -1055,7 +1055,8 @@ test('existing files get every supported attribute on every run, on a branch too
   assert.equal(data.meta_draft, false, 'a work without draft stays published');
   assert.equal(data.description, null, 'no placeholder text reaches the site');
   assert.match(text, /# změřeno\n# Šířka × výška v cm[^\n]*\n[^\n]*\nsize_cm: \[40, 30\]/);
-  assert.match(text, /^# true = rozpracovaný[^\n]*\nmeta_draft: false\n/, 'settled: no DOPLNIT; meta_ attributes come first');
+  assert.match(text, /^# Rohy listu[^\n]*\n(# [^\n]*\n){3}meta_corners:\n  photo: \[64, 48\]\n(  (tl|tr|br|bl): \[\d+, \d+\]\n){4}\n# true = rozpracovaný[^\n]*\nmeta_draft: false\n/,
+    'settled: no DOPLNIT; meta_ attributes come first, the corners of the sheet detected');
   assert.match(text, /# NEZNÁMÝ atribut[^\n]*\nmockup: true\n$/);
   assert.deepEqual(Object.keys(YAML.parse(await fs.readFile(path.join(contentDir, 'fotky/kontakt.yaml'), 'utf8'))), PHOTO_FIELDS.filter((k) => k !== 'caption'));
 
@@ -1203,4 +1204,114 @@ test('covers of years and the home page: own photo, cover, focus; share image on
   assert.ok(r.pruned.includes('public/og.jpg'));
   assert.ok(r.pruned.includes('public/tvorba/2025/_cover/'));
   assert.ok(!(await exists(path.join(siteDir, 'public/og/years'))));
+});
+
+/** A master photographed on a floor: magenta floor (a colour no interior scene has), a light sheet askew with paint on it. */
+async function floorMaster(slug, yaml) {
+  const dir = path.join(contentDir, 'tvorba');
+  await fs.mkdir(dir, { recursive: true });
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="100%" height="100%" fill="#ff00ff"/>'
+    + '<polygon points="24,16 376,24 372,284 18,278" fill="#f0eee6"/><ellipse cx="200" cy="150" rx="90" ry="60" fill="#4a6fa0"/></svg>';
+  await sharp(Buffer.from(svg)).jpeg({ quality: 95 }).toFile(path.join(dir, `${slug}.jpg`));
+  if (yaml !== undefined) await fs.writeFile(path.join(dir, `${slug}.yaml`), yaml);
+}
+const magentaShare = async (buf) => {
+  const { data, info } = await sharp(buf).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  let n = 0;
+  for (let i = 0; i < data.length; i += 3) if (data[i] - data[i + 1] > 70 && data[i + 2] - data[i + 1] > 70) n++;
+  return n / (info.width * info.height);
+};
+const pixel = async (file, x, y) => {
+  const { data, info } = await sharp(await fs.readFile(file)).raw().toBuffer({ resolveWithObject: true });
+  return [...data.subarray((y * info.width + x) * info.channels, (y * info.width + x + 1) * info.channels)];
+};
+
+test('corners: prepare only finds the corners of every work and writes a cut preview of drafts only, nothing for the site', async () => {
+  await floorMaster('rozpracovany', 'meta_draft: true\ntitle: Rozpracovaný\ndate: 2026-06-14\n');
+  await floorMaster('hotovy', 'meta_draft: false\ntitle: Hotový\ndate: 2026-06-14\n');
+  await addWork('2026', 'bez-podlahy', 'meta_draft: true\ntitle: Bez podlahy\ndate: 2026-06-14\n');
+  const previewDir = path.join(tmp, 'previews');
+  const r = await run(opts({ prepareOnly: true, previewDir }));
+  assert.equal(r.ok, true, r.problems.join('\n'));
+  assert.deepEqual(r.detected.map((d) => d.split(':')[0]).sort(), ['tvorba/bez-podlahy.yaml', 'tvorba/hotovy.yaml', 'tvorba/rozpracovany.yaml']);
+  const corners = YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/hotovy.yaml'), 'utf8')).meta_corners;
+  assert.deepEqual(corners.photo, [400, 300]);
+  assert.ok(corners.tl[0] >= 20 && corners.tl[0] <= 30 && corners.tl[1] >= 12 && corners.tl[1] <= 22, JSON.stringify(corners));
+  // a draft whose photo has no floor needs no preview, a published work never gets one
+  const id = await idOf('2026', 'rozpracovany');
+  assert.deepEqual(r.previews, [`rozpracovany-${id}.jpg`]);
+  assert.deepEqual(await fs.readdir(previewDir), [`rozpracovany-${id}.jpg`]);
+  const meta = await sharp(path.join(previewDir, `rozpracovany-${id}.jpg`)).metadata();
+  assert.equal(meta.format, 'jpeg');
+  assert.ok(meta.width > meta.height * 2, 'light and dark side by side');
+  for (const p of ['content', 'public']) assert.ok(!(await exists(path.join(siteDir, p))), p);
+  // published, the draft's preview is gone with the next full run
+  const rozpracovany = path.join(contentDir, 'tvorba/rozpracovany.yaml');
+  await fs.writeFile(rozpracovany, (await fs.readFile(rozpracovany, 'utf8')).replace('meta_draft: true', 'meta_draft: false'));
+  const full = await run(opts({ previewDir }));
+  assert.deepEqual(full.detected, [], 'found once, kept since');
+  assert.deepEqual(full.previews, []);
+  assert.ok(!(await exists(previewDir)));
+});
+
+test('corners: the floor is transparent on the web, paper in the JPEG, white for Fler, gone from mockups and exports', async () => {
+  await floorMaster('podlaha', 'title: Podlaha\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\nmeta_instagram: true\n');
+  const r = await run(opts());
+  assert.equal(r.ok, true, r.problems.join('\n'));
+  const dir = await workDir('2026', 'podlaha');
+  const info = JSON.parse(await fs.readFile(path.join(dir, 'info.json'), 'utf8'));
+  assert.equal(info.transparent, true);
+  assert.equal(info.dominant.startsWith('rgb('), true);
+  const w = info.widths[info.widths.length - 1];
+  // AVIF and WebP: transparent corner, opaque middle
+  for (const ext of ['webp', 'avif']) {
+    const meta = await sharp(path.join(dir, `${w}.${ext}`)).metadata();
+    assert.equal(meta.hasAlpha, true, ext);
+    assert.equal((await pixel(path.join(dir, `${w}.${ext}`), 1, 1))[3], 0, `${ext}: the floor is transparent`);
+    assert.equal((await pixel(path.join(dir, `${w}.${ext}`), Math.round(w / 2), Math.round((w * 3) / 8)))[3], 255, `${ext}: the work is not`);
+  }
+  // JPEG: the paper of the first palette instead of the floor
+  const corner = await pixel(path.join(dir, `${w}.jpg`), 1, 1);
+  assert.ok(corner.every((c, i) => Math.abs(c - [0xf7, 0xf4, 0xee][i]) < 8), `jpeg corner ${corner}`);
+  // exports: no floor anywhere; Fler on white
+  const key = path.basename(dir);
+  const fler = path.join(contentDir, 'export/fler/2026', `${key}.jpg`);
+  assert.ok((await pixel(fler, 1, 1)).every((c) => c > 245), 'Fler: white instead of the floor');
+  for (const f of [fler, path.join(contentDir, 'export/instagram/2026', `${key}-clean.jpg`), path.join(dir, 'og.jpg')]) {
+    assert.ok((await magentaShare(await fs.readFile(f))) < 0.002, `no floor in ${path.basename(f)}`);
+  }
+  const mockups = (await fs.readdir(dir)).filter((f) => f.startsWith('mockup-') && f.endsWith('.jpg'));
+  assert.ok(mockups.length > 0);
+  for (const f of mockups) assert.ok((await magentaShare(await fs.readFile(path.join(dir, f)))) < 0.0005, `no floor in ${f}`);
+});
+
+test('corners: false keeps the whole photo; changing the corners regenerates; corners of another photo stop the run', async () => {
+  await floorMaster('podlaha', 'meta_corners: false\ntitle: Podlaha\ndate: 2026-06-14\n');
+  assert.equal((await run(opts())).ok, true);
+  const dir = await workDir('2026', 'podlaha');
+  const info = JSON.parse(await fs.readFile(path.join(dir, 'info.json'), 'utf8'));
+  assert.equal(info.transparent, undefined);
+  assert.equal(YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/podlaha.yaml'), 'utf8')).meta_corners, false, 'kept');
+  assert.ok((await magentaShare(await fs.readFile(path.join(dir, '40.jpg')))) > 0.05, 'the floor stays');
+
+  const file = path.join(contentDir, 'tvorba/podlaha.yaml');
+  const set = async (value) => fs.writeFile(file, (await fs.readFile(file, 'utf8')).replace(/meta_corners:[\s\S]*?\n(?=\n|[a-z])/, `meta_corners: ${value}\n`));
+  await set('{ photo: [400, 300], tl: [30, 30], tr: [30, 30], br: [30, 30], bl: [30, 30] }');
+  const changed = await run(opts());
+  assert.equal(changed.processed, 1, 'regenerated');
+  assert.equal(JSON.parse(await fs.readFile(path.join(dir, 'info.json'), 'utf8')).transparent, true);
+
+  await set('{ photo: [800, 600], tl: [30, 30], tr: [30, 30], br: [30, 30], bl: [30, 30] }');
+  const bad = await run(opts());
+  assert.equal(bad.ok, false);
+  assert.match(bad.problems.join('\n'), /tvorba\/podlaha\.yaml: meta_corners belong to a photo of 800 × 600, but the photo is 400 × 300/);
+});
+
+test('corners: settings of detection and previews (search, suspicious) never regenerate a work, feather does', async () => {
+  await floorMaster('podlaha', 'title: Podlaha\ndate: 2026-06-14\n');
+  assert.equal((await run(opts())).processed, 1);
+  const edges = config.images.edges;
+  const withEdges = (over) => ({ ...config, images: { ...config.images, edges: { ...edges, ...over } } });
+  assert.equal((await run(opts({ config: withEdges({ suspicious: 0.2, search: 0.2 }) }))).processed, 0);
+  assert.equal((await run(opts({ config: withEdges({ feather: 0.03 }) }))).processed, 1);
 });

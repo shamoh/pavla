@@ -52,3 +52,12 @@ test('formatSummary lists published works that still have DOPLNIT', () => {
   assert.match(s, /\*\*Zveřejněné obrazy, kterým zůstal DOPLNIT[^*]*\*\*\n\n- tvorba\/rano\.yaml: support, details/);
   assert.doesNotMatch(formatSummary(base), /zůstal DOPLNIT/);
 });
+
+test('formatSummary lists the corners found and the cut previews of drafts (the artifact of the run)', () => {
+  const s = formatSummary({
+    ...base, prepared: true, detected: ['tvorba/rano.yaml: tl 40×25, tr 30×20, br 35×28, bl 41×22'], previews: ['rano-k3f9a.jpg'],
+  });
+  assert.match(s, /\*\*Nalezené rohy listu \(meta_corners[^\n]*\*\*\n\n- tvorba\/rano\.yaml: tl 40×25/);
+  assert.match(s, /\*\*Náhledy ořezu rozpracovaných obrazů \(ke stažení jako „nahledy-orezu“[^\n]*\*\*\n\n- rano-k3f9a\.jpg/);
+  assert.doesNotMatch(formatSummary(base), /rohy listu|Náhledy ořezu/, 'nothing when there is nothing');
+});

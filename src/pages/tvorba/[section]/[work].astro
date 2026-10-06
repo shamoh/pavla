@@ -34,6 +34,8 @@ const views = [
   height: v.image.height,
   src: url(`${base}/${v.prefix}${v.image.widths[v.image.widths.length - 1]}.jpg`),
   srcset: v.image.widths.map((w) => `${url(`${base}/${v.prefix}${w}.webp`)} ${w}w`).join(', '),
+  // the surroundings of the sheet are transparent (meta_corners): a shadow along the paper, no background
+  cutout: !!v.image.transparent,
 }));
 // Landscape mockups are stacked, portrait ones sit side by side.
 const mockupsWide = mockups.every((m) => m.width >= m.height);
@@ -132,7 +134,7 @@ const jsonLd = graphLd(
 <script>
   // Viewer: a dialog (not fullscreen) that steps through the work and its mockups.
   // Without JavaScript the links simply open the largest image.
-  type View = { label: string; src: string; srcset: string; width: number; height: number };
+  type View = { label: string; src: string; srcset: string; width: number; height: number; cutout: boolean };
   const dialog = document.getElementById('viewer') as HTMLDialogElement;
   const img = document.getElementById('viewer-img') as HTMLImageElement;
   const label = document.getElementById('viewer-label')!;
@@ -149,6 +151,7 @@ const jsonLd = graphLd(
     img.width = v.width;
     img.height = v.height;
     img.alt = v.label;
+    img.classList.toggle('cutout', v.cutout);
     label.textContent = v.label;
     count.textContent = views.length > 1 ? `${current + 1} / ${views.length}` : '';
   }
@@ -183,6 +186,7 @@ const jsonLd = graphLd(
   .work { display: grid; grid-template-columns: 1.8fr 1fr; gap: clamp(24px, 5vw, 64px); align-items: start; }
   .zoom { display: block; cursor: zoom-in; }
   .zoom :global(picture) { box-shadow: var(--shadow-deep); }
+  .zoom :global(picture.cutout) { box-shadow: none; filter: var(--drop-deep); }
   .info h1 { margin-top: 0; }
   dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; font-size: 0.93rem; margin: 0 0 20px; }
   dt { color: var(--ink-soft); }
@@ -209,6 +213,7 @@ const jsonLd = graphLd(
   .viewer::backdrop { background: rgba(30, 26, 22, .82); }
   .viewer figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .viewer img { display: block; max-width: 92vw; max-height: 82vh; width: auto; height: auto; box-shadow: 0 24px 64px rgba(0,0,0,.45); background: var(--paper-2); }
+  .viewer img.cutout { box-shadow: none; background: none; filter: drop-shadow(0 18px 28px rgba(0,0,0,.45)); }
   .viewer figcaption { color: #f3eee6; font-size: 0.9rem; text-align: center; }
   .viewer figcaption .muted { color: #bdb3a6; margin-left: 8px; }
   .viewer button { position: fixed; background: rgba(0,0,0,.35); color: #fff; border: 0; cursor: pointer; font: 300 2.4rem/1 var(--sans); width: 52px; height: 52px; border-radius: 50%; }

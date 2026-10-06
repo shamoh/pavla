@@ -136,7 +136,8 @@ test('skeleton: every attribute with its skeleton default, DOPLNIT everywhere ex
 test('the real schemas: skeletons contain every attribute; DOPLNIT on all but generated, settled and commented-out ones', () => {
   for (const s of [WORK_SCHEMA, COLLECTION_SCHEMA, PHOTO_SCHEMA, YEAR_SCHEMA, HOME_SCHEMA]) {
     const text = skeleton(s, { id: 'k3f9a', title: 'X', date: '2026-06-14', alt: 'X' });
-    assert.deepEqual(schemaKeysIn(text, s), fieldKeys(s), s.name);
+    // optional attributes (meta_corners) are added later by the pipeline, never by a skeleton
+    assert.deepEqual(schemaKeysIn(text, s), s.fields.filter((f) => !f.optional).map((f) => f.key), s.name);
     const marked = text.split('\n').filter((l) => l.startsWith(`# ${TODO} `)).length;
     const toCheck = s.fields.filter((f) => !f.generated && !f.optional && !f.settled && !f.commented);
     assert.equal(marked, toCheck.length, s.name);

@@ -24,6 +24,24 @@ export function blobSvg([w, h], palette, seed, count = 14) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><filter id="b"><feGaussianBlur stdDeviation="${(w / 250).toFixed(2)}"/></filter></defs><rect width="100%" height="100%" fill="#f6f2ea"/>${blobs.join('')}</svg>`;
 }
 
+/** Colour of the wooden floor the test photos of works "lie" on (r.floor in the recipe). */
+export const FLOOR_COLOR = '#8a6446';
+
+/**
+ * The painted sheet photographed on a floor, a little askew: rotated by `angle` degrees with `margin` (share of the
+ * longer side) of floor around it, like a phone photo before its floor is cut away (meta_corners). Returns PNG.
+ */
+export async function onFloor(sheet, [w, h], { angle, margin }) {
+  const m = Math.round(Math.max(w, h) * margin);
+  const rotated = await sharp(sheet).rotate(angle, { background: FLOOR_COLOR }).png().toBuffer();
+  // a few darker boards, so the floor is not one flat colour
+  const { width, height } = await sharp(rotated).metadata();
+  const W = width + 2 * m, H = height + 2 * m;
+  const boards = Array.from({ length: Math.ceil(H / 90) }, (_, i) => `<rect y="${i * 90}" width="${W}" height="3" fill="#6e4f37"/>`).join('');
+  const floor = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect width="100%" height="100%" fill="${FLOOR_COLOR}"/>${boards}</svg>`);
+  return sharp(floor).composite([{ input: rotated, left: m, top: m }]).png().toBuffer();
+}
+
 /**
  * Checks the recipe and returns problems: unknown palettes, crops of images that are not in the recipe
  * (or are crops themselves) and crops outside their source.
@@ -41,6 +59,9 @@ export function recipeProblems(recipe) {
       if (!recipe.palettes?.[r.palette]) problems.push(`images.yaml: ${file}: unknown palette "${r.palette}"`);
       if (!Array.isArray(r.size) || r.size.length !== 2) problems.push(`images.yaml: ${file}: size must be [width, height]`);
       if (!Number.isInteger(r.seed)) problems.push(`images.yaml: ${file}: seed must be a whole number`);
+      if (r.floor !== undefined && !(Number.isFinite(r.floor?.angle) && Math.abs(r.floor.angle) <= 10 && r.floor?.margin > 0 && r.floor.margin < 0.2)) {
+        problems.push(`images.yaml: ${file}: floor must be { angle: <-10…10 degrees>, margin: <0…0.2> }`);
+      }
     }
   }
   return problems;
@@ -61,6 +82,7 @@ export async function renderDemoImages(recipe, outDir) {
       if (r.width) img = img.resize({ width: r.width });
     } else {
       img = sharp(Buffer.from(blobSvg(r.size, recipe.palettes[r.palette], r.seed)));
+      if (r.floor) img = sharp(await onFloor(await img.png().toBuffer(), r.size, r.floor));
     }
     await fs.writeFile(target, await img.jpeg({ quality: 88 }).toBuffer());
     written.push(file);

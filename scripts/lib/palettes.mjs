@@ -86,13 +86,18 @@ export function resolvePalette(choice, prefersDark, palettes = PALETTES) {
 /**
  * Shadows of pictures for a palette: --shadow-soft (cards in the gallery), --shadow-deep (the cover, the work itself).
  * The alphas are those of the light palette times `picture.shadow`; `picture.edge` adds a hairline in front.
+ * --drop-soft / --drop-deep: the same as CSS filters, for a work whose surroundings are transparent (meta_corners):
+ * the shadow follows the edge of the paper instead of the rectangle of the image.
  */
 export function pictureShadows({ shadow, edge }) {
   const a = (x) => `rgb(0 0 0 / ${Math.min(1, +(x * shadow).toFixed(3))})`;
   const ring = edge ? `0 0 0 1px ${edge}, ` : '';
+  const line = edge ? `drop-shadow(0 0 1px ${edge}) ` : '';
   return {
     '--shadow-soft': `${ring}0 1px 2px ${a(0.06)}, 0 8px 24px -12px ${a(0.18)}`,
     '--shadow-deep': `${ring}0 2px 4px ${a(0.05)}, 0 24px 48px -24px ${a(0.3)}`,
+    '--drop-soft': `${line}drop-shadow(0 1px 1px ${a(0.06)}) drop-shadow(0 6px 8px ${a(0.12)})`,
+    '--drop-deep': `${line}drop-shadow(0 2px 2px ${a(0.05)}) drop-shadow(0 14px 16px ${a(0.22)})`,
   };
 }
 

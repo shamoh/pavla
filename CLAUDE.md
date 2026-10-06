@@ -88,6 +88,17 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   úvodní obraz kolekce/roku/úvodu = ořez vybraného (`aspect`/`focus`), vlastní fotka nebo detail celé na papíře, jinak `og.jpg`
   díla (`coverShareSource`); helpery `*ShareImage` v `src/lib/site.ts`.
 - Mockupy: scény v `mockups/scenes.yaml` (kalibrace px/cm), výběr a vykreslení `scripts/lib/mockups.mjs`.
+- Ořez podlahy: `meta_corners` díla (`photo` + rohy `tl`/`tr`/`br`/`bl` v px dovnitř, `false` = neořezávat) najde
+  pipeline u každého díla s fotkou bez atributu (i zveřejněného, i `--prepare-only`; `scripts/lib/corners.mjs`,
+  detekce a maska `scripts/lib/edges.mjs`), ruční hodnotu nikdy nepřepíše, jiný rozměr fotky = chyba. Vně rohů
+  průhledné s prolnutím (`images.edges`): web AVIF/WebP průhledné (`transparent` v `info.json`, třída `cutout`:
+  bez `--ph`, stín jen `filter: var(--drop-…)`, nikdy `box-shadow`), JPEG na papíře první palety, og/Instagram na
+  svém pozadí, Fler bílá, mockup jen vnitřní obdélník (průnik s `pavla:sheet`). Náhledy ořezu draftů do
+  `.previews/` (mimo git), workflow obsahového repa i `dry-run.yml` je nahrají jako artefakt `nahledy-orezu`.
+  `npm run preview -- <fotka|složka>` (`scripts/preview.mjs`): tentýž náhled pro libovolné fotky, obsah jen čte,
+  chybějící rohy najde a vypíše jako yaml; `--write` je zapíše jen do popisů zadaných fotek bez `meta_corners`.
+  Náhled i výpis ukazují ořez rohů v % fotky, nad `images.edges.suspicious` (5 %) červeně / `!`, na konci výpisu souhrn podezřelých fotek;
+  `--only-suspicious` = jen podezřelé (ne s `--write`). Souhrn běhu („Nalezené rohy listu“) značí podezřelé `⚠`. Originální fotky obsahového repa pipeline nikdy nemění.
 - Ostatní fotky: `fotky/<název>.jpg` obsahového repa → `public/fotky/<název>/` (obrázky), popis (`alt`, `caption`,
   `focus`) → `content/fotky/<název>.yaml`; na stránce `<Photo name="…" />`;
   `aspect` ořízne na poměr stran kolem `focus: [x, y]` (%) z yaml fotky. O mně: `o-mne-uvod` (2:1) a `portret`.
@@ -105,7 +116,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Srovnání fotek obrazů (perspektiva, ořez podkladu): `npm run straighten -- <fotka|složka>` (`scripts/straighten.mjs`),
   originály nikdy nepřepisuje, výstup do `upravene/`; ruční rohy a další výřezy v `<fotka>.orez.yaml`, `--white-balance`, `--width`, `--margin` (výchozí okraj podkladu kolem listu, aby byly vidět okraje papíru).
   S okrajem zapíše do JPEGu polohu listu (XMP `pavla:sheet`, `scripts/lib/sheet-box.mjs`); pipeline podle ní
-  pro mockupy (web i Fler) ořízne master na holý papír, jinde okraj zůstává.
+  pro mockupy (web i Fler) ořízne master na holý papír, jinde okraj zůstává (podlahu vně rohů listu řeší ořez podlahy).
 - Vyhledávače (`scripts/lib/seo.mjs`, `Base.astro` props `description`, `type`, `noindex`, `jsonLd`): každá stránka má
   vlastní titulek a popis (max. 160 znaků) a strukturovaná data schema.org (JSON-LD, `graphLd`): `VisualArtwork`
   u díla, `CollectionPage` u výpisů, `Person`/`WebSite`/`ProfilePage`/`ContactPage`, všude `BreadcrumbList`.

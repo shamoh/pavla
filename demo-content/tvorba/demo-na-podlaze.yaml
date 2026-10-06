@@ -1,67 +1,69 @@
+# testovací data: list vyfocený nakřivo na podlaze; rohy listu (meta_corners) najde pipeline a podlahu
+# kolem nich na webu zprůhlední, v exportech nahradí papírem, bílou (Fler) a paspartou (mockupy)
+
 # Rohy listu na fotce: všechno vně čtyřúhelníku (podlaha) bude na webu průhledné. Najde je pipeline, smíš je
 # upravit. photo = [šířka, výška] fotky; tl/tr/br/bl = levý horní, pravý horní, pravý dolní, levý dolní roh jako
 # [px vodorovně, px svisle] od toho rohu fotky směrem dovnitř, např. tl: [40, 25]. false = nic neořezávat.
 # Po výměně fotky za jinou velikost atribut smaž, pipeline rohy najde znovu.
 meta_corners:
-  photo: [2400, 1680]
-  tl: [0, 0]
-  tr: [0, 0]
-  br: [0, 0]
-  bl: [0, 0]
+  photo: [2251, 1769]
+  tl: [151, 99]
+  tr: [100, 169]
+  br: [152, 99]
+  bl: [99, 169]
 
 # true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.
 meta_draft: false
 
 # true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.
-meta_instagram: false
+meta_instagram: true
 
 # Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
 # Generuje ho pipeline, NIKDY neměnit. Hodí se napsat tužkou na zadní stranu obrazu.
-id: w2urm
+id: p7d2k
 
 # Den vzniku ve tvaru 2026-06-14. Rok z něj určuje rok obrazu na webu (stránka roku, adresa).
-date: 2025-01-18
+date: 2026-09-05
 
 # Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.
 description: |
-  Jabloně pod sněhem za vesnicí.
+  Louka za stodolou v podvečer. Vyfoceno na podlaze nakřivo, podlaha kolem listu zmizí.
 
 # NEPOVINNÉ. Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.
 # details: { 1-mlha: Ranní mlha nad vodou }
 
 # true = ve výběru autorky: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně
 # střídají obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover). false = ne.
-featured: true
+featured: false
 
 # NEPOVINNÉ. Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
 # fler: https://www.fler.cz/zbozi/…
 
-# testovací data: mockupy zapnuté výslovně
 # true = mockupy (obraz v rámu v interiéru) na webu, u obrazu na prodej i pro Fler; false = žádné.
 mockups: true
 
 # NEPOVINNÉ. Cena v Kč, např. 2500. Povinná u available a reserved.
-price: 4500
+price: 1800
 
 # Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu:
 # podle rozměrů se dělají mockupy ve skutečné velikosti.
-size_cm: [50, 35]
+size_cm: [40, 30]
 
 # Stav prodeje: available (k prodeji) | reserved (rezervováno) | sold (prodáno)
 # | not-for-sale (není na prodej, na webu bez štítku).
 status: available
 
 # NEPOVINNÉ. Podklad, např. papír Arches 300 g. Bez něj se na webu nezobrazí.
-support: papír 300 g
+support: papír Arches 300 g
 
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
-tags: [krajina, zima]
+tags: [krajina, léto]
 
 # Technika, např. akvarel, kresba tužkou, linoryt, kombinovaná technika. Podle ní se filtruje v galerii.
 technique: akvarel
 
 # Název obrazu, jak ho uvidí návštěvníci webu.
-title: Zimní sad
+title: Na podlaze
 
 # NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
 # private_note: kde obraz visí, komu patří

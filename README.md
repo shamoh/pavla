@@ -35,6 +35,7 @@ pavla/                                      (toto repo, veřejné)
   demo-content/                             testovací data: vymyšlené obsahové repo (stejná struktura jako
                                             skutečné, yaml + recept na obrázky), viz Testovací data
   .demo/                                    připravená testovací data a web z nich (npm run demo, mimo git)
+  .previews/                                náhledy ořezu (npm run images: drafty, npm run preview: cokoli; mimo git), viz Ořez podlahy
   content/                                  veřejné kopie popisů = zrcadlo obsahového repa (generuje pipeline, needitovat):
     _index.yaml                             úvodní stránka
     tvorba/<slug>.yaml                      dílo bez kolekce
@@ -280,7 +281,7 @@ příprava trvá kolem 1,5 minuty, další jen přegenerují změny.
 **Nové testovací dílo:** yaml do `demo-content/tvorba/demo-<slug>.yaml` nebo do složky testovací
 kolekce `demo-content/tvorba/demo-<kolekce>/`
 a řádek do `demo-content/images.yaml` (`size`, `palette`, `seed`; detailní fotka jako
-`from` + `crop`). Pak `npm run demo`, pipeline doplní `id`.
+`from` + `crop`; list vyfocený nakřivo na podlaze s `floor: { angle, margin }`). Pak `npm run demo`, pipeline doplní `id`.
 
 ## Přidání nového díla
 
@@ -332,6 +333,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 
 | Atribut | Význam |
 |---|---|
+| `meta_corners` | rohy listu na fotce, podlaha vně nich bude průhledná; najde je pipeline, smí se upravit, `false` = neořezávat (viz *Ořez podlahy*) |
 | `meta_draft` | `true` = rozpracované: do tohoto repa se nedostane nic (popis, obrázky), ani exporty; do veřejné kopie se nekopíruje |
 | `meta_instagram` | `true` = exporty pro Instagram (výchozí `false`) |
 | `id` | trvalý kód, doplní pipeline, NEMĚNIT |
@@ -441,15 +443,15 @@ jen v obsahovém repu. Nové veřejné pole stačí přidat do schématu bez pre
 a fotek platí totéž (`PUBLIC_COLLECTION_FIELDS`, `PUBLIC_YEAR_FIELDS`, `PUBLIC_HOME_FIELDS`, `PUBLIC_PHOTO_FIELDS`).
 
 **Testovací data** jsou úplně oddělená od skutečných (viz *Testovací data (demo)*):
-18 děl (17 publikovaných, 1 rozpracované), 4 kolekce a 3 zástupné fotky
+19 děl (18 publikovaných, 1 rozpracované), 4 kolekce a 3 zástupné fotky
 v `demo-content/`, zobrazené přes `npm run demo`.
 
 | Funkce | Kde ji testovací data ukazují |
 |---|---|
-| roky | 2025 (6 děl), 2026 (11 publikovaných) |
-| stránkování | `/tvorba/` má 17 děl = 2 stránky po 12, při 24 nebo 48 jedna; stránky roků (6 a 11 děl) se nestránkují |
+| roky | 2025 (6 děl), 2026 (12 publikovaných) |
+| stránkování | `/tvorba/` má 18 děl = 2 stránky po 12, při 24 nebo 48 jedna; stránky roků (6 a 12 děl) se nestránkují |
 | rozpracované dílo (`meta_draft`) | Rozpracovaný obraz: nesmí být nikde na webu |
-| `available` | Pivoňky, Zimní sad, Ráno u rybníka, Město v dešti, Náměstí v mlze, Máky, Bouřka nad polem |
+| `available` | Pivoňky, Zimní sad, Ráno u rybníka, Město v dešti, Náměstí v mlze, Máky, Bouřka nad polem, Na podlaze |
 | `reserved` | Kočka na okně, Modravské slatě, Rybník v zimě |
 | `sold` | Jablka na stole, Šumava v mlze, Nádraží |
 | `not-for-sale` | Kytice z louky, Kvilda skica, Slunečnice, Lípa u kaple |
@@ -458,8 +460,8 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | `featured` (výběr autorky, 9 děl) | Máky, Ráno u rybníka, Šumava v mlze, Nádraží, Rybník v zimě… (2026 a přelom roku), Pivoňky, Zimní sad, Kočka na okně, Jablka na stole (2025): úvodní stránka náhodně střídá všech 9, `/tvorba/?featured=1` je ukáže |
 | text o roce | `/tvorba/2026/` má text (`demo-content/roky/2026.yaml`), `/tvorba/2025/` ne (`description: ""`) |
 | tlačítko „Koupit na Fleru“ | Máky |
-| export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail), Kytice z louky (+ 1 detail, není na prodej), Máky; ostatní díla žádný |
-| `mockups: true`, na prodej | Ráno u rybníka (+ detaily), Zimní sad, Město v dešti, Náměstí v mlze, Kočka na okně, Rybník v zimě |
+| export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail), Kytice z louky (+ 1 detail, není na prodej), Máky, Na podlaze; ostatní díla žádný |
+| `mockups: true`, na prodej | Ráno u rybníka (+ detaily), Zimní sad, Město v dešti, Náměstí v mlze, Kočka na okně, Rybník v zimě, Na podlaze |
 | `mockups: true`, ne na prodej | Kytice z louky (+ detail), Slunečnice, Šumava v mlze (prodáno) |
 | `mockups: false` | Pivoňky (na prodej, + detail), Bouřka nad polem, Modravské slatě (na prodej), Kvilda skica, Nádraží (prodáno), Máky (na prodej), Lípa u kaple, Jablka na stole (prodáno), Rozpracovaný obraz |
 | `DOPLNIT` a neznámý atribut (`NEZNÁMÝ`) | Rozpracovaný obraz (`mockup: true` je schválně překlep) |
@@ -472,7 +474,12 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | rok: vlastní úvodní fotka, jen `focus` (ořez 1:1) | 2025 (`demo-content/roky/2025.yaml`, panorama `roky/2025.jpg`) |
 | úvodní stránka: text z `_index.yaml`, náhodný obraz | `demo-content/_index.yaml` |
 | kolekce přes víc let a přelom roku | `demo-kresby-2025-2026/`: Kočka na okně, Jablka na stole (2025), Rybník v zimě (prosinec 2025), Nádraží (únor 2026) |
-| díla bez kolekce | Zimní sad, Slunečnice, Máky, Bouřka nad polem, Lípa u kaple |
+| díla bez kolekce | Zimní sad, Slunečnice, Máky, Bouřka nad polem, Lípa u kaple, Na podlaze, Rozpracovaný obraz |
+| ořez podlahy: rohy listu najde pipeline (průhledné okolí na webu, papír v JPEG a na Instagramu, bílá pro Fler, mockupy bez podlahy) | Na podlaze (list vyfocený nakřivo, recept `floor` v `demo-content/images.yaml`) |
+| ořez podlahy: rohy zadané ručně | Bouřka nad polem (`meta_corners` v `demo-content/`) |
+| ořez podlahy vypnutý (`meta_corners: false`) | Lípa u kaple |
+| náhled ořezu rozpracovaného díla | Rozpracovaný obraz (`.demo/site/.previews/`), zveřejněná díla náhled nemají |
+| rohy bez podlahy (všechny nuly, nic se neořezává; i obraz s barvou až do kraje) | ostatní díla |
 | soukromá poznámka | Ráno u rybníka, Jablka na stole, kolekce Plenér Šumava 2026 |
 | vlastní `private_…` atribut (bez `NEZNÁMÝ`, abecedně mezi `private_`, nikdy na web) | Máky (`private_kupec`) |
 | `meta_…` atributy na začátku, sdílené (`id` první, abecedně), `private_…` na konci | každý popis v `demo-content/` |
@@ -489,6 +496,8 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 - `id` je platné a unikátní, `size_cm` jsou dvě kladná čísla (u publikovaných děl),
 - dílo `available` nebo `reserved` má `price` (kladné číslo),
 - `meta_instagram` je `true` nebo `false`,
+- `meta_corners` je `false`, nebo `photo` (rozměr fotky, musí sedět s fotkou) a rohy `tl`, `tr`, `br`, `bl` jako dvě celá
+  nezáporná čísla, nejvýš čtvrtinu fotky od jejího rohu (viz *Ořez podlahy*),
 - `collection` je slug (malá písmena, číslice, pomlčky), kolekce má `title`,
 - `cover` kolekce je `id` publikovaného díla této kolekce (případně `#` a jeho existující detail) a kolekce nemá zároveň vlastní úvodní fotku, `aspect` (`šířka:výška`) a `focus` (`[x, y]` 0–100) kolekce, roku i úvodu jsou jen u vybraného obrazu (`cover` nebo vlastní fotka),
 - `focus` fotky je `[x, y]` v rozsahu 0–100,
@@ -567,6 +576,10 @@ na GitHubu. Logika: `planExportPrune` v `scripts/lib/works.mjs`.
 | Instagram | jen dílo s `meta_instagram: true` | `<slug>-<id>-clean.jpg` (originál na papírovém pozadí, 4:5), `<slug>-<id>-detail-<jméno>.jpg` (každý detail, 4:5). **Nikdy mockupy.** |
 | Fler | jen `available` a `reserved` | `<slug>-<id>.jpg` (originál), `<slug>-<id>-mockup-<scéna>.jpg` (každý mockup). Vše s vodoznakem. |
 
+Průhledné okolí díla (podlaha vně rohů listu, viz *Ořez podlahy*) dostane v exportu barvu: pro Instagram
+papírové pozadí `images.instagram.background`, pro Fler bílou (`images.fler.background`, výchozí `#ffffff`);
+mockupy ukazují jen holý papír.
+
 Vodoznak je jen jméno autorky (`images.fler.watermark`), nikdy odkaz ani @handle
 (pravidla Fleru). Barva se řídí jasem rohu obrázku. Velikosti a kvalitu nastavuje
 `images.instagram` a `images.fler` v `site.config.yaml`.
@@ -587,7 +600,7 @@ Messenger…) ukázaly velký náhled hned napoprvé. Všechny náhledy jsou
 | přehled kolekcí | náhled první (nejnovější) kolekce | týž soubor |
 
 Obraz se v náhledu díla neořezává, protože jde o umělecké dílo: obraz na výšku
-má po stranách papír. Náhled díla vzniká s webovými obrázky (přegeneruje se se
+má po stranách papír. Průhledné okolí díla (*Ořez podlahy*) se prolne s papírovým pozadím náhledu. Náhled díla vzniká s webovými obrázky (přegeneruje se se
 změnou fotky). Dokud neexistuje, stránka sdílí největší webovou velikost do
 1600 px. Kód: `shareImage` v `scripts/process-images.mjs`, `workShareImage`,
 `worksShareImage` a `collectionShareImage` v `src/lib/site.ts`, meta v `src/layouts/Base.astro`.
@@ -687,12 +700,15 @@ zapisuje), jiná hodnota než `true`/`false` je chyba.
   `scripts/lib/works.mjs`.
 
 **Mockup je vždy jen holý papír.** Master srovnaný přes `npm run straighten`
-ukazuje kolem listu úzký okraj podkladu, aby byly vidět okraje papíru. V rámu na
-zdi by ale okraj nepatřil a měřítko podle `size_cm` by nesedělo. Pipeline proto
-pro mockupy (na webu i pro Fler) master ořízne na list podle údaje v jeho
-metadatech (`pavla:sheet`, viz *Srovnání fotek obrazů*). Webové obrázky díla,
-exporty pro Instagram a originál pro Fler okraj ponechají. Master bez tohoto
-údaje (sken, fotka upravená jinde) jde do mockupu celý jako dosud. Klik na obraz, detail nebo mockup otevře prohlížečku, ve které se dá
+ukazuje kolem listu úzký okraj podkladu, aby byly vidět okraje papíru, a fotka
+vyfocená nakřivo kolem listu podlahu. V rámu na zdi by ale okraj nepatřil (pasparta
+kryje okraje papíru) a měřítko podle `size_cm` by nesedělo. Pipeline proto
+pro mockupy (na webu i pro Fler) master ořízne na největší obdélník uvnitř rohů listu
+(`meta_corners`, viz *Ořez podlahy*, `innerRegion` v `scripts/lib/edges.mjs`) a uvnitř listu
+z metadat fotky (`pavla:sheet`, viz *Srovnání fotek obrazů*); má-li obojí, na jejich průnik.
+Webové obrázky díla a exporty pro Instagram a Fler okraj neořezávají, jen podlahu vně rohů
+zprůhlední nebo nahradí barvou pozadí. Master bez obojího (sken, fotka upravená jinde) jde do
+mockupu celý jako dosud. Klik na obraz, detail nebo mockup otevře prohlížečku, ve které se dá
 šipkami (i swipem) přepínat mezi originálem, detaily a mockupy.
 
 - Malá díla (delší strana do 35 cm): stěna (komoda, ložnice), rámeček na poličce
@@ -708,7 +724,7 @@ stěnu, 2400 px na šířku), odhadneš měřítko podle předmětu známé veli
 doplníš záznam do `scenes.yaml`. Pak `npm run images` přegeneruje všechna díla.
 
 Webové obrázky a mockupy se přegenerují jen při změně fotky, detailních fotek,
-`size_cm`, scén nebo toho, zda je dílo na prodej. Změna ceny či popisu obrázky
+`size_cm`, scén, rohů listu (`meta_corners` a `images.edges`) nebo toho, zda je dílo na prodej. Změna ceny či popisu obrázky
 negeneruje znovu (zapíše se jen kopie yaml).
 
 ## Ostatní fotky (O mně, Kontakt)
@@ -896,7 +912,10 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
   - popis: číslo běhu a seznam změněných děl, kolekcí a fotek. Pull request je veřejný, takže **nikdy
     neuvádí název ani odkaz na obsahové repo** (to platí i pro jeho titulek a commit).
 - **přípravný běh** (`npm run images -- --prepare-only`, na větvích obsahového repa): jen kostry popisů, `id`,
-  srovnání popisů a kontroly, bez obrázků, exportů a zápisu do tohoto repa.
+  rohy listu (`meta_corners`), srovnání popisů, kontroly a náhledy ořezu rozpracovaných děl (`.previews/`), bez
+  obrázků, exportů a zápisu do tohoto repa.
+- **náhledy ořezu** (`.previews/`) nahraje workflow obsahového repa (na `main` i ve větvi) jako artefakt běhu
+  `nahledy-orezu` (14 dní, mimo git); zkušební běh totéž s testovacími daty.
 - Souhrn běhu (`scripts/lib/summary.mjs`) jde do `GITHUB_STEP_SUMMARY`.
 
 Lokální `npm run images` funguje dál stejně. Jen nekombinuj obojí najednou: buď pushni výsledek lokálního
@@ -1085,6 +1104,118 @@ kalendářní verzování (CalVer): verze **je** čas, kdy se web sestavil, ve f
 - `npm run build`: musí projít před každým commitem.
 - Kód, komentáře a názvy v kódu jsou anglicky; texty webu, URL a dokumentace česky.
 - README obou rep udržujeme průběžně aktuální s každou změnou pipeline, struktury nebo webu.
+
+## Ořez podlahy (rohy listu, `meta_corners`)
+
+Fotka obrazu bývá trochu křivá a kolem listu je vidět podlaha (nebo okraj podkladu, který nechává
+`npm run straighten`). Pipeline proto **najde čtyři rohy listu** a všechno vně čtyřúhelníku mezi nimi
+**na webu zprůhlední**: obraz pak leží přímo na papíru stránky, v každé paletě (Papír, Pergamen, Noc).
+Výsledek nemusí být obdélník, kopíruje skutečný (pootočený, zkosený) list.
+
+**Rohy v popisu díla** (`meta_corners`, jen obsahové repo, do veřejné kopie se nekopíruje):
+
+```yaml
+meta_corners:
+  photo: [3673, 2785]    # rozměr fotky (po otočení podle EXIF), pro kterou rohy platí
+  tl: [87, 41]           # levý horní: px doprava, px dolů od levého horního rohu fotky
+  tr: [26, 54]           # pravý horní: px doleva, px dolů
+  br: [52, 39]           # pravý dolní: px doleva, px nahoru
+  bl: [12, 29]           # levý dolní: px doprava, px nahoru
+```
+
+- **Najde je pipeline** u každého díla s fotkou, které atribut ještě nemá: u rozpracovaného i zveřejněného, na
+  `main`, ve větvi (`--prepare-only`) i lokálně. Je to součást přípravy obsahu jako `id`; zapíše se jednou a pak
+  už se jen kontroluje (`scripts/lib/corners.mjs`, `prepareCorners`). Ruční úpravu nikdy nepřepíše.
+- Čísla jsou vždy kladná (směrem do středu fotky). Všechny nuly = list vyplňuje celou fotku, nic se neořezává.
+  `meta_corners: false` = ořez vypnutý, obraz zůstane celý i s podlahou.
+- Po **výměně fotky** za jinou velikost pipeline ohlásí chybu „belong to a photo of …, delete meta_corners“ (rohy
+  by patřily jiné fotce); po smazání atributu je najde znovu.
+- V souhrnu běhu je seznam nově nalezených rohů („Nalezené rohy listu“, `describeCorners` v `scripts/lib/corners.mjs`).
+  Roh, který ořízne víc než `images.edges.suspicious`, je tam označený `⚠ PODEZŘELÝ ořez (víc než 5,0 %): tr ořízne
+  1,7 % · 5,1 %; zkontroluj rohy v náhledu` (stejná hranice jako v náhledech; v logu běhu totéž za `+ corners of the sheet:`).
+
+**Jak se rohy hledají** (`scripts/lib/edges.mjs`, na zmenšenině o šířce 1200 px): na každé straně fotky 60 vzorků
+(prostředních 80 % strany) jde od okraje dovnitř, dokud se barva nezmění z podlahy na list (papír i barva obrazu,
+`floorDepth`; nejdál `images.edges.search` rozměru). Strana, jejíž okraj nevypadá jako podlaha (většinou papír,
+nebo pestrá barva obrazu malovaného do kraje, `looksLikeFloor`), podlahu nemá. Z každé poloviny strany vznikne
+přímka hrany u jejího rohu (`edgeLine`: přímka, na které leží nejvíc vzorků, posunutá dovnitř tak, aby 85 %
+vzorků leželo vně, protože skutečná hrana bývá zvlněná: raději kousek papíru než podlaha). Roh je průsečík
+přímek. Roh mimo fotku (list pokračuje za její okraj) = 0, roh dál než čtvrtina fotky = nedůvěryhodný, 0.
+
+**Prolnutí s pozadím** (`images.edges` v `site.config.yaml`): `inset` (výchozí 0,2 % kratší strany) ořízne
+o kousek víc, `feather` (výchozí 1 %) je šířka pásu podél hrany, ve kterém list plynule přechází do průhlednosti
+(maska `maskSvg`, `cutOut` v `scripts/lib/corners.mjs`). Změna těchto dvou hodnot přegeneruje díla s rohy (`edgeLook`).
+`search` (jak daleko od okraje fotky hledat hranu, výchozí 10 %) a `suspicious` (od kolika procent je ořez rohu
+v náhledech podezřelý, výchozí 5 %) obrázky nemění, takže nic nepřegenerují.
+
+**Kde se co použije:**
+
+| Výstup | Okolí listu |
+|---|---|
+| web: AVIF a WebP | průhledné (prolne se s papírem palety); bez zástupné barvy `--ph`, stín podle tvaru listu (`filter: var(--drop-soft)` / `var(--drop-deep)` z palety, `cutout` v `Img.astro`, `transparent: true` v `info.json`) |
+| web: JPEG (záloha pro staré prohlížeče) | papír první palety (`PALETTES[0].colors.paper`) |
+| prohlížečka obrázků na stránce díla | průhledné, stín podle tvaru listu |
+| náhled pro sdílení (`og.jpg`), úvodní obraz z díla | prolne se s papírovým pozadím `images.og.background` |
+| Instagram (`-clean.jpg`) | prolne se s papírovým pozadím `images.instagram.background` |
+| Fler (originál) | bílá `images.fler.background` |
+| mockupy | jen holý papír uvnitř rohů (pasparta kryje okraje), viz *Mockupy* |
+| detailní fotky | beze změny (rohy patří jen hlavní fotce) |
+
+**Náhled ořezu rozpracovaných děl:** pro každé dílo s `meta_draft: true` a rohy, které něco ořezávají, vznikne
+`.previews/<slug>-<id>.jpg` (mimo git): výsledek na papíru a na tmavém papíru (paleta Noc) vedle sebe, s tenkou
+čarou čtyřúhelníku rohů a u každého rohu s tím, kolik ořízne (vodorovně · svisle v % fotky; nad `images.edges.suspicious`, výchozí 5 %, červeně). Na světlém je vidět zbylá podlaha, na tmavém i to, kolik papíru se odřízlo. Plný běh
+složku vždy vyprázdní a naplní znovu (zveřejněné dílo náhled nemá). Na GitHubu ji workflow obsahového repa
+nahraje jako artefakt **„nahledy-orezu“** na stránku běhu (dole, *Artifacts*, ke stažení jako zip, 14 dní);
+souhrn běhu náhledy vyjmenuje. Jinou složku dá `run({ previewDir })`.
+
+**Náhled bez zápisu (`npm run preview`, `scripts/preview.mjs`):** ukáže, co pipeline udělá s podlahou, dřív než
+cokoli zapíše. Obsahové repo **jen čte**, nic v něm nemění (kromě `--write`, viz níže).
+
+```
+npm run preview -- ../obsah/tvorba/rano-u-rybnika.jpg           # jedna fotka
+npm run preview -- ../obsah/tvorba/2026-plener-sumava           # kolekce
+npm run preview -- ../obsah/tvorba                              # všechna díla (i v kolekcích)
+npm run preview -- ../obsah/tvorba --out /tmp/nahledy           # jinam než do .previews/
+npm run preview -- ../obsah/tvorba/rano-u-rybnika.jpg --write   # nalezené rohy zapíše do rano-u-rybnika.yaml
+npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s podezřelým ořezem
+```
+
+- Složka = fotky děl v ní a ve složkách kolekcí; detailní fotky (složka jménem díla) a vlastní úvodní fotky
+  (`_cover.*`) vynechá. Fotku zadanou jménem vezme vždy.
+- Rohy vezme z `meta_corners` popisu vedle fotky (`<slug>.yaml`). Když tam nejsou (nebo patří fotce jiné velikosti),
+  najde je stejně jako pipeline a **vypíše je ve tvaru popisu**, aby šly ručně zkopírovat do yaml:
+
+  ```
+  → ../obsah/tvorba/rano-u-rybnika.jpg: no meta_corners in rano-u-rybnika.yaml, detected
+    preview: .previews/rano-u-rybnika.jpg
+    cut (% of the photo, ! = more than 5.0 %): tl 2.5 % · 1.7 %, tr 0.7 % · 2.3 %, br 1.1 % · 1.6 %, bl 1.0 % · 1.4 %
+    meta_corners:
+      photo: [3673, 2785]
+      tl: [93, 46]
+      …
+  ```
+
+- **Kolik se ořízne:** u každého rohu vypíše ořez vodorovně · svisle v procentech šířky a výšky fotky
+  (`cornerShares` v `scripts/lib/edges.mjs`). Roh, který ořízne víc než `images.edges.suspicious` (výchozí 5 %) v kterémkoli
+  směru, dostane `!`; obvykle jde o zvlněný nebo zvednutý okraj papíru nebo o barvu obrazu, kterou detekce vzala za podlahu.
+  Na konci výpisu je **souhrn jen podezřelých fotek** („Check first: …“, s cestou k náhledu a ořezem rohů), nebo
+  „No corner cuts more than …“, když žádná není.
+- **`--only-suspicious`:** náhled i výpis jen pro fotky s podezřelým rohem, ostatní projde potichu (fotky s
+  `meta_corners: false` taky); poslední řádek řekne, kolik fotek prošel a z kolika udělal náhled. S `--write` ho
+  nejde kombinovat (zapsat jen pochybné rohy by bylo naopak), příkaz skončí chybou a nic nezapíše.
+- **`--write`:** nalezené rohy rovnou zapíše do popisů **právě zadaných fotek** (jedna fotka, kolekce, nebo celá
+  `tvorba/`), stejně jako by to udělala pipeline (`withCorners` v `scripts/lib/corners.mjs`: s technickým komentářem,
+  nic jiného v souboru se nezmění). Jen do popisu, který `meta_corners` ještě nemá: ruční hodnotu, `false`
+  ani rohy jiné fotky nepřepíše (vypíše „not written: … already has meta_corners“), fotce bez popisu ho nezaloží
+  (to udělá pipeline i s rohy). Na konci vypíše, do kolika popisů zapsal.
+- Náhled je stejný jako u pipeline (`previewOf` v `scripts/lib/corners.mjs`, nastavení `images.edges`):
+  `<out>/<slug>.jpg`, pro každé dílo bez ohledu na `meta_draft`. `meta_corners: false` náhled nemá. Plný běh
+  `npm run images` složku `.previews/` vyprázdní (nechá v ní jen náhledy draftů).
+
+**Vyzkoušení:** `npm run demo` (testovací data mají list vyfocený nakřivo na podlaze, viz *Testovací data*),
+pak dílo „Na podlaze“ ve všech třech paletách; náhled rozpracovaného díla je v `.demo/site/.previews/`. Na skutečném
+obsahu nejdřív `npm run preview -- <fotka|složka>` (nic nezapíše), pak `npm run images -- --prepare-only`
+(zapíše rohy do popisů v obsahovém repu, náhledy draftů do `.previews/`).
 
 ## Srovnání fotek obrazů (`npm run straighten`)
 

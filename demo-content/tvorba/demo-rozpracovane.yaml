@@ -1,3 +1,14 @@
+# Rohy listu na fotce: všechno vně čtyřúhelníku (podlaha) bude na webu průhledné. Najde je pipeline, smíš je
+# upravit. photo = [šířka, výška] fotky; tl/tr/br/bl = levý horní, pravý horní, pravý dolní, levý dolní roh jako
+# [px vodorovně, px svisle] od toho rohu fotky směrem dovnitř, např. tl: [40, 25]. false = nic neořezávat.
+# Po výměně fotky za jinou velikost atribut smaž, pipeline rohy najde znovu.
+meta_corners:
+  photo: [1759, 1369]
+  tl: [64, 106]
+  tr: [95, 64]
+  br: [64, 105]
+  bl: [95, 63]
+
 # UKÁZKA: rozpracované dílo, na webu se nesmí objevit
 # true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.
 meta_draft: true

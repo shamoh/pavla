@@ -31,6 +31,8 @@ export function formatSummary(result, error) {
   };
   section('Nové popisy k doplnění (doplň hodnoty s DOPLNIT, u obrazu pak meta_draft: false)', result.created);
   section('Přidělené kódy obrazů', result.assigned);
+  section('Nalezené rohy listu (meta_corners; podlaha vně nich bude průhledná, hodnoty smíš upravit; ⚠ = podezřelý ořez, zkontroluj nejdřív)', result.detected ?? []);
+  section('Náhledy ořezu rozpracovaných obrazů (ke stažení jako „nahledy-orezu“ dole na stránce tohoto běhu)', result.previews ?? []);
   section('Srovnané popisy (nové atributy mají u komentáře DOPLNIT, neznámé NEZNÁMÝ)', result.updated ?? []);
   section('Zveřejněné obrazy, kterým zůstal DOPLNIT (hodnotu zkontroluj, pak slovo DOPLNIT smaž)', result.pending ?? []);
   section('Odstraněno (web a exporty smazaných či přejmenovaných děl)', result.pruned);

@@ -106,6 +106,8 @@ const technical = (doc, todo) => (todo ? [`${TODO} ${doc[0]}`, ...doc.slice(1)] 
 function newValueNode(doc, field, value) {
   const node = doc.createNode(value);
   if (Array.isArray(value)) node.flow = true;
+  // a map of lists (meta_corners): every list on its own line, [a, b]
+  if (YAML.isMap(node)) for (const pair of node.items) if (YAML.isSeq(pair.value)) pair.value.flow = true;
   if (field.block && typeof value === 'string') node.type = 'BLOCK_LITERAL';
   return node;
 }

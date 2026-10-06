@@ -97,8 +97,11 @@ test('pictureShadows: the light strength as it was, stronger on dark paper with 
   assert.deepEqual(pictureShadows({ shadow: 1, edge: null }), {
     '--shadow-soft': '0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px -12px rgb(0 0 0 / 0.18)',
     '--shadow-deep': '0 2px 4px rgb(0 0 0 / 0.05), 0 24px 48px -24px rgb(0 0 0 / 0.3)',
+    '--drop-soft': 'drop-shadow(0 1px 1px rgb(0 0 0 / 0.06)) drop-shadow(0 6px 8px rgb(0 0 0 / 0.12))',
+    '--drop-deep': 'drop-shadow(0 2px 2px rgb(0 0 0 / 0.05)) drop-shadow(0 14px 16px rgb(0 0 0 / 0.22))',
   });
   const night = pictureShadows({ shadow: 2.2, edge: 'rgb(255 255 255 / 0.08)' });
+  assert.match(night['--drop-deep'], /^drop-shadow\(0 0 1px rgb\(255 255 255 \/ 0.08\)\) drop-shadow/, 'a cut-out work gets the hairline too');
   assert.match(night['--shadow-deep'], /^0 0 0 1px rgb\(255 255 255 \/ 0.08\), 0 2px 4px rgb\(0 0 0 \/ 0.11\), 0 24px 48px -24px rgb\(0 0 0 \/ 0.66\)$/);
   assert.equal(pictureShadows({ shadow: 10, edge: null })['--shadow-deep'].includes('/ 1)'), true, 'an alpha never exceeds 1');
   assert.match(paletteCss(), /:root\[data-palette="noc"\]\{[^}]*--shadow-deep:0 0 0 1px/);

@@ -13,6 +13,7 @@
     "demo": "node scripts/demo.mjs && SITE_DATA_DIR=.demo/site astro dev",
     "demo:build": "node scripts/demo.mjs && SITE_DATA_DIR=.demo/site astro build",
     "straighten": "node scripts/straighten.mjs",
+    "preview": "node scripts/preview.mjs",
     "favicons": "node scripts/favicons.mjs"
   },
   "dependencies": {

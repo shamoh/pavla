@@ -3,7 +3,9 @@
 // (<year> is the year of the work's date; the content repository has no year folders, see scripts/lib/content.mjs)
 //   content/…                                          public copies of the descriptions, a mirror of the content
 //                                                      repository (see scripts/lib/site-content.mjs) (commit)
-//   public/tvorba/<year>/<slug>-<id>/<width>.{avif,webp,jpg}, info.json  web images of a work, in the folder of its page (commit)
+//   public/tvorba/<year>/<slug>-<id>/<width>.{avif,webp,jpg}, info.json  web images of a work, in the folder of its page (commit);
+//                                                                        with meta_corners the floor around the sheet is
+//                                                                        transparent in AVIF/WebP, the paper of the site in JPEG
 //   public/tvorba/<year>/<slug>-<id>/mockup-<scene>-<width>.*             the work in an interior, only with `mockups: true` (commit);
 //                                                                        from the bare sheet when the master shows surroundings
 //   public/tvorba/<year>/<slug>-<id>/detail-<name>-<width>.*              detail photos of the work (commit)
@@ -20,11 +22,15 @@
 //   <contentDir>/export/fler/<year>/<key>.jpg                     Fler, the original with the author's name as watermark
 //   <contentDir>/export/fler/<year>/<key>-mockup-<scene>.jpg      Fler, the mockups with the same watermark
 //   (Fler exports only for works on sale: available or reserved; otherwise they are removed)
+//   <contentDir>/tvorba/…/<slug>.yaml  meta_corners (corners of the sheet) written when missing (scripts/lib/corners.mjs)
+//   .previews/<slug>-<id>.jpg          cut previews of drafts on light and dark paper (outside git; on GitHub the
+//                                      artifact "nahledy-orezu" of the content workflow's run)
 //
 // Usage:  npm run images             (only works whose outputs are missing or older than the master)
 //         npm run images -- --force  (regenerate everything)
-//         npm run images -- --prepare-only  (only skeletons, ids and checks of the content; no images, site or
-//                                            exports; used by the automation on branches of the content repository)
+//         npm run images -- --prepare-only  (only skeletons, ids, corners of the sheets, checks of the content and
+//                                            cut previews of drafts; no images, site or exports; used by the
+//                                            automation on branches of the content repository)
 //         npm run images -- <slug>   (a single work; skips pruning)
 // Content location: CONTENT_DIR (locally from .env, see package.json), or images.contentDir in site.config.yaml.
 
@@ -48,13 +54,16 @@ import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
+import { cutOut, prepareCorners, previewOf } from './lib/corners.mjs';
+import { EDGE_DEFAULTS, cutsSheet, edgeLook, innerRegion } from './lib/edges.mjs';
+import { PALETTES } from './lib/palettes.mjs';
 import { formatSummary } from './lib/summary.mjs';
 import {
   PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, wantsInstagram, wantsMockups, planExportPrune, publicFields, validateWorks, workKey,
 } from './lib/works.mjs';
 
 /** Bump when the output format changes, so every work is regenerated once. */
-const PIPELINE_VERSION = 6;
+const PIPELINE_VERSION = 7;
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -82,15 +91,37 @@ async function writeIfChanged(file, text) {
 // Load the master once: convert to sRGB and apply EXIF rotation. Metadata (EXIF, GPS) is not copied to outputs.
 // `sheet`: where the bare paper lies when the master also shows its surroundings (XMP written by
 // `npm run straighten`, see scripts/lib/sheet-box.mjs); null for a master that is the sheet itself.
-async function loadMaster(input) {
-  const buf = await sharp(input).rotate().toColorspace('srgb').toBuffer();
+// `corners` (meta_corners of a work, scripts/lib/edges.mjs): everything outside them becomes transparent, fading in
+// over `edges.feather`; then `buf` is a PNG with alpha and `transparent` is true.
+async function loadMaster(input, { corners, edges } = {}) {
+  let buf = await sharp(input).rotate().toColorspace('srgb').toBuffer();
   const meta = await sharp(buf).metadata();
   const sheet = parseSheetXmp((await sharp(input).metadata()).xmp);
-  return { buf, width: meta.width, height: meta.height, sheet };
+  const transparent = cutsSheet(corners);
+  if (transparent) buf = await cutOut(buf, corners, edges);
+  // the bare sheet of the mockups stays as far from the edge as the cut (at least 2 px: a JPEG bleeds at an edge)
+  const inset = Math.max(2, Math.round((edges?.inset ?? EDGE_DEFAULTS.inset) * Math.min(meta.width, meta.height)));
+  return { buf, width: meta.width, height: meta.height, sheet, corners: transparent ? corners : null, transparent, inset };
 }
 
-/** The master for the mockups: cropped to the bare sheet, a framed work never shows the floor around it. */
-const mockupSource = (m) => (m.sheet ? sharp(m.buf).extract(boxRegion(m.sheet, m.width, m.height)).toBuffer() : m.buf);
+/**
+ * The master for the mockups: the bare sheet, a framed work never shows the floor around it (the mat covers the
+ * edges of the paper): inside its corners and inside the sheet of the XMP, whichever it has (both: the overlap),
+ * else the whole master.
+ */
+function mockupSource(m) {
+  const regions = [
+    m.corners && innerRegion(m.corners, m.width, m.height, m.inset),
+    m.sheet && boxRegion(m.sheet, m.width, m.height),
+  ].filter(Boolean);
+  if (!regions.length) return m.buf;
+  const left = Math.max(...regions.map((r) => r.left)), top = Math.max(...regions.map((r) => r.top));
+  const right = Math.min(...regions.map((r) => r.left + r.width)), bottom = Math.min(...regions.map((r) => r.top + r.height));
+  return sharp(m.buf).extract({ left, top, width: Math.max(1, right - left), height: Math.max(1, bottom - top) }).removeAlpha().toBuffer();
+}
+
+/** Colour a transparent image is put on where it cannot stay transparent (JPEG fallback on the site): the first palette's paper. */
+const FALLBACK_PAPER = PALETTES[0].colors.paper;
 
 /** Writes <prefix><width>.{avif,webp,jpg} for every width that does not upscale; returns the widths. */
 async function responsive(buf, srcWidth, dir, prefix, widths, quality) {
@@ -99,15 +130,16 @@ async function responsive(buf, srcWidth, dir, prefix, widths, quality) {
   const unique = fit.length === widths.length ? fit : [...fit, srcWidth];
   for (const w of unique) {
     const base = sharp(buf).resize({ width: w, withoutEnlargement: true });
+    // AVIF and WebP keep a transparent surroundings; JPEG cannot, it gets the paper of the site behind it
     await base.clone().avif({ quality: quality - 22, effort: 5 }).toFile(path.join(dir, `${prefix}${w}.avif`));
     await base.clone().webp({ quality }).toFile(path.join(dir, `${prefix}${w}.webp`));
-    await base.clone().jpeg({ quality, mozjpeg: true, progressive: true }).toFile(path.join(dir, `${prefix}${w}.jpg`));
+    await base.clone().flatten({ background: FALLBACK_PAPER }).jpeg({ quality, mozjpeg: true, progressive: true }).toFile(path.join(dir, `${prefix}${w}.jpg`));
   }
   return unique;
 }
 
 const dominantColor = async (buf) => {
-  const { dominant: d } = await sharp(buf).stats();
+  const { dominant: d } = await sharp(buf).flatten({ background: FALLBACK_PAPER }).stats();
   return `rgb(${d.r},${d.g},${d.b})`;
 };
 
@@ -135,7 +167,10 @@ async function web(dir, m, img, { work, picked, details, fingerprint }) {
   }
   const og = await shareImage(path.join(dir, 'og.jpg'), m, img);
   // Dimensions and placeholder colour, read by the site.
-  const info = { width: m.width, height: m.height, widths, dominant: await dominantColor(m.buf), mockups, details: detailSets, og, fingerprint };
+  const info = {
+    width: m.width, height: m.height, widths, dominant: await dominantColor(m.buf), ...(m.transparent ? { transparent: true } : {}),
+    mockups, details: detailSets, og, fingerprint,
+  };
   await fs.writeFile(path.join(dir, 'info.json'), JSON.stringify(info, null, 2));
   return rendered;
 }
@@ -179,7 +214,9 @@ async function instagramDetail(file, buf, img) {
 /** Resizes `buf` (the original or a mockup) for Fler and signs it with the author's name. */
 async function fler(file, buf, img) {
   const f = img.fler;
-  const resized = await sharp(buf).resize({ width: f.longEdge, height: f.longEdge, fit: 'inside', withoutEnlargement: true }).toBuffer();
+  // a transparent surroundings of the original goes on the background of Fler (white)
+  const resized = await sharp(buf).resize({ width: f.longEdge, height: f.longEdge, fit: 'inside', withoutEnlargement: true })
+    .flatten({ background: f.background ?? '#ffffff' }).toBuffer();
   const { width, height } = await sharp(resized).metadata();
   const size = Math.round(Math.min(width, height) * 0.035);
   const margin = Math.round(size * 1.2);
@@ -264,7 +301,10 @@ async function removeEmptyYearDirs(root) {
 /**
  * Runs the whole pipeline. Returns a summary; throws on configuration errors.
  * Options: contentDir, siteDir, config, force, only (slugs), log, today, random, dataset, prepareOnly.
- * `prepareOnly` stops after skeletons, ids and checks: nothing is written to the site or the exports.
+ * `prepareOnly` stops after skeletons, ids, corners of the sheets, checks and the cut previews of drafts: nothing is
+ * written to the site or the exports.
+ * `previewDir`: where the cut previews of drafts go (default .previews/ of the site directory, outside git; on GitHub
+ * the content workflow uploads them as the artifact of its run).
  * `dataset` 'real' (default) forbids test data in the content, 'demo' requires the content to be the test data
  * (see scripts/lib/demo.mjs; test data are processed by `npm run demo` into .demo/, never into this repo).
  */
@@ -280,23 +320,27 @@ export async function run({
   random,
   dataset = 'real',
   prepareOnly = false,
+  previewDir,
 } = {}) {
   config ??= YAML.parse(await fs.readFile(path.join(siteDir, 'site.config.yaml'), 'utf8'));
   const img = config.images;
+  const edges = { ...EDGE_DEFAULTS, ...img.edges };
+  // meta_corners of the works by their master photo, for share images of covers that show a work (set below)
+  let cornersOf = new Map();
   /**
    * Share image of a chosen cover ({ source, crop } from coverShareSource): cropped to crop.ratio around crop.focus
    * (filling the share image when the ratio is its own, 3:2, otherwise on paper), or without crop the whole image on
    * paper like the share image of a work; written only when it changed.
    */
   const shareCrop = async ({ source, crop }, file, label) => {
-    const m = await loadMaster(await fs.readFile(source));
+    const m = await loadMaster(await fs.readFile(source), { corners: cornersOf.get(source), edges });
     const ogRatio = img.og.width / img.og.height;
     const area = crop && focusCrop(m.width, m.height, crop.ratio, crop.focus);
     // one lossy encoding only: the crop fills the share image in a single pipeline, or goes on paper as lossless PNG
     const buf = !crop
       ? await wholeOnPaper(m, img)
       : Math.abs(crop.ratio - ogRatio) < 0.01
-        ? await sharp(m.buf).extract(area).resize(img.og.width, img.og.height).jpeg({ quality: img.og.quality, mozjpeg: true }).toBuffer()
+        ? await sharp(m.buf).extract(area).resize(img.og.width, img.og.height).flatten({ background: img.og.background }).jpeg({ quality: img.og.quality, mozjpeg: true }).toBuffer()
         : await wholeOnPaper({ buf: await sharp(m.buf).extract(area).png().toBuffer(), width: area.width, height: area.height }, img);
     const old = await fs.readFile(file).catch(() => null);
     if (!old || !old.equals(buf)) {
@@ -322,6 +366,10 @@ export async function run({
   const years = await prepareYears(contentDir, works.map((w) => w.year).filter(Boolean));
   created.push(...years.created);
   updated.push(...years.updated);
+  // Corners of the sheets (meta_corners): detected for every work that has none yet, like the ids.
+  const corners = await prepareCorners(contentDir, works, { search: edges.search, suspicious: edges.suspicious });
+  corners.detected.forEach((p) => log(`+ corners of the sheet: ${p}`));
+  cornersOf = new Map(works.filter((w) => w.masterPath).map((w) => [w.masterPath, w.data.meta_corners]));
   const home = await prepareHome(contentDir);
   created.push(...home.created);
   updated.push(...home.updated);
@@ -330,7 +378,7 @@ export async function run({
   updated.forEach((p) => log(`~ metadata brought in line with the schema: ${p}`));
   pending.forEach((p) => log(`! published, still marked DOPLNIT: ${p}`));
   const problems = [
-    ...scanProblems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems, ...home.problems,
+    ...scanProblems, ...corners.problems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems, ...home.problems,
     ...years.years.flatMap((y) => coverProblems({
       where: y.yamlPath, data: y.data, photoPath: y.coverPath, works, inScope: (w) => w.year === y.year, scope: y.year,
     })),
@@ -338,10 +386,26 @@ export async function run({
     ...validateCollectionCovers(collections.collections, works),
     ...demoProblems({ works, collections: collections.collections, marked: await exists(path.join(contentDir, DEMO_MARKER)) }, dataset),
   ];
+  const detected = corners.detected;
   if (problems.length) {
-    return { ok: false, problems, created, assigned, updated, pending, processed: 0, skipped: 0, missing: [], pruned: [], prepared: prepareOnly };
+    return { ok: false, problems, created, assigned, detected, updated, pending, processed: 0, skipped: 0, missing: [], pruned: [], previews: [], prepared: prepareOnly };
   }
-  if (prepareOnly) return { ok: true, problems: [], created, assigned, updated, pending, processed: 0, skipped: 0, missing: [], pruned: [], prepared: true };
+
+  // Cut previews of drafts (the result on light and dark paper), to check the corners before publishing.
+  // Written fresh by every full run; a run of `only` adds to them.
+  previewDir = path.resolve(previewDir ?? path.join(siteDir, '.previews'));
+  if (!only.length) await fs.rm(previewDir, { recursive: true, force: true });
+  const previews = [];
+  for (const w of works) {
+    if (w.data.meta_draft !== true || !w.masterPath || !cutsSheet(w.data.meta_corners)) continue;
+    if (only.length && !only.includes(w.slug)) continue;
+    const name = `${w.slug}-${w.id}.jpg`;
+    await fs.mkdir(previewDir, { recursive: true });
+    await fs.writeFile(path.join(previewDir, name), await previewOf(w.masterPath, w.data.meta_corners, edges));
+    previews.push(name);
+    log(`→ cut preview: ${name}`);
+  }
+  if (prepareOnly) return { ok: true, problems: [], created, assigned, detected, updated, pending, processed: 0, skipped: 0, missing: [], pruned: [], previews, prepared: true };
   const { scenes, text: scenesText } = await loadScenes(scenesDir);
 
   const publicDir = path.join(siteDir, 'public');
@@ -388,7 +452,8 @@ export async function run({
       return false;
     }
     // Outputs depend on the master, the size (mockup scale), the scenes, whether the work is on sale
-    // (Fler exports), `mockups`, `meta_instagram` and the detail photos; not on price or description.
+    // (Fler exports), `mockups`, `meta_instagram`, the corners of the sheet (and how its edge fades, edgeLook: not the
+    // settings of detection and previews) and the detail photos; not on price or description.
     const master = await fs.readFile(w.masterPath);
     const onSale = isOnSale(w.data.status);
     const instagram = wantsInstagram(w.data);
@@ -396,13 +461,14 @@ export async function run({
     const details = await Promise.all(w.details.map(async (d) => ({ name: d.name, buf: await fs.readFile(d.path) })));
     const fingerprint = sha1(
       String(PIPELINE_VERSION), master, JSON.stringify(w.data.size_cm ?? null), scenesText, String(onSale), String(instagram), String(mockupsOn),
+      JSON.stringify(w.data.meta_corners ?? null), JSON.stringify(cutsSheet(w.data.meta_corners) ? edgeLook(edges) : null),
       ...details.flatMap((d) => [d.name, d.buf]),
     );
     const upToDate = (await readJson(path.join(webDir, 'info.json')))?.fingerprint === fingerprint;
     if (upToDate && !force) { skipped++; return false; }
 
     log(`→ ${rel}`);
-    const m = await loadMaster(master);
+    const m = await loadMaster(master, { corners: w.data.meta_corners, edges });
     // Mockups only when the author asks for them (mockups: true), whether or not the work is for sale.
     const picked = mockupsOn ? pickScenes(w.data.size_cm, w.id, scenes) : [];
     if (mockupsOn && !picked.length) log(`  ! no mockup scene is big enough for ${rel} (see mockups/scenes.yaml maxCm)`);
@@ -532,7 +598,7 @@ export async function run({
   }
   pruned.forEach((p) => log(`- removed ${p}`));
 
-  return { ok: missing.length === 0, problems: [], created, assigned, updated, pending, processed, skipped, missing, pruned };
+  return { ok: missing.length === 0, problems: [], created, assigned, detected, updated, pending, processed, skipped, missing, pruned, previews };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

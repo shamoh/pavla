@@ -29,7 +29,8 @@ export const site = config.site as {
 export type Status = 'available' | 'reserved' | 'sold' | 'not-for-sale';
 
 /** A generated responsive image: <width>.{avif,webp,jpg} for each of `widths`. */
-export interface ImageSet { width: number; height: number; widths: number[]; dominant: string }
+// transparent: the surroundings of the sheet are transparent (meta_corners): no placeholder colour, a drop shadow
+export interface ImageSet { width: number; height: number; widths: number[]; dominant: string; transparent?: boolean }
 export interface Mockup extends ImageSet { scene: string; label: string }
 export interface Photo extends ImageSet {
   alt: string;

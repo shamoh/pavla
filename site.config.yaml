@@ -57,3 +57,9 @@ images:
     quality: 90
     watermark: Pavla Kramolišová         # jen jméno, žádný odkaz ven (pravidla Fleru)
     watermarkOpacity: 0.55
+    background: "#ffffff"                # místo průhledného okolí díla (podlahy vně rohů listu)
+  edges:                                 # ořez podlahy podle rohů listu (meta_corners), viz README „Ořez podlahy“
+    feather: 0.01                        # šířka prolnutí hrany s pozadím (podíl kratší strany)
+    inset: 0.002                         # o kolik víc oříznout dovnitř listu (podíl kratší strany)
+    search: 0.1                          # jak daleko od okraje fotky hledat hranu listu (podíl rozměru)
+    suspicious: 0.05                     # roh, který ořízne víc (podíl šířky / výšky), je v náhledech podezřelý (červeně, !)
