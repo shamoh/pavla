@@ -28,7 +28,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import YAML from 'yaml';
-import { cornersYaml, detectFile, framesOf, guidesProblems, cutOriginalOf, masterSize, previewOf, withCorners } from './lib/corners.mjs';
+import { cornersYaml, detectFile, guidesProblems, masterSize, withCorners, writePreviews } from './lib/corners.mjs';
 import { CORNER_KEYS, EDGE_DEFAULTS, cornerShares, cornersProblems, cutsSheet, percent } from './lib/edges.mjs';
 import { IMAGE_EXTENSIONS, slugify, splitExt } from './lib/works.mjs';
 
@@ -148,12 +148,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       const name = `${key}-backgrounds.jpg`;
       const doubtful = cutsSheet(value) && cornerShares(value, edges.suspicious).suspicious.length > 0;
       if (onlySuspicious && !doubtful) continue;
-      await fs.writeFile(path.join(outDir, name), await previewOf(photo, value, edges));
-      await fs.writeFile(path.join(outDir, `${key}-cut.jpg`), await cutOriginalOf(photo, value, edges));
-      await fs.writeFile(path.join(outDir, `${key}-frames.jpg`), await framesOf(photo, edges.guides));
+      const [backgrounds, cut, frames] = await writePreviews(outDir, key, photo, value, edges);
       console.log(`→ ${rel}: ${note}${cutsSheet(value) ? '' : ' (the sheet fills the photo, nothing is cut)'}`);
       const shown = (f) => path.relative(cwd, path.join(outDir, f));
-      console.log(`  preview: ${shown(name)} (light and dark), ${shown(`${key}-cut.jpg`)} (cut lines), ${shown(`${key}-frames.jpg`)} (frame lines)`);
+      console.log(`  preview: ${shown(backgrounds)} (light and dark), ${shown(cut)} (cut lines), ${shown(frames)} (frame lines)`);
       if (cutsSheet(value)) {
         console.log(`  cut (% of the photo, ! = more than ${percent(edges.suspicious)}): ${sharesLine(value, edges.suspicious)}`);
         if (doubtful) flagged.push({ rel, name, value });

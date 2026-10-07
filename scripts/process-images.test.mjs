@@ -1226,7 +1226,7 @@ const pixel = async (file, x, y) => {
   return [...data.subarray((y * info.width + x) * info.channels, (y * info.width + x + 1) * info.channels)];
 };
 
-test('corners: prepare only finds the corners of every work and writes a cut preview of drafts only, nothing for the site', async () => {
+test('corners: prepare only finds the corners of every work and writes the cut previews of drafts only, nothing for the site', async () => {
   await floorMaster('rozpracovany', 'meta_draft: true\ntitle: Rozpracovaný\ndate: 2026-06-14\n');
   await floorMaster('hotovy', 'meta_draft: false\ntitle: Hotový\ndate: 2026-06-14\n');
   await addWork('2026', 'bez-podlahy', 'meta_draft: true\ntitle: Bez podlahy\ndate: 2026-06-14\n');
@@ -1239,8 +1239,11 @@ test('corners: prepare only finds the corners of every work and writes a cut pre
   assert.ok(corners.tl[0] >= 20 && corners.tl[0] <= 30 && corners.tl[1] >= 12 && corners.tl[1] <= 22, JSON.stringify(corners));
   // a draft whose photo has no floor needs no preview, a published work never gets one
   const id = await idOf('2026', 'rozpracovany');
-  assert.deepEqual(r.previews, [`rozpracovany-${id}-backgrounds.jpg`]);
-  assert.deepEqual(await fs.readdir(previewDir), [`rozpracovany-${id}-backgrounds.jpg`]);
+  // all three, like npm run preview
+  const three = ['backgrounds', 'cut', 'frames'].map((k) => `rozpracovany-${id}-${k}.jpg`);
+  assert.deepEqual(r.previews, three);
+  assert.deepEqual((await fs.readdir(previewDir)).sort(), three);
+  assert.equal((await sharp(path.join(previewDir, `rozpracovany-${id}-frames.jpg`)).metadata()).width, 400, 'the whole photo');
   const meta = await sharp(path.join(previewDir, `rozpracovany-${id}-backgrounds.jpg`)).metadata();
   assert.equal(meta.format, 'jpeg');
   assert.ok(meta.width > meta.height * 2, 'light and dark side by side');

@@ -23,7 +23,7 @@
 //   <contentDir>/export/fler/<year>/<key>-mockup-<scene>.jpg      Fler, the mockups with the same watermark
 //   (Fler exports only for works on sale: available or reserved; otherwise they are removed)
 //   <contentDir>/tvorba/…/<slug>.yaml  meta_corners (corners of the sheet) written when missing (scripts/lib/corners.mjs)
-//   .previews/<slug>-<id>-backgrounds.jpg  cut previews of drafts on light and dark paper (outside git; on GitHub the
+//   .previews/<slug>-<id>-*.jpg        cut previews of drafts: -backgrounds, -cut, -frames (outside git; on GitHub the
 //                                      artifact "nahledy-orezu" of the content workflow's run)
 //
 // Usage:  npm run images             (only works whose outputs are missing or older than the master)
@@ -54,7 +54,7 @@ import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
-import { cutOut, prepareCorners, previewOf, trimTransparent } from './lib/corners.mjs';
+import { cutOut, prepareCorners, trimTransparent, writePreviews } from './lib/corners.mjs';
 import { EDGE_DEFAULTS, cutsSheet, edgeLook, innerRegion } from './lib/edges.mjs';
 import { PALETTES } from './lib/palettes.mjs';
 import { formatSummary } from './lib/summary.mjs';
@@ -404,7 +404,7 @@ export async function run({
     return { ok: false, problems, created, assigned, detected, updated, pending, processed: 0, skipped: 0, missing: [], pruned: [], previews: [], prepared: prepareOnly };
   }
 
-  // Cut previews of drafts (the result on light and dark paper), to check the corners before publishing.
+  // Cut previews of drafts (all three, writePreviews: like npm run preview), to check the corners before publishing.
   // Written fresh by every full run; a run of `only` adds to them.
   previewDir = path.resolve(previewDir ?? path.join(siteDir, '.previews'));
   if (!only.length) await fs.rm(previewDir, { recursive: true, force: true });
@@ -412,11 +412,9 @@ export async function run({
   for (const w of works) {
     if (w.data.meta_draft !== true || !w.masterPath || !cutsSheet(w.data.meta_corners)) continue;
     if (only.length && !only.includes(w.slug)) continue;
-    const name = `${w.slug}-${w.id}-backgrounds.jpg`;
-    await fs.mkdir(previewDir, { recursive: true });
-    await fs.writeFile(path.join(previewDir, name), await previewOf(w.masterPath, w.data.meta_corners, edges));
-    previews.push(name);
-    log(`→ cut preview: ${name}`);
+    const names = await writePreviews(previewDir, `${w.slug}-${w.id}`, w.masterPath, w.data.meta_corners, edges);
+    previews.push(...names);
+    log(`→ cut previews: ${names.join(', ')}`);
   }
   if (prepareOnly) return { ok: true, problems: [], created, assigned, detected, updated, pending, processed: 0, skipped: 0, missing: [], pruned: [], previews, prepared: true };
   const { scenes, text: scenesText } = await loadScenes(scenesDir);

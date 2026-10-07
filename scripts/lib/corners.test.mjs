@@ -5,7 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
-import { cornersYaml, CUT_COLOURS, cutLabelLines, cutLinesSvg, cutOut, cutPreview, describeCorners, cutInfo, edgeOverlay, FRAME_COLOURS, frameLines, framesOf, framesSvg, guidesProblems, cutOriginalOf, infoPanelSvg, removedSides, trimTransparent, detectFile, masterSize, prepareCorners, previewOf, withCorners } from './corners.mjs';
+import { EDGE_DEFAULTS } from './edges.mjs';
+import { cornersYaml, CUT_COLOURS, cutLabelLines, cutLinesSvg, cutOut, cutPreview, describeCorners, cutInfo, edgeOverlay, FRAME_COLOURS, frameLines, framesOf, framesSvg, guidesProblems, cutOriginalOf, infoPanelSvg, removedSides, trimTransparent, detectFile, masterSize, prepareCorners, previewOf, withCorners, writePreviews } from './corners.mjs';
 
 let tmp;
 beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-corners-')); });
@@ -127,6 +128,20 @@ test('previewOf: the photo cut like the pipeline cuts it, or as it is when nothi
   assert.deepEqual([meta.format, meta.width], ['jpeg', 2 * (800 + 48)]);
   const zero = { photo: [400, 300], tl: [0, 0], tr: [0, 0], br: [0, 0], bl: [0, 0] };
   assert.equal((await sharp(await previewOf(file, zero)).metadata()).format, 'jpeg');
+});
+
+test('writePreviews: the three previews by purpose, <key>-backgrounds / -cut / -frames.jpg, in this order', async () => {
+  const file = path.join(tmp, 'w.jpg');
+  await floorPhoto(file, 400, 300, SHEET);
+  const value = await detectFile(file);
+  const dir = path.join(tmp, 'previews', 'nested');
+  const names = await writePreviews(dir, 'rano-k3f9a', file, value, EDGE_DEFAULTS);
+  assert.deepEqual(names, ['rano-k3f9a-backgrounds.jpg', 'rano-k3f9a-cut.jpg', 'rano-k3f9a-frames.jpg']);
+  assert.deepEqual((await fs.readdir(dir)).sort(), names);
+  const size = async (n) => { const m = await sharp(path.join(dir, n)).metadata(); return [m.format, m.width, m.height]; };
+  assert.ok((await size(names[0]))[1] > 800, 'light and dark side by side');
+  assert.deepEqual(await size(names[1]), ['jpeg', 400, 300], 'the original in its full size');
+  assert.deepEqual(await size(names[2]), ['jpeg', 400, 300], 'the whole photo');
 });
 
 test('cornersYaml: the value the way a description holds it', () => {

@@ -1166,8 +1166,9 @@ výchozí `[0.003, 0.006, 0.01, 0.015, 0.02, 0.025, 0.03, 0.04, 0.05]`, jinak `n
 | mockupy | jen holý papír uvnitř rohů (pasparta kryje okraje), viz *Mockupy* |
 | detailní fotky | beze změny (rohy patří jen hlavní fotce) |
 
-**Náhled ořezu rozpracovaných děl:** pro každé dílo s `meta_draft: true` a rohy, které něco ořezávají, vznikne
-`.previews/<slug>-<id>-backgrounds.jpg` (mimo git): výsledek na papíru a na tmavém papíru (paleta Noc) vedle sebe, s tenkou
+**Náhled ořezu rozpracovaných děl:** pro každé dílo s `meta_draft: true` a rohy, které něco ořezávají, vzniknou
+v `.previews/` (mimo git) **tytéž tři náhledy jako u `npm run preview`** (`writePreviews` v `scripts/lib/corners.mjs`,
+obojí stejnou funkcí): `<slug>-<id>-cut.jpg` a `<slug>-<id>-frames.jpg` popsané níže a `<slug>-<id>-backgrounds.jpg`, výsledek na papíru a na tmavém papíru (paleta Noc) vedle sebe, s tenkou
 čarou čtyřúhelníku rohů a u každého rohu se dvěma řádky, odkud a kolik ořízne: `zleva 2,5 % = 93 px` a `shora 1,7 % = 46 px`
 (zleva/zprava v % šířky, shora/zdola v % výšky fotky a v px fotky = hodnota `meta_corners`; `cutLabelLines`). Řádek nad
 `images.edges.suspicious` (výchozí 5 %) je červeně, druhý řádek téhož rohu ne. Na světlém je vidět zbylá podlaha, na tmavém i to, kolik papíru se odřízlo. Plný běh

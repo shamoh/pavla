@@ -469,5 +469,27 @@ export async function cutOriginalOf(file, value, edges, { info = true, lines: la
     .toBuffer();
 }
 
+/**
+ * The three cut previews of the master photo `file` with the corners `value` (`edges`: images.edges), by their purpose:
+ * -backgrounds (previewOf), -cut (cutOriginalOf), -frames (framesOf). Written into `dir` as <key>-<suffix>.jpg (`key`:
+ * <slug>-<id> like the work's folder on the site); returns the file names in this order. Locally (npm run preview) and
+ * in the pipeline (previews of drafts, the artifact "nahledy-orezu") alike.
+ */
+export async function writePreviews(dir, key, file, value, edges) {
+  const kinds = [
+    ['backgrounds', () => previewOf(file, value, edges)],
+    ['cut', () => cutOriginalOf(file, value, edges)],
+    ['frames', () => framesOf(file, edges?.guides ?? EDGE_DEFAULTS.guides)],
+  ];
+  await fs.mkdir(dir, { recursive: true });
+  const names = [];
+  for (const [suffix, make] of kinds) {
+    const name = `${key}-${suffix}.jpg`;
+    await fs.writeFile(path.join(dir, name), await make());
+    names.push(name);
+  }
+  return names;
+}
+
 /** A `meta_corners` value as YAML lines, the way the pipeline writes it into a description (to copy into one). */
 export const cornersYaml = (value) => ['meta_corners:', `  photo: [${value.photo.join(', ')}]`, ...CORNER_KEYS.map((k) => `  ${k}: [${value[k].join(', ')}]`)].join('\n');
