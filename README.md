@@ -28,8 +28,8 @@ nikdy nejdou.
 Systémové soubory obsahu mají všude stejná dvě jména: `_index.yaml` popisuje místo, kde leží (v kořeni úvodní
 stránku, ve složce kolekce kolekci), `_cover.<jpg|jpeg|png|webp>` je jeho vlastní úvodní fotka. Podtržítko je odliší
 od děl (jméno díla jím začínat nemůže). Složky (`tvorba/`, `roky/`, `fotky/`) a jména děl zůstávají česky.
-Stará jména (`_kolekce.yaml`, `_uvod.jpg`, `uvod.yaml`, `uvod.jpg`) pipeline odmítne chybou „renamed to …, rename
-the file“ a vedle nich nezaloží kostru, takže se nic neztratí; soubory se přejmenují ručně.
+Stará jména (`_kolekce.yaml`, `_uvod.jpg`, `uvod.yaml`, `uvod.jpg`) pipeline odmítne chybou „tento soubor se teď
+jmenuje …, přejmenuj ho“ a vedle nich nezaloží kostru, takže se nic neztratí; soubory se přejmenují ručně.
 
 pavla/                                      (toto repo, veřejné)
   demo-content/                             testovací data: vymyšlené obsahové repo (stejná struktura jako
@@ -292,7 +292,8 @@ a řádek do `demo-content/images.yaml` (`size`, `palette`, `seed`; detailní fo
 2. `npm run images` (v tomto repu):
    - k fotce bez popisu vytvoří kostru `rano-u-rybnika.yaml` s `meta_draft: true` a `date` = den pořízení
      fotky z EXIF (`DateTimeOriginal`, pak `DateTimeDigitized`, pak `DateTime`; `scripts/lib/exif.mjs`),
-     bez data v EXIF dnešek,
+     bez data v EXIF dnešek; je-li vedle fotky složka detailních fotek, vyplní `details:` s popiskem
+     `DOPLNIT popisek detailu` u každé z nich (`DETAIL_CAPTION_TODO`, komentář označený `DOPLNIT`),
    - každému popisu bez `id` ho přidělí,
    - každý popis (dílo, kolekce, fotka) srovná podle schématu (viz *Udržování popisů*),
    - k nové složce kolekce založí kostru `_index.yaml`,
@@ -327,7 +328,7 @@ ze sdílených:
 
 Seznam veřejných atributů se neudržuje ručně: jsou to sdílené atributy schématu (`PUBLIC_WORK_FIELDS` atd. =
 `publicKeys(<schéma>)`). Přejmenovaný atribut (`renamed` ve schématu, teď `draft` → `meta_draft`, `instagram` →
-`meta_instagram`) pipeline nepřevádí: soubor se starým jménem ohlásí chybou „renamed to …, rename it“, nic v něm
+`meta_instagram`) pipeline nepřevádí: soubor se starým jménem ohlásí chybou „přejmenováno na …, přejmenuj ho“, nic v něm
 nezmění a nic nezveřejní.
 
 Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné znění komentářů, výchozí hodnoty:
@@ -504,6 +505,9 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 - `cover` kolekce je `id` publikovaného díla této kolekce (případně `#` a jeho existující detail) a kolekce nemá zároveň vlastní úvodní fotku, `aspect` (`šířka:výška`) a `focus` (`[x, y]` 0–100) kolekce, roku i úvodu jsou jen u vybraného obrazu (`cover` nebo vlastní fotka),
 - `focus` fotky je `[x, y]` v rozsahu 0–100,
 - každý klíč v `details:` odpovídá existující detailní fotce a popisek je text,
+- žádný veřejný atribut nemá text začínající `DOPLNIT` (`title`, `description`, štítek v `tags`, popisek v `details`…;
+  `todoTexts`), např. nástřel popisku detailu z kostry: u díla jen zveřejňovaného (`meta_draft: false`, `validateWorks`),
+  u kolekce, roku, úvodní stránky a fotky stránky vždy (`placeholderProblems` v `scripts/lib/content.mjs`),
 - soubory ve složkách mají známý typ, detailní složka patří k existujícímu dílu,
 - dva soubory nemíří na stejný slug.
 
@@ -537,7 +541,9 @@ details:
   2-rakos: Rákos na břehu, suchým štětcem
 ```
 
-Detail bez popisku se na webu jmenuje „detail 1“, „detail 2“ podle pořadí.
+Detail bez popisku se na webu jmenuje „detail 1“, „detail 2“ podle pořadí. Když složka s detaily
+existuje už při založení kostry popisu, pipeline do ní `details:` rovnou vyplní (u každé fotky
+`DOPLNIT popisek detailu`); do existujícího popisu je nedoplňuje.
 Popisek je pod náhledem, v prohlížečce a v `alt`. Popisek u fotky, která ve
 složce není, je chyba. Změna popisku obrázky nepřegeneruje (je v kopii yaml).
 
@@ -877,7 +883,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla s `mockups: true` do testovacích dat nebo obsahového repa, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
 | stav a mockupy | v yaml díla s `mockups: true` změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, mockupy na detailu zůstanou (nadpis „Jak vypadá na zdi“), z `export/fler` zmizí; pak `mockups: false`: mockupy zmizí i z webu. Testovací data: Ráno u rybníka (na prodej) × Slunečnice, Šumava v mlze (ne) × Pivoňky (vypnuté) |
 | exporty | `ls .demo/content/export/*/*/`: Instagram jen Ráno u rybníka, Pivoňky, Kytice z louky a Máky (`meta_instagram: true`) s `-clean` a `-detail-*`, Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export zmizí (originál + `-mockup-*`) |
-| cena | zakomentuj nebo smaž `price` u díla `available` (`demo-maky.yaml`): `npm run images` skončí chybou „needs a price“ |
+| cena | zakomentuj nebo smaž `price` u díla `available` (`demo-maky.yaml`): `npm run images` skončí chybou „stav „available“ potřebuje cenu“ |
 | úklid exportů | přejmenuj dílo (yaml, fotku i složku detailů), `npm run images`: v logu `- removed export/…` se starým názvem, v `export/` zůstanou jen soubory s novým názvem; totéž po smazání díla. Nebo nakopíruj do `export/fler/<rok>/` cizí soubor `<slug>-<id>-mockup-xyz.jpg` existujícího díla: další běh ho smaže, i když nic nepřegeneruje. |
 | kolekce | `/tvorba/kolekce/` (přehled), `/tvorba/kolekce/demo-plener-sumava-2026/` (s úvodní fotkou), `/tvorba/kolekce/demo-zahrada-2025/` (bez ní), výběr „Kolekce“ a „O kolekci →“ v galerii, řádek „Kolekce“ na detailu díla |
 | detailní fotky | `/tvorba/2026/demo-rano-u-rybnika-pf7ru/` (2 detaily s popisky), `/tvorba/2025/demo-kytice-z-louky-q6bn6/` (1 detail bez popisku): náhledy pod popisem, prohlížečka; v `export/instagram` soubory `-detail-*` |
@@ -886,11 +892,11 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | fotky stránek | `/o-mne/` (`o-mne-uvod` nahoře oříznutá na 2:1, `portret` vedle textu; bez kterékoli z nich se rozložení přizpůsobí); změň `focus` v `fotky/o-mne-uvod.yaml` (např. `[10, 10]`), `npm run images`, výřez se posune |
 | úvodní obraz kolekce | `/tvorba/kolekce/` a `/tvorba/kolekce/demo-zahrada-2025/`: „Ze zahrady 2025“ ukazuje široký detail Pivoněk (`cover: vjr39#1-kvety-nahore`). Má `aspect: "2:1"`: zkus `"3:2"` nebo `"1:1"`, pak `cover: vjr39` (celé Pivoňky oříznuté), pak smaž `aspect` i `focus` (bez ořezu), pak `cover` (náhodně z výběru, celé). Bez `aspect` se ořízne na čtverec, bez `focus` kolem středu. „Plenér Šumava 2026“ má vlastní fotku jako panorama 2400 × 1000: ukáže se celá; zkus k ní `aspect: "3:2"`. „Město 2026“: `cover` bez ořezu, celé dílo. |
 | obrázek pro sdílení kolekce | po `npm run images` otevři `public/tvorba/kolekce/*/og.jpg` (1200 × 800, stejný výřez jako na stránce, jen u vlastní fotky, detailu a `cover` s ořezem; ořez 2:1 Ze zahrady leží na papíře); změň `focus` nebo `aspect` kolekce Ze zahrady, `npm run images`, v logu `→ og kolekce/…` a výřez se posune. Na stránce kolekce je v `<meta property="og:image">`. |
-| starý název atributu | v `demo-content/tvorba/demo-maky.yaml` přepiš `meta_draft:` na `draft:`, `npm run demo:prepare`: chyba „draft: renamed to meta_draft, rename it“, soubor se nezmění (pak vrať) |
+| starý název atributu | v `demo-content/tvorba/demo-maky.yaml` přepiš `meta_draft:` na `draft:`, `npm run demo:prepare`: chyba „draft: přejmenováno na meta_draft, přejmenuj ho“, soubor se nezmění (pak vrať) |
 | `derived_` v obsahu | do `demo-content/tvorba/demo-maky.yaml` přidej `derived_x: 1`, `npm run demo:prepare`: chyba „derived_ attributes are made by the pipeline…“ (pak smaž) |
 | vyhledávače | po `npm run demo:build`: `.demo/site/dist/robots.txt`, `.demo/site/dist/sitemap.xml` (s `lastmod`), ve zdroji stránek `<meta name="description">` a `application/ld+json` (dílo `VisualArtwork` s `keywords` a `artform`, výpisy `CollectionPage` s `keywords`, úvod `WebSite` + `Person`); 404 má `noindex` |
 | chybějící obrázek | smaž v `.demo/site/dist/tvorba/*/*/` jeden obrázek, `SITE_DATA_DIR=.demo/site npm run check:images`: vypíše ho se stránkou a skončí kódem 1 |
-| chyby v popisu | např. `date: 14. 6. 2026`, `collection: plener` v popisu díla, podsložka v kolekci bez díla, dvě složky se stejnou adresou, popisek v `details:` k neexistující fotce, `cover` s dílem z jiné kolekce nebo `focus: [120, 50]`: `npm run images` skončí chybou a nic nezapíše |
+| chyby v popisu | např. `date: 14. 6. 2026`, `collection: plener` v popisu díla, podsložka v kolekci bez díla, dvě složky se stejnou adresou, popisek v `details:` k neexistující fotce, zveřejňované dílo, kolekce, rok, úvod nebo fotka s textem začínajícím `DOPLNIT`, `cover` s dílem z jiné kolekce nebo `focus: [120, 50]`: `npm run images` skončí chybou a nic nezapíše |
 
 Pozn.: když Astro při buildu padá na zápisu telemetrie (sandbox, CI bez domovského
 adresáře), pomůže `ASTRO_TELEMETRY_DISABLED=1`.
@@ -918,7 +924,15 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
   obrázků, exportů a zápisu do tohoto repa.
 - **náhledy ořezu** (`.previews/`) nahraje workflow obsahového repa (na `main` i ve větvi) jako artefakt běhu
   `nahledy-orezu` (14 dní, mimo git); zkušební běh totéž s testovacími daty.
-- Souhrn běhu (`scripts/lib/summary.mjs`) jde do `GITHUB_STEP_SUMMARY`.
+- Souhrn běhu (`scripts/lib/summary.mjs`) jde do `GITHUB_STEP_SUMMARY`, celý česky (čte ho autorka), v tomto pořadí:
+  1. **Chyby** (`### ✗ Chyby (počet)`): hlášky kontrol seskupené po souborech (`groupProblems`: část před první
+     „`: `“ je soubor, hlášky bez souboru pod „Obecně“) a obrazy bez fotky (`missing`). Každá hláška kontroly je česky
+     ve tvaru `<soubor>: <co je špatně a jak to opravit>`.
+  2. **Ke kontrole** (`### ⚠ Ke kontrole`): zveřejněné obrazy, kterým zůstal `DOPLNIT` v komentáři, a podezřelý ořez
+     rohů (`⚠`); běh nezastaví.
+  3. **Co automatika udělala**: nové popisy, přidělené kódy, nalezené rohy, náhledy ořezu, srovnané popisy,
+     odstraněné soubory a počty zpracovaných.
+  Spadne-li běh na chybě mimo popisy (výjimka), souhrn to řekne česky a technický text výjimky dá pod to.
 
 Lokální `npm run images` funguje dál stejně. Jen nekombinuj obojí najednou: buď pushni výsledek lokálního
 běhu, nebo nech pracovat automatiku.

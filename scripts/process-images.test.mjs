@@ -177,8 +177,19 @@ test('validation problems stop the run before anything is written to the site', 
   await addWork('2026', 'spatne-datum', 'title: Špatné datum\ndate: 14. 6. 2026\n');
   const r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems[0], /tvorba\/spatne-datum\.yaml: date must be a day like 2026-06-14/);
+  assert.match(r.problems[0], /tvorba\/spatne-datum\.yaml: date musí být den ve tvaru 2026-06-14/);
   assert.ok(!(await exists(path.join(siteDir, 'public/tvorba'))));
+  assert.ok(!(await exists(path.join(siteDir, 'content'))));
+});
+
+test('a text still starting with DOPLNIT stops the run: a published work, a year, a collection', async () => {
+  await addWork('2026', 'rano', 'title: DOPLNIT název\ndate: 2026-06-14\n');
+  await fs.mkdir(path.join(contentDir, 'roky'), { recursive: true });
+  await fs.writeFile(path.join(contentDir, 'roky', '2026.yaml'), 'description: DOPLNIT pár vět o roce\n');
+  const r = await run(opts());
+  assert.equal(r.ok, false);
+  assert.ok(r.problems.some((p) => /tvorba\/rano\.yaml: title pořád začíná „DOPLNIT“/.test(p)));
+  assert.ok(r.problems.some((p) => /roky\/2026\.yaml: description pořád začíná „DOPLNIT“/.test(p)));
   assert.ok(!(await exists(path.join(siteDir, 'content'))));
 });
 
@@ -202,7 +213,7 @@ test('no works (before the first real work) is fine and removes all generated wo
 });
 
 test('fails clearly when the content repository is missing', async () => {
-  await assert.rejects(run(opts({ contentDir: path.join(tmp, 'nothing') })), /Content not found/);
+  await assert.rejects(run(opts({ contentDir: path.join(tmp, 'nothing') })), /Obsah nenalezen/);
 });
 
 const infoOf = async (year, slug) =>
@@ -297,7 +308,7 @@ test('photos: a description without a photo is reported', async () => {
   await fs.writeFile(path.join(contentDir, 'fotky/sirotek.yaml'), 'alt: x\n');
   const r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems[0], /no photo named "sirotek"/);
+  assert.match(r.problems[0], /chybí k němu fotka „sirotek“/);
 });
 
 
@@ -362,7 +373,7 @@ test('validation: mockups must be true or false', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmockups: ano\n');
   const r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /mockups must be true or false/);
+  assert.match(r.problems.join('\n'), /mockups musí být true, nebo false/);
 });
 
 async function addDetail(year, slug, file, color = '#aa6644') {
@@ -481,9 +492,9 @@ test('collections: the former names _kolekce.yaml and _uvod.jpg are refused, no 
   await sharp({ create: { width: 60, height: 40, channels: 3, background: '#557744' } }).jpeg().toFile(collFile('plener', '_uvod.jpg'));
   const r = await run(opts());
   assert.equal(r.ok, false);
-  assert.deepEqual(r.problems.filter((p) => p.includes('renamed')), [
-    'tvorba/plener/_kolekce.yaml: renamed to _index.yaml, rename the file',
-    'tvorba/plener/_uvod.jpg: renamed to _cover.jpg, rename the file',
+  assert.deepEqual(r.problems.filter((p) => p.includes('se teď jmenuje')), [
+    'tvorba/plener/_kolekce.yaml: tento soubor se teď jmenuje _index.yaml, přejmenuj ho',
+    'tvorba/plener/_uvod.jpg: tento soubor se teď jmenuje _cover.jpg, přejmenuj ho',
   ]);
   assert.equal(await exists(collFile('plener', '_index.yaml')), false, 'no skeleton hides the old description');
   assert.equal(await exists(path.join(siteDir, 'content')), false, 'nothing reaches the site');
@@ -532,23 +543,23 @@ test('collections: collection:, a missing title, nested collections, clashing na
     return r.problems.join('\n');
   };
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\ncollection: plener\n');
-  assert.match(await problemsOf(), /tvorba\/rano\.yaml: "collection:" is not used any more, a work belongs to a collection by lying in its folder/);
+  assert.match(await problemsOf(), /tvorba\/rano\.yaml: „collection:“ se už nepoužívá, obraz patří do kolekce tím, že leží v její složce/);
   await setYaml('2026', 'rano', `id: ${await idOf('2026', 'rano')}\ntitle: Ráno\ndate: 2026-06-14\n`);
 
   await setCollection('plener', 'description: bez názvu\n');
-  assert.match(await problemsOf(), /tvorba\/plener\/_index\.yaml: missing title/);
+  assert.match(await problemsOf(), /tvorba\/plener\/_index\.yaml: chybí název kolekce/);
   await setCollection('plener', 'title: Plenér\n');
 
   await addWork('2026', 'vnoreny', 'title: V\ndate: 2026-06-14\n', { collection: 'plener/podkolekce' });
-  assert.match(await problemsOf(), /tvorba\/plener\/podkolekce\/: .*collections cannot be nested/);
+  assert.match(await problemsOf(), /tvorba\/plener\/podkolekce\/: .*kolekce v kolekci nejde/);
   await fs.rm(path.join(contentDir, 'tvorba/plener/podkolekce'), { recursive: true });
 
   await setCollection('Plenér', 'title: Druhý plenér\n');
-  assert.match(await problemsOf(), /gives the same web address "plener"/);
+  assert.match(await problemsOf(), /dává stejnou adresu na webu „plener“/);
   await fs.rm(path.join(contentDir, 'tvorba/Plenér'), { recursive: true });
 
   await fs.mkdir(path.join(contentDir, 'kolekce'));
-  assert.match(await problemsOf(), /kolekce\/: collections are folders in tvorba\/ now/);
+  assert.match(await problemsOf(), /kolekce\/: kolekce jsou teď složky v tvorba\//);
   await fs.rm(path.join(contentDir, 'kolekce'), { recursive: true });
   assert.equal((await run(opts())).ok, true);
 });
@@ -598,7 +609,7 @@ test('validation: a work on sale without a price stops the run', async () => {
   await addWork('2026', 'bez-ceny', 'title: Bez ceny\ndate: 2026-06-14\nstatus: reserved\n');
   const r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /status "reserved" needs a price/);
+  assert.match(r.problems.join('\n'), /stav „reserved“ potřebuje cenu/);
 });
 
 test('detail captions: a caption for a missing detail photo stops the run, valid captions reach the public copy', async () => {
@@ -606,7 +617,7 @@ test('detail captions: a caption for a missing detail photo stops the run, valid
   await addDetail('2026', 'rano', '1-kvet.jpg');
   let r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /no detail photo "lodka"/);
+  assert.match(r.problems.join('\n'), /není detailní fotka „lodka“/);
 
   await addDetail('2026', 'rano', 'lodka.jpg');
   r = await run(opts());
@@ -734,13 +745,13 @@ test('collections: cover names a published work of the collection and reaches th
     assert.equal(r.ok, false, cover);
     return r.problems.join('\n');
   };
-  assert.match(await problemFor('zzzzz'), /cover zzzzz: zzzzz is not the id of any work/);
-  assert.match(await problemFor(jinde), /\(Jinde\) is not in this collection/);
-  assert.match(await problemFor(skica), /\(Skica\) is a draft/);
+  assert.match(await problemFor('zzzzz'), /cover zzzzz: zzzzz není kód žádného obrazu/);
+  assert.match(await problemFor(jinde), /\(Jinde\) nepatří do this collection/);
+  assert.match(await problemFor(skica), /\(Skica\) je rozpracovaný/);
 
   await setCover(rano);
   await addCover('plener');
-  assert.match((await run(opts())).problems.join('\n'), /cover .* and the cover photo _cover\.jpg both set/);
+  assert.match((await run(opts())).problems.join('\n'), /je zadaný cover .* i úvodní fotka _cover\.jpg, nech jen jedno/);
 });
 
 test('photos: focus goes to the public copy, an invalid focus stops the run', async () => {
@@ -756,7 +767,7 @@ test('photos: focus goes to the public copy, an invalid focus stops the run', as
     await fs.writeFile(path.join(contentDir, 'fotky/o-mne-uvod.yaml'), `alt: Plenér\nfocus: ${focus}\n`);
     const r = await run(opts());
     assert.equal(r.ok, false, focus);
-    assert.match(r.problems.join('\n'), /fotky\/o-mne-uvod\.yaml: focus must be \[x, y\]/, focus);
+    assert.match(r.problems.join('\n'), /fotky\/o-mne-uvod\.yaml: focus musí být \[x, y\]/, focus);
   }
 });
 
@@ -773,12 +784,12 @@ test('collections: cover can be a detail photo of a work; aspect and focus reach
   await setCollection('plener', `title: Plenér\ncover: ${id}#lodka\n`);
   let r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /Ráno has no detail photo "lodka" \(folder tvorba\/plener\/rano\/\)/);
+  assert.match(r.problems.join('\n'), /Ráno nemá detailní fotku „lodka“ \(složka tvorba\/plener\/rano\/\)/);
 
   await setCollection('plener', `title: Plenér\ncover: ${id}\naspect: "3:2"\nfocus: [50, 150]\n`);
   r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /tvorba\/plener\/_index\.yaml: focus must be \[x, y\]/);
+  assert.match(r.problems.join('\n'), /tvorba\/plener\/_index\.yaml: focus musí být \[x, y\]/);
 });
 
 test('collections: a chosen cover with aspect or focus is cropped (page and share image), otherwise whole', async () => {
@@ -841,7 +852,7 @@ test('collections: a chosen cover with aspect or focus is cropped (page and shar
   await fs.rm(collFile('plener', '_cover.jpg'));
   await setCollection('plener', 'title: Plenér\nfocus: [0, 50]\n');
   const bad = await run(opts());
-  assert.match(bad.problems.join('\n'), /focus crops only a chosen cover/);
+  assert.match(bad.problems.join('\n'), /focus ořezává jen vybraný úvodní obraz/);
 
   // collection gone → share image and the empty og folders are removed
   await fs.rm(path.join(contentDir, 'tvorba/plener'), { recursive: true });
@@ -898,9 +909,9 @@ test('test data: the real content refuses test works and collections and the mar
   assert.equal(r.ok, false);
   const text = r.problems.join('\n');
   for (const where of ['tvorba/demo-kytice.yaml', 'tvorba/demo-plener/_index.yaml']) {
-    assert.match(text, new RegExp(`${where.replace(/[./]/g, '\\$&')}: test data do not belong in the real content`), where);
+    assert.match(text, new RegExp(`${where.replace(/[./]/g, '\\$&')}: testovací data do skutečného obsahu nepatří`), where);
   }
-  assert.match(text, /demo-content\.yaml: this content is the test data/);
+  assert.match(text, /demo-content\.yaml: tohle jsou testovací data/);
   assert.ok(!text.includes('tvorba/rano.yaml'));
   assert.ok(!(await exists(path.join(siteDir, 'public/tvorba'))));
 });
@@ -909,7 +920,7 @@ test('test data: the demo data set needs the marker and "demo-" names; no demo a
   await addWork('2026', 'demo-rano', 'title: Ráno\ndate: 2026-06-14\n');
   let r = await run(opts({ dataset: 'demo' }));
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /demo-content\.yaml missing/);
+  assert.match(r.problems.join('\n'), /demo-content\.yaml: chybí/);
   await fs.writeFile(path.join(contentDir, 'demo-content.yaml'), '# test data\n');
   r = await run(opts({ dataset: 'demo' }));
   assert.equal(r.ok, true, r.problems.join('\n'));
@@ -920,7 +931,7 @@ test('test data: the demo data set needs the marker and "demo-" names; no demo a
   await addWork('2026', 'vecer', 'title: Večer\ndate: 2026-06-14\n');
   r = await run(opts({ dataset: 'demo' }));
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /vecer\.yaml: names of test works and collections start with "demo-"/);
+  assert.match(r.problems.join('\n'), /vecer\.yaml: jména testovacích děl a kolekcí začínají „demo-“/);
 });
 
 test('test data: a leftover demo attribute is an unknown attribute', async () => {
@@ -954,7 +965,7 @@ test('validation: meta_instagram must be true or false', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: ano\n');
   const r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /meta_instagram must be true or false/);
+  assert.match(r.problems.join('\n'), /meta_instagram musí být true, nebo false/);
 });
 
 test('prepare only (branches): skeletons, ids and checks, but no site data, images or exports', async () => {
@@ -978,7 +989,7 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   await setYaml('2026', 'hotovy', `id: ${await idOf('2026', 'hotovy')}\ntitle: Hotový\ndate: 2026-06-14\nstatus: available\n`);
   const bad = await run(opts({ prepareOnly: true }));
   assert.equal(bad.ok, false);
-  assert.match(bad.problems.join('\n'), /needs a price/);
+  assert.match(bad.problems.join('\n'), /potřebuje cenu/);
 });
 
 test('mockups: a master with surroundings (sheet box in XMP) is framed without them; the web image keeps them', async () => {
@@ -1088,7 +1099,7 @@ test('attributes: a former name (draft, instagram) stops the run and the file is
   for (const prepareOnly of [true, false]) {
     const r = await run(opts({ prepareOnly }));
     assert.equal(r.ok, false);
-    assert.deepEqual(r.problems, ['tvorba/rano.yaml: draft: renamed to meta_draft, rename it; instagram: renamed to meta_instagram, rename it']);
+    assert.deepEqual(r.problems, ['tvorba/rano.yaml: draft: přejmenováno na meta_draft, přejmenuj ho; instagram: přejmenováno na meta_instagram, přejmenuj ho']);
     assert.equal(await fs.readFile(path.join(contentDir, 'tvorba/rano.yaml'), 'utf8'), old, 'never migrated silently');
     assert.equal(await exists(path.join(siteDir, 'content')), false, 'a draft under its old name never reaches the site');
   }
@@ -1112,7 +1123,7 @@ test('attributes: own private_ attributes and meta_ ones never reach the public 
   await setCollection('plener', 'title: Plenér\nderived_slug: x\n');
   r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /tvorba\/plener\/_index\.yaml: derived_slug: derived_ attributes are made by the pipeline/);
+  assert.match(r.problems.join('\n'), /tvorba\/plener\/_index\.yaml: derived_slug: údaje derived_ vyrábí automatika pro web/);
 });
 
 test('derived_modified: the day the public attributes or the images of a work last changed, kept otherwise', async () => {
@@ -1191,10 +1202,10 @@ test('covers of years and the home page: own photo, cover, focus; share image on
   await fs.writeFile(path.join(contentDir, 'roky/2025.yaml'), `cover: ${idRano}\n`);
   r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /roky\/2025\.yaml: cover .* and the cover photo 2025\.jpg both set/);
+  assert.match(r.problems.join('\n'), /roky\/2025\.yaml: je zadaný cover .* i úvodní fotka 2025\.jpg/);
   await fs.rm(path.join(contentDir, 'roky/2025.jpg'));
   r = await run(opts());
-  assert.match(r.problems.join('\n'), /roky\/2025\.yaml: cover .*\(Ráno\) is not in 2025/);
+  assert.match(r.problems.join('\n'), /roky\/2025\.yaml: cover .*\(Ráno\) nepatří do 2025/);
 
   // back to random: share crops and photos are removed
   await fs.writeFile(path.join(contentDir, 'roky/2025.yaml'), 'description: ""\n');
@@ -1312,7 +1323,7 @@ test('corners: false keeps the whole photo; changing the corners regenerates; co
   await set('{ photo: [800, 600], tl: [30, 30], tr: [30, 30], br: [30, 30], bl: [30, 30] }');
   const bad = await run(opts());
   assert.equal(bad.ok, false);
-  assert.match(bad.problems.join('\n'), /tvorba\/podlaha\.yaml: meta_corners belong to a photo of 800 × 600, but the photo is 400 × 300/);
+  assert.match(bad.problems.join('\n'), /tvorba\/podlaha\.yaml: meta_corners patří k fotce 800 × 600, ale fotka má 400 × 300/);
 });
 
 test('corners: settings of detection and previews (search, suspicious) never regenerate a work, feather does', async () => {

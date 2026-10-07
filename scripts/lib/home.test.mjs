@@ -39,15 +39,15 @@ test('prepareHome reports two home photos and a description that is not text', a
   await fs.writeFile(path.join(dir, '_cover.jpg'), 'x');
   await fs.writeFile(path.join(dir, '_cover.png'), 'x');
   const { problems } = await prepareHome(dir);
-  assert.match(problems.join('\n'), /_index\.yaml: description must be text/);
-  assert.match(problems.join('\n'), /more than one home cover photo/);
+  assert.match(problems.join('\n'), /_index\.yaml: description musí být text/);
+  assert.match(problems.join('\n'), /víc úvodních fotek úvodní stránky/);
 });
 
 test('prepareHome refuses the former names uvod.yaml and uvod.jpg and writes no skeleton next to them', async () => {
   await fs.writeFile(path.join(dir, 'uvod.yaml'), 'description: Můj text.\n');
   await fs.writeFile(path.join(dir, 'uvod.jpg'), 'x');
   const r = await prepareHome(dir);
-  assert.deepEqual(r.problems, ['uvod.jpg: renamed to _cover.jpg, rename the file', 'uvod.yaml: renamed to _index.yaml, rename the file']);
+  assert.deepEqual(r.problems, ['uvod.jpg: tento soubor se teď jmenuje _cover.jpg, přejmenuj ho', 'uvod.yaml: tento soubor se teď jmenuje _index.yaml, přejmenuj ho']);
   assert.equal(r.home, null);
   assert.deepEqual(r.created, []);
   assert.equal(await fs.access(path.join(dir, '_index.yaml')).then(() => true, () => false), false, 'no skeleton hides the text');
@@ -57,5 +57,5 @@ test('prepareHome refuses the former names uvod.yaml and uvod.jpg and writes no 
   await fs.rename(path.join(dir, 'uvod.yaml'), path.join(dir, '_index.yaml'));
   const again = await prepareHome(dir);
   assert.equal(again.home.data.description, 'Můj text.');
-  assert.deepEqual(again.problems, ['uvod.jpg: renamed to _cover.jpg, rename the file']);
+  assert.deepEqual(again.problems, ['uvod.jpg: tento soubor se teď jmenuje _cover.jpg, přejmenuj ho']);
 });

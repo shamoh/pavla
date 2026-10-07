@@ -181,6 +181,14 @@ test('commented-out attribute: switched on by removing "# ", an empty value is c
   assert.equal(normalizeMetadata(empty.text, withOff).changed, false, 'and stays there on the next run');
 });
 
+test('commented-out attribute given a value in a skeleton: set and marked DOPLNIT, kept on the next run', () => {
+  const text = skeleton(withOff, { crop: '2:1' });
+  assert.match(text, /\n# DOPLNIT NEPOVINNÉ\. Ořez\.\ncrop: 2:1\n/);
+  assert.deepEqual(todoKeys(text).includes('crop'), true);
+  assert.equal(normalizeMetadata(text, withOff).changed, false);
+  assert.match(skeleton(withOff, { crop: '' }), /\n# crop: "3:2"\n/, 'an empty value stays commented out');
+});
+
 test('commented-out attribute: an older wording of its comment is replaced', () => {
   const r = normalizeMetadata('title: A\n\n# Ořez, starý text.\n# crop: "3:2"\n\nnote: ""\n', withOff);
   assert.match(r.text, /# NEPOVINNÉ\. Ořez\.\n# crop: "3:2"/);
@@ -226,10 +234,10 @@ test('own private_ attributes: kept among the private_ ones alphabetically, with
 test('a former name or a derived_ attribute is a problem; the file stays as it is', () => {
   const old = 'title: A\ndraft: true\ninstagram: false\n';
   const r = normalizeMetadata(old, WORK_SCHEMA);
-  assert.equal(r.problem, 'draft: renamed to meta_draft, rename it; instagram: renamed to meta_instagram, rename it');
+  assert.equal(r.problem, 'draft: přejmenováno na meta_draft, přejmenuj ho; instagram: přejmenováno na meta_instagram, přejmenuj ho');
   assert.equal(r.text, old);
   assert.equal(r.changed, false);
-  assert.match(normalizeMetadata('title: A\nderived_collection: x\n', WORK_SCHEMA).problem, /^derived_collection: derived_ attributes are made by the pipeline/);
+  assert.match(normalizeMetadata('title: A\nderived_collection: x\n', WORK_SCHEMA).problem, /^derived_collection: údaje derived_ vyrábí automatika pro web/);
 });
 
 test('the comment of the file stays on top when its first attribute moves down (schema order)', () => {

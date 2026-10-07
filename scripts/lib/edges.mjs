@@ -198,19 +198,19 @@ export function detectCorners(rgb, width, height, photoWidth, photoHeight, searc
 export function cornersProblems(value, width, height, where) {
   if (value === undefined || value === false) return [];
   const p = (msg) => [`${where}: meta_corners ${msg}`];
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return p('must be photo, tl, tr, br, bl (or false = no cut)');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return p('musí mít photo, tl, tr, br a bl (nebo false = neořezávat)');
   const pair = (v) => Array.isArray(v) && v.length === 2 && v.every((n) => Number.isInteger(n));
-  if (!pair(value.photo)) return p('photo must be [width, height] of the photo in pixels');
+  if (!pair(value.photo)) return p('photo musí být [šířka, výška] fotky v pixelech');
   if (value.photo[0] !== width || value.photo[1] !== height) {
-    return p(`belong to a photo of ${value.photo[0]} × ${value.photo[1]}, but the photo is ${width} × ${height}: delete meta_corners, the pipeline finds them again`);
+    return p(`patří k fotce ${value.photo[0]} × ${value.photo[1]}, ale fotka má ${width} × ${height}: smaž meta_corners, automatika rohy najde znovu`);
   }
   const unknown = Object.keys(value).filter((k) => k !== 'photo' && !CORNER_KEYS.includes(k));
-  if (unknown.length) return p(`has unknown keys: ${unknown.join(', ')}`);
+  if (unknown.length) return p(`má neznámé klíče: ${unknown.join(', ')}`);
   for (const k of CORNER_KEYS) {
-    if (!pair(value[k])) return p(`${k} must be [x, y] in whole pixels`);
+    if (!pair(value[k])) return p(`${k} musí být [x, y] v celých pixelech`);
     const [x, y] = value[k];
-    if (x < 0 || y < 0) return p(`${k} must not be negative (pixels towards the middle of the photo)`);
-    if (x > width * MAX_CORNER_SHARE || y > height * MAX_CORNER_SHARE) return p(`${k} is too far from the corner of the photo (at most a quarter of it)`);
+    if (x < 0 || y < 0) return p(`${k} nesmí být záporné (pixely směrem do středu fotky)`);
+    if (x > width * MAX_CORNER_SHARE || y > height * MAX_CORNER_SHARE) return p(`${k} je moc daleko od rohu fotky (nejvýš čtvrtina šířky či výšky)`);
   }
   return [];
 }

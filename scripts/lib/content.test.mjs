@@ -5,8 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
-import { findUnknownAttributes, findUnknownTechniques, prepareContent, readTree, withId } from './content.mjs';
-import { isValidId } from './works.mjs';
+import { DETAIL_CAPTION_TODO, findUnknownAttributes, placeholderProblems, findUnknownTechniques, prepareContent, readTree, withId } from './content.mjs';
+import { todoKeys } from './metadata-yaml.mjs';
+import { isValidId, validateWorks } from './works.mjs';
 
 let dir;
 const worksDir = () => path.join(dir, 'tvorba');
@@ -46,7 +47,7 @@ test('readTree pairs images with metadata by slug and reports stray files', asyn
   assert.deepEqual([...groups[0].yamls.keys()], ['rano-u-rybnika']);
   assert.equal(groups[0].images.get('rano-u-rybnika').file, 'Ráno u rybníka.JPG');
   assert.equal(groups[0].images.size, 1, 'files starting with _ or . are no works');
-  assert.deepEqual(problems, ['tvorba/notes.txt: unknown file type, ignored']);
+  assert.deepEqual(problems, ['tvorba/notes.txt: sem patří jen fotky a popisy (.yaml), tento soubor smaž nebo přesuň']);
 });
 
 test('readTree reports two images mapping to the same slug', async () => {
@@ -54,7 +55,7 @@ test('readTree reports two images mapping to the same slug', async () => {
   await write('Ráno.png');
   const { problems } = await readTree(worksDir());
   assert.equal(problems.length, 1);
-  assert.match(problems[0], /already maps to "rano"/);
+  assert.match(problems[0], /stejné jméno „rano“ dává i fotka rano\.jpg/);
 });
 
 test('readTree: a folder named like a work holds its details, any other folder is a collection', async () => {
@@ -87,7 +88,7 @@ test('readTree reports non-photos in detail folders and folders nested in a coll
   const { problems } = await readTree(worksDir());
   assert.equal(problems.length, 2);
   assert.ok(problems.some((p) => p.includes('tvorba/rano/poznamky.txt')));
-  assert.ok(problems.some((p) => p.startsWith('tvorba/plener/podkolekce/:') && p.includes('collections cannot be nested')));
+  assert.ok(problems.some((p) => p.startsWith('tvorba/plener/podkolekce/:') && p.includes('kolekce v kolekci nejde')));
 });
 
 test('prepareContent creates a draft skeleton for a new image, dated today without EXIF', async () => {
@@ -115,6 +116,33 @@ test('prepareContent dates a new skeleton by the day the photo was taken (EXIF),
   assert.deepEqual(r.created, ['tvorba/plener/steg.yaml']);
   assert.equal(String(YAML.parse(await read('plener/steg.yaml')).date), '2025-10-19');
   assert.equal(r.works[0].year, '2025');
+});
+
+test('prepareContent fills in details of a new skeleton from the detail folder, captions to fill in', async () => {
+  await write('rano.jpg');
+  await write('rano/1 Mlha.jpg');
+  await write('rano/2-lodka.jpg');
+  await write('vecer.jpg');
+  const r = await prepareContent(dir, { today: new Date('2026-10-07T12:00:00Z') });
+  const text = await read('rano.yaml');
+  assert.deepEqual(YAML.parse(text).details, { '1-mlha': DETAIL_CAPTION_TODO, '2-lodka': DETAIL_CAPTION_TODO });
+  assert.ok(DETAIL_CAPTION_TODO.startsWith('DOPLNIT '));
+  assert.ok(todoKeys(text).includes('details'), 'the technical comment is marked DOPLNIT');
+  assert.deepEqual(validateWorks(r.works).filter((p) => p.includes('details')), [], 'every caption names a photo in the folder');
+  assert.equal(YAML.parse(await read('vecer.yaml')).details, undefined, 'without a detail folder it stays commented out');
+  const again = await prepareContent(dir, { today: new Date('2026-10-08T12:00:00Z') });
+  assert.deepEqual(again.created, []);
+  assert.deepEqual(again.updated, []);
+  assert.equal(await read('rano.yaml'), text, 'the next run leaves it as it is');
+});
+
+test('prepareContent leaves details of an existing description alone when a detail folder appears', async () => {
+  await write('rano.jpg');
+  await prepareContent(dir, { today: new Date('2026-10-07T12:00:00Z') });
+  const before = await read('rano.yaml');
+  await write('rano/1-mlha.jpg');
+  await prepareContent(dir, { today: new Date('2026-10-07T12:00:00Z') });
+  assert.equal(await read('rano.yaml'), before);
 });
 
 test('prepareContent: works of a collection folder, their collection and years come from folder and date', async () => {
@@ -168,7 +196,7 @@ test('prepareContent reports invalid YAML and continues with the rest', async ()
   await write('dobry.yaml', 'title: Dobrý\ndate: 2026-01-01\n');
   const r = await prepareContent(dir);
   assert.equal(r.problems.length, 1);
-  assert.match(r.problems[0], /^tvorba\/zlomeny\.yaml: invalid YAML/);
+  assert.match(r.problems[0], /^tvorba\/zlomeny\.yaml: chybný zápis YAML/);
   assert.deepEqual(r.works.map((w) => w.slug), ['dobry']);
 });
 
@@ -204,4 +232,20 @@ test('findUnknownTechniques lists techniques without an art form with their work
   const before = await read('rano.yaml');
   assert.deepEqual(await findUnknownTechniques(dir), ['enkaustika: tvorba/skica.yaml', 'koláž: tvorba/plener/noc.yaml, tvorba/plener/vecer.yaml']);
   assert.equal(await read('rano.yaml'), before);
+});
+
+test('placeholderProblems: texts starting with DOPLNIT in collections, years, the home page and photos of pages', () => {
+  const problems = placeholderProblems({
+    collections: [{ yamlPath: 'tvorba/plener/_index.yaml', data: { title: 'DOPLNIT název', private_note: 'DOPLNIT' } }],
+    years: [{ yamlPath: 'roky/2026.yaml', data: { description: 'DOPLNIT pár vět' } }, { yamlPath: 'roky/2025.yaml', data: { description: 'Rok.' } }],
+    home: { yamlPath: '_index.yaml', data: { description: ' DOPLNIT' } },
+    photos: [{ name: 'portret', data: { alt: 'Portrét', caption: 'DOPLNIT popisek' } }],
+  });
+  assert.deepEqual(problems, [
+    'tvorba/plener/_index.yaml: title pořád začíná „DOPLNIT“, přepiš ho',
+    'roky/2026.yaml: description pořád začíná „DOPLNIT“, přepiš ho',
+    '_index.yaml: description pořád začíná „DOPLNIT“, přepiš ho',
+    'fotky/portret.yaml: caption pořád začíná „DOPLNIT“, přepiš ho',
+  ]);
+  assert.deepEqual(placeholderProblems({}), []);
 });

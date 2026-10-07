@@ -58,7 +58,7 @@ test('cornersFor: from the description when they fit, detected otherwise; never 
   await fs.writeFile(yaml, own.replace('[400, 300]', '[800, 600]'));
   const other = await cornersFor(file);
   assert.equal(other.source, 'detected');
-  assert.match(other.note, /belong to a photo of 800 × 600.*; detected instead$/);
+  assert.match(other.note, /patří k fotce 800 × 600.*; detected instead$/);
 
   await fs.writeFile(yaml, 'meta_corners: false\n');
   const off = await cornersFor(file);

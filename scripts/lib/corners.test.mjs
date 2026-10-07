@@ -79,7 +79,7 @@ test('prepareCorners: corners set by hand or false are kept; ones of another pho
   const r = await prepareCorners(tmp, works);
   assert.deepEqual(r.detected, []);
   assert.equal(await fs.readFile(path.join(tmp, 'tvorba/manual.yaml'), 'utf8'), manual);
-  assert.deepEqual(r.problems, ['tvorba/other.yaml: meta_corners belong to a photo of 800 × 600, but the photo is 400 × 300: delete meta_corners, the pipeline finds them again']);
+  assert.deepEqual(r.problems, ['tvorba/other.yaml: meta_corners patří k fotce 800 × 600, ale fotka má 400 × 300: smaž meta_corners, automatika rohy najde znovu']);
 });
 
 test('prepareCorners: a file the schema check refuses is left alone (reported by that check)', async () => {
@@ -157,7 +157,7 @@ test('withCorners: the description with meta_corners set, nothing else changed; 
   assert.equal(YAML.parse(r.text).title, 'Ráno');
   assert.match(r.text, /^# Rohy listu/, 'with its technical comment, first in the file');
   const old = withCorners('draft: true\n', value);
-  assert.match(old.problem, /renamed to meta_draft/);
+  assert.match(old.problem, /přejmenováno na meta_draft/);
   assert.equal(old.text, 'draft: true\n');
 });
 

@@ -24,16 +24,16 @@ export function demoProblems({ works = [], collections = [], marked = false }, d
   ];
   const problems = [];
   if (dataset === 'real' && marked) {
-    problems.push(`${DEMO_MARKER}: this content is the test data, not the real content; test data live in pavla/demo-content (npm run demo)`);
+    problems.push(`${DEMO_MARKER}: tohle jsou testovací data, ne skutečný obsah; testovací data patří do pavla/demo-content (npm run demo)`);
   }
   if (dataset === 'demo' && !marked) {
-    problems.push(`${DEMO_MARKER} missing: the test data are marked by this file in the root of the content`);
+    problems.push(`${DEMO_MARKER}: chybí, testovací data označuje tento soubor v kořeni obsahu`);
   }
   for (const { where, name } of items) {
     if (dataset === 'real' && isDemo(name)) {
-      problems.push(`${where}: test data do not belong in the real content; test data live in pavla/demo-content (npm run demo)`);
+      problems.push(`${where}: testovací data do skutečného obsahu nepatří, patří do pavla/demo-content (npm run demo)`);
     } else if (dataset === 'demo' && !isDemo(name)) {
-      problems.push(`${where}: names of test works and collections start with "${DEMO_PREFIX}"`);
+      problems.push(`${where}: jména testovacích děl a kolekcí začínají „${DEMO_PREFIX}“`);
     }
   }
   return problems;

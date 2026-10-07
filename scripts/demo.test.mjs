@@ -87,14 +87,14 @@ test('prepareDemo refuses works without "demo-" names, test data without the mar
   await write(path.join(demoDir, 'tvorba/vecer.yaml'), 'title: Večer\ndate: 2026-06-14\n');
   let r = await prepareDemo(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /vecer\.yaml: names of test works and collections start with "demo-"/);
+  assert.match(r.problems.join('\n'), /vecer\.yaml: jména testovacích děl a kolekcí začínají „demo-“/);
   await fs.rm(path.join(demoDir, 'tvorba/vecer.yaml'));
 
   // the marker is copied with the content; without it the pipeline refuses to run on the test data
   await fs.rm(path.join(demoDir, 'demo-content.yaml'));
   r = await prepareDemo(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /demo-content\.yaml missing/);
+  assert.match(r.problems.join('\n'), /demo-content\.yaml: chybí/);
   assert.equal(await exists(path.join(outDir, 'content/demo-content.yaml')), false, 'a stale marker is not left behind');
   await write(path.join(demoDir, 'demo-content.yaml'), '# test data\n');
 

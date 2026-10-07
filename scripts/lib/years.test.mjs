@@ -40,6 +40,6 @@ test('prepareYears reports stray files, bad names and a description that is not 
   await fs.writeFile(file('letos.yaml'), 'description: x\n');
   await fs.writeFile(file('2026.yaml'), 'description: [a, b]\n');
   const { problems } = await prepareYears(dir, []);
-  assert.match(problems.join('\n'), /roky\/letos\.yaml: only descriptions of years \(2026\.yaml\) and their cover photos/);
-  assert.match(problems.join('\n'), /roky\/2026\.yaml: description must be text/);
+  assert.match(problems.join('\n'), /roky\/letos\.yaml: sem patří jen popisy roků \(2026\.yaml\) a jejich úvodní fotky/);
+  assert.match(problems.join('\n'), /roky\/2026\.yaml: description musí být text/);
 });

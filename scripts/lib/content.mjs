@@ -15,10 +15,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
 import { photoDate } from './exif.mjs';
-import { normalizeMetadata, skeleton, todoKeys } from './metadata-yaml.mjs';
+import { normalizeMetadata, skeleton, todoKeys, yamlProblem } from './metadata-yaml.mjs';
 import { artform } from './seo.mjs';
-import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA } from './schema.mjs';
-import { IMAGE_EXTENSIONS, dateYear, generateId, isValidId, slugify, splitExt, titleFromName } from './works.mjs';
+import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, WORK_SCHEMA, YEAR_SCHEMA, publicKeys } from './schema.mjs';
+import { IMAGE_EXTENSIONS, dateYear, generateId, isValidId, slugify, splitExt, titleFromName, todoProblems } from './works.mjs';
 
 export const WORKS_SUBDIR = 'tvorba';
 // System files share two names wherever they are: _index.yaml describes the place it lies in (the content root =
@@ -35,8 +35,8 @@ export const RETIRED_NAMES = { index: ['_kolekce.yaml', 'uvod.yaml'], cover: ['_
 export function retiredNameProblem(rel, file, { index, cover }) {
   const { base, ext } = splitExt(file);
   const where = [rel, file].filter(Boolean).join('/');
-  if (index.includes(file)) return `${where}: renamed to ${INDEX_FILE}, rename the file`;
-  if (cover.includes(base) && IMAGE_EXTENSIONS.includes(ext)) return `${where}: renamed to ${COVER_NAME}.${ext}, rename the file`;
+  if (index.includes(file)) return `${where}: tento soubor se teď jmenuje ${INDEX_FILE}, přejmenuj ho`;
+  if (cover.includes(base) && IMAGE_EXTENSIONS.includes(ext)) return `${where}: tento soubor se teď jmenuje ${COVER_NAME}.${ext}, přejmenuj ho`;
   return null;
 }
 
@@ -64,14 +64,14 @@ async function readFolder(worksRoot, rel, allowCollections) {
     if (isHidden(file)) continue;
     if (item.isDirectory()) { folders.push(file); continue; }
     if (ext === 'yaml' || ext === 'yml') {
-      if (group.yamls.has(base)) problems.push(`${where(file)}: duplicate metadata for "${base}"`);
+      if (group.yamls.has(base)) problems.push(`${where(file)}: k „${base}“ jsou dva popisy, nech jen jeden`);
       else group.yamls.set(base, file);
     } else if (IMAGE_EXTENSIONS.includes(ext)) {
       const slug = slugify(base);
-      if (group.images.has(slug)) problems.push(`${where(file)}: another image already maps to "${slug}" (${group.images.get(slug).file})`);
+      if (group.images.has(slug)) problems.push(`${where(file)}: stejné jméno „${slug}“ dává i fotka ${group.images.get(slug).file}, jednu přejmenuj`);
       else group.images.set(slug, { file, name: base });
     } else {
-      problems.push(`${where(file)}: unknown file type, ignored`);
+      problems.push(`${where(file)}: sem patří jen fotky a popisy (.yaml), tento soubor smaž nebo přesuň`);
     }
   }
   // A folder named like a work next to it holds its detail photos; any other folder is a collection.
@@ -86,7 +86,7 @@ async function readFolder(worksRoot, rel, allowCollections) {
       problems.push(...inner.problems);
       collections.push(inner.group);
     } else {
-      problems.push(`${where(name)}/: a folder inside a collection must be the detail photos of a work next to it (${where(`${name}.jpg`)}); collections cannot be nested`);
+      problems.push(`${where(name)}/: složka uvnitř kolekce smí obsahovat jen detailní fotky obrazu vedle ní (${where(`${name}.jpg`)}); kolekce v kolekci nejde`);
     }
   }
   return { group, collections, problems };
@@ -110,12 +110,12 @@ async function readDetails(dir, where) {
     if (isHidden(item.name)) continue;
     const { base, ext } = splitExt(item.name);
     if (!item.isFile() || !IMAGE_EXTENSIONS.includes(ext)) {
-      problems.push(`${where}/${item.name}: only photos belong into a detail folder, ignored`);
+      problems.push(`${where}/${item.name}: do složky detailních fotek patří jen fotky, tento soubor smaž nebo přesuň`);
       continue;
     }
     const name = slugify(base);
     if (!name || names.has(name)) {
-      problems.push(`${where}/${item.name}: rename the photo, another detail photo already maps to "${name}"`);
+      problems.push(`${where}/${item.name}: stejné jméno „${name}“ už má jiná detailní fotka, jednu přejmenuj`);
       continue;
     }
     names.add(name);
@@ -124,8 +124,31 @@ async function readDetails(dir, where) {
   return { files, problems };
 }
 
-/** The YAML text of a new work: every attribute of WORK_SCHEMA, marked DOPLNIT (except the id). */
-export const skeletonYaml = ({ id, title, date }) => skeleton(WORK_SCHEMA, { id, title, date });
+/**
+ * Texts still starting with DOPLNIT in the descriptions that are always public: collections, years, the home page and
+ * photos of pages (works: validateWorks, only once published). Each list as the prepare* functions return it:
+ * collections and years [{ data, yamlPath }], home { data, yamlPath } or null, photos [{ name, data }].
+ */
+export function placeholderProblems({ collections = [], years = [], home = null, photos = [] }) {
+  return [
+    ...collections.flatMap((c) => todoProblems(c.yamlPath, c.data, publicKeys(COLLECTION_SCHEMA))),
+    ...years.flatMap((y) => todoProblems(y.yamlPath, y.data, publicKeys(YEAR_SCHEMA))),
+    ...(home ? todoProblems(home.yamlPath, home.data, publicKeys(HOME_SCHEMA)) : []),
+    ...photos.flatMap((p) => todoProblems(`fotky/${p.name}.yaml`, p.data, publicKeys(PHOTO_SCHEMA))),
+  ];
+}
+
+/** Placeholder caption of a detail photo in a new skeleton, for the author to replace. */
+export const DETAIL_CAPTION_TODO = `${TODO} popisek detailu`;
+
+/**
+ * The YAML text of a new work: every attribute of WORK_SCHEMA, marked DOPLNIT (except the id). With `details`
+ * (names of the detail photos found next to the image) `details:` is set, each caption a DOPLNIT placeholder.
+ */
+export const skeletonYaml = ({ id, title, date, details = [] }) => skeleton(WORK_SCHEMA, {
+  id, title, date,
+  ...(details.length ? { details: Object.fromEntries(details.map((name) => [name, DETAIL_CAPTION_TODO])) } : {}),
+});
 
 /**
  * Brings the YAML of one content file in line with its schema (scripts/lib/metadata-yaml.mjs) and writes it when
@@ -193,19 +216,21 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
       try {
         data = YAML.parse(text) ?? {};
       } catch (e) {
-        problems.push(`${rel(g.dir, file)}: invalid YAML (${e.message.split('\n')[0]})`);
+        problems.push(`${rel(g.dir, file)}: ${yamlProblem(e)}`);
         continue;
       }
       if (isValidId(data.id)) taken.add(data.id);
       entries.push({ g, slug, yamlPath, text, data, image: g.images.get(slug), details: g.details.get(slug) });
     }
-    // Pass 1b: images without metadata get a skeleton, dated by the photo's EXIF (the day it was taken), else today.
+    // Pass 1b: images without metadata get a skeleton, dated by the photo's EXIF (the day it was taken), else today,
+    // with a caption to fill in for every detail photo in the folder named like the image.
     for (const [slug, image] of g.images) {
       if (g.yamls.has(slug)) continue;
       const id = generateId(taken, random);
       taken.add(id);
       const date = (await photoDate(path.join(worksRoot, g.dir, image.file))) ?? isoDay(today);
-      const text = skeletonYaml({ id, title: titleFromName(image.name), date });
+      const details = (g.details.get(slug)?.files ?? []).map((d) => d.name);
+      const text = skeletonYaml({ id, title: titleFromName(image.name), date, details });
       const yamlPath = path.join(worksRoot, g.dir, `${slug}.yaml`);
       await fs.writeFile(yamlPath, text);
       created.push(rel(g.dir, `${slug}.yaml`));

@@ -49,7 +49,7 @@ import {
 } from './lib/site-images.mjs';
 import { HOME_COPY, MODIFIED, collectionCopyPath, photoCopyPath, staleCopies, workCopyPath, yearCopyPath } from './lib/site-content.mjs';
 import { coverProblems, coverShareSource } from './lib/covers.mjs';
-import { prepareContent } from './lib/content.mjs';
+import { placeholderProblems, prepareContent } from './lib/content.mjs';
 import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
@@ -363,10 +363,10 @@ export async function run({
     }
   };
   contentDir ??= process.env.CONTENT_DIR || img.contentDir;
-  if (!contentDir) throw new Error('Content location not set: put CONTENT_DIR=<path to the content repository> into .env');
+  if (!contentDir) throw new Error('Není nastavené, kde je obsahové repo: dej CONTENT_DIR=<cesta k němu> do .env');
   contentDir = path.resolve(siteDir, contentDir);
   if (!(await exists(path.join(contentDir, 'tvorba')))) {
-    throw new Error(`Content not found: ${path.join(contentDir, 'tvorba')} (check CONTENT_DIR in .env)`);
+    throw new Error(`Obsah nenalezen: ${path.join(contentDir, 'tvorba')} (zkontroluj CONTENT_DIR v .env)`);
   }
 
   const { works, collectionFolders, created, assigned, updated, pending, problems: scanProblems } = await prepareContent(contentDir, { today, random });
@@ -397,6 +397,7 @@ export async function run({
     })),
     ...(home.home ? coverProblems({ where: home.home.yamlPath, data: home.home.data, photoPath: home.home.coverPath, works }) : []),
     ...validateCollectionCovers(collections.collections, works),
+    ...placeholderProblems({ collections: collections.collections, years: years.years, home: home.home, photos: photos.photos }),
     ...demoProblems({ works, collections: collections.collections, marked: await exists(path.join(contentDir, DEMO_MARKER)) }, dataset),
   ];
   const detected = corners.detected;

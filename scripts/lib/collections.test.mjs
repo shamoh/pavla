@@ -22,14 +22,14 @@ test('validateCollectionCovers accepts a work, a detail photo of a work, no cove
 });
 
 test('validateCollectionCovers reports a missing detail, a detail of a work without details and a bad focus', () => {
-  assert.match(check({ cover: 'vjr39#listy' })[0], /Pivoňky has no detail photo "listy" \(folder tvorba\/zahrada\/pivonky\/\)/);
-  assert.match(check({ cover: 'q6bn6#1-kvety' })[0], /Kytice has no detail photo "1-kvety"/);
-  assert.match(check({ cover: 'vjr39', aspect: '3:2', focus: [50] })[0], /focus must be \[x, y\]/);
-  assert.match(check({ cover: 'vjr39', aspect: '3:2', focus: '50 50' })[0], /focus must be \[x, y\]/);
+  assert.match(check({ cover: 'vjr39#listy' })[0], /obraz Pivoňky nemá detailní fotku „listy“ \(složka tvorba\/zahrada\/pivonky\/\)/);
+  assert.match(check({ cover: 'q6bn6#1-kvety' })[0], /obraz Kytice nemá detailní fotku „1-kvety“/);
+  assert.match(check({ cover: 'vjr39', aspect: '3:2', focus: [50] })[0], /focus musí být \[x, y\]/);
+  assert.match(check({ cover: 'vjr39', aspect: '3:2', focus: '50 50' })[0], /focus musí být \[x, y\]/);
 });
 
 test('validateCollectionCovers reports a cover next to a cover photo', () => {
-  assert.match(check({ cover: 'vjr39#1-kvety' }, '/x/kolekce/zahrada.jpg')[0], /both set, keep one/);
+  assert.match(check({ cover: 'vjr39#1-kvety' }, '/x/kolekce/zahrada.jpg')[0], /nech jen jedno/);
 });
 
 test('coverSource: the share image source of a collection (own photo, cropped work, detail); none when random', async () => {

@@ -24,6 +24,12 @@ import { LEGACY_COMMENTS, TODO, UNKNOWN_DOC, attributeGroup, compareKeys, docLin
 
 const STRINGIFY = { lineWidth: 0, nullStr: '', flowCollectionPadding: false };
 
+/** A syntax error of the yaml library as a Czech problem for the people who write the files. */
+export function yamlProblem(error) {
+  const at = error?.linePos?.[0];
+  return `chybný zápis YAML${at ? ` na řádku ${at.line}` : ''} (zkontroluj odsazení, dvojtečky a uvozovky)`;
+}
+
 /** Comment text of the yaml library (" line\n line") as lines, and back. */
 const toLines = (comment) => (comment ? comment.split('\n').map((l) => (l.startsWith(' ') ? l.slice(1) : l)) : []);
 const toComment = (lines) => (lines.length ? lines.map((l) => (l ? ` ${l}` : '')).join('\n') : undefined);
@@ -115,25 +121,26 @@ function newValueNode(doc, field, value) {
 /**
  * Brings one YAML text in line with `schema`. Every added attribute is marked DOPLNIT, except generated ones.
  * An added attribute gets the value that means the same as its absence (`missing` in the schema), so nothing
- * changes on the site. Options: `values` (values of added attributes, e.g. { id, title, date } of a new skeleton),
+ * changes on the site. Options: `values` (values of added attributes, e.g. { id, title, date } of a new skeleton; a
+ * commented-out attribute with a non-empty value is written as a set one, marked DOPLNIT),
  * `header` (top comment when the file has none), `fresh` (a new skeleton: schema defaults instead).
  * Returns { text, changed, added (keys), unknown (keys), problem } — with a problem the text is the original.
  */
 export function normalizeMetadata(original, schema, { values = {}, header = null, fresh = false } = {}) {
   const { text, own: commentedOwn } = stripCommented(original, schema.fields.filter((f) => f.commented));
   const doc = YAML.parseDocument(text);
-  if (doc.errors.length) return { text: original, changed: false, added: [], unknown: [], problem: `invalid YAML (${doc.errors[0].message.split('\n')[0]})` };
+  if (doc.errors.length) return { text: original, changed: false, added: [], unknown: [], problem: yamlProblem(doc.errors[0]) };
   if (doc.contents !== null && !YAML.isMap(doc.contents)) {
-    return { text: original, changed: false, added: [], unknown: [], problem: 'must be a list of attributes (key: value)' };
+    return { text: original, changed: false, added: [], unknown: [], problem: 'musí to být seznam údajů (klíč: hodnota)' };
   }
   const before = doc.toJS() ?? {};
   const pairs = doc.contents?.items ?? [];
   const byKey = new Map(pairs.map((p) => [String(p.key?.value ?? p.key), p]));
   const known = new Map(schema.fields.map((f) => [f.key, f]));
   const wrong = [
-    ...Object.entries(schema.renamed ?? {}).filter(([old]) => byKey.has(old)).map(([old, now]) => `${old}: renamed to ${now}, rename it`),
+    ...Object.entries(schema.renamed ?? {}).filter(([old]) => byKey.has(old)).map(([old, now]) => `${old}: přejmenováno na ${now}, přejmenuj ho`),
     ...[...byKey.keys()].filter((k) => attributeGroup(k) === 'derived')
-      .map((k) => `${k}: derived_ attributes are made by the pipeline for the site, they do not belong here`),
+      .map((k) => `${k}: údaje derived_ vyrábí automatika pro web, sem nepatří; smaž ho`),
   ];
   if (wrong.length) return { text: original, changed: false, added: [], unknown: [], problem: wrong.join('; ') };
   // the author's own private_ attributes: kept like known ones, without a technical comment
@@ -203,7 +210,9 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
       continue;
     }
     const pair = byKey.get(field.key);
-    if (field.commented && (!pair || isEmptyValue(pair.value))) {
+    // a commented-out attribute given a value (e.g. details of a new skeleton) is written like any added one
+    const given = !pair && field.key in values && !isEmptyValue(doc.createNode(values[field.key]));
+    if (field.commented && !given && (!pair || isEmptyValue(pair.value))) {
       let own = commentedOwn.get(field.key) ?? [];
       if (pair) {
         place(pair, field, items.length);
@@ -246,7 +255,7 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
   // safety: the values must be exactly the same (plus the added attributes, minus emptied commented-out ones)
   const after = YAML.parse(result) ?? {};
   if (!isDeepStrictEqual(after, expected)) {
-    return { text: original, changed: false, added: [], unknown, problem: 'the pipeline could not rewrite this file without changing a value, please report it' };
+    return { text: original, changed: false, added: [], unknown, problem: 'automatika tento soubor neumí srovnat, aniž by změnila hodnotu; dej prosím vědět správci webu' };
   }
   return { text: result, changed: result !== original, added, unknown, problem: null };
 }

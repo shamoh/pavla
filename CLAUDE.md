@@ -31,7 +31,10 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   plný běh smaže vše, co nevyrobil (`staleOutputs`).
   Exporty pro Instagram a Fler jdou do `export/` obsahového repa.
   Web čte kopie přes `readCopies`: rok díla z `date`, kolekce ze složky (žádný atribut `collection`).
-- Kostra popisu nového díla: `date` = den pořízení fotky z EXIF (`scripts/lib/exif.mjs`, bez závislosti), bez něj dnešek.
+- Kostra popisu nového díla: `date` = den pořízení fotky z EXIF (`scripts/lib/exif.mjs`, bez závislosti), bez něj dnešek;
+  se složkou detailních fotek vyplněné `details:` (`DETAIL_CAPTION_TODO` u každé, jen u nové kostry).
+- Veřejný text začínající `DOPLNIT` (nástřel k přepsání) = chyba: u díla od `meta_draft: false` (`validateWorks`),
+  u kolekce, roku, úvodu a fotky stránky vždy (`placeholderProblems`); `DOPLNIT` v komentáři jen hlásí „k doplnění“.
 - Každé dílo má trvalé 5znakové `id` (začíná písmenem, viz `scripts/lib/works.mjs`). URL: `/tvorba/<rok>/<slug>-<id>/`.
 - Web načítá díla přes `src/lib/site.ts#getWorks`; `meta_draft: true` a dílo bez `info.json` se nezobrazí.
 - Atributy popisů mají skupiny podle prefixu (`attributeGroup`, `compareKeys` v `scripts/lib/schema.mjs`), v souboru
@@ -111,7 +114,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `aspect` ořízne na poměr stran kolem `focus: [x, y]` (%) z yaml fotky. O mně: `o-mne-uvod` (2:1) a `portret`.
 - Automatika: workflow obsahového repa spouští tuto pipeline a otevírá PR do tohoto repa (větev `obsah/aktualizace`,
   auto-merge po projití „Kontroly kódu“, větev se po sloučení maže);
-  na jeho ostatních větvích jen `--prepare-only`. Souhrn běhu: `scripts/lib/summary.mjs`. Pull request připravuje
+  na jeho ostatních větvích jen `--prepare-only`. Souhrn běhu: `scripts/lib/summary.mjs` (nahoře chyby po souborech, pak „Ke kontrole“, pak co automatika udělala). Pull request připravuje
   `scripts/pull-request.mjs` (`scripts/lib/pull-request.mjs`, `OUTPUT_PATHS`); text PR nikdy nejmenuje obsahové repo.
   „Zkušební běh zpracování“ (`.github/workflows/dry-run.yml`, každou neděli na testovacích datech, nic nepushne)
   prochází tytéž kroky: změna kroků zpracování obsahu = stejná změna ve `dry-run.yml`.
@@ -157,7 +160,10 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 
 ## Pravidla
 - Jazyk: česky je vše, co vidí uživatelé a Pavla (texty webu, URL, README, CLAUDE.md, návody, složky obsahového repa).
-  Anglicky je kód (názvy, komentáře, hlášky pipeline). Tohle záměrně přebíjí globální pravidlo „README anglicky“.
+  Česky jsou i hlášky pipeline, které se dostanou do souhrnu běhu (chyby kontrol `problems`, `missing`, souhrn
+  `scripts/lib/summary.mjs`): srozumitelně pro Pavlu, bez technické angličtiny, ve tvaru `<soubor>: <co a jak opravit>`.
+  Anglicky je kód (názvy, komentáře, výpis do konzole). Tohle záměrně přebíjí globální pravidla „README anglicky“
+  a „řetězce v kódu anglicky“.
 - Texty na webu jsou česky, s diakritikou, ve 1. osobě autorky.
 - Minimalistický design: papírové tóny, serif nadpisy (Cormorant Garamond), Work Sans text. Obraz má vždy přednost před UI.
 - Barvy jen z palet (`scripts/lib/palettes.mjs`, Papír / Pergamen / Noc, volba v patičce): v CSS vždy proměnné

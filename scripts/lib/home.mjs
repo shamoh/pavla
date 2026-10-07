@@ -45,13 +45,13 @@ export async function prepareHome(contentDir) {
     return { home: null, created, updated, problems }; // reported by keepInLine
   }
   if (data.description !== undefined && data.description !== null && typeof data.description !== 'string') {
-    problems.push(`${HOME_FILE}: description must be text`);
+    problems.push(`${HOME_FILE}: description musí být text`);
   }
   const photos = (await fs.readdir(contentDir)).filter((f) => {
     const { base, ext } = splitExt(f);
     return base === HOME_PHOTO && IMAGE_EXTENSIONS.includes(ext);
   });
-  if (photos.length > 1) problems.push(`${photos.join(', ')}: more than one home cover photo, keep one`);
+  if (photos.length > 1) problems.push(`${photos.join(', ')}: víc úvodních fotek úvodní stránky, nech jen jednu`);
   const coverPath = photos.length ? path.join(contentDir, photos[0]) : null;
   return { home: { data, yamlPath: HOME_FILE, coverPath }, created, updated, problems };
 }

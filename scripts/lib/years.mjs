@@ -33,20 +33,20 @@ export async function prepareYears(contentDir, withWorks = []) {
   for (const e of files.sort((a, b) => a.name.localeCompare(b.name))) {
     const { base, ext } = splitExt(e.name);
     if (e.isFile() && /^\d{4}$/.test(base) && IMAGE_EXTENSIONS.includes(ext)) {
-      if (photos.has(base)) problems.push(`${YEARS_SUBDIR}/${e.name}: a second cover photo of ${base}`);
+      if (photos.has(base)) problems.push(`${YEARS_SUBDIR}/${e.name}: druhá úvodní fotka roku ${base}, nech jen jednu`);
       else photos.set(base, path.join(root, e.name));
       continue;
     }
     const m = e.isFile() && e.name.match(/^(\d{4})\.ya?ml$/);
     if (!m) {
-      problems.push(`${YEARS_SUBDIR}/${e.name}: only descriptions of years (2026.yaml) and their cover photos (2026.jpg) belong here`);
+      problems.push(`${YEARS_SUBDIR}/${e.name}: sem patří jen popisy roků (2026.yaml) a jejich úvodní fotky (2026.jpg)`);
       continue;
     }
-    if (byYear.has(m[1])) problems.push(`${YEARS_SUBDIR}/${e.name}: a second description of ${m[1]}`);
+    if (byYear.has(m[1])) problems.push(`${YEARS_SUBDIR}/${e.name}: druhý popis roku ${m[1]}, nech jen jeden`);
     else byYear.set(m[1], e.name);
   }
   for (const year of photos.keys()) {
-    if (!byYear.has(year) && !withWorks.map(String).includes(year)) problems.push(`${YEARS_SUBDIR}/${year}: a cover photo of a year without works`);
+    if (!byYear.has(year) && !withWorks.map(String).includes(year)) problems.push(`${YEARS_SUBDIR}/${year}: úvodní fotka roku, ve kterém není žádný obraz`);
   }
   for (const year of [...new Set(withWorks.map(String))].sort()) {
     if (byYear.has(year)) continue;
@@ -66,7 +66,7 @@ export async function prepareYears(contentDir, withWorks = []) {
       continue; // reported by keepInLine
     }
     if (data.description !== undefined && data.description !== null && typeof data.description !== 'string') {
-      problems.push(`${yamlPath}: description must be text`);
+      problems.push(`${yamlPath}: description musí být text`);
       continue;
     }
     years.push({ year, data, yamlPath, coverPath: photos.get(year) ?? null });

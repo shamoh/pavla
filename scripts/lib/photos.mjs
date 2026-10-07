@@ -7,7 +7,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
 import { keepInLine } from './content.mjs';
-import { skeleton } from './metadata-yaml.mjs';
+import { skeleton, yamlProblem } from './metadata-yaml.mjs';
 import { PHOTO_SCHEMA, fieldKeys, publicKeys } from './schema.mjs';
 import { IMAGE_EXTENSIONS, isValidSlug, slugify, splitExt, titleFromName } from './works.mjs';
 
@@ -43,17 +43,17 @@ export async function preparePhotos(contentDir) {
     if (ext === 'yaml' || ext === 'yml') yamls.set(base, file);
     else if (IMAGE_EXTENSIONS.includes(ext)) {
       const name = slugify(base);
-      if (images.has(name)) problems.push(`${PHOTOS_SUBDIR}/${file}: another photo already maps to "${name}"`);
+      if (images.has(name)) problems.push(`${PHOTOS_SUBDIR}/${file}: stejné jméno „${name}“ už má jiná fotka, jednu přejmenuj`);
       else images.set(name, { file, base });
-    } else problems.push(`${PHOTOS_SUBDIR}/${file}: unknown file type, ignored`);
+    } else problems.push(`${PHOTOS_SUBDIR}/${file}: sem patří jen fotky a popisy (.yaml), tento soubor smaž nebo přesuň`);
   }
 
   for (const [name, file] of yamls) {
-    if (!images.has(name)) problems.push(`${PHOTOS_SUBDIR}/${file}: no photo named "${name}"`);
+    if (!images.has(name)) problems.push(`${PHOTOS_SUBDIR}/${file}: chybí k němu fotka „${name}“`);
   }
   for (const [name, image] of images) {
     if (!isValidSlug(name)) {
-      problems.push(`${PHOTOS_SUBDIR}/${image.file}: rename the photo to letters, digits and dashes`);
+      problems.push(`${PHOTOS_SUBDIR}/${image.file}: přejmenuj fotku, jméno smí mít jen písmena, číslice a pomlčky`);
       continue;
     }
     const yamlPath = path.join(root, `${name}.yaml`);
@@ -71,11 +71,11 @@ export async function preparePhotos(contentDir) {
     try {
       data = YAML.parse(text) ?? {};
     } catch (e) {
-      problems.push(`${PHOTOS_SUBDIR}/${name}.yaml: invalid YAML (${e.message.split('\n')[0]})`);
+      problems.push(`${PHOTOS_SUBDIR}/${name}.yaml: ${yamlProblem(e)}`);
       continue;
     }
     if (data.focus !== undefined && data.focus !== null && !isValidFocus(data.focus)) {
-      problems.push(`${PHOTOS_SUBDIR}/${name}.yaml: focus must be [x, y] in % (0–100), e.g. focus: [70, 60]`);
+      problems.push(`${PHOTOS_SUBDIR}/${name}.yaml: focus musí být [x, y] v procentech (0–100), např. focus: [70, 60]`);
       continue;
     }
     photos.push({ name, data, masterPath: path.join(root, image.file) });

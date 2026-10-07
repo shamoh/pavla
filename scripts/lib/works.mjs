@@ -1,7 +1,7 @@
 // Pure helpers shared by the image pipeline and the Astro site.
 // No filesystem access here, so everything is easy to unit test.
 
-import { WORK_SCHEMA, fieldKeys, publicKeys } from './schema.mjs';
+import { TODO, WORK_SCHEMA, fieldKeys, publicKeys } from './schema.mjs';
 
 /** Characters used for work IDs: lowercase letters and digits without look-alikes (0/o, 1/l/i). */
 export const ID_ALPHABET = '23456789abcdefghjkmnpqrstuvwxyz';
@@ -92,29 +92,30 @@ export function validateWorks(works) {
   const byId = new Map();
   for (const w of works) {
     const where = w.yamlPath ?? `tvorba/${w.dir ? `${w.dir}/` : ''}${w.slug}.yaml`;
-    if (!isValidSlug(w.slug)) problems.push(`${where}: "${w.slug}" is not a valid slug (use a-z, 0-9 and dashes)`);
-    if (!isValidId(w.id)) problems.push(`${where}: invalid id "${w.id}"`);
-    if (!w.data?.title) problems.push(`${where}: missing title`);
-    if (!w.data?.date) problems.push(`${where}: missing date`);
+    if (!isValidSlug(w.slug)) problems.push(`${where}: „${w.slug}“ není platné jméno pro adresu (jen a–z, 0–9 a pomlčky), přejmenuj soubor`);
+    if (!isValidId(w.id)) problems.push(`${where}: neplatný kód id „${w.id}“ (kód přiděluje automatika, řádek id smaž a dostane nový)`);
+    if (!w.data?.title) problems.push(`${where}: chybí název (title)`);
+    if (!w.data?.date) problems.push(`${where}: chybí datum (date)`);
     else if (!isValidYear(String(dateYear(w.data.date))) || !/^\d{4}-\d{2}-\d{2}/.test(formatDate(w.data.date))) {
-      problems.push(`${where}: date must be a day like 2026-06-14 (the year of the work comes from it), not "${formatDate(w.data.date)}"`);
+      problems.push(`${where}: date musí být den ve tvaru 2026-06-14 (podle něj se obraz zařadí do roku), ne „${formatDate(w.data.date)}“`);
     }
     if (!w.data?.meta_draft && w.data?.size_cm !== undefined && w.data.size_cm !== null && !validSize(w.data.size_cm)) {
-      problems.push(`${where}: size_cm must be [width, height] in cm, both greater than 0`);
+      problems.push(`${where}: size_cm musí být [šířka, výška] v cm, obojí větší než 0`);
     }
     if (!w.data?.meta_draft && isOnSale(w.data?.status) && !(typeof w.data.price === 'number' && w.data.price > 0)) {
-      problems.push(`${where}: status "${w.data.status}" needs a price (price: <Kč>)`);
+      problems.push(`${where}: stav „${w.data.status}“ potřebuje cenu (price: <Kč>)`);
     }
     problems.push(...validateDetailCaptions(w, where));
+    if (!w.data?.meta_draft) problems.push(...todoProblems(where, w.data, PUBLIC_WORK_FIELDS, ' (nebo nech meta_draft: true)'));
     for (const flag of ['meta_instagram', 'mockups']) {
       if (w.data?.[flag] !== undefined && w.data[flag] !== null && typeof w.data[flag] !== 'boolean') {
-        problems.push(`${where}: ${flag} must be true or false`);
+        problems.push(`${where}: ${flag} musí být true, nebo false`);
       }
     }
     if (w.data?.collection !== undefined && w.data.collection !== null && w.data.collection !== '') {
-      problems.push(`${where}: "collection:" is not used any more, a work belongs to a collection by lying in its folder (tvorba/<collection>/)`);
+      problems.push(`${where}: „collection:“ se už nepoužívá, obraz patří do kolekce tím, že leží v její složce (tvorba/<kolekce>/); řádek smaž`);
     }
-    if (w.id && byId.has(w.id)) problems.push(`${where}: id "${w.id}" is also used by ${byId.get(w.id)}`);
+    if (w.id && byId.has(w.id)) problems.push(`${where}: kód id „${w.id}“ má i ${byId.get(w.id)}`);
     else if (w.id) byId.set(w.id, where);
   }
   return problems;
@@ -148,15 +149,33 @@ function validateDetailCaptions(w, where) {
   const captions = w.data?.details;
   if (captions === undefined || captions === null) return [];
   if (typeof captions !== 'object' || Array.isArray(captions)) {
-    return [`${where}: details must be a list of "<photo name>: <caption>" lines`];
+    return [`${where}: details musí být řádky „název fotky: popisek“`];
   }
   const found = new Set((w.details ?? []).map((d) => d.name));
   const problems = [];
   for (const [name, caption] of Object.entries(captions)) {
-    if (!found.has(detailKey(name))) problems.push(`${where}: details: no detail photo "${name}" in the folder tvorba/${w.dir ? `${w.dir}/` : ''}${w.slug}/`);
-    else if (typeof caption !== 'string') problems.push(`${where}: details: the caption of "${name}" must be text`);
+    if (!found.has(detailKey(name))) problems.push(`${where}: details: ve složce tvorba/${w.dir ? `${w.dir}/` : ''}${w.slug}/ není detailní fotka „${name}“`);
+    else if (typeof caption !== 'string') problems.push(`${where}: details: popisek „${name}“ musí být text`);
   }
   return problems;
+}
+
+/**
+ * Where texts in `data` start with DOPLNIT (a placeholder for people to replace, e.g. the detail captions of a new
+ * skeleton): "title", "tags[1]", "details.lodka"…, in the order of the data. Nothing on the site may keep any.
+ */
+export function todoTexts(data, at = '') {
+  if (typeof data === 'string') return data.trim().startsWith(TODO) ? [at] : [];
+  if (Array.isArray(data)) return data.flatMap((v, i) => todoTexts(v, `${at}[${i}]`));
+  if (data && typeof data === 'object' && !(data instanceof Date)) {
+    return Object.entries(data).flatMap(([k, v]) => todoTexts(v, at ? `${at}.${k}` : k));
+  }
+  return [];
+}
+
+/** Problems of the public `fields` of `data` that still start with DOPLNIT ("<where>: title still starts with DOPLNIT…"). */
+export function todoProblems(where, data, fields, hint = '') {
+  return todoTexts(publicFields(data, fields)).map((at) => `${where}: ${at} pořád začíná „${TODO}“, přepiš ho${hint}`);
 }
 
 /** True for [width, height] with two positive numbers. */

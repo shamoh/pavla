@@ -10,7 +10,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
 import { COLLECTION_META, WORKS_SUBDIR, keepInLine } from './content.mjs';
-import { skeleton } from './metadata-yaml.mjs';
+import { skeleton, yamlProblem } from './metadata-yaml.mjs';
 import { COLLECTION_SCHEMA, fieldKeys, publicKeys } from './schema.mjs';
 import { coverProblems, coverShareSource, parseCoverRef } from './covers.mjs';
 import { isValidSlug, titleFromName } from './works.mjs';
@@ -51,7 +51,7 @@ export async function prepareCollections(contentDir, folders = []) {
   const problems = [];
   try {
     if ((await fs.stat(path.join(contentDir, LEGACY_COLLECTIONS_SUBDIR))).isDirectory()) {
-      problems.push(`${LEGACY_COLLECTIONS_SUBDIR}/: collections are folders in ${WORKS_SUBDIR}/ now (${WORKS_SUBDIR}/<collection>/${COLLECTION_META}); move them there`);
+      problems.push(`${LEGACY_COLLECTIONS_SUBDIR}/: kolekce jsou teď složky v ${WORKS_SUBDIR}/ (${WORKS_SUBDIR}/<kolekce>/${COLLECTION_META}), přesuň je tam`);
     }
   } catch {
     // no legacy folder, fine
@@ -60,11 +60,11 @@ export async function prepareCollections(contentDir, folders = []) {
   for (const f of [...folders].sort((a, b) => a.dir.localeCompare(b.dir))) {
     const yamlPath = collectionMetaPath(f.dir);
     if (!isValidSlug(f.slug)) {
-      problems.push(`${WORKS_SUBDIR}/${f.dir}/: rename the folder, its name needs letters or digits`);
+      problems.push(`${WORKS_SUBDIR}/${f.dir}/: přejmenuj složku, její název potřebuje písmena nebo číslice`);
       continue;
     }
     if (bySlug.has(f.slug)) {
-      problems.push(`${WORKS_SUBDIR}/${f.dir}/: gives the same web address "${f.slug}" as ${WORKS_SUBDIR}/${bySlug.get(f.slug)}/, rename one of them`);
+      problems.push(`${WORKS_SUBDIR}/${f.dir}/: dává stejnou adresu na webu „${f.slug}“ jako ${WORKS_SUBDIR}/${bySlug.get(f.slug)}/, jednu ze složek přejmenuj`);
       continue;
     }
     bySlug.set(f.slug, f.dir);
@@ -82,10 +82,10 @@ export async function prepareCollections(contentDir, folders = []) {
     try {
       data = YAML.parse(text) ?? {};
     } catch (e) {
-      problems.push(`${yamlPath}: invalid YAML (${e.message.split('\n')[0]})`);
+      problems.push(`${yamlPath}: ${yamlProblem(e)}`);
       continue;
     }
-    if (!data.title) problems.push(`${yamlPath}: missing title`);
+    if (!data.title) problems.push(`${yamlPath}: chybí název kolekce (title)`);
     collections.push({ slug: f.slug, dir: f.dir, data, coverPath: f.coverPath, yamlPath });
   }
   return { collections, created, updated, problems };

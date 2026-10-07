@@ -110,14 +110,14 @@ test('cornersProblems: missing or false is fine; a photo of another size, negati
   assert.deepEqual(cornersProblems(false, 400, 300, 'x.yaml'), []);
   assert.deepEqual(cornersProblems(ok, 400, 300, 'x.yaml'), []);
   const problem = (value) => cornersProblems(value, 400, 300, 'x.yaml').join('\n');
-  assert.match(problem({ ...ok, photo: [800, 600] }), /^x\.yaml: meta_corners belong to a photo of 800 × 600, but the photo is 400 × 300: delete meta_corners/);
-  assert.match(problem({ ...ok, tl: [-1, 5] }), /tl must not be negative/);
-  assert.match(problem({ ...ok, br: undefined }), /br must be \[x, y\] in whole pixels/);
-  assert.match(problem({ ...ok, tr: [1.5, 2] }), /tr must be \[x, y\] in whole pixels/);
-  assert.match(problem({ ...ok, bl: [101, 0] }), /bl is too far from the corner of the photo/);
-  assert.match(problem({ ...ok, middle: [1, 1] }), /unknown keys: middle/);
-  assert.match(problem(true), /must be photo, tl, tr, br, bl \(or false = no cut\)/);
-  assert.match(problem({ tl: [1, 1] }), /photo must be \[width, height\]/);
+  assert.match(problem({ ...ok, photo: [800, 600] }), /^x\.yaml: meta_corners patří k fotce 800 × 600, ale fotka má 400 × 300: smaž meta_corners/);
+  assert.match(problem({ ...ok, tl: [-1, 5] }), /tl nesmí být záporné/);
+  assert.match(problem({ ...ok, br: undefined }), /br musí být \[x, y\] v celých pixelech/);
+  assert.match(problem({ ...ok, tr: [1.5, 2] }), /tr musí být \[x, y\] v celých pixelech/);
+  assert.match(problem({ ...ok, bl: [101, 0] }), /bl je moc daleko od rohu fotky/);
+  assert.match(problem({ ...ok, middle: [1, 1] }), /neznámé klíče: middle/);
+  assert.match(problem(true), /musí mít photo, tl, tr, br a bl \(nebo false = neořezávat\)/);
+  assert.match(problem({ tl: [1, 1] }), /photo musí být \[šířka, výška\]/);
 });
 
 test('cutsSheet: only corners with a value above 0', () => {

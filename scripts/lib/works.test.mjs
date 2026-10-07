@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planExportPrune, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, validateWorks, validSize, wantsMockups, workKey } from './works.mjs';
+import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planExportPrune, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, workKey } from './works.mjs';
 
 /** Deterministic "random" returning the given values in a loop. */
 const sequence = (...values) => {
@@ -94,14 +94,14 @@ test('validateWorks: the year comes from the date, so any day is fine, anything 
   assert.deepEqual(validateWorks([work({ data: { date: '2025-12-31' } })]), []);
   for (const date of ['14. 6. 2026', '2026', 'nevím', 26]) {
     const [p] = validateWorks([work({ data: { date } })]);
-    assert.match(p, /date must be a day like 2026-06-14/, String(date));
+    assert.match(p, /date musí být den ve tvaru 2026-06-14/, String(date));
   }
 });
 
 test('validateWorks reports duplicate ids with both locations', () => {
   const problems = validateWorks([work(), work({ slug: 'vecer', yamlPath: 'tvorba/plener/vecer.yaml' })]);
   assert.equal(problems.length, 1);
-  assert.match(problems[0], /tvorba\/plener\/vecer\.yaml.*also used by tvorba\/rano\.yaml/);
+  assert.match(problems[0], /tvorba\/plener\/vecer\.yaml.*má i tvorba\/rano\.yaml/);
 });
 
 test('validateWorks reports bad slug, id and missing fields', () => {
@@ -124,7 +124,7 @@ test('planPrune returns generated entries that are no longer wanted', () => {
 test('validateWorks: "collection:" is not used any more (the folder decides), an empty one is fine', () => {
   assert.deepEqual(validateWorks([work({ data: { collection: '' } }), work({ slug: 'b', id: 'm7q2x', data: { collection: null } })]), []);
   const [p] = validateWorks([work({ data: { collection: 'plener-sumava-2026' } })]);
-  assert.match(p, /tvorba\/rano\.yaml: "collection:" is not used any more, a work belongs to a collection by lying in its folder/);
+  assert.match(p, /tvorba\/rano\.yaml: „collection:“ se už nepoužívá, obraz patří do kolekce tím, že leží v její složce/);
 });
 
 test('isOnSale is true for available and reserved works only', () => {
@@ -142,7 +142,7 @@ test('publicFields keeps public work fields and drops the private note and unkno
 test('validateWorks requires a positive price for works on sale, except drafts', () => {
   for (const status of ['available', 'reserved']) {
     const [p] = validateWorks([work({ data: { status } })]);
-    assert.match(p, new RegExp(`status "${status}" needs a price`));
+    assert.match(p, new RegExp(`stav „${status}“ potřebuje cenu`));
     assert.equal(validateWorks([work({ data: { status, price: 0 } })]).length, 1);
     assert.equal(validateWorks([work({ data: { status, price: '3200' } })]).length, 1);
     assert.deepEqual(validateWorks([work({ data: { status, price: 3200 } })]), []);
@@ -155,10 +155,28 @@ test('validateWorks checks detail captions against the detail photos of the work
   const details = [{ name: '1-kvet' }, { name: 'lodka' }];
   assert.deepEqual(validateWorks([work({ details, data: { details: { '1 Květ': 'Květ', lodka: 'Loďka' } } })]), []);
   assert.deepEqual(validateWorks([work({ details, data: { details: null } })]), []);
-  assert.match(validateWorks([work({ details, data: { details: { vesta: 'x' } } })])[0], /no detail photo "vesta" in the folder tvorba\/rano\//);
-  assert.match(validateWorks([work({ dir: 'plener', details, data: { details: { vesta: 'x' } } })])[0], /in the folder tvorba\/plener\/rano\//);
-  assert.match(validateWorks([work({ details, data: { details: { lodka: 5 } } })])[0], /caption of "lodka" must be text/);
-  assert.match(validateWorks([work({ details, data: { details: ['Květ'] } })])[0], /details must be a list/);
+  assert.match(validateWorks([work({ details, data: { details: { vesta: 'x' } } })])[0], /ve složce tvorba\/rano\/ není detailní fotka „vesta“/);
+  assert.match(validateWorks([work({ dir: 'plener', details, data: { details: { vesta: 'x' } } })])[0], /ve složce tvorba\/plener\/rano\/ není/);
+  assert.match(validateWorks([work({ details, data: { details: { lodka: 5 } } })])[0], /popisek „lodka“ musí být text/);
+  assert.match(validateWorks([work({ details, data: { details: ['Květ'] } })])[0], /details musí být řádky/);
+});
+
+test('validateWorks stops a published work with a text still starting with DOPLNIT, not a draft', () => {
+  const details = [{ name: 'lodka' }];
+  const [p] = validateWorks([work({ details, data: { details: { lodka: 'DOPLNIT popisek detailu' } } })]);
+  assert.match(p, /details\.lodka pořád začíná „DOPLNIT“, přepiš ho/);
+  assert.match(validateWorks([work({ data: { title: 'DOPLNIT název' } })])[0], /: title pořád začíná „DOPLNIT“/);
+  assert.match(validateWorks([work({ data: { description: '  DOPLNIT\n' } })])[0], /: description pořád začíná/);
+  assert.match(validateWorks([work({ data: { tags: ['voda', 'DOPLNIT'] } })])[0], /: tags\[1\] pořád začíná/);
+  assert.deepEqual(validateWorks([work({ details, data: { meta_draft: true, title: 'DOPLNIT', details: { lodka: 'DOPLNIT popisek detailu' } } })]), []);
+  assert.deepEqual(validateWorks([work({ details, data: { details: { lodka: 'Loďka, DOPLNIT jindy' } } })]), [], 'only a text starting with it');
+  assert.deepEqual(validateWorks([work({ data: { private_note: 'DOPLNIT cenu', meta_instagram: false } })]), [], 'private_ and meta_ attributes never reach the site');
+});
+
+test('todoTexts: where texts start with DOPLNIT, nested too', () => {
+  assert.deepEqual(todoTexts({ a: 'DOPLNIT', b: 'ok', c: ['x', ' DOPLNIT y'], d: { e: 'DOPLNIT' }, f: 5, g: null, h: new Date() }), ['a', 'c[1]', 'd.e']);
+  assert.deepEqual(todoTexts('DOPLNIT'), ['']);
+  assert.deepEqual(todoTexts({}), []);
 });
 
 test('exportPattern matches every export of one work and nothing of another', () => {
@@ -235,7 +253,7 @@ test('wantsMockups: only an explicit mockups: true, independent of the status; t
     assert.equal(wantsMockups(data), false, JSON.stringify(data));
   }
   assert.ok(PUBLIC_WORK_FIELDS.includes('mockups'));
-  assert.match(validateWorks([work({ data: { mockups: 'ano' } })])[0], /mockups must be true or false/);
+  assert.match(validateWorks([work({ data: { mockups: 'ano' } })])[0], /mockups musí být true, nebo false/);
 });
 
 test('coverCandidates: the newest works of the author\'s selection, at most FEATURED_PICK, else the newest work', () => {
