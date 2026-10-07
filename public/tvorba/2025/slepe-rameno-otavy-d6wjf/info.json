@@ -1,50 +1,50 @@
 {
-  "width": 2377,
-  "height": 2262,
+  "width": 2350,
+  "height": 3239,
   "widths": [
     480,
     960,
     1600,
-    2377
+    2350
   ],
-  "dominant": "rgb(168,184,216)",
+  "dominant": "rgb(248,248,232)",
   "transparent": true,
   "mockups": [
     {
-      "scene": "loznice",
-      "label": "Ložnice",
-      "width": 1320,
-      "height": 880,
+      "scene": "komoda",
+      "label": "Komoda",
+      "width": 2318,
+      "height": 1545,
       "widths": [
         480,
         960,
-        1320
+        1600
       ],
-      "dominant": "rgb(56,40,8)"
+      "dominant": "rgb(200,200,200)"
     },
     {
       "scene": "police",
       "label": "Polička",
-      "width": 1531,
-      "height": 1021,
+      "width": 2376,
+      "height": 1584,
       "widths": [
         480,
         960,
-        1531
+        1600
       ],
       "dominant": "rgb(216,216,216)"
     },
     {
       "scene": "pracovna",
       "label": "Pracovna",
-      "width": 1320,
-      "height": 880,
+      "width": 1555,
+      "height": 1037,
       "widths": [
         480,
         960,
-        1320
+        1555
       ],
-      "dominant": "rgb(232,232,216)"
+      "dominant": "rgb(232,232,232)"
     }
   ],
   "details": [],
@@ -52,5 +52,5 @@
     "width": 1200,
     "height": 800
   },
-  "fingerprint": "10e5fbb8a3336ed6"
+  "fingerprint": "9ce3cf50d79f21b4"
 }
