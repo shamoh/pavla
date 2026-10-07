@@ -62,10 +62,17 @@ price: 2600
 # - [43, 31] - Chamoix A3
 size_cm: [24, 32]
 
-# Stav prodeje, možnosti:
+# Stav obrazu, možnosti:
 # - available - k prodeji (s cenou price)
 # - reserved - rezervováno (s cenou price)
 # - sold - prodáno
+# - gifted - darováno
+# - not-for-sale - není na prodej, na webu bez štítku
+# Stav obrazu, možnosti:
+# - available - k prodeji (s cenou price)
+# - reserved - rezervováno (s cenou price)
+# - sold - prodáno, na webu „V soukromé sbírce“
+# - gifted - darováno, na webu „V soukromé sbírce“ (stejně jako prodané)
 # - not-for-sale - není na prodej, na webu bez štítku
 status: sold
 

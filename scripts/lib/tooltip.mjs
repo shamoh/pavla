@@ -3,7 +3,7 @@
 //   <title>[, detail: <caption>]
 //   <technique> · <size> · <year>
 //   <support>
-//   <status>                       (only for sale, reserved or sold)
+//   <status>                       (only for sale, reserved, sold or given away)
 //
 //   <description, shortened>
 
@@ -14,7 +14,7 @@ import { formatSizeCm } from './works.mjs';
 export const TOOLTIP_DESCRIPTION_MAX = 240;
 
 /** Statuses worth telling over the picture; not-for-sale says nothing a visitor needs. */
-const SHOWN_STATUSES = new Set(['available', 'reserved', 'sold']);
+const SHOWN_STATUSES = new Set(['available', 'reserved', 'sold', 'gifted']);
 
 /**
  * The tooltip of a work: `statusLabel` names the statuses (src/lib/site.ts), `detail` = the cover is its detail

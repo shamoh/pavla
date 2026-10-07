@@ -1,7 +1,7 @@
 ---
 import WorkCard from './WorkCard.astro';
-import { type Work, collectionUrl, config, getCollection, getCollections, getYears, statusLabel, url } from '../lib/site';
-import { countStatuses } from '../../scripts/lib/gallery-filter.mjs';
+import { type Work, collectionUrl, config, getCollection, getCollections, getYears, url } from '../lib/site';
+import { offersOption, statusOptions } from '../../scripts/lib/gallery-filter.mjs';
 
 interface Props { works: Work[]; year?: number; collection?: string }
 // `year` set: a year page (/tvorba/2026/), the year filter is replaced by links.
@@ -15,8 +15,10 @@ const count = (vals: string[]) => {
 const tags = count(works.flatMap((w) => w.tags));
 const techniques = count(works.map((w) => w.technique));
 const collections = count(works.flatMap((w) => (w.collection ? [w.collection] : []))).map(([slug, n]) => ({ slug, n, title: getCollection(slug)?.title ?? slug }));
-const statusCounts = countStatuses(works.map((w) => w.status));
-// The author's selection (featured): a switch, shown only when the list has such works.
+// Status options showing nothing or the same as "vše" are not offered (offersOption); with none left, no status filter.
+const statuses = statusOptions(works.map((w) => w.status));
+// The author's selection (featured): a switch, shown only when it changes something (offersOption: some works,
+// not all of them).
 const featuredCount = works.filter((w) => w.featured).length;
 const years = getYears();
 // Page sizes the visitor can pick (the first is the default); the rest of the filtered list is on further
@@ -53,14 +55,15 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     {!collection && collections.map((c) => (
       <a class="about-collection" href={collectionUrl(c.slug)} data-collection-link={c.slug} hidden>O kolekci →</a>
     ))}
-    <label>Stav
-      <select name="status">
-        <option value="">vše</option>
-        <option value="available">{statusLabel.available.toLowerCase()} ({statusCounts.available})</option>
-        <option value="unsold">neprodané ({statusCounts.unsold})</option>
-      </select>
-    </label>
-    {featuredCount > 0 && (
+    {statuses.length > 0 && (
+      <label>Stav
+        <select name="status">
+          <option value="">vše</option>
+          {statuses.map((o) => <option value={o.value}>{o.label} ({o.count})</option>)}
+        </select>
+      </label>
+    )}
+    {offersOption(featuredCount, works.length) && (
       <label class="switch"><input type="checkbox" name="featured" value="1" /> Výběr autorky ({featuredCount})</label>
     )}
     {works.length > pageSizes[0] && (
@@ -113,6 +116,9 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   };
   if (perPageSelect) state.perPage = rememberedPageSize(params, storage.get(), pageSizes) ?? state.perPage;
   for (const k of ['year', 'collection'] as const) if (!select(k)) state[k] = '';
+  // A status option not offered here (nothing behind it, e.g. an old link) is off, like a missing filter.
+  const statusSelect = select('status');
+  if (!statusSelect || ![...statusSelect.options].some((o) => o.value === state.status)) state.status = '';
   if (!featuredBox) state.featured = '';
 
   const plural = (n: number) => (n === 1 ? 'dílo' : n >= 2 && n <= 4 ? 'díla' : 'děl');

@@ -128,7 +128,7 @@ test('validateWorks: "collection:" is not used any more (the folder decides), an
 });
 
 test('isOnSale is true for available and reserved works only', () => {
-  assert.deepEqual(['available', 'reserved', 'sold', 'not-for-sale', undefined].map(isOnSale), [true, true, false, false, false]);
+  assert.deepEqual(['available', 'reserved', 'sold', 'gifted', 'not-for-sale', undefined].map(isOnSale), [true, true, false, false, false, false]);
 });
 
 test('publicFields keeps public work fields and drops the private note and unknown keys', () => {
@@ -181,11 +181,11 @@ test('todoTexts: where texts start with DOPLNIT, nested too', () => {
 
 test('validateWorks: a value outside the options of status, meta_draft and the switches is a problem, drafts too', () => {
   const [p] = validateWorks([work({ data: { status: 'availble', price: 100 } })]);
-  assert.equal(p, 'tvorba/rano.yaml: status „availble“ není mezi možnostmi: available, reserved, sold, not-for-sale');
+  assert.equal(p, 'tvorba/rano.yaml: status „availble“ není mezi možnostmi: available, reserved, sold, gifted, not-for-sale');
   assert.match(validateWorks([work({ data: { meta_draft: 'ne' } })])[0], /meta_draft „ne“ není mezi možnostmi: true, false/);
   assert.match(validateWorks([work({ data: { meta_draft: true, featured: 1 } })])[0], /featured „1“ není mezi možnostmi: true, false/);
   assert.match(validateWorks([work({ data: { status: '' } })])[0], /status „“ není mezi možnostmi/, 'an empty text is no status');
-  for (const status of ['available', 'reserved', 'sold', 'not-for-sale']) assert.deepEqual(validateWorks([work({ data: { status, price: 100 } })]), []);
+  for (const status of ['available', 'reserved', 'sold', 'gifted', 'not-for-sale']) assert.deepEqual(validateWorks([work({ data: { status, price: 100 } })]), []);
   assert.deepEqual(validateWorks([work({ data: { status: null, featured: false, meta_instagram: true } })]), [], 'missing = default');
 });
 

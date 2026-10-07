@@ -106,17 +106,24 @@ Tohle je závazné pravidlo: každý nový filtr musí mít parametr v URL.
 | Technika | `technique` | např. `?technique=akvarel` |
 | Rok (jen na `/tvorba/` a u kolekce) | `year` | `?year=2025` |
 | Kolekce (jen na `/tvorba/` a stránce roku) | `collection` | slug kolekce, `?collection=plener-sumava-2026` |
-| Stav (s počty) | `status` | `available` = k prodeji, `unsold` = neprodané |
-| Výběr autorky (přepínač s počtem, jen když výpis nějaké má) | `featured` | `1` = jen díla s `featured: true`, jiná hodnota se ignoruje |
+| Stav (s počty, jen volby s jiným výsledkem než „vše“) | `status` | `unsold` = na prodej, `kept` = ještě mám, `gone` = už nemám |
+| Výběr autorky (přepínač s počtem, jen když výpis nějaké má, ale ne všechna) | `featured` | `1` = jen díla s `featured: true`, jiná hodnota se ignoruje |
 | Stránka (viz *Stránkování*) | `page` | číslo stránky od 2, `all` = vše bez stránkování |
 | Na stránku (viz *Stránkování*) | `perPage` | `24` nebo `48` (výchozí 12 se nepíše) |
 
 Když je vybraná kolekce, vedle výběru se objeví odkaz **„O kolekci →“** na její
 stránku. Odkaz **Kolekce** v řádku s roky vede na přehled `/tvorba/kolekce/`.
 
-Stav **k prodeji** jsou díla `available`. **Neprodané** jsou díla, která se
-prodávají a ještě nejsou prodaná: `available` + `reserved`. Díla `not-for-sale`
-ani `sold` se v žádném z nich neobjeví. Příklad kombinace:
+Filtr **Stav** má čtyři volby (`STATUS_FILTERS` v `scripts/lib/gallery-filter.mjs`):
+- **vše**,
+- **na prodej** (`unsold`): díla, která se prodávají a ještě nejsou prodaná, `available` + `reserved`,
+- **ještě mám** (`kept`): vše kromě prodaných a darovaných, `available` + `reserved` + `not-for-sale`,
+- **už nemám** (`gone`): `sold` + `gifted` (`GONE_STATUSES`).
+
+Volba, za kterou na dané stránce není žádné dílo nebo která ukáže totéž co „vše“ (všechna díla), se nenabízí
+(`offersOption`, `statusOptions`); bez žádné volby není filtr Stav vůbec. Totéž platí pro přepínač „Výběr autorky“: jen
+na stránce, kde jsou vybraná díla, ale ne všechna. Odkaz s takovou volbou ukáže vše. Dřívější volba `?status=available` (jen k prodeji) se přečte jako `unsold`
+(`STATUS_ALIASES`), sdílené odkazy dál fungují. Příklad kombinace:
 `/tvorba/?collection=plener-sumava-2026&status=unsold&tag=voda`, nebo jen výběr autorky
 na prodej: `/tvorba/?featured=1&status=unsold`.
 
@@ -249,7 +256,7 @@ i náhodně vybraný), ukáže prohlížeč bublinu se základními údaji o dí
 Jez na Otavě                       (u úvodního detailu: „Jez na Otavě, detail: <popisek detailu>“)
 akvarel · 41 × 30 cm · 2025
 papír Canson XL Aquarelle (300 g)  (support, jen když je vyplněný)
-K prodeji                          (jen K prodeji / Rezervováno / Prodáno)
+K prodeji                          (jen K prodeji / Rezervováno / V soukromé sbírce)
 
 Popis díla, zkrácený na 240 znaků po celém slově.
 ```
@@ -368,7 +375,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `mockups` | `true` = mockupy, nezávisle na prodeji (výchozí `false`) |
 | `price` | Kč, povinná u `available` a `reserved` |
 | `size_cm` | `[šířka, výška]` v cm (desetinné číslo s tečkou, např. `[29.5, 40]`); drží měřítko mockupu na stěně. Na webu a v popisech pro vyhledávače s desetinnou čárkou („29,5 × 40 cm“, `formatSizeCm`), ve strukturovaných datech jako číslo |
-| `status` | `available` \| `reserved` \| `sold` \| `not-for-sale` |
+| `status` | `available` \| `reserved` \| `sold` \| `gifted` \| `not-for-sale` |
 | `support` | podklad, nepovinné |
 | `tags` | štítky (filtr v galerii) |
 | `technique` | technika (filtr v galerii); komentář nabízí nejčastější: akvarel, brush pen, tisk z výšky, kresba tužkou |
@@ -396,7 +403,8 @@ size_cm: [40, 30]
 |---|---|---|---|---|
 | `available` | K prodeji, cena a tlačítka | originál + mockupy (má-li je) | jen s `mockups: true` | jen s `meta_instagram: true` |
 | `reserved` | Rezervováno | originál + mockupy (má-li je) | jen s `mockups: true` | jen s `meta_instagram: true` |
-| `sold` | Prodáno, bez ceny | nic | jen s `mockups: true` | jen s `meta_instagram: true` |
+| `sold` | V soukromé sbírce, bez ceny | nic | jen s `mockups: true` | jen s `meta_instagram: true` |
+| `gifted` | V soukromé sbírce (stejně jako `sold`, web je nerozlišuje), bez ceny | nic | jen s `mockups: true` | jen s `meta_instagram: true` |
 | `not-for-sale` (výchozí) | bez stavu (žádný štítek ani cena) | nic | jen s `mockups: true` | jen s `meta_instagram: true` |
 
 **Instagram na vyžádání:** fotky pro Instagram (originál a detaily) vzniknou jen
@@ -405,8 +413,9 @@ dílo přegeneruje, vypnutí jeho exporty pro Instagram smaže. Jiná hodnota ne
 `true`/`false` je chyba. Pole zůstává jen v obsahovém repu, na web se nekopíruje.
 
 Obrazy na prodej jsou `available` a `reserved`: jen ty mají Fler exporty a jen ty
-ukazuje filtr „neprodané“. Mockupy na stavu nezávisí (viz *Mockupy*). **Musí mít cenu** (`price`, kladné číslo
-v Kč), jinak pipeline skončí chybou.
+ukazuje filtr „na prodej“. **Musí mít cenu** (`price`, kladné číslo v Kč), jinak pipeline skončí chybou.
+Mockupy na stavu nezávisí (viz *Mockupy*). Štítek stavu (K prodeji, Rezervováno, V soukromé sbírce = `sold` i `gifted`, `GONE_LABEL`) je na kartě
+v galerii, na stránce díla i v bublině nad obrazem; `not-for-sale` štítek nemá.
 
 ### Udržování popisů (schéma, DOPLNIT, NEZNÁMÝ)
 
@@ -479,7 +488,8 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | `available` | Pivoňky, Zimní sad, Ráno u rybníka, Město v dešti, Náměstí v mlze, Máky, Bouřka nad polem, Na podlaze |
 | `reserved` | Kočka na okně, Modravské slatě, Rybník v zimě |
 | `sold` | Jablka na stole, Šumava v mlze, Nádraží |
-| `not-for-sale` | Kytice z louky, Kvilda skica, Slunečnice, Lípa u kaple |
+| `gifted` | Lípa u kaple |
+| `not-for-sale` | Kytice z louky, Kvilda skica, Slunečnice |
 | techniky | akvarel, akvarel a tuš, pastel, kresba tužkou, kvaš (Slunečnice, Rybník v zimě), linoryt (Lípa u kaple) |
 | tagy | krajina, voda, plenér, hory, květiny, zátiší, ovoce, zvířata, zima, město, déšť, mlha, léto (i kombinace) |
 | `featured` (výběr autorky, 9 děl) | Máky, Ráno u rybníka, Šumava v mlze, Nádraží, Rybník v zimě… (2026 a přelom roku), Pivoňky, Zimní sad, Kočka na okně, Jablka na stole (2025): úvodní stránka náhodně střídá všech 9, `/tvorba/?featured=1` je ukáže |
@@ -514,6 +524,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | stránka 404 s výběrem autorky | libovolná neexistující adresa, např. `/tvorba/nic/` (v `npm run demo`) nebo `.demo/site/dist/404.html` |
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
 | doporučení v souhrnu běhu: bez štítků, popis s malým písmenem a bez tečky / popisky detailů bez tečky / na prodej bez mockupů / text kolekce bez tečky / popis a popisek fotky bez tečky | Rozpracovaný obraz / Ráno u rybníka, Pivoňky / Máky, Bouřka nad polem, Modravské slatě, Pivoňky / Město 2026 / fotky stránek |
+| filtr bez zbytečných voleb: Stav jen „na prodej“, bez Výběru autorky (všechna díla vybraná) / bez filtru Stav | Ze zahrady 2025 / Kresby, pastely a kvaš 2025–2026 / Město 2026 |
 | bublina nad obrazem: s popisem a stavem / detail jako úvodní obraz / vlastní fotka bez bubliny | Máky v galerii / Ze zahrady 2025 / Plenér Šumava 2026 |
 
 ### Kontroly (pipeline při chybě nic nezveřejní)
@@ -522,10 +533,10 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 - dílo nemá pole `collection:` (kolekci určuje složka),
 - `id` je platné a unikátní, `size_cm` jsou dvě kladná čísla (u publikovaných děl),
 - dílo `available` nebo `reserved` má `price` (kladné číslo),
-- atribut s pevnými možnostmi (`options` ve schématu: `status` = `available` | `reserved` | `sold` | `not-for-sale`,
+- atribut s pevnými možnostmi (`options` ve schématu: `status` = `available` | `reserved` | `sold` | `gifted` | `not-for-sale`,
   `meta_draft`, `meta_instagram`, `mockups`, `featured` = `true` | `false`) má jen jednu z nich, i u rozpracovaného díla
   (`optionProblems` v `scripts/lib/schema.mjs`; chybějící = výchozí); jinak chyba „status „availble“ není mezi
-  možnostmi: available, reserved, sold, not-for-sale“,
+  možnostmi: available, reserved, sold, gifted, not-for-sale“,
 - `meta_corners` je `false`, nebo `photo` (rozměr fotky, musí sedět s fotkou) a rohy `tl`, `tr`, `br`, `bl` jako dvě celá
   nezáporná čísla, nejvýš čtvrtinu fotky od jejího rohu (viz *Ořez podlahy*),
 - `collection` je slug (malá písmena, číslice, pomlčky), kolekce má `title`,

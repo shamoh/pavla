@@ -294,16 +294,23 @@ export const WORK_SCHEMA = {
     { key: 'tags', settled: true, doc: 'Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].', value: [] },
     {
       key: 'status',
-      options: ['available', 'reserved', 'sold', 'not-for-sale'],
+      options: ['available', 'reserved', 'sold', 'gifted', 'not-for-sale'],
       doc: [
+        'Stav obrazu, možnosti:',
+        '- available - k prodeji (s cenou price)',
+        '- reserved - rezervováno (s cenou price)',
+        '- sold - prodáno, na webu „V soukromé sbírce“',
+        '- gifted - darováno, na webu „V soukromé sbírce“ (stejně jako prodané)',
+        '- not-for-sale - není na prodej, na webu bez štítku',
+      ],
+      value: 'not-for-sale',
+      previous: [[
         'Stav prodeje, možnosti:',
         '- available - k prodeji (s cenou price)',
         '- reserved - rezervováno (s cenou price)',
         '- sold - prodáno',
         '- not-for-sale - není na prodej, na webu bez štítku',
-      ],
-      value: 'not-for-sale',
-      previous: [[
+      ], [
         'Stav prodeje, možnosti:',
         '- available – k prodeji (s cenou price)',
         '- reserved – rezervováno (s cenou price)',

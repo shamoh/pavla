@@ -1,26 +1,27 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FEATURED_ON,
-  countStatuses, matchesFilters, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
+  countStatuses, matchesFilters, offersOption, statusOptions, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
   stateFromParams, stateToParams, withPageSize,
 } from './gallery-filter.mjs';
 
 const work = (status, extra = {}) => ({ tags: ['krajina'], technique: 'akvarel', year: '2026', collection: '', status, ...extra });
 const all = { tag: '', technique: '', year: '', collection: '', status: '', featured: '' };
 const allState = { ...all, page: 1, perPage: null };
-const statuses = ['available', 'reserved', 'sold', 'not-for-sale'];
+const statuses = ['available', 'reserved', 'sold', 'gifted', 'not-for-sale'];
 const passing = (state) => statuses.filter((s) => matchesFilters(work(s), { ...all, ...state }));
 
 test('no active filter shows every work', () => {
   assert.deepEqual(passing({}), statuses);
 });
 
-test('status "available" shows only works for sale right now', () => {
-  assert.deepEqual(passing({ status: 'available' }), ['available']);
+test('status "unsold" (na prodej) shows works for sale that are not sold, never not-for-sale or gifted', () => {
+  assert.deepEqual(passing({ status: 'unsold' }), ['available', 'reserved']);
 });
 
-test('status "unsold" shows works for sale that are not sold, never not-for-sale', () => {
-  assert.deepEqual(passing({ status: 'unsold' }), ['available', 'reserved']);
+test('status "kept" (ještě mám) shows all but sold and gifted, "gone" (už nemám) just those', () => {
+  assert.deepEqual(passing({ status: 'kept' }), ['available', 'reserved', 'not-for-sale']);
+  assert.deepEqual(passing({ status: 'gone' }), ['sold', 'gifted']);
 });
 
 test('collection filter shows only works of that collection', () => {
@@ -42,8 +43,8 @@ test('every filter combines with the others', () => {
 });
 
 test('countStatuses counts works per status option', () => {
-  assert.deepEqual(countStatuses(['available', 'reserved', 'sold', 'not-for-sale', 'available']), { available: 2, unsold: 3 });
-  assert.deepEqual(countStatuses([]), { available: 0, unsold: 0 });
+  assert.deepEqual(countStatuses(['available', 'reserved', 'sold', 'gifted', 'not-for-sale', 'available']), { unsold: 3, kept: 4, gone: 2 });
+  assert.deepEqual(countStatuses([]), { unsold: 0, kept: 0, gone: 0 });
 });
 
 test('stateFromParams reads every filter and drops an unknown status', () => {
@@ -52,13 +53,14 @@ test('stateFromParams reads every filter and drops an unknown status', () => {
     { ...allState, tag: 'voda', year: '2026', collection: 'plener', status: 'unsold' },
   );
   assert.equal(stateFromParams(new URLSearchParams('status=bogus')).status, '');
+  assert.equal(stateFromParams(new URLSearchParams('status=available')).status, 'unsold', 'an old shared link still works');
   assert.deepEqual(stateFromParams(new URLSearchParams('')), allState);
 });
 
 test('stateToParams leaves out empty filters and round-trips any combination', () => {
   assert.equal(stateToParams(all).toString(), '');
-  const state = { tag: 'řeka a mlha', technique: 'akvarel', year: '2025', collection: 'plener', status: 'available', featured: '1', page: 3, perPage: 48 };
-  assert.equal(stateToParams({ ...all, technique: 'akvarel', status: 'available' }).toString(), 'technique=akvarel&status=available');
+  const state = { tag: 'řeka a mlha', technique: 'akvarel', year: '2025', collection: 'plener', status: 'gone', featured: '1', page: 3, perPage: 48 };
+  assert.equal(stateToParams({ ...all, technique: 'akvarel', status: 'kept' }).toString(), 'technique=akvarel&status=kept');
   assert.deepEqual(stateFromParams(new URLSearchParams(stateToParams(state).toString())), state);
 });
 
@@ -161,4 +163,20 @@ test('author\'s selection: only featured works, combines with other filters, ?fe
   assert.equal(stateFromParams(new URLSearchParams('featured=1')).featured, '1');
   assert.equal(stateFromParams(new URLSearchParams('featured=yes')).featured, '', 'only 1 switches it on');
   assert.equal(stateFromParams(new URLSearchParams('')).featured, '');
+});
+
+test('offersOption: an option is offered when it shows some works, but not all of them', () => {
+  assert.deepEqual([[0, 5], [1, 5], [4, 5], [5, 5], [0, 0]].map(([n, total]) => offersOption(n, total)), [false, true, true, false, false]);
+});
+
+test('statusOptions offers only options showing something other than "vše", in order, with counts', () => {
+  assert.deepEqual(statusOptions(['available', 'sold', 'not-for-sale', 'not-for-sale']), [
+    { value: 'unsold', label: 'na prodej', count: 1 },
+    { value: 'kept', label: 'ještě mám', count: 3 },
+    { value: 'gone', label: 'už nemám', count: 1 },
+  ]);
+  assert.deepEqual(statusOptions(['available', 'not-for-sale', 'not-for-sale']), [{ value: 'unsold', label: 'na prodej', count: 1 }],
+    'nothing gone: "ještě mám" is the same as "vše", "už nemám" shows nothing');
+  assert.deepEqual(statusOptions(['sold', 'gifted']), [], 'everything gone: "už nemám" = "vše"');
+  assert.deepEqual(statusOptions([]), [], 'no works, no status filter');
 });

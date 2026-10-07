@@ -18,6 +18,7 @@ test('workTooltip: title, facts, support and status in lines, the description af
 test('workTooltip leaves out what is missing, and the status not-for-sale', () => {
   assert.equal(workTooltip({ title: 'Skica', technique: 'tužka', year: 2026, status: 'not-for-sale' }, labels), 'Skica\ntužka · 2026');
   assert.equal(workTooltip({ ...work, support: ' ', description: '  ', size_cm: [0, 0], status: 'sold' }, labels), 'Jez na Otavě\nakvarel · 2025\nProdáno');
+  assert.match(workTooltip({ ...work, status: 'gifted' }, { ...labels, gifted: 'Darováno' }), /\nDarováno\n/);
 });
 
 test('workTooltip of a detail cover names the detail, with its caption when there is one', () => {

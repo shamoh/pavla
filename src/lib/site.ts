@@ -27,7 +27,7 @@ export const site = config.site as {
   verification?: { google?: string; bing?: string; seznam?: string };
 };
 
-export type Status = 'available' | 'reserved' | 'sold' | 'not-for-sale';
+export type Status = 'available' | 'reserved' | 'sold' | 'gifted' | 'not-for-sale';
 
 /** A generated responsive image: <width>.{avif,webp,jpg} for each of `widths`. */
 // transparent: the surroundings of the sheet are transparent (meta_corners): no placeholder colour, a drop shadow
@@ -93,10 +93,17 @@ export interface Collection {
   works: Work[];
 }
 
+/** One label for works the author no longer has: sold and given away look the same on the site (never told apart). */
+export const GONE_LABEL = 'V soukromé sbírce';
+
+/** The status as the page's HTML may show it: given away is written as sold, so the two are never told apart. */
+export const shownStatus = (s: Status): Status => (s === 'gifted' ? 'sold' : s);
+
 export const statusLabel: Record<Status, string> = {
   available: 'K prodeji',
   reserved: 'Rezervováno',
-  sold: 'Prodáno',
+  sold: GONE_LABEL,
+  gifted: GONE_LABEL,
   'not-for-sale': 'Není na prodej',
 };
 

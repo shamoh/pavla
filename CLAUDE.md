@@ -47,7 +47,11 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   / `PUBLIC_YEAR_FIELDS` / `PUBLIC_HOME_FIELDS` / `PUBLIC_PHOTO_FIELDS`, nikdy ručně),
   bez komentářů. `meta_*`, `private_*` a neznámá pole nesmí nikdy do repa `pavla` (je veřejné).
 - Stav prodeje: `isOnSale` = `available` | `reserved` a musí mít `price` (kontrola v pipeline). Jen tato díla
-  mají Fler exporty a filtr „neprodané“; `not-for-sale` a `sold` nikdy.
+  mají Fler exporty a filtr „na prodej“; `not-for-sale`, `sold` a `gifted` (darováno) nikdy.
+  Filtr Stav (`STATUS_FILTERS`): na prodej (`unsold`), ještě mám (`kept`), už nemám (`gone` = `sold` + `gifted`);
+  staré `?status=available` = `unsold` (`STATUS_ALIASES`); volba bez děl nebo se všemi díly (= „vše“) se nenabízí
+  (`offersOption`, `statusOptions`), stejně přepínač „Výběr autorky“. Štítek stavu na kartě i stránce díla, `not-for-sale` bez štítku; `sold` i `gifted` mají
+  společný štítek „V soukromé sbírce“ (`GONE_LABEL`), web je nikdy nerozlišuje.
 - Mockupy jen s `mockups: true` v popisu díla (výchozí false), nezávisle na stavu prodeje (`wantsMockups`);
   Fler mockupy jen u díla na prodej, které mockupy má.
 - Exporty: Instagram jen u díla s `meta_instagram: true` (výchozí false), originál (`-clean`) + detailní fotky, nikdy mockupy. Fler jen díla na prodej:

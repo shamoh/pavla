@@ -6,12 +6,41 @@
 
 import { isOnSale } from './works.mjs';
 
+/** Statuses of works the author does not have any more (sold or given away). */
+export const GONE_STATUSES = ['sold', 'gifted'];
+
 /** Status filter options: URL value → predicate over a work status. */
 export const STATUS_FILTERS = {
-  available: (status) => status === 'available',
-  // For sale (available or reserved) and not sold yet; never not-for-sale.
+  // "na prodej": for sale (available or reserved), not sold yet.
   unsold: isOnSale,
+  // "ještě mám": everything not sold or given away (for sale, reserved, not for sale).
+  kept: (status) => !GONE_STATUSES.includes(status),
+  // "už nemám": sold or given away.
+  gone: (status) => GONE_STATUSES.includes(status),
 };
+
+/** Czech labels of the status filter options, in the order the select offers them. */
+export const STATUS_FILTER_LABELS = { unsold: 'na prodej', kept: 'ještě mám', gone: 'už nemám' };
+
+/**
+ * True when a filter option matching `count` of `total` works is worth offering: it shows something, and not the
+ * same as "vše" (all of them).
+ */
+export const offersOption = (count, total) => count > 0 && count < total;
+
+/**
+ * The status filter options worth offering for these work statuses (offersOption): [{ value, label, count }];
+ * [] = no status filter at all.
+ */
+export function statusOptions(statuses) {
+  const counts = countStatuses(statuses);
+  return Object.entries(STATUS_FILTER_LABELS)
+    .map(([value, label]) => ({ value, label, count: counts[value] }))
+    .filter((o) => offersOption(o.count, statuses.length));
+}
+
+/** Former status filter values, still accepted in shared links: old value → current one. */
+export const STATUS_ALIASES = { available: 'unsold' };
 
 export const FILTER_KEYS = ['tag', 'technique', 'year', 'collection', 'status', 'featured'];
 /** Value of `featured` when the visitor shows only the author's selection ("Výběr autorky", ?featured=1). */
@@ -29,7 +58,7 @@ export function matchesFilters(work, state) {
   );
 }
 
-/** Number of works per status filter option, e.g. { available: 3, unsold: 4 }. */
+/** Number of works per status filter option, e.g. { unsold: 3, kept: 10, gone: 2 }. */
 export function countStatuses(statuses) {
   return Object.fromEntries(Object.entries(STATUS_FILTERS).map(([key, ok]) => [key, statuses.filter(ok).length]));
 }
@@ -41,11 +70,13 @@ export const ALL_PAGES = 'all';
 export const DEFAULT_PAGE_SIZES = [12, 24, 48];
 
 /**
- * Reads the filter state from URL search params; unknown status values, bad pages and page sizes
+ * Reads the filter state from URL search params; former status values become current ones (STATUS_ALIASES),
+ * unknown status values, bad pages and page sizes
  * that are not offered are ignored. `pageSizes`: the offered sizes, the first is the default.
  */
 export function stateFromParams(params, pageSizes = DEFAULT_PAGE_SIZES) {
   const state = Object.fromEntries(FILTER_KEYS.map((k) => [k, params.get(k) ?? '']));
+  state.status = STATUS_ALIASES[state.status] ?? state.status;
   if (!(state.status in STATUS_FILTERS)) state.status = '';
   if (state.featured !== FEATURED_ON) state.featured = '';
   const raw = params.get('page');

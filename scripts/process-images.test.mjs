@@ -380,7 +380,7 @@ test('validation: a status outside its options stops the run, with the options l
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: availble\nprice: 2500\n');
   const r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /tvorba\/rano\.yaml: status „availble“ není mezi možnostmi: available, reserved, sold, not-for-sale/);
+  assert.match(r.problems.join('\n'), /tvorba\/rano\.yaml: status „availble“ není mezi možnostmi: available, reserved, sold, gifted, not-for-sale/);
   assert.ok(!(await exists(path.join(siteDir, 'content'))));
 });
 

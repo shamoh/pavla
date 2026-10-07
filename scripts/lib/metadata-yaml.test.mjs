@@ -219,7 +219,7 @@ test('the real work schema: an enum written on one line before is rewritten as a
   ].join('\n');
   const r = normalizeMetadata(old, WORK_SCHEMA);
   assert.equal(r.problem, null);
-  assert.match(r.text, /\n# DOPLNIT Stav prodeje, možnosti:\n# - available - k prodeji[^\n]*\n# - reserved - [^\n]*\n# - sold - prodáno\n# - not-for-sale - [^\n]*\nstatus: sold\n/);
+  assert.match(r.text, /\n# DOPLNIT Stav obrazu, možnosti:\n# - available - k prodeji[^\n]*\n# - reserved - [^\n]*\n# - sold - prodáno[^\n]*\n# - gifted - darováno[^\n]*\n# - not-for-sale - [^\n]*\nstatus: sold\n/);
   assert.match(r.text, /# Rozpracovaný obraz, možnosti:\n# - true - rozpracovaný, na webu se nezobrazí\n# - false - zveřejnit\nmeta_draft: true\n/);
   assert.doesNotMatch(r.text, /\| not-for-sale|true = rozpracovaný/, 'the old wording is gone, not doubled');
   assert.equal(normalizeMetadata(r.text, WORK_SCHEMA).changed, false);
@@ -247,7 +247,7 @@ test('the real work schema: list items once written with an en dash (–) get a 
   const old = '# DOPLNIT Stav prodeje, možnosti:\n# - available – k prodeji (s cenou price)\n# - reserved – rezervováno (s cenou price)\n'
     + '# - sold – prodáno\n# - not-for-sale – není na prodej, na webu bez štítku\nstatus: sold\n';
   const r = normalizeMetadata(old, WORK_SCHEMA);
-  assert.match(r.text, /\n# DOPLNIT Stav prodeje, možnosti:\n# - available - k prodeji[^\n]*\n(# - [^\n]*\n){3}status: sold\n/);
+  assert.match(r.text, /\n# DOPLNIT Stav obrazu, možnosti:\n# - available - k prodeji[^\n]*\n(# - [^\n]*\n){4}status: sold\n/);
   assert.doesNotMatch(r.text, /–/, 'no en dash left anywhere in a new comment');
 });
 
