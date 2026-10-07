@@ -373,7 +373,15 @@ test('validation: mockups must be true or false', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmockups: ano\n');
   const r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /mockups musí být true, nebo false/);
+  assert.match(r.problems.join('\n'), /mockups „ano“ není mezi možnostmi: true, false/);
+});
+
+test('validation: a status outside its options stops the run, with the options listed', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: availble\nprice: 2500\n');
+  const r = await run(opts());
+  assert.equal(r.ok, false);
+  assert.match(r.problems.join('\n'), /tvorba\/rano\.yaml: status „availble“ není mezi možnostmi: available, reserved, sold, not-for-sale/);
+  assert.ok(!(await exists(path.join(siteDir, 'content'))));
 });
 
 async function addDetail(year, slug, file, color = '#aa6644') {
@@ -965,7 +973,7 @@ test('validation: meta_instagram must be true or false', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: ano\n');
   const r = await run(opts());
   assert.equal(r.ok, false);
-  assert.match(r.problems.join('\n'), /meta_instagram musí být true, nebo false/);
+  assert.match(r.problems.join('\n'), /meta_instagram „[^“]*“ není mezi možnostmi: true, false/);
 });
 
 test('prepare only (branches): skeletons, ids and checks, but no site data, images or exports', async () => {
@@ -1066,7 +1074,7 @@ test('existing files get every supported attribute on every run, on a branch too
   assert.equal(data.meta_draft, false, 'a work without draft stays published');
   assert.equal(data.description, null, 'no placeholder text reaches the site');
   assert.match(text, /# změřeno\n# Šířka × výška v cm[^\n]*\n[^\n]*\nsize_cm: \[40, 30\]/);
-  assert.match(text, /^# Rohy listu[^\n]*\n(# [^\n]*\n){3}meta_corners:\n  photo: \[64, 48\]\n(  (tl|tr|br|bl): \[\d+, \d+\]\n){4}\n# true = rozpracovaný[^\n]*\nmeta_draft: false\n/,
+  assert.match(text, /^# Rohy listu[^\n]*\n(# [^\n]*\n){3}meta_corners:\n  photo: \[64, 48\]\n(  (tl|tr|br|bl): \[\d+, \d+\]\n){4}\n# Rozpracovaný obraz, možnosti:\n(# - [^\n]*\n){2}meta_draft: false\n/,
     'settled: no DOPLNIT; meta_ attributes come first, the corners of the sheet detected');
   assert.match(text, /# NEZNÁMÝ atribut[^\n]*\nmockup: true\n$/);
   assert.deepEqual(Object.keys(YAML.parse(await fs.readFile(path.join(contentDir, 'fotky/kontakt.yaml'), 'utf8'))), PHOTO_FIELDS.filter((k) => k !== 'caption'));

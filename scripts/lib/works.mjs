@@ -1,7 +1,7 @@
 // Pure helpers shared by the image pipeline and the Astro site.
 // No filesystem access here, so everything is easy to unit test.
 
-import { TODO, WORK_SCHEMA, fieldKeys, publicKeys } from './schema.mjs';
+import { TODO, WORK_SCHEMA, fieldKeys, optionProblems, publicKeys } from './schema.mjs';
 
 /** Characters used for work IDs: lowercase letters and digits without look-alikes (0/o, 1/l/i). */
 export const ID_ALPHABET = '23456789abcdefghjkmnpqrstuvwxyz';
@@ -107,11 +107,7 @@ export function validateWorks(works) {
     }
     problems.push(...validateDetailCaptions(w, where));
     if (!w.data?.meta_draft) problems.push(...todoProblems(where, w.data, PUBLIC_WORK_FIELDS, ' (nebo nech meta_draft: true)'));
-    for (const flag of ['meta_instagram', 'mockups']) {
-      if (w.data?.[flag] !== undefined && w.data[flag] !== null && typeof w.data[flag] !== 'boolean') {
-        problems.push(`${where}: ${flag} musí být true, nebo false`);
-      }
-    }
+    problems.push(...optionProblems(where, w.data, WORK_SCHEMA));
     if (w.data?.collection !== undefined && w.data.collection !== null && w.data.collection !== '') {
       problems.push(`${where}: „collection:“ se už nepoužívá, obraz patří do kolekce tím, že leží v její složce (tvorba/<kolekce>/); řádek smaž`);
     }

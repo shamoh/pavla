@@ -393,7 +393,9 @@ v Kč), jinak pipeline skončí chybou.
 Jediný zdroj pravdy o atributech popisů je `scripts/lib/schema.mjs` (`WORK_SCHEMA`, `COLLECTION_SCHEMA`,
 `PHOTO_SCHEMA`): pořadí, výchozí hodnota nové kostry, hodnota pro doplnění do existujícího souboru
 (`missing`, znamená totéž co chybějící atribut, takže se na webu nic nezmění: chybějící `meta_draft` = `false`,
-`description` = prázdné…) a **technický komentář** (typ, povolené hodnoty, příklady). Výčty `WORK_FIELDS`,
+`description` = prázdné…) a **technický komentář** (typ, povolené hodnoty, příklady; atribut s pevnými
+možnostmi, tj. `status` a přepínače `true`/`false`, má komentář „…, možnosti:“ a pod ním každou možnost
+na řádku `- <hodnota> – <význam>`). Výčty `WORK_FIELDS`,
 `COLLECTION_FIELDS` a `PHOTO_FIELDS` se z něj odvozují. Logika je v `scripts/lib/metadata-yaml.mjs`.
 
 - **Nová kostra** (nová fotka obrazu, složka kolekce, fotka stránky): všechny atributy s výchozími hodnotami,
@@ -498,7 +500,10 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 - dílo nemá pole `collection:` (kolekci určuje složka),
 - `id` je platné a unikátní, `size_cm` jsou dvě kladná čísla (u publikovaných děl),
 - dílo `available` nebo `reserved` má `price` (kladné číslo),
-- `meta_instagram` je `true` nebo `false`,
+- atribut s pevnými možnostmi (`options` ve schématu: `status` = `available` | `reserved` | `sold` | `not-for-sale`,
+  `meta_draft`, `meta_instagram`, `mockups`, `featured` = `true` | `false`) má jen jednu z nich, i u rozpracovaného díla
+  (`optionProblems` v `scripts/lib/schema.mjs`; chybějící = výchozí); jinak chyba „status „availble“ není mezi
+  možnostmi: available, reserved, sold, not-for-sale“,
 - `meta_corners` je `false`, nebo `photo` (rozměr fotky, musí sedět s fotkou) a rohy `tl`, `tr`, `br`, `bl` jako dvě celá
   nezáporná čísla, nejvýš čtvrtinu fotky od jejího rohu (viz *Ořez podlahy*),
 - `collection` je slug (malá písmena, číslice, pomlčky), kolekce má `title`,

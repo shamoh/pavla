@@ -207,6 +207,24 @@ test('commented-out attribute: an older wording written with the OPTIONAL mark i
   }
 });
 
+test('the real work schema: an enum written on one line before is rewritten as a list, DOPLNIT kept', () => {
+  const old = [
+    '# DOPLNIT Stav prodeje: available (k prodeji) | reserved (rezervováno) | sold (prodáno)',
+    '# | not-for-sale (není na prodej, na webu bez štítku).',
+    'status: sold',
+    '',
+    '# true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.',
+    'meta_draft: true',
+    '',
+  ].join('\n');
+  const r = normalizeMetadata(old, WORK_SCHEMA);
+  assert.equal(r.problem, null);
+  assert.match(r.text, /\n# DOPLNIT Stav prodeje, možnosti:\n# - available – k prodeji[^\n]*\n# - reserved – [^\n]*\n# - sold – prodáno\n# - not-for-sale – [^\n]*\nstatus: sold\n/);
+  assert.match(r.text, /# Rozpracovaný obraz, možnosti:\n# - true – rozpracovaný, na webu se nezobrazí\n# - false – zveřejnit\nmeta_draft: true\n/);
+  assert.doesNotMatch(r.text, /\| not-for-sale|true = rozpracovaný/, 'the old wording is gone, not doubled');
+  assert.equal(normalizeMetadata(r.text, WORK_SCHEMA).changed, false);
+});
+
 test('settled attribute: its default is final, never marked DOPLNIT, an old DOPLNIT goes', () => {
   const settled = { header: [], fields: [
     { key: 'title', doc: 'Název.', value: '' },
@@ -242,7 +260,7 @@ test('a former name or a derived_ attribute is a problem; the file stays as it i
 
 test('the comment of the file stays on top when its first attribute moves down (schema order)', () => {
   const r = normalizeMetadata('# Můj obraz.\n\ntitle: A\nid: k3f9a\n', WORK_SCHEMA);
-  assert.match(r.text, /^# Můj obraz\.\n\n# true = rozpracovaný/);
+  assert.match(r.text, /^# Můj obraz\.\n\n# Rozpracovaný obraz, možnosti:/);
   assert.equal(r.text.match(/Můj obraz/g).length, 1);
   // a skeleton starting with commented-out attributes is in line right away
   for (const s of [YEAR_SCHEMA, HOME_SCHEMA, COLLECTION_SCHEMA]) {

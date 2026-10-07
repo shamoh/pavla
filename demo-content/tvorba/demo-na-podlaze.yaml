@@ -12,10 +12,14 @@ meta_corners:
   br: [152, 99]
   bl: [99, 169]
 
-# true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.
+# Rozpracovaný obraz, možnosti:
+# - true – rozpracovaný, na webu se nezobrazí
+# - false – zveřejnit
 meta_draft: false
 
-# true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.
+# Fotky pro Instagram, možnosti:
+# - true – připravit (export/instagram: originál a detailní fotky)
+# - false – žádné
 meta_instagram: true
 
 # Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
@@ -32,14 +36,18 @@ description: |
 # NEPOVINNÉ. Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.
 # details: { 1-mlha: Ranní mlha nad vodou }
 
-# true = ve výběru autorky: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně
-# střídají obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover). false = ne.
+# Výběr autorky, možnosti:
+# - true – ve výběru: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně střídají
+#   obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover)
+# - false – ne
 featured: false
 
 # NEPOVINNÉ. Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
 # fler: https://www.fler.cz/zbozi/…
 
-# true = mockupy (obraz v rámu v interiéru) na webu, u obrazu na prodej i pro Fler; false = žádné.
+# Mockupy (obraz v rámu v interiéru), možnosti:
+# - true – na webu, u obrazu na prodej i pro Fler
+# - false – žádné
 mockups: true
 
 # NEPOVINNÉ. Cena v Kč, např. 2500. Povinná u available a reserved.
@@ -49,8 +57,11 @@ price: 1800
 # podle rozměrů se dělají mockupy ve skutečné velikosti.
 size_cm: [40, 30]
 
-# Stav prodeje: available (k prodeji) | reserved (rezervováno) | sold (prodáno)
-# | not-for-sale (není na prodej, na webu bez štítku).
+# Stav prodeje, možnosti:
+# - available – k prodeji (s cenou price)
+# - reserved – rezervováno (s cenou price)
+# - sold – prodáno
+# - not-for-sale – není na prodej, na webu bez štítku
 status: available
 
 # NEPOVINNÉ. Podklad, např. papír Arches 300 g. Bez něj se na webu nezobrazí.

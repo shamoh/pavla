@@ -172,7 +172,7 @@ test('prepareContent assigns missing ids and is idempotent', async () => {
   assert.notEqual(id, 'm7q2x');
   // the comment on top stays the file's comment (meta_ attributes come first), the id gets its technical comment
   const text = await read('rano.yaml');
-  assert.match(text, /^# Popis\n\n# true = rozpracovaný[^\n]*\nmeta_draft: false\n/);
+  assert.match(text, /^# Popis\n\n# Rozpracovaný obraz, možnosti:\n(# - [^\n]*\n){2}meta_draft: false\n/);
   assert.match(text, /\n\n# Trvalý kód obrazu[^\n]*\n# [^\n]*\nid: /);
 
   const second = await prepareContent(dir);

@@ -181,7 +181,19 @@ export const WORK_SCHEMA = {
       ],
       value: null,
     },
-    { key: 'meta_draft', settled: true, doc: 'true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.', value: true, missing: false },
+    {
+      key: 'meta_draft',
+      settled: true,
+      options: [true, false],
+      doc: [
+        'Rozpracovaný obraz, možnosti:',
+        '- true – rozpracovaný, na webu se nezobrazí',
+        '- false – zveřejnit',
+      ],
+      value: true,
+      missing: false,
+      previous: ['true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.'],
+    },
     {
       key: 'meta_corners',
       generated: true,
@@ -226,11 +238,19 @@ export const WORK_SCHEMA = {
     { key: 'tags', settled: true, doc: 'Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].', value: [] },
     {
       key: 'status',
+      options: ['available', 'reserved', 'sold', 'not-for-sale'],
       doc: [
-        'Stav prodeje: available (k prodeji) | reserved (rezervováno) | sold (prodáno)',
-        '| not-for-sale (není na prodej, na webu bez štítku).',
+        'Stav prodeje, možnosti:',
+        '- available – k prodeji (s cenou price)',
+        '- reserved – rezervováno (s cenou price)',
+        '- sold – prodáno',
+        '- not-for-sale – není na prodej, na webu bez štítku',
       ],
       value: 'not-for-sale',
+      previous: [[
+        'Stav prodeje: available (k prodeji) | reserved (rezervováno) | sold (prodáno)',
+        '| not-for-sale (není na prodej, na webu bez štítku).',
+      ]],
     },
     {
       key: 'price',
@@ -250,24 +270,42 @@ export const WORK_SCHEMA = {
     {
       key: 'meta_instagram',
       settled: true,
-      doc: 'true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.',
+      options: [true, false],
+      doc: [
+        'Fotky pro Instagram, možnosti:',
+        '- true – připravit (export/instagram: originál a detailní fotky)',
+        '- false – žádné',
+      ],
+      previous: ['true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.'],
       value: false,
     },
     {
       key: 'mockups',
       settled: true,
-      doc: 'true = mockupy (obraz v rámu v interiéru) na webu, u obrazu na prodej i pro Fler; false = žádné.',
+      options: [true, false],
+      doc: [
+        'Mockupy (obraz v rámu v interiéru), možnosti:',
+        '- true – na webu, u obrazu na prodej i pro Fler',
+        '- false – žádné',
+      ],
+      previous: ['true = mockupy (obraz v rámu v interiéru) na webu, u obrazu na prodej i pro Fler; false = žádné.'],
       value: false,
     },
     {
       key: 'featured',
       settled: true,
+      options: [true, false],
       doc: [
-        'true = ve výběru autorky: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně',
-        'střídají obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover). false = ne.',
+        'Výběr autorky, možnosti:',
+        '- true – ve výběru: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně střídají',
+        '  obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover)',
+        '- false – ne',
       ],
       value: false,
       previous: [[
+        'true = ve výběru autorky: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně',
+        'střídají obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover). false = ne.',
+      ], [
         'true = ve výběru autorky: filtr „Výběr autorky“ v galerii; z 5 nejnovějších vybraných se náhodně',
         'střídají obrazy nahoře na úvodní stránce a na úvodu kolekce (bez cover). false = ne.',
       ], [
@@ -442,6 +480,17 @@ export const docLines = (field) => {
   const doc = Array.isArray(field.doc) ? field.doc : [field.doc];
   return field.commented ? [`${OPTIONAL} ${doc[0]}`, ...doc.slice(1)] : doc;
 };
+
+/**
+ * Values outside the `options` of a field (an attribute with a fixed set of values: a list or true/false), as Czech
+ * problems "<where>: status „availble“ není mezi možnostmi: available, reserved, sold, not-for-sale". A missing value
+ * (absent or empty in YAML) is no problem: its default applies.
+ */
+export function optionProblems(where, data, schema) {
+  return schema.fields
+    .filter((f) => f.options && data?.[f.key] !== undefined && data[f.key] !== null && !f.options.includes(data[f.key]))
+    .map((f) => `${where}: ${f.key} „${typeof data[f.key] === 'string' ? data[f.key] : JSON.stringify(data[f.key])}“ není mezi možnostmi: ${f.options.join(', ')}`);
+}
 
 /**
  * Comments of the templates before the technical comments existed (at the end of a line, or below a key).

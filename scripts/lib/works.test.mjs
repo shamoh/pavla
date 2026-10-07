@@ -179,6 +179,16 @@ test('todoTexts: where texts start with DOPLNIT, nested too', () => {
   assert.deepEqual(todoTexts({}), []);
 });
 
+test('validateWorks: a value outside the options of status, meta_draft and the switches is a problem, drafts too', () => {
+  const [p] = validateWorks([work({ data: { status: 'availble', price: 100 } })]);
+  assert.equal(p, 'tvorba/rano.yaml: status „availble“ není mezi možnostmi: available, reserved, sold, not-for-sale');
+  assert.match(validateWorks([work({ data: { meta_draft: 'ne' } })])[0], /meta_draft „ne“ není mezi možnostmi: true, false/);
+  assert.match(validateWorks([work({ data: { meta_draft: true, featured: 1 } })])[0], /featured „1“ není mezi možnostmi: true, false/);
+  assert.match(validateWorks([work({ data: { status: '' } })])[0], /status „“ není mezi možnostmi/, 'an empty text is no status');
+  for (const status of ['available', 'reserved', 'sold', 'not-for-sale']) assert.deepEqual(validateWorks([work({ data: { status, price: 100 } })]), []);
+  assert.deepEqual(validateWorks([work({ data: { status: null, featured: false, meta_instagram: true } })]), [], 'missing = default');
+});
+
 test('exportPattern matches every export of one work and nothing of another', () => {
   const re = exportPattern('rano-k3f9a');
   for (const f of ['rano-k3f9a.jpg', 'rano-k3f9a-clean.jpg', 'rano-k3f9a-wall.jpg', 'rano-k3f9a-mockup-obyvak-vecer.jpg', 'rano-k3f9a-detail-1-mlha.jpg']) {
@@ -253,7 +263,7 @@ test('wantsMockups: only an explicit mockups: true, independent of the status; t
     assert.equal(wantsMockups(data), false, JSON.stringify(data));
   }
   assert.ok(PUBLIC_WORK_FIELDS.includes('mockups'));
-  assert.match(validateWorks([work({ data: { mockups: 'ano' } })])[0], /mockups musí být true, nebo false/);
+  assert.match(validateWorks([work({ data: { mockups: 'ano' } })])[0], /mockups „ano“ není mezi možnostmi: true, false/);
 });
 
 test('coverCandidates: the newest works of the author\'s selection, at most FEATURED_PICK, else the newest work', () => {

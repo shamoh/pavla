@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA, attributeGroup, compareKeys, fieldKeys, publicKeys,
+  COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA, attributeGroup, compareKeys, docLines, fieldKeys,
+  optionProblems, publicKeys,
 } from './schema.mjs';
 
 const SCHEMAS = [WORK_SCHEMA, COLLECTION_SCHEMA, PHOTO_SCHEMA, YEAR_SCHEMA, HOME_SCHEMA];
@@ -45,4 +46,27 @@ test('publicKeys: the shared attributes, never meta_ or private_ ones', () => {
 
 test('renamed attributes of a work point to existing ones', () => {
   for (const now of Object.values(WORK_SCHEMA.renamed)) assert.ok(fieldKeys(WORK_SCHEMA).includes(now), now);
+});
+
+test('an attribute with options lists exactly them in its technical comment, one per line', () => {
+  const withOptions = SCHEMAS.flatMap((s) => s.fields).filter((f) => f.options);
+  assert.deepEqual(withOptions.map((f) => f.key), ['meta_draft', 'meta_instagram', 'featured', 'mockups', 'status'].filter((k) => withOptions.some((f) => f.key === k)));
+  for (const f of withOptions) {
+    const lines = docLines(f);
+    assert.match(lines[0], /, možnosti:$/, f.key);
+    const listed = lines.filter((l) => l.startsWith('- ')).map((l) => l.slice(2).split(' – ')[0]);
+    assert.deepEqual(listed, f.options.map(String), f.key);
+    assert.ok(f.options.includes(f.value), `${f.key}: the skeleton value is one of the options`);
+  }
+});
+
+test('optionProblems: only values outside the options, in Czech with the options listed; missing values are fine', () => {
+  const schema = { fields: [{ key: 'a', options: ['x', 'y'] }, { key: 'b', options: [true, false] }, { key: 'c' }] };
+  assert.deepEqual(optionProblems('f.yaml', { a: 'z', b: 'ano', c: 'cokoli' }, schema), [
+    'f.yaml: a „z“ není mezi možnostmi: x, y',
+    'f.yaml: b „ano“ není mezi možnostmi: true, false',
+  ]);
+  assert.deepEqual(optionProblems('f.yaml', { a: 'x', b: false }, schema), []);
+  assert.deepEqual(optionProblems('f.yaml', { a: null }, schema), []);
+  assert.deepEqual(optionProblems('f.yaml', { b: [1] }, schema), ['f.yaml: b „[1]“ není mezi možnostmi: true, false']);
 });
