@@ -87,11 +87,14 @@ export const dateYear = (date) => {
  * in tvorba/ ('' without a collection) and `details` lists the detail photos next to it ([{ name }]).
  * Returns a list of human-readable problems (empty when everything is fine).
  */
+/** The description file of a work as the content repository has it, for messages: tvorba/[<collection>/]<slug>.yaml. */
+export const workPath = (w) => w.yamlPath ?? `tvorba/${w.dir ? `${w.dir}/` : ''}${w.slug}.yaml`;
+
 export function validateWorks(works) {
   const problems = [];
   const byId = new Map();
   for (const w of works) {
-    const where = w.yamlPath ?? `tvorba/${w.dir ? `${w.dir}/` : ''}${w.slug}.yaml`;
+    const where = workPath(w);
     if (!isValidSlug(w.slug)) problems.push(`${where}: „${w.slug}“ není platné jméno pro adresu (jen a-z, 0-9 a pomlčky), přejmenuj soubor`);
     if (!isValidId(w.id)) problems.push(`${where}: neplatný kód id „${w.id}“ (kód přiděluje automatika, řádek id smaž a dostane nový)`);
     if (!w.data?.title) problems.push(`${where}: chybí název (title)`);

@@ -1,6 +1,7 @@
 // Markdown summary of a pipeline run, shown on the GitHub Actions run page ($GITHUB_STEP_SUMMARY).
-// Everything is Czech because Pavla reads it. Errors come first (grouped by file), then warnings, then what the
-// run did, so whatever needs fixing is visible without scrolling.
+// Everything is Czech because Pavla reads it. Errors come first (grouped by file), then warnings, then
+// recommendations (grouped by file, scripts/lib/advice.mjs), then what the run did, so whatever needs fixing is
+// visible without scrolling.
 
 /** Problems ("<file>: <message>") grouped by file in order of appearance: [{ file, messages }]; file '' = general. */
 export function groupProblems(problems) {
@@ -67,7 +68,17 @@ export function formatSummary(result, error) {
     }
   }
 
-  // 3. what the run did
+  // 3. recommendations: nothing is wrong, the site would only be better
+  const advice = result.advice ?? [];
+  if (advice.length) {
+    lines.push(`### 💡 Doporučení (${advice.length})`, '', 'Nic nebrání zveřejnění, jen by to web vylepšilo.', '');
+    for (const { file, messages } of groupProblems(advice)) {
+      lines.push(file ? `**${file}**` : '**Obecně**', '');
+      list(messages);
+    }
+  }
+
+  // 4. what the run did
   const done = [
     ['Nové popisy k doplnění (doplň hodnoty s DOPLNIT, u obrazu pak meta_draft: false)', result.created],
     ['Přidělené kódy obrazů', result.assigned],

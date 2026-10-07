@@ -10,7 +10,7 @@ cover: kdnth
 
 # Pár vět o kolekci: kde a kdy obrazy vznikly. Víc řádků pod sebou, odsazených dvěma mezerami.
 description: |
-  Ulice, náměstí a nádraží. Úvodní obraz je celé dílo vybrané přes cover (Město v dešti), ne nejnovější Náměstí v mlze.
+  Ulice, náměstí a nádraží. Úvodní obraz je celé dílo vybrané přes cover (Město v dešti), ne nejnovější Náměstí v mlze
 
 # NEPOVINNÉ. Při ořezu vybraného obrazu zůstane vidět [zleva %, shora %], např. [50, 50] = střed, [80, 30] = vpravo nahoře.
 # Jen s aspect = střed. Náhodný obraz se neořezává.

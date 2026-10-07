@@ -116,7 +116,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `aspect` ořízne na poměr stran kolem `focus: [x, y]` (%) z yaml fotky. O mně: `o-mne-uvod` (2:1) a `portret`.
 - Automatika: workflow obsahového repa spouští tuto pipeline a otevírá PR do tohoto repa (větev `obsah/aktualizace`,
   auto-merge po projití „Kontroly kódu“, větev se po sloučení maže);
-  na jeho ostatních větvích jen `--prepare-only`. Souhrn běhu: `scripts/lib/summary.mjs` (nahoře chyby po souborech, pak „Ke kontrole“, pak co automatika udělala). Pull request připravuje
+  na jeho ostatních větvích jen `--prepare-only`. Souhrn běhu: `scripts/lib/summary.mjs` (nahoře chyby po souborech, pak „Ke kontrole“, pak „Doporučení“ z `scripts/lib/advice.mjs`, pak co automatika udělala). Pull request připravuje
   `scripts/pull-request.mjs` (`scripts/lib/pull-request.mjs`, `OUTPUT_PATHS`); text PR nikdy nejmenuje obsahové repo.
   „Zkušební běh zpracování“ (`.github/workflows/dry-run.yml`, každou neděli na testovacích datech, nic nepushne)
   prochází tytéž kroky: změna kroků zpracování obsahu = stejná změna ve `dry-run.yml`.

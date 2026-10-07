@@ -83,3 +83,16 @@ test('formatSummary lists the corners found and the cut previews of drafts; a su
   assert.ok(s.indexOf('Podezřelý ořez') < s.indexOf('Nalezené rohy'), 'the warning comes first');
   assert.doesNotMatch(formatSummary(base), /rohy listu|Náhledy ořezu/, 'nothing when there is nothing');
 });
+
+test('formatSummary lists recommendations by file after the warnings and before what the run did', () => {
+  const s = formatSummary({
+    ...base,
+    pending: ['tvorba/b.yaml: support'], created: ['tvorba/rano.yaml'],
+    advice: ['tvorba/a.yaml: nemá štítky (tags)', 'tvorba/c.yaml: title by neměl končit tečkou', 'tvorba/a.yaml: description by měl končit tečkou'],
+  });
+  assert.match(s, /^## ✓ Zpracováno/, 'recommendations never fail a run');
+  assert.match(s, /### 💡 Doporučení \(3\)\n\nNic nebrání zveřejnění[^\n]*\n\n\*\*tvorba\/a\.yaml\*\*\n\n- nemá štítky \(tags\)\n- description by měl končit tečkou\n\n\*\*tvorba\/c\.yaml\*\*\n\n- title by neměl končit tečkou\n/);
+  const order = ['### ⚠ Ke kontrole', '### 💡 Doporučení', '### Co automatika udělala'].map((t) => s.indexOf(t));
+  assert.ok(order.every((i, k) => i >= 0 && (k === 0 || i > order[k - 1])), order.join(', '));
+  assert.doesNotMatch(formatSummary(base), /Doporučení/, 'nothing when there is nothing');
+});

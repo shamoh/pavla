@@ -513,6 +513,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | strukturovaná data: obraz na prodej jen s dostupností (`InStock` / `LimitedAvailability`), bez ceny | Máky (`available`), Kočka na okně (`reserved`) |
 | stránka 404 s výběrem autorky | libovolná neexistující adresa, např. `/tvorba/nic/` (v `npm run demo`) nebo `.demo/site/dist/404.html` |
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
+| doporučení v souhrnu běhu: bez štítků, popis s malým písmenem a bez tečky / popisky detailů bez tečky / na prodej bez mockupů / text kolekce bez tečky / popis a popisek fotky bez tečky | Rozpracovaný obraz / Ráno u rybníka, Pivoňky / Máky, Bouřka nad polem, Modravské slatě, Pivoňky / Město 2026 / fotky stránek |
 | bublina nad obrazem: s popisem a stavem / detail jako úvodní obraz / vlastní fotka bez bubliny | Máky v galerii / Ze zahrady 2025 / Plenér Šumava 2026 |
 
 ### Kontroly (pipeline při chybě nic nezveřejní)
@@ -956,7 +957,14 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
      ve tvaru `<soubor>: <co je špatně a jak to opravit>`.
   2. **Ke kontrole** (`### ⚠ Ke kontrole`): zveřejněné obrazy, kterým zůstal `DOPLNIT` v komentáři, a podezřelý ořez
      rohů (`⚠`); běh nezastaví.
-  3. **Co automatika udělala**: nové popisy, přidělené kódy, nalezené rohy, náhledy ořezu, srovnané popisy,
+  3. **Doporučení** (`### 💡 Doporučení (počet)`, `workAdvice` v `scripts/lib/advice.mjs`): po souborech, u všech děl
+     (i rozpracovaných), běh nezastaví ani nezmění: dílo bez štítků (`tags`); `title` začíná malým písmenem nebo končí
+     tečkou; `description` a popisky detailů (`details`) začínají malým písmenem nebo nekončí tečkou (stačí i `!`, `?`,
+     `…`, případně před uzavírací uvozovkou či závorkou); dílo na prodej (`available`, `reserved`) bez `mockups: true`.
+     Stejně `title` a `description` kolekce, `description` roku a úvodní stránky a `alt` a `caption` fotek stránek
+     (`pageAdvice`).
+     Texty začínající `DOPLNIT` a prázdné přeskočí (ty hlídají kontroly).
+  4. **Co automatika udělala**: nové popisy, přidělené kódy, nalezené rohy, náhledy ořezu, srovnané popisy,
      odstraněné soubory a počty zpracovaných.
   Spadne-li běh na chybě mimo popisy (výjimka), souhrn to řekne česky a technický text výjimky dá pod to.
 

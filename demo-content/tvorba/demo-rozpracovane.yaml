@@ -29,7 +29,7 @@ date: 2026-09-20
 
 # Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.
 description: |
-  Ještě není hotové.
+  ještě není hotové
 
 # NEPOVINNÉ. Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.
 # details: { 1-mlha: Ranní mlha nad vodou }
@@ -78,7 +78,7 @@ status: not-for-sale
 # support: papír Canson XL Aquarelle (300 g), 100% celulóza
 
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
-tags: [krajina]
+tags: []
 
 # DOPLNIT Technika, podle ní se filtruje v galerii. Nejčastější možnosti jsou:
 # - akvarel
