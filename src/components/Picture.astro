@@ -1,8 +1,9 @@
 ---
 import Img from './Img.astro';
-import { type Work, workImagePath } from '../lib/site';
+import { type Work, workImagePath, workTitle } from '../lib/site';
 
-interface Props { work: Work; sizes: string; eager?: boolean; class?: string }
-const { work, sizes, eager, class: cls } = Astro.props;
+// `tooltip`: show workTooltip over the picture (where it leads to the work, not on the work's own page).
+interface Props { work: Work; sizes: string; eager?: boolean; class?: string; tooltip?: boolean }
+const { work, sizes, eager, class: cls, tooltip } = Astro.props;
 ---
-<Img base={workImagePath(work)} image={work.image} alt={`${work.title} — ${work.technique}`} sizes={sizes} eager={eager} class={cls} />
+<Img base={workImagePath(work)} image={work.image} alt={`${work.title} — ${work.technique}`} sizes={sizes} eager={eager} class={cls} title={tooltip ? workTitle(work) : undefined} />

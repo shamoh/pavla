@@ -1,11 +1,11 @@
 ---
 // Responsive <picture> for any generated image set: <base>/<prefix><width>.{avif,webp,jpg}.
 // `cutout` when the surroundings are transparent: whoever gives the picture a shadow uses filter: var(--drop-…)
-// for it (a box-shadow would show the rectangle of the image).
+// for it (a box-shadow would show the rectangle of the image). `title`: the tooltip over the image (workTooltip).
 import { url, type ImageSet } from '../lib/site';
 
-interface Props { base: string; prefix?: string; image: ImageSet; alt: string; sizes: string; eager?: boolean; class?: string }
-const { base, prefix = '', image, alt, sizes, eager = false, class: cls } = Astro.props;
+interface Props { base: string; prefix?: string; image: ImageSet; alt: string; sizes: string; eager?: boolean; class?: string; title?: string }
+const { base, prefix = '', image, alt, sizes, eager = false, class: cls, title } = Astro.props;
 const { widths, width, height, dominant, transparent } = image;
 const root = `${url(base)}/${prefix}`;
 const set = (ext: string) => widths.map((w) => `${root}${w}.${ext} ${w}w`).join(', ');
@@ -21,6 +21,7 @@ const fallback = `${root}${widths.find((w) => w >= 960) ?? widths[widths.length 
     width={width}
     height={height}
     alt={alt}
+    title={title}
     loading={eager ? 'eager' : 'lazy'}
     decoding="async"
     fetchpriority={eager ? 'high' : 'auto'}

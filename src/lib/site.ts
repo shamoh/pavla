@@ -10,6 +10,7 @@ import { HOME_TEXT } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
 import { measurementIdFor } from '../../scripts/lib/analytics.mjs';
 import { messagesSettings } from '../../scripts/lib/messages.mjs';
+import { workTooltip } from '../../scripts/lib/tooltip.mjs';
 import { execSync } from 'node:child_process';
 
 const root = process.cwd();
@@ -275,6 +276,9 @@ export const formatSize = (s?: [number, number]) => formatSizeCm(s);
 export const formatPrice = (p?: number) =>
   p ? new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK', maximumFractionDigits: 0 }).format(p) : '';
 export const url = (p: string) => `${import.meta.env.BASE_URL.replace(/\/$/, '')}${p}`;
+
+/** Tooltip over a picture of a work (scripts/lib/tooltip.mjs); `detail` = caption of the detail photo shown. */
+export const workTitle = (w: Work, detail?: string) => workTooltip(w, statusLabel, { detail });
 
 /** Detail page of a work: /tvorba/<year>/<slug>-<id>/ */
 export const workUrl = (w: Work) => url(`/tvorba/${w.year}/${w.key}/`);

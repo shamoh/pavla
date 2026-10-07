@@ -16,7 +16,7 @@ const { work, eager, hidden } = Astro.props;
   data-id={work.id}
   hidden={hidden}
 >
-  <Picture work={work} sizes="(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 33vw" eager={eager} />
+  <Picture work={work} sizes="(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 33vw" eager={eager} tooltip />
   <span class="meta">
     <span class="title">{work.title}</span>
     <span class="sub">{work.technique}{work.size_cm && ` · ${formatSize(work.size_cm)}`}</span>

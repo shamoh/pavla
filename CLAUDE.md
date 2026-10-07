@@ -141,6 +141,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Zprávy od návštěvníků: Web3Forms (`messages.accessKey` v `site.config.yaml`, jedna adresa, předmět `[pavla-web] <typ>: …`),
   formulář na Kontaktu a panel „Napište mi“ na ostatních stránkách (`scripts/lib/messages.mjs`, `message-draft.mjs`,
   `src/lib/message-form.ts`, `MessageForm.astro`, `MessagePanel.astro`). Testovací data = vždy náhled, nic neodesílá.
+- Bublina nad obrazem díla (atribut `title`, karty galerie a úvodní obrazy s dílem, ne stránka díla ani vlastní fotka):
+  `workTooltip` (`scripts/lib/tooltip.mjs`) přes `workTitle` v `src/lib/site.ts`, všude stejná (název, technika · rozměr · rok,
+  podklad, stav prodeje, zkrácený popis).
 - Patička nese verzi buildu `vRR.MMDD.HHMM` (pražský čas) s bublinou (datum, commit): `scripts/lib/build-version.mjs`.
 - „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` jen `npm test` + `npm run build` (rychlé).
   U každého PR běží vždy: job `check` je povinná kontrola rulesetu na `main`, na kterou čeká auto-merge aktualizací

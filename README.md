@@ -240,6 +240,26 @@ seznamů.
   `withPageSize`, `rememberedPageSize` a `pageSizeToRemember` v
   `scripts/lib/gallery-filter.mjs`, vykreslení v `src/components/WorkGallery.astro`.
 
+### Bublina nad obrazem
+
+Po najetí myší na obraz, který vede na stránku díla (karty galerie, úvodní obraz úvodní stránky, roku i kolekce,
+i náhodně vybraný), ukáže prohlížeč bublinu se základními údaji o díle. Je všude stejná, po řádcích:
+
+```
+Jez na Otavě                       (u úvodního detailu: „Jez na Otavě, detail: <popisek detailu>“)
+akvarel · 41 × 30 cm · 2025
+papír Canson XL Aquarelle (300 g)  (support, jen když je vyplněný)
+K prodeji                          (jen K prodeji / Rezervováno / Prodáno)
+
+Popis díla, zkrácený na 240 znaků po celém slově.
+```
+
+Chybějící údaje se vynechají. Vlastní úvodní fotka (`_cover.jpg`, `roky/<rok>.jpg`) bublinu nemá, stránka díla
+samotná taky ne (údaje jsou vedle obrazu). Je to obyčejný atribut `title` obrázku: bez JavaScriptu, na dotykových
+zařízeních se neukazuje. Text skládá `workTooltip` (`scripts/lib/tooltip.mjs`, `workTitle` v `src/lib/site.ts`),
+vykreslení `src/components/Picture.astro` (`tooltip`), `Img.astro` (`title`) a `Cover.astro`.
+Vyzkoušení: `npm run demo`, najet myší na kartu v `/tvorba/` nebo na úvodní obraz.
+
 ## Testovací data (demo)
 
 Web a pipeline se ladí na **testovacích datech**, která jsou úplně oddělená od
@@ -493,6 +513,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | strukturovaná data: obraz na prodej jen s dostupností (`InStock` / `LimitedAvailability`), bez ceny | Máky (`available`), Kočka na okně (`reserved`) |
 | stránka 404 s výběrem autorky | libovolná neexistující adresa, např. `/tvorba/nic/` (v `npm run demo`) nebo `.demo/site/dist/404.html` |
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
+| bublina nad obrazem: s popisem a stavem / detail jako úvodní obraz / vlastní fotka bez bubliny | Máky v galerii / Ze zahrady 2025 / Plenér Šumava 2026 |
 
 ### Kontroly (pipeline při chybě nic nezveřejní)
 
