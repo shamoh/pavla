@@ -221,19 +221,37 @@ export const WORK_SCHEMA = {
     {
       key: 'support',
       commented: true,
-      example: 'papír Arches 300 g',
-      doc: 'Podklad, např. papír Arches 300 g. Bez něj se na webu nezobrazí.',
+      example: 'papír Canson XL Aquarelle (300 g), 100% celulóza',
+      doc: [
+        'Podklad, např. papír. Bez něj se na webu nezobrazí. Nejčastější možnosti jsou:',
+        '- papír Baohong Cold Pressed (300 g), 100% bavlna',
+        '- ruční papír Khadi (320 g), 100% bavlna',
+        '- papír Canson Montval Cold Pressed (300 g), 100% celulóza',
+        '- papír Canson XL Aquarelle (300 g), 100% celulóza',
+      ],
       value: '',
-      previous: ['Podklad, např. papír Arches 300 g. Nepovinné, prázdné = na webu se nezobrazí.'],
+      previous: [
+        'Podklad, např. papír Arches 300 g. Bez něj se na webu nezobrazí.',
+        'Podklad, např. papír Arches 300 g. Nepovinné, prázdné = na webu se nezobrazí.',
+      ],
     },
     {
       key: 'size_cm',
       doc: [
-        'Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu:',
-        'podle rozměrů se dělají mockupy ve skutečné velikosti.',
+        'Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu.',
+        'Podle rozměrů se dělají mockupy ve skutečné velikosti. Nejčastější možnosti jsou:',
+        '- [38, 29] – Baohong',
+        '- [20, 20] – Khadi malý',
+        '- [30, 30] – Khadi velký',
+        '- [42, 30] – Canson Montval A3',
+        '- [21, 30] – Canson Montval A4',
       ],
       value: [0, 0],
       missing: null,
+      previous: [[
+        'Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu:',
+        'podle rozměrů se dělají mockupy ve skutečné velikosti.',
+      ]],
     },
     { key: 'tags', settled: true, doc: 'Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].', value: [] },
     {

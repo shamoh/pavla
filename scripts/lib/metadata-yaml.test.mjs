@@ -225,6 +225,24 @@ test('the real work schema: an enum written on one line before is rewritten as a
   assert.equal(normalizeMetadata(r.text, WORK_SCHEMA).changed, false);
 });
 
+test('the real work schema: support and size_cm list the common papers; old wordings and the old example are replaced', () => {
+  const old = [
+    '# NEPOVINNÉ. Podklad, např. papír Arches 300 g. Bez něj se na webu nezobrazí.',
+    '# support: papír Arches 300 g',
+    '',
+    '# DOPLNIT Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu:',
+    '# podle rozměrů se dělají mockupy ve skutečné velikosti.',
+    'size_cm: [38, 29]',
+    '',
+  ].join('\n');
+  const r = normalizeMetadata(old, WORK_SCHEMA);
+  assert.equal(r.problem, null);
+  assert.match(r.text, /\n# NEPOVINNÉ\. Podklad, např\. papír\. [^\n]*Nejčastější možnosti jsou:\n(# - [^\n]*\n){4}# support: papír Canson XL Aquarelle \(300 g\), 100% celulóza\n/);
+  assert.match(r.text, /\n# DOPLNIT Šířka × výška v cm[^\n]*\n# Podle rozměrů [^\n]*\n# - \[38, 29\] – Baohong\n(# - [^\n]*\n){4}size_cm: \[38, 29\]\n/);
+  assert.doesNotMatch(r.text, /Arches|podle rozměrů se dělají/, 'the old wording is gone, not doubled');
+  assert.equal(normalizeMetadata(r.text, WORK_SCHEMA).changed, false);
+});
+
 test('settled attribute: its default is final, never marked DOPLNIT, an old DOPLNIT goes', () => {
   const settled = { header: [], fields: [
     { key: 'title', doc: 'Název.', value: '' },

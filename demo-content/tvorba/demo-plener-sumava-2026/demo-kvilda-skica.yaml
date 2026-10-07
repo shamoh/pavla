@@ -51,8 +51,13 @@ mockups: false
 # NEPOVINNÉ. Cena v Kč, např. 2500. Povinná u available a reserved.
 # price: 2500
 
-# Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu:
-# podle rozměrů se dělají mockupy ve skutečné velikosti.
+# Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu.
+# Podle rozměrů se dělají mockupy ve skutečné velikosti. Nejčastější možnosti jsou:
+# - [38, 29] – Baohong
+# - [20, 20] – Khadi malý
+# - [30, 30] – Khadi velký
+# - [42, 30] – Canson Montval A3
+# - [21, 30] – Canson Montval A4
 size_cm: [29.7, 21]
 
 # Stav prodeje, možnosti:
@@ -62,7 +67,11 @@ size_cm: [29.7, 21]
 # - not-for-sale – není na prodej, na webu bez štítku
 status: not-for-sale
 
-# NEPOVINNÉ. Podklad, např. papír Arches 300 g. Bez něj se na webu nezobrazí.
+# NEPOVINNÉ. Podklad, např. papír. Bez něj se na webu nezobrazí. Nejčastější možnosti jsou:
+# - papír Baohong Cold Pressed (300 g), 100% bavlna
+# - ruční papír Khadi (320 g), 100% bavlna
+# - papír Canson Montval Cold Pressed (300 g), 100% celulóza
+# - papír Canson XL Aquarelle (300 g), 100% celulóza
 support: skicák 160 g
 
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
