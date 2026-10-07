@@ -371,7 +371,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `status` | `available` \| `reserved` \| `sold` \| `not-for-sale` |
 | `support` | podklad, nepovinné |
 | `tags` | štítky (filtr v galerii) |
-| `technique` | technika (filtr v galerii) |
+| `technique` | technika (filtr v galerii); komentář nabízí nejčastější: akvarel, brush pen, tisk z výšky, kresba tužkou |
 | `title` | název |
 | `private_note` | SOUKROMÉ: zůstane jen v obsahovém repu |
 

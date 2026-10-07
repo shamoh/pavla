@@ -80,7 +80,11 @@ status: not-for-sale
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
 tags: [krajina]
 
-# DOPLNIT Technika, např. akvarel, kresba tužkou, linoryt, kombinovaná technika. Podle ní se filtruje v galerii.
+# DOPLNIT Technika, podle ní se filtruje v galerii. Nejčastější možnosti jsou:
+# - akvarel
+# - brush pen
+# - tisk z výšky
+# - kresba tužkou
 technique: akvarel
 
 # Název obrazu, jak ho uvidí návštěvníci webu.

@@ -79,7 +79,11 @@ support: pastelový papír Canson
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
 tags: [zátiší, ovoce]
 
-# Technika, např. akvarel, kresba tužkou, linoryt, kombinovaná technika. Podle ní se filtruje v galerii.
+# Technika, podle ní se filtruje v galerii. Nejčastější možnosti jsou:
+# - akvarel
+# - brush pen
+# - tisk z výšky
+# - kresba tužkou
 technique: pastel
 
 # Název obrazu, jak ho uvidí návštěvníci webu.

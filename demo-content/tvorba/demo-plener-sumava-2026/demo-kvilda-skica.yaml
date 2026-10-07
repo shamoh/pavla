@@ -80,7 +80,11 @@ support: skicák 160 g
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
 tags: [krajina, plenér]
 
-# Technika, např. akvarel, kresba tužkou, linoryt, kombinovaná technika. Podle ní se filtruje v galerii.
+# Technika, podle ní se filtruje v galerii. Nejčastější možnosti jsou:
+# - akvarel
+# - brush pen
+# - tisk z výšky
+# - kresba tužkou
 technique: kresba tužkou
 
 # Název obrazu, jak ho uvidí návštěvníci webu.

@@ -218,9 +218,16 @@ export const WORK_SCHEMA = {
     },
     {
       key: 'technique',
-      doc: 'Technika, např. akvarel, kresba tužkou, linoryt, kombinovaná technika. Podle ní se filtruje v galerii.',
+      doc: [
+        'Technika, podle ní se filtruje v galerii. Nejčastější možnosti jsou:',
+        '- akvarel',
+        '- brush pen',
+        '- tisk z výšky',
+        '- kresba tužkou',
+      ],
       value: 'akvarel',
       missing: '',
+      previous: ['Technika, např. akvarel, kresba tužkou, linoryt, kombinovaná technika. Podle ní se filtruje v galerii.'],
     },
     {
       key: 'support',

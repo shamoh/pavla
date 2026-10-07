@@ -80,7 +80,11 @@ support: papír 250 g
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
 tags: [město, déšť]
 
-# Technika, např. akvarel, kresba tužkou, linoryt, kombinovaná technika. Podle ní se filtruje v galerii.
+# Technika, podle ní se filtruje v galerii. Nejčastější možnosti jsou:
+# - akvarel
+# - brush pen
+# - tisk z výšky
+# - kresba tužkou
 technique: akvarel a tuš
 
 # Název obrazu, jak ho uvidí návštěvníci webu.
