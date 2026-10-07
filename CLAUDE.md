@@ -31,6 +31,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   plný běh smaže vše, co nevyrobil (`staleOutputs`).
   Exporty pro Instagram a Fler jdou do `export/` obsahového repa.
   Web čte kopie přes `readCopies`: rok díla z `date`, kolekce ze složky (žádný atribut `collection`).
+- Kostra popisu nového díla: `date` = den pořízení fotky z EXIF (`scripts/lib/exif.mjs`, bez závislosti), bez něj dnešek.
 - Každé dílo má trvalé 5znakové `id` (začíná písmenem, viz `scripts/lib/works.mjs`). URL: `/tvorba/<rok>/<slug>-<id>/`.
 - Web načítá díla přes `src/lib/site.ts#getWorks`; `meta_draft: true` a dílo bez `info.json` se nezobrazí.
 - Atributy popisů mají skupiny podle prefixu (`attributeGroup`, `compareKeys` v `scripts/lib/schema.mjs`), v souboru

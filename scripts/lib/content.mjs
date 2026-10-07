@@ -14,6 +14,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
+import { photoDate } from './exif.mjs';
 import { normalizeMetadata, skeleton, todoKeys } from './metadata-yaml.mjs';
 import { artform } from './seo.mjs';
 import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA } from './schema.mjs';
@@ -172,7 +173,7 @@ const isoDay = (d) => d.toISOString().slice(0, 10);
  * null when the date is not valid), id, data, text, yamlPath, masterPath, details }.
  * A collection folder: { slug, dir, metaPath (null when there is no _index.yaml yet), coverPath,
  * retired (a system file under its former name: reported, no skeleton is written) }.
- * Options: today (Date, the date of new skeletons), random (for deterministic IDs in tests).
+ * Options: today (Date, the date of new skeletons whose photo has no EXIF date), random (for deterministic IDs in tests).
  */
 export async function prepareContent(contentDir, { today = new Date(), random } = {}) {
   const worksRoot = path.join(contentDir, WORKS_SUBDIR);
@@ -198,12 +199,13 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
       if (isValidId(data.id)) taken.add(data.id);
       entries.push({ g, slug, yamlPath, text, data, image: g.images.get(slug), details: g.details.get(slug) });
     }
-    // Pass 1b: images without metadata get a skeleton, dated today.
+    // Pass 1b: images without metadata get a skeleton, dated by the photo's EXIF (the day it was taken), else today.
     for (const [slug, image] of g.images) {
       if (g.yamls.has(slug)) continue;
       const id = generateId(taken, random);
       taken.add(id);
-      const text = skeletonYaml({ id, title: titleFromName(image.name), date: isoDay(today) });
+      const date = (await photoDate(path.join(worksRoot, g.dir, image.file))) ?? isoDay(today);
+      const text = skeletonYaml({ id, title: titleFromName(image.name), date });
       const yamlPath = path.join(worksRoot, g.dir, `${slug}.yaml`);
       await fs.writeFile(yamlPath, text);
       created.push(rel(g.dir, `${slug}.yaml`));

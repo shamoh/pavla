@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import sharp from 'sharp';
 import YAML from 'yaml';
 import { findUnknownAttributes, findUnknownTechniques, prepareContent, readTree, withId } from './content.mjs';
 import { isValidId } from './works.mjs';
@@ -89,7 +90,7 @@ test('readTree reports non-photos in detail folders and folders nested in a coll
   assert.ok(problems.some((p) => p.startsWith('tvorba/plener/podkolekce/:') && p.includes('collections cannot be nested')));
 });
 
-test('prepareContent creates a draft skeleton for a new image, dated today', async () => {
+test('prepareContent creates a draft skeleton for a new image, dated today without EXIF', async () => {
   await write('Ráno u rybníka.jpg');
   const r = await prepareContent(dir, { today: new Date('2026-07-01T12:00:00Z') });
   assert.deepEqual(r.created, ['tvorba/rano-u-rybnika.yaml']);
@@ -103,6 +104,17 @@ test('prepareContent creates a draft skeleton for a new image, dated today', asy
   assert.equal(w.year, '2026');
   assert.equal(w.collection, null);
   assert.equal(w.dir, '');
+});
+
+test('prepareContent dates a new skeleton by the day the photo was taken (EXIF), not today', async () => {
+  const photo = await sharp({ create: { width: 4, height: 4, channels: 3, background: '#fff' } })
+    .jpeg().withExif({ IFD2: { DateTimeOriginal: '2025:10:19 15:46:33' } }).toBuffer();
+  await fs.mkdir(path.join(worksDir(), 'plener'), { recursive: true });
+  await fs.writeFile(path.join(worksDir(), 'plener', 'steg.jpg'), photo);
+  const r = await prepareContent(dir, { today: new Date('2026-10-07T12:00:00Z') });
+  assert.deepEqual(r.created, ['tvorba/plener/steg.yaml']);
+  assert.equal(String(YAML.parse(await read('plener/steg.yaml')).date), '2025-10-19');
+  assert.equal(r.works[0].year, '2025');
 });
 
 test('prepareContent: works of a collection folder, their collection and years come from folder and date', async () => {

@@ -290,7 +290,9 @@ a řádek do `demo-content/images.yaml` (`size`, `palette`, `seed`; detailní fo
    názvem bez diakritiky (`rano-u-rybnika.jpg`). Jiný název nevadí:
    `Ráno u rybníka.jpg` se spáruje s `rano-u-rybnika.yaml`.
 2. `npm run images` (v tomto repu):
-   - k fotce bez popisu vytvoří kostru `rano-u-rybnika.yaml` s `meta_draft: true`,
+   - k fotce bez popisu vytvoří kostru `rano-u-rybnika.yaml` s `meta_draft: true` a `date` = den pořízení
+     fotky z EXIF (`DateTimeOriginal`, pak `DateTimeDigitized`, pak `DateTime`; `scripts/lib/exif.mjs`),
+     bez data v EXIF dnešek,
    - každému popisu bez `id` ho přidělí,
    - každý popis (dílo, kolekce, fotka) srovná podle schématu (viz *Udržování popisů*),
    - k nové složce kolekce založí kostru `_index.yaml`,
