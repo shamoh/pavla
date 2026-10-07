@@ -72,6 +72,9 @@ const jsonLd = graphLd(
         {collection && <><dt>Kolekce</dt><dd><a href={collectionUrl(collection.slug)}>{collection.title}</a></dd></>}
       </dl>
       {work.description && <p class="desc">{work.description}</p>}
+      {work.tags.length > 0 && (
+        <p class="tags">{work.tags.map((t) => <a href={url(`/tvorba/?tag=${encodeURIComponent(t)}`)}>#{t}</a>)}</p>
+      )}
       {details.length > 0 && (
         <section class="details" aria-label="Detaily obrazu">
           {details.map((d, i) => (
@@ -107,9 +110,6 @@ const jsonLd = graphLd(
             ))}
           </div>
         </section>
-      )}
-      {work.tags.length > 0 && (
-        <p class="tags">{work.tags.map((t) => <a href={url(`/tvorba/?tag=${encodeURIComponent(t)}`)}>#{t}</a>)}</p>
       )}
     </div>
   </article>
@@ -203,7 +203,7 @@ const jsonLd = graphLd(
   .btn.ghost { border-color: var(--line); }
   button.btn { background: transparent; color: var(--ink); font: inherit; font-size: 0.92rem; cursor: pointer; }
   button.btn:hover { background: var(--ink); color: var(--paper); }
-  .tags { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.9rem; margin-top: 28px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.9rem; margin: 16px 0 0; }
   .tags a { color: var(--accent); text-decoration: none; }
   .mockups { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line); }
   .mockup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
