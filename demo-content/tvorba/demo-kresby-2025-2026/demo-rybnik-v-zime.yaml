@@ -58,7 +58,8 @@ price: 3100
 # - [30, 30] - Khadi velký
 # - [42, 30] - Canson Montval A3
 # - [21, 30] - Canson Montval A4
-# - [41, 30] - Canson XL
+# - [41, 30] - Canson XL A3
+# - [43, 31] - Chamoix A3
 size_cm: [40, 30]
 
 # Stav prodeje, možnosti:
@@ -73,6 +74,7 @@ status: reserved
 # - ruční papír Khadi (320 g), 100% bavlna
 # - papír Canson Montval Cold Pressed (300 g), 100% celulóza
 # - papír Canson XL Aquarelle (300 g), 100% celulóza
+# - akvarelový karton Chamoix (220 g)
 support: papír 300 g
 
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].

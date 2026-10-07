@@ -237,8 +237,8 @@ test('the real work schema: support and size_cm list the common papers; old word
   ].join('\n');
   const r = normalizeMetadata(old, WORK_SCHEMA);
   assert.equal(r.problem, null);
-  assert.match(r.text, /\n# NEPOVINNÉ\. Podklad, např\. papír\. [^\n]*Nejčastější možnosti jsou:\n(# - [^\n]*\n){4}# support: papír Canson XL Aquarelle \(300 g\), 100% celulóza\n/);
-  assert.match(r.text, /\n# DOPLNIT Šířka × výška v cm[^\n]*\n# Podle rozměrů [^\n]*\n# - \[38, 29\] - Baohong\n(# - [^\n]*\n){5}size_cm: \[38, 29\]\n/);
+  assert.match(r.text, /\n# NEPOVINNÉ\. Podklad, např\. papír\. [^\n]*Nejčastější možnosti jsou:\n(# - [^\n]*\n){5}# support: papír Canson XL Aquarelle \(300 g\), 100% celulóza\n/);
+  assert.match(r.text, /\n# DOPLNIT Šířka × výška v cm[^\n]*\n# Podle rozměrů [^\n]*\n# - \[38, 29\] - Baohong\n(# - [^\n]*\n){6}size_cm: \[38, 29\]\n/);
   assert.doesNotMatch(r.text, /Arches|podle rozměrů se dělají/, 'the old wording is gone, not doubled');
   assert.equal(normalizeMetadata(r.text, WORK_SCHEMA).changed, false);
 });
