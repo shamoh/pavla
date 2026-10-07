@@ -5,7 +5,7 @@ description: >
   Malováno odpoledne na břehu rybníka Markovce kousek od Sudoměře a Žižkovy
   sochy.
 details:
-  rybnik-markovec-fotka: Malováno na stojanu za zvuku ptáků a šplouchání ryb.
+  scenerie: Malováno na stojanu za zvuku ptáků a šplouchání ryb.
 featured: true
 mockups: true
 size_cm:
@@ -13,7 +13,10 @@ size_cm:
   - 29
 status: not-for-sale
 support: papír Baohong Cold Pressed (300 g), 100% bavlna
-tags: []
+tags:
+  - krajina
+  - voda
+  - plenér
 technique: akvarel
-title: Rybnik markovec
+title: Rybník Markovec
 derived_modified: 2026-10-07

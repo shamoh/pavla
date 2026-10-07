@@ -2,9 +2,9 @@
 id: mpugj
 date: 2026-05-01
 description: |
-  Štěkenský jez malovaný za slunečného prvomájového odpoledne.
+  Štěkeňský jez malovaný za slunečného prvomájového odpoledne.
 details:
-  jez-steken-fotka: proces tvorby obrazu
+  scenerie: Proces tvorby obrazu.
 featured: true
 mockups: true
 price: 2500
@@ -12,8 +12,11 @@ size_cm:
   - 38
   - 29
 status: available
-support: papír Baohong Cold Pressed (300g), 100 % bavlna
-tags: []
+support: papír Baohong Cold Pressed (300 g), 100% bavlna
+tags:
+  - krajina
+  - voda
+  - plenér
 technique: akvarel
 title: Štěkeňský jez
 derived_modified: 2026-10-07
