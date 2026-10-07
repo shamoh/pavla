@@ -1,0 +1,69 @@
+{
+  "width": 3633,
+  "height": 2674,
+  "widths": [
+    480,
+    960,
+    1600,
+    2400
+  ],
+  "dominant": "rgb(168,184,232)",
+  "transparent": true,
+  "mockups": [
+    {
+      "scene": "obyvak-vecer",
+      "label": "Obývák večer",
+      "width": 1771,
+      "height": 1181,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(88,56,8)"
+    },
+    {
+      "scene": "loznice",
+      "label": "Ložnice",
+      "width": 1426,
+      "height": 951,
+      "widths": [
+        480,
+        960,
+        1426
+      ],
+      "dominant": "rgb(56,40,8)"
+    },
+    {
+      "scene": "predsin",
+      "label": "Předsíň",
+      "width": 2400,
+      "height": 1578,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(216,216,200)"
+    }
+  ],
+  "details": [
+    {
+      "name": "rybnik-markovec-fotka",
+      "width": 4080,
+      "height": 3060,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(168,216,248)"
+    }
+  ],
+  "og": {
+    "width": 1200,
+    "height": 800
+  },
+  "fingerprint": "f8004459ce6597a0"
+}
