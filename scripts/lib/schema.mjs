@@ -166,7 +166,7 @@ const focusField = (previous) => ({
 export const WORK_SCHEMA = {
   name: 'work',
   header: [
-    'Popis obrazu – kostru vytvořila pipeline podle fotky.',
+    'Popis obrazu - kostru vytvořila pipeline podle fotky.',
     `Zkontroluj a doplň hodnoty označené ${TODO}, pak slovo ${TODO} smaž. Dokud je meta_draft: true, obraz se na webu nezobrazí.`,
   ],
   // former names of attributes: a file still using one is an error (rename it), never migrated silently
@@ -187,12 +187,16 @@ export const WORK_SCHEMA = {
       options: [true, false],
       doc: [
         'Rozpracovaný obraz, možnosti:',
-        '- true – rozpracovaný, na webu se nezobrazí',
-        '- false – zveřejnit',
+        '- true - rozpracovaný, na webu se nezobrazí',
+        '- false - zveřejnit',
       ],
       value: true,
       missing: false,
-      previous: ['true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.'],
+      previous: [[
+        'Rozpracovaný obraz, možnosti:',
+        '- true – rozpracovaný, na webu se nezobrazí',
+        '- false – zveřejnit',
+      ], 'true = rozpracovaný, na webu se nezobrazí; false = zveřejnit.'],
     },
     {
       key: 'meta_corners',
@@ -240,15 +244,24 @@ export const WORK_SCHEMA = {
       doc: [
         'Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu.',
         'Podle rozměrů se dělají mockupy ve skutečné velikosti. Nejčastější možnosti jsou:',
+        '- [38, 29] - Baohong',
+        '- [20, 20] - Khadi malý',
+        '- [30, 30] - Khadi velký',
+        '- [42, 30] - Canson Montval A3',
+        '- [21, 30] - Canson Montval A4',
+        '- [41, 30] - Canson XL',
+      ],
+      value: [0, 0],
+      missing: null,
+      previous: [[
+        'Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu.',
+        'Podle rozměrů se dělají mockupy ve skutečné velikosti. Nejčastější možnosti jsou:',
         '- [38, 29] – Baohong',
         '- [20, 20] – Khadi malý',
         '- [30, 30] – Khadi velký',
         '- [42, 30] – Canson Montval A3',
         '- [21, 30] – Canson Montval A4',
-      ],
-      value: [0, 0],
-      missing: null,
-      previous: [[
+      ], [
         'Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu:',
         'podle rozměrů se dělají mockupy ve skutečné velikosti.',
       ]],
@@ -259,13 +272,19 @@ export const WORK_SCHEMA = {
       options: ['available', 'reserved', 'sold', 'not-for-sale'],
       doc: [
         'Stav prodeje, možnosti:',
+        '- available - k prodeji (s cenou price)',
+        '- reserved - rezervováno (s cenou price)',
+        '- sold - prodáno',
+        '- not-for-sale - není na prodej, na webu bez štítku',
+      ],
+      value: 'not-for-sale',
+      previous: [[
+        'Stav prodeje, možnosti:',
         '- available – k prodeji (s cenou price)',
         '- reserved – rezervováno (s cenou price)',
         '- sold – prodáno',
         '- not-for-sale – není na prodej, na webu bez štítku',
-      ],
-      value: 'not-for-sale',
-      previous: [[
+      ], [
         'Stav prodeje: available (k prodeji) | reserved (rezervováno) | sold (prodáno)',
         '| not-for-sale (není na prodej, na webu bez štítku).',
       ]],
@@ -291,10 +310,14 @@ export const WORK_SCHEMA = {
       options: [true, false],
       doc: [
         'Fotky pro Instagram, možnosti:',
+        '- true - připravit (export/instagram: originál a detailní fotky)',
+        '- false - žádné',
+      ],
+      previous: [[
+        'Fotky pro Instagram, možnosti:',
         '- true – připravit (export/instagram: originál a detailní fotky)',
         '- false – žádné',
-      ],
-      previous: ['true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.'],
+      ], 'true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.'],
       value: false,
     },
     {
@@ -303,10 +326,14 @@ export const WORK_SCHEMA = {
       options: [true, false],
       doc: [
         'Mockupy (obraz v rámu v interiéru), možnosti:',
+        '- true - na webu, u obrazu na prodej i pro Fler',
+        '- false - žádné',
+      ],
+      previous: [[
+        'Mockupy (obraz v rámu v interiéru), možnosti:',
         '- true – na webu, u obrazu na prodej i pro Fler',
         '- false – žádné',
-      ],
-      previous: ['true = mockupy (obraz v rámu v interiéru) na webu, u obrazu na prodej i pro Fler; false = žádné.'],
+      ], 'true = mockupy (obraz v rámu v interiéru) na webu, u obrazu na prodej i pro Fler; false = žádné.'],
       value: false,
     },
     {
@@ -315,12 +342,17 @@ export const WORK_SCHEMA = {
       options: [true, false],
       doc: [
         'Výběr autorky, možnosti:',
-        '- true – ve výběru: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně střídají',
+        '- true - ve výběru: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně střídají',
         '  obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover)',
-        '- false – ne',
+        '- false - ne',
       ],
       value: false,
       previous: [[
+        'Výběr autorky, možnosti:',
+        '- true – ve výběru: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně střídají',
+        '  obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover)',
+        '- false – ne',
+      ], [
         'true = ve výběru autorky: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně',
         'střídají obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover). false = ne.',
       ], [
@@ -363,7 +395,7 @@ export const WORK_SCHEMA = {
 export const COLLECTION_SCHEMA = {
   name: 'collection',
   header: [
-    'Kolekce – kostru vytvořila pipeline pro tuto složku.',
+    'Kolekce - kostru vytvořila pipeline pro tuto složku.',
     'Obrazy kolekce jsou soubory v této složce. Adresa kolekce na webu je název složky (bez diakritiky).',
     'Úvodní fotka kolekce (nepovinná): _cover.jpg vedle tohoto souboru.',
     `Zkontroluj a doplň hodnoty označené ${TODO}, pak slovo ${TODO} smaž.`,
@@ -399,7 +431,7 @@ export const COLLECTION_SCHEMA = {
 export const PHOTO_SCHEMA = {
   name: 'photo',
   header: [
-    'Popis fotky – kostru vytvořila pipeline.',
+    'Popis fotky - kostru vytvořila pipeline.',
     `Zkontroluj a doplň hodnoty označené ${TODO}, pak slovo ${TODO} smaž.`,
   ],
   fields: ordered([
@@ -423,7 +455,7 @@ export const PHOTO_SCHEMA = {
 export const YEAR_SCHEMA = {
   name: 'year',
   header: [
-    'Rok – kostru vytvořila pipeline pro rok, ve kterém jsou obrazy (název souboru je rok).',
+    'Rok - kostru vytvořila pipeline pro rok, ve kterém jsou obrazy (název souboru je rok).',
     'Text i úvodní obraz jsou nepovinné. Po vyplnění slovo DOPLNIT smaž.',
   ],
   fields: ordered([
@@ -458,7 +490,7 @@ export const HOME_TEXT = 'Maluji pro radost, hlavně akvarelem – na plenérech
 export const HOME_SCHEMA = {
   name: 'home',
   header: [
-    'Úvodní stránka webu – kostru vytvořila pipeline.',
+    'Úvodní stránka webu - kostru vytvořila pipeline.',
     'Úvodní obraz je nepovinný. Po kontrole hodnot slovo DOPLNIT smaž.',
   ],
   fields: ordered([

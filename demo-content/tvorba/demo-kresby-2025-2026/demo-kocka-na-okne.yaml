@@ -10,13 +10,13 @@ meta_corners:
   bl: [0, 0]
 
 # Rozpracovaný obraz, možnosti:
-# - true – rozpracovaný, na webu se nezobrazí
-# - false – zveřejnit
+# - true - rozpracovaný, na webu se nezobrazí
+# - false - zveřejnit
 meta_draft: false
 
 # Fotky pro Instagram, možnosti:
-# - true – připravit (export/instagram: originál a detailní fotky)
-# - false – žádné
+# - true - připravit (export/instagram: originál a detailní fotky)
+# - false - žádné
 meta_instagram: false
 
 # Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
@@ -34,9 +34,9 @@ description: |
 # details: { 1-mlha: Ranní mlha nad vodou }
 
 # Výběr autorky, možnosti:
-# - true – ve výběru: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně střídají
+# - true - ve výběru: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně střídají
 #   obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover)
-# - false – ne
+# - false - ne
 featured: true
 
 # NEPOVINNÉ. Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
@@ -44,8 +44,8 @@ featured: true
 
 # testovací data: mockupy zapnuté výslovně
 # Mockupy (obraz v rámu v interiéru), možnosti:
-# - true – na webu, u obrazu na prodej i pro Fler
-# - false – žádné
+# - true - na webu, u obrazu na prodej i pro Fler
+# - false - žádné
 mockups: true
 
 # NEPOVINNÉ. Cena v Kč, např. 2500. Povinná u available a reserved.
@@ -53,18 +53,19 @@ price: 900
 
 # Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu.
 # Podle rozměrů se dělají mockupy ve skutečné velikosti. Nejčastější možnosti jsou:
-# - [38, 29] – Baohong
-# - [20, 20] – Khadi malý
-# - [30, 30] – Khadi velký
-# - [42, 30] – Canson Montval A3
-# - [21, 30] – Canson Montval A4
+# - [38, 29] - Baohong
+# - [20, 20] - Khadi malý
+# - [30, 30] - Khadi velký
+# - [42, 30] - Canson Montval A3
+# - [21, 30] - Canson Montval A4
+# - [41, 30] - Canson XL
 size_cm: [21, 29.7]
 
 # Stav prodeje, možnosti:
-# - available – k prodeji (s cenou price)
-# - reserved – rezervováno (s cenou price)
-# - sold – prodáno
-# - not-for-sale – není na prodej, na webu bez štítku
+# - available - k prodeji (s cenou price)
+# - reserved - rezervováno (s cenou price)
+# - sold - prodáno
+# - not-for-sale - není na prodej, na webu bez štítku
 status: reserved
 
 # NEPOVINNÉ. Podklad, např. papír. Bez něj se na webu nezobrazí. Nejčastější možnosti jsou:

@@ -395,7 +395,7 @@ Jediný zdroj pravdy o atributech popisů je `scripts/lib/schema.mjs` (`WORK_SCH
 (`missing`, znamená totéž co chybějící atribut, takže se na webu nic nezmění: chybějící `meta_draft` = `false`,
 `description` = prázdné…) a **technický komentář** (typ, povolené hodnoty, příklady; atribut s pevnými
 možnostmi, tj. `status` a přepínače `true`/`false`, má komentář „…, možnosti:“ a pod ním každou možnost
-na řádku `- <hodnota> – <význam>`). Výčty `WORK_FIELDS`,
+na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`)). Výčty `WORK_FIELDS`,
 `COLLECTION_FIELDS` a `PHOTO_FIELDS` se z něj odvozují. Logika je v `scripts/lib/metadata-yaml.mjs`.
 
 - **Nová kostra** (nová fotka obrazu, složka kolekce, fotka stránky): všechny atributy s výchozími hodnotami,

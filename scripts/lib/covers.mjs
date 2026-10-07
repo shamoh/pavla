@@ -58,7 +58,7 @@ export function coverCrop(data, chosen = hasCoverRef(data)) {
 export function coverProblems({ where, data, photoPath, works, inScope = () => true, scope = '' }) {
   const problems = [];
   if (hasFocus(data) && !isValidFocus(data.focus)) {
-    problems.push(`${where}: focus musí být [x, y] v procentech (0–100), např. focus: [50, 30]`);
+    problems.push(`${where}: focus musí být [x, y] v procentech (0-100), např. focus: [50, 30]`);
   }
   if (hasAspect(data) && !parseAspect(data.aspect)) {
     problems.push(`${where}: aspect musí být šířka:výška, např. aspect: "3:2"`);

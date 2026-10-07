@@ -75,7 +75,7 @@ export async function preparePhotos(contentDir) {
       continue;
     }
     if (data.focus !== undefined && data.focus !== null && !isValidFocus(data.focus)) {
-      problems.push(`${PHOTOS_SUBDIR}/${name}.yaml: focus musí být [x, y] v procentech (0–100), např. focus: [70, 60]`);
+      problems.push(`${PHOTOS_SUBDIR}/${name}.yaml: focus musí být [x, y] v procentech (0-100), např. focus: [70, 60]`);
       continue;
     }
     photos.push({ name, data, masterPath: path.join(root, image.file) });

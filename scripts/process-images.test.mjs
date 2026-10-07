@@ -1073,7 +1073,7 @@ test('existing files get every supported attribute on every run, on a branch too
   assert.match(text, /\n# NEPOVINNÉ\. Cena v Kč.*\n# price: 2500\n/, 'price and fler are commented out');
   assert.equal(data.meta_draft, false, 'a work without draft stays published');
   assert.equal(data.description, null, 'no placeholder text reaches the site');
-  assert.match(text, /# změřeno\n# Šířka × výška v cm[^\n]*\n(# [^\n]*\n){6}size_cm: \[40, 30\]/);
+  assert.match(text, /# změřeno\n# Šířka × výška v cm[^\n]*\n(# [^\n]*\n){7}size_cm: \[40, 30\]/);
   assert.match(text, /^# Rohy listu[^\n]*\n(# [^\n]*\n){3}meta_corners:\n  photo: \[64, 48\]\n(  (tl|tr|br|bl): \[\d+, \d+\]\n){4}\n# Rozpracovaný obraz, možnosti:\n(# - [^\n]*\n){2}meta_draft: false\n/,
     'settled: no DOPLNIT; meta_ attributes come first, the corners of the sheet detected');
   assert.match(text, /# NEZNÁMÝ atribut[^\n]*\nmockup: true\n$/);

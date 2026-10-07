@@ -92,7 +92,7 @@ export function validateWorks(works) {
   const byId = new Map();
   for (const w of works) {
     const where = w.yamlPath ?? `tvorba/${w.dir ? `${w.dir}/` : ''}${w.slug}.yaml`;
-    if (!isValidSlug(w.slug)) problems.push(`${where}: „${w.slug}“ není platné jméno pro adresu (jen a–z, 0–9 a pomlčky), přejmenuj soubor`);
+    if (!isValidSlug(w.slug)) problems.push(`${where}: „${w.slug}“ není platné jméno pro adresu (jen a-z, 0-9 a pomlčky), přejmenuj soubor`);
     if (!isValidId(w.id)) problems.push(`${where}: neplatný kód id „${w.id}“ (kód přiděluje automatika, řádek id smaž a dostane nový)`);
     if (!w.data?.title) problems.push(`${where}: chybí název (title)`);
     if (!w.data?.date) problems.push(`${where}: chybí datum (date)`);

@@ -87,7 +87,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `caption`, `private_note`, `price`, `fler`, `cover`, `aspect`, `focus`) je v souboru zakomentovaný (`# price: 2500`) pod technickým komentářem s `NEPOVINNÉ.`, bez
   `DOPLNIT`; prázdná hodnota = zakomentovat. Nový atribut = záznam ve schématu (prefix určí skupinu), README obou rep
   a testovací data; změna znění komentáře = staré znění do `previous`. Atribut s pevnými možnostmi (výčet, `true`/`false`):
-  komentář „<co>, možnosti:“ a pod ním každá možnost na řádku `- <hodnota> – <význam>`; povolené hodnoty v `options`
+  komentář „<co>, možnosti:“ a pod ním každá možnost na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`); povolené hodnoty v `options`
   pole (test hlídá shodu s komentářem), jiná hodnota = chyba (`optionProblems`), i u rozpracovaného díla. `DOPLNIT` nikdy neodstraňovat za lidi.
 - Testovacích děl (`pavla/demo-content/`) musí být vždy víc, než je nejmenší počet na stránku (aspoň 15 při 12).
 - Náhledy pro sdílení (`og:image` + rozměry): dílo = `og.jpg` celý obraz na papíře (nikdy neořezávat),

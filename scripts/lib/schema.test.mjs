@@ -54,7 +54,7 @@ test('an attribute with options lists exactly them in its technical comment, one
   for (const f of withOptions) {
     const lines = docLines(f);
     assert.match(lines[0], /, možnosti:$/, f.key);
-    const listed = lines.filter((l) => l.startsWith('- ')).map((l) => l.slice(2).split(' – ')[0]);
+    const listed = lines.filter((l) => l.startsWith('- ')).map((l) => l.slice(2).split(' - ')[0]);
     assert.deepEqual(listed, f.options.map(String), f.key);
     assert.ok(f.options.includes(f.value), `${f.key}: the skeleton value is one of the options`);
   }
@@ -69,4 +69,10 @@ test('optionProblems: only values outside the options, in Czech with the options
   assert.deepEqual(optionProblems('f.yaml', { a: 'x', b: false }, schema), []);
   assert.deepEqual(optionProblems('f.yaml', { a: null }, schema), []);
   assert.deepEqual(optionProblems('f.yaml', { b: [1] }, schema), ['f.yaml: b „[1]“ není mezi možnostmi: true, false']);
+});
+
+test('technical comments and file headers use a plain hyphen, never an en dash (–)', () => {
+  for (const schema of SCHEMAS) {
+    for (const line of [...(schema.header ?? []), ...schema.fields.flatMap(docLines)]) assert.ok(!line.includes('–'), line);
+  }
 });
