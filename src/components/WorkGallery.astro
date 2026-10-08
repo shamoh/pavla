@@ -1,5 +1,6 @@
 ---
 import WorkCard from './WorkCard.astro';
+import Pager from './Pager.astro';
 import { type Work, config, getCollection, getCollections, getYears, url } from '../lib/site';
 import { NO_COLLECTION, NO_COLLECTION_TITLE, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
 import { overviewLink, yearCounts, yearOptions } from '../../scripts/lib/collection-filter.mjs';
@@ -94,15 +95,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
 
 <div class="grid" id="grid" data-page-sizes={JSON.stringify(pageSizes)}>{works.map((w, i) => <WorkCard work={w} eager={i < 3} />)}</div>
 <p class="muted empty" id="empty" hidden>Tomuhle výběru nic neodpovídá.</p>
-<!-- Under the grid: the pages in the middle, the page size on the right (on a phone below them). -->
-<div class="pager-row">
-  <nav class="pager" id="pager" aria-label="Stránky" hidden></nav>
-  {works.length > pageSizes[0] && (
-    <label class="per-page" id="per-page">Na stránku
-      <select name="perPage">{pageSizes.map((n) => <option value={n}>{n}</option>)}</select>
-    </label>
-  )}
-</div>
+<Pager pageSizes={pageSizes} total={works.length} />
 
 <script>
   // Every filter and the page are written to the URL right away (?tag=krajina&status=unsold&page=2), so the
@@ -118,12 +111,14 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   // Paging happens here too: the filtered list is split into pages, cards of other pages are hidden
   // (hidden cards load no images). Without JavaScript every work is shown.
   import {
-    ALL_PAGES, FEATURED_ON, PAGE_SIZE_STORAGE_KEY, facetChoices, facetDisplay, matchesFilters, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate,
+    ALL_PAGES, FEATURED_ON, PAGE_SIZE_STORAGE_KEY, facetChoices, facetDisplay, matchesFilters, pageAfterFilterChange, pageSizeOf, pageSizeToRemember, paginate,
     rememberedPageSize, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
   } from '../../scripts/lib/gallery-filter.mjs';
   import { EVENTS, filterEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
   import { rememberListing, revealReturned } from '../lib/page-return';
   import { fitYearRow } from '../lib/year-row';
+  import { pagerTarget, renderPager } from '../lib/pager';
+  import { normalizeQuery } from '../../scripts/lib/search.mjs';
   import { BAR_START, activeFilters, scrollBar, withoutFilter, worksCount } from '../../scripts/lib/filter-bar.mjs';
 
   // The year links stay on one line, older years behind "2017–2003 ▾" (src/lib/year-row.ts).
@@ -138,9 +133,11 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   const tagsOf = (card: HTMLElement) => card.dataset.tags!.split('|').filter(Boolean);
   const workOf = (c: HTMLElement) => {
     const d = c.dataset;
-    return { tags: tagsOf(c), technique: d.technique!, year: d.year!, collection: d.collection!, status: d.status!, featured: d.featured === '1' };
+    return { search: d.search!, tags: tagsOf(c), technique: d.technique!, year: d.year!, collection: d.collection!, status: d.status!, featured: d.featured === '1' };
   };
   const works = cards.map(workOf);
+  // The search in titles and descriptions next to the heading (SearchField.astro, on every page with a gallery).
+  const searchInput = document.getElementById('works-search') as HTMLInputElement | null;
   const countEl = document.getElementById('count')!;
   const emptyEl = document.getElementById('empty')!;
   const grid = document.getElementById('grid')!;
@@ -176,6 +173,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     if (!s || ![...s.options].some((o) => o.value === state[k])) state[k] = '';
   }
   if (!featuredBox) state.featured = '';
+  if (!searchInput) state.q = '';
   // A tag without a chip here (no work of this page has it, e.g. an old link) is off.
   state.tag = state.tag.filter((t) => tagNames.includes(t));
 
@@ -186,32 +184,6 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     return p.size ? `?${p}` : location.pathname;
   };
 
-  // The visitor can switch paging off for this visit ("Zobrazit vše", ?page=all) and back on.
-  function renderPager(page: number | typeof ALL_PAGES, pages: number, total: number) {
-    pager.hidden = pages < 2;
-    pager.replaceChildren();
-    if (pages < 2) return;
-    const link = (label: string, page: number | typeof ALL_PAGES, attrs: Record<string, string> = {}) => {
-      const a = document.createElement('a');
-      a.href = href(page);
-      a.textContent = label;
-      a.dataset.page = String(page);
-      for (const [k, v] of Object.entries(attrs)) a.setAttribute(k, v);
-      return a;
-    };
-    const gap = () => Object.assign(document.createElement('span'), { textContent: '…', className: 'gap' });
-    if (page === ALL_PAGES) {
-      pager.append(link('Zobrazit po stránkách', 1, { class: 'mode' }));
-      return;
-    }
-    if (page > 1) pager.append(link('← Předchozí', page - 1, { rel: 'prev', class: 'step' }));
-    for (const p of pageLinks(page, pages)) {
-      pager.append(p === null ? gap() : link(String(p), p, p === page ? { 'aria-current': 'page' } : { 'aria-label': `Strana ${p}` }));
-    }
-    if (page < pages) pager.append(link('Další →', page + 1, { rel: 'next', class: 'step' }));
-    pager.append(link(`Zobrazit vše (${total})`, ALL_PAGES, { class: 'mode' }));
-  }
-
   /** Shows the works of the current state and writes it to the URL; returns how many works match. */
   function apply() {
     const matching = cards.filter((_, i) => matchesFilters(works[i], state));
@@ -220,7 +192,8 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     const visible = new Set(matching.slice(start, end));
     for (const c of cards) c.hidden = !visible.has(c);
     const shown = matching.length;
-    renderPager(page, pages, matching.length);
+    // The visitor can switch paging off for this visit ("Zobrazit vše", ?page=all) and back on.
+    renderPager(pager, page, pages, matching.length, href);
     chips[0].setAttribute('aria-pressed', String(state.tag.length === 0));
     const choices = tagChoices(tagNames, matching.map(tagsOf), state.tag);
     // A chip that would not narrow the shown works stays, greyed and disabled (every shown work has it, or none).
@@ -260,6 +233,8 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
       label.classList.toggle('off', off);
       label.title = !off ? FEATURED_TITLE : choice.count ? 'Všechna zobrazená díla jsou doporučená' : 'Žádné zobrazené dílo není doporučené';
     }
+    // The field keeps what the visitor types; only a change from elsewhere (the "×" in the bar) rewrites it.
+    if (searchInput && normalizeQuery(searchInput.value) !== state.q) searchInput.value = state.q;
     if (perPageSelect) perPageSelect.value = String(pageSizeOf(state, pageSizes));
     // The page size matters only when the shown works do not fit the smallest page.
     if (perPageLabel) perPageLabel.hidden = matching.length <= pageSizes[0];
@@ -386,6 +361,14 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     trackFilter(apply());
     toResults();
   });
+  // The search filters as the visitor types (back to page 1, no jump: the field stays where it is); statistics only
+  // once the query is done (Enter, leaving the field), not for every letter.
+  searchInput?.addEventListener('input', () => {
+    state.q = normalizeQuery(searchInput.value);
+    state.page = pageAfterFilterChange(state.page);
+    apply();
+  });
+  searchInput?.addEventListener('change', () => trackFilter(cards.filter((_, i) => matchesFilters(works[i], state)).length));
   // Picking a page size (under the grid) starts again on page 1 with paging on, from the top of the works.
   perPageSelect?.addEventListener('change', () => {
     state = withPageSize(state, Number(perPageSelect.value), pageSizes);
@@ -395,10 +378,10 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     slot.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   pager.addEventListener('click', (e) => {
-    const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[data-page]');
-    if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return; // let "open in new tab" work
+    const page = pagerTarget(e);
+    if (page === null) return; // let "open in new tab" work
     e.preventDefault();
-    state.page = a.dataset.page === ALL_PAGES ? ALL_PAGES : Number(a.dataset.page);
+    state.page = page;
     apply();
     quiet(false);
     slot.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -489,21 +472,6 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   .selects label[hidden] { display: none; }
   .selects .switch { color: var(--ink); cursor: pointer; }
   .count { margin-left: auto; }
-  .pager-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 12px; margin: 16px 0 8px; }
-  .pager { grid-column: 2; display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 6px 14px; font-size: 0.95rem; }
-  .per-page { grid-column: 3; justify-self: end; display: flex; gap: 8px; align-items: center; font-size: 0.9rem; color: var(--ink-soft); white-space: nowrap; }
-  .per-page[hidden] { display: none; }
-  .per-page select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 4px 8px; border-radius: 2px; }
-  @media (max-width: 700px) {
-    .pager-row { grid-template-columns: 1fr; justify-items: center; }
-    .pager, .per-page { grid-column: 1; justify-self: center; }
-  }
-  .pager a { text-decoration: none; color: var(--ink-soft); padding: 4px 8px; border-bottom: 1px solid transparent; }
-  .pager a:hover { color: var(--ink); }
-  .pager a[aria-current='page'] { color: var(--ink); border-bottom-color: var(--ink); }
-  .pager .step { font-family: var(--serif); font-size: 1.1rem; }
-  .pager .gap { color: var(--ink-soft); }
-  .pager .mode { flex-basis: 100%; text-align: center; font-size: 0.88rem; text-decoration: underline; text-underline-offset: 3px; }
   .years .to-collections { margin-left: auto; font-size: 1rem; font-family: var(--sans); align-self: center; }
   .grid { columns: 3 300px; column-gap: 36px; }
   .grid :global(.card[hidden]) { display: none; }

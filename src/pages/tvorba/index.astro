@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import WorkGallery from '../../components/WorkGallery.astro';
+import SearchField from '../../components/SearchField.astro';
 import { getWorks, site } from '../../lib/site';
 import { breadcrumbLd, collectionPageLd, graphLd } from '../../../scripts/lib/seo.mjs';
 
@@ -11,6 +12,16 @@ const jsonLd = graphLd(
 );
 ---
 <Base title="Tvorba" description={description} jsonLd={jsonLd}>
-  <h1>Tvorba</h1>
+  <div class="page-head">
+    <h1>Tvorba</h1>
+    <SearchField id="works-search" label="Hledat v názvech a popisech obrazů" placeholder="Hledat v názvech a popisech…" />
+  </div>
   <WorkGallery works={getWorks()} />
 </Base>
+
+<style>
+  /* The search to the right of the heading, on a phone under it. */
+  .page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 24px; }
+  .page-head h1 { margin-right: auto; }
+  @media (max-width: 700px) { .page-head { flex-direction: column; align-items: stretch; margin-bottom: 20px; } }
+</style>

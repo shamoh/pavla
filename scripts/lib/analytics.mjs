@@ -41,7 +41,7 @@ export function gtagConfigScript(id) {
 
 /** Names of the own events; their parameters must be registered as custom dimensions in GA (see README). */
 export const EVENTS = {
-  filter: 'gallery_filter', // tag (picked tags joined by a comma), technique, year, collection, status (only the active ones), results
+  filter: 'gallery_filter', // tag (picked tags joined by a comma), technique, year, collection, status, featured, q (only the active ones), results
   fler: 'fler_click', // work_id, work_title
   email: 'email_click', // the address on the contact page; "Napsat autorce" of a work (work_id, work_title) without messages
   message: 'message_sent', // message_type, work_id and work_title (a message about a work)

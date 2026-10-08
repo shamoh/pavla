@@ -4,6 +4,7 @@
 // otherwise `cover: <id>` or `cover: <id>#<detail>` from its YAML, otherwise its newest work.
 import Base from '../../../layouts/Base.astro';
 import WorkGallery from '../../../components/WorkGallery.astro';
+import SearchField from '../../../components/SearchField.astro';
 import Cover from '../../../components/Cover.astro';
 import { collectionShareImage, getCollections, site, url, type Collection } from '../../../lib/site';
 import { breadcrumbLd, collectionPageLd, graphLd } from '../../../../scripts/lib/seo.mjs';
@@ -28,6 +29,7 @@ const jsonLd = graphLd(
       <p class="eyebrow">Kolekce</p>
       <h1>{title}</h1>
       {description && <p class="desc">{description}</p>}
+      <SearchField id="works-search" label={`Hledat v názvech a popisech obrazů kolekce ${title}`} placeholder="Hledat v názvech a popisech…" />
     </div>
     <Cover cover={collection.cover} sizes="(max-width: 900px) 100vw, 55vw" eager />
   </header>
@@ -38,6 +40,8 @@ const jsonLd = graphLd(
   .back a { text-decoration: none; color: var(--ink-soft); }
   .intro { display: grid; grid-template-columns: 1fr 1.2fr; gap: clamp(24px, 5vw, 64px); align-items: center; margin-bottom: 56px; }
   .intro h1 { margin-top: 0.1em; }
+  /* The search in the works of this page, under the heading and its text (SearchField.astro). */
+  .intro :global(.search) { margin-top: 12px; }
   .desc { white-space: pre-line; font-size: 1.05rem; }
   @media (max-width: 900px) { .intro { grid-template-columns: 1fr; } }
 </style>

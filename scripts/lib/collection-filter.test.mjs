@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  COLLECTIONS_PAGE_SIZE_STORAGE_KEY, matchesOverview, overviewStateFromParams, overviewStateToParams, sortCollections,
   collectionLink, encodeYearCounts, matchesYear, overviewLink, parseYearCounts, worksLabel, worksPlural, yearCounts,
   yearFromParams, yearOptions, yearToParams,
 } from './collection-filter.mjs';
@@ -84,4 +85,33 @@ test('overviewLink filters the overview only to an offered year', () => {
   assert.equal(overviewLink(href, 2024, [2026, 2025]), href);
   assert.equal(overviewLink(href, undefined, [2026, 2025]), href);
   assert.equal(overviewLink(href, 2025, []), href);
+});
+
+test('sortCollections: the newest work first, the same day by title', () => {
+  const c = (title, ...dates) => ({ title, works: dates.map((d) => ({ date: new Date(d) })) });
+  const sorted = sortCollections([c('Zátiší', '2020-01-01'), c('Řeky', '2023-07-02', '2021-05-16'), c('Louky', '2023-07-02'), c('Tatry', '2000-07-18')]);
+  assert.deepEqual(sorted.map((x) => x.title), ['Louky', 'Řeky', 'Zátiší', 'Tatry'], 'a new picture moves a collection up');
+});
+
+test('overview state: year when offered, search, paging; written back without defaults', () => {
+  const state = overviewStateFromParams(new URLSearchParams('year=2025&q=%20plener%20&page=2&perPage=24'), [2025, 2026], [12, 24, 48]);
+  assert.deepEqual(state, { year: '2025', q: 'plener', page: 2, perPage: 24 });
+  assert.equal(overviewStateToParams(state).toString(), 'year=2025&q=plener&page=2&perPage=24');
+  assert.deepEqual(overviewStateFromParams(new URLSearchParams('year=1990&page=all'), [2025], [12, 24]), { year: '', q: '', page: 'all', perPage: null });
+  assert.equal(overviewStateToParams({ year: '', q: '', page: 1, perPage: null }).toString(), '');
+  assert.equal(COLLECTIONS_PAGE_SIZE_STORAGE_KEY, 'pavla.collections.perPage', 'apart from the gallery');
+});
+
+test('matchesOverview: year and search in titles and descriptions; "Mimo kolekce" follows the year, never the search', () => {
+  const plener = { title: 'Plenér Štěkeň 2025', years: [2025] };
+  const mimo = { title: 'Mimo kolekce', years: [2025, 2019], uncollected: true };
+  const all = { year: '', q: '' };
+  assert.ok(matchesOverview(plener, all) && matchesOverview(mimo, all));
+  assert.ok(matchesOverview(plener, { ...all, q: 'steken' }));
+  assert.ok(!matchesOverview(plener, { ...all, q: 'sumava' }));
+  const withText = { title: 'Tatry 2000', description: 'Týden na chatě pod Štrbským plesem.', years: [2000] };
+  assert.ok(matchesOverview(withText, { ...all, q: 'strbskym tatry' }), 'words in the title and the description');
+  assert.ok(matchesOverview({ search: 'tatry 2000 tyden na chate', years: [2000] }, { ...all, q: 'chate' }), 'the prepared text of a card');
+  assert.ok(!matchesOverview(mimo, { ...all, q: 'mimo' }), 'not a collection: left out while searching');
+  assert.ok(matchesOverview(mimo, { ...all, year: '2019' }) && !matchesOverview(plener, { ...all, year: '2019' }));
 });

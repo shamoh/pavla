@@ -1,13 +1,18 @@
 ---
-// Overview of all collections: /tvorba/kolekce/ (the one with the newest work first), filtered by year in the
-// browser (?year=2025: the collections with at least one work of that year, each with its works of that year and a
-// link opening it filtered to the year; scripts/lib/collection-filter.mjs).
+// Overview of all collections: /tvorba/kolekce/, the one with the newest work first (sortCollections in
+// scripts/lib/collection-filter.mjs), "Mimo kolekce" last. In the browser: filtered by year (?year=2025: the
+// collections with at least one work of that year, each with its works of that year and a link opening it filtered
+// to the year), searched in titles and descriptions (?q=) and paged like the gallery
+// (?page=, ?perPage=, page=all; the page size remembered apart from the gallery's).
 import Base from '../../../layouts/Base.astro';
 import Cover from '../../../components/Cover.astro';
-import { collectionShareImage, collectionUrl, getCollections, getUncollected, site, url } from '../../../lib/site';
+import Pager from '../../../components/Pager.astro';
+import SearchField from '../../../components/SearchField.astro';
+import { collectionShareImage, collectionUrl, config, getCollections, getUncollected, site, url } from '../../../lib/site';
 import { NO_COLLECTION } from '../../../../scripts/lib/gallery-filter.mjs';
 import { encodeYearCounts, worksLabel, yearCounts, yearOptions } from '../../../../scripts/lib/collection-filter.mjs';
 import { breadcrumbLd, collectionPageLd, graphLd } from '../../../../scripts/lib/seo.mjs';
+import { searchText } from '../../../../scripts/lib/search.mjs';
 
 const collections = getCollections();
 const counts = collections.map((c) => yearCounts(c.works));
@@ -17,6 +22,9 @@ const uncollected = collections.length ? getUncollected() : null;
 const uncollectedHref = url(`/tvorba/?collection=${NO_COLLECTION}`);
 // Years narrowing the list (no year with none or all collections); none left = no year filter.
 const options = yearOptions(counts.map((yc) => yc.map(([y]) => y)));
+// Paged by the sizes of the gallery.
+const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
+const total = collections.length + (uncollected ? 1 : 0);
 const description = 'Obrazy seskupené podle plenérů, výletů a témat: co vzniklo na jednom místě nebo patří k sobě.';
 const jsonLd = graphLd(
   collectionPageLd(site, { path: '/tvorba/kolekce/', name: 'Kolekce', description, items: collections, itemPath: (c) => `/tvorba/kolekce/${c.slug}/` }),
@@ -25,7 +33,10 @@ const jsonLd = graphLd(
 ---
 <Base title="Kolekce" description={description} image={collections[0] && collectionShareImage(collections[0])} jsonLd={jsonLd}>
   <p class="back"><a href={url('/tvorba/')} data-return>← Tvorba</a></p>
-  <h1>Kolekce</h1>
+  <div class="page-head">
+    <h1>Kolekce</h1>
+    {collections.length > 0 && <SearchField id="collections-search" label="Hledat v názvech a popisech kolekcí" placeholder="Hledat v názvech a popisech…" />}
+  </div>
   {collections.length === 0 && <p class="muted">Zatím tu žádná kolekce není.</p>}
   {options.length > 0 && (
     <div class="years" id="years" role="group" aria-label="Roky">
@@ -33,9 +44,9 @@ const jsonLd = graphLd(
       {options.map((o) => <button type="button" data-year={o.year} data-year-item={o.year} aria-pressed="false">{o.year} <small>({o.count})</small></button>)}
     </div>
   )}
-  <div class="list">
+  <div class="list" id="list" data-page-sizes={JSON.stringify(pageSizes)}>
     {collections.map((c, i) => (
-      <a class="item" href={collectionUrl(c.slug)} data-href={collectionUrl(c.slug)} data-slug={c.slug} data-years={encodeYearCounts(counts[i])}>
+      <a class="item" href={collectionUrl(c.slug)} data-href={collectionUrl(c.slug)} data-slug={c.slug} data-search={searchText(c)} data-years={encodeYearCounts(counts[i])}>
         <Cover cover={c.cover} sizes="(max-width: 700px) 100vw, 50vw" eager={i < 2} link={false} class="collection-cover" />
         <span class="title">{c.title}</span>
         <span class="muted" data-works={c.works.length}>{worksLabel(c.works.length, c.works.length)}</span>
@@ -43,7 +54,7 @@ const jsonLd = graphLd(
       </a>
     ))}
     {uncollected && (
-      <a class="item uncollected" href={uncollectedHref} data-href={uncollectedHref} data-years={encodeYearCounts(yearCounts(uncollected.works))}>
+      <a class="item uncollected" href={uncollectedHref} data-href={uncollectedHref} data-uncollected data-years={encodeYearCounts(yearCounts(uncollected.works))}>
         <Cover cover={uncollected.cover} sizes="(max-width: 700px) 100vw, 50vw" link={false} class="collection-cover" />
         <span class="title">{uncollected.title}</span>
         <span class="muted" data-works={uncollected.works.length}>{worksLabel(uncollected.works.length, uncollected.works.length)}</span>
@@ -51,58 +62,123 @@ const jsonLd = graphLd(
       </a>
     )}
   </div>
+  {collections.length > 0 && <p class="muted empty" id="empty" hidden>Hledání neodpovídá žádná kolekce.</p>}
+  {collections.length > 0 && <Pager pageSizes={pageSizes} total={total} />}
 </Base>
 <script>
-  // The picked year is written to the URL right away (?year=2025), so the filtered overview can be shared as a
-  // link. With a year picked, each shown collection tells its works of that year ("2 z 5 děl") and its link opens
-  // the collection filtered to the year. The year is also remembered for this tab (scripts/lib/page-return.mjs), so
-  // "← Kolekce" on a collection page leads back to it even through a work page. Without JavaScript every collection
-  // is shown.
-  import { collectionLink, matchesYear, parseYearCounts, worksLabel, yearFromParams, yearToParams } from '../../../../scripts/lib/collection-filter.mjs';
+  // The state (year, search, page, page size) is written to the URL right away (?year=2025&q=plener&page=2), so the
+  // overview can be shared as a link, and remembered for this tab (scripts/lib/page-return.mjs), so "← Kolekce" on a
+  // collection page leads back to it even through a work page. With a year picked, each shown collection tells its
+  // works of that year ("2 z 5 děl") and its link opens the collection filtered to the year. The page size the
+  // visitor picks is remembered in this browser apart from the gallery's; a link with page or perPage wins. Without
+  // JavaScript every collection is shown.
+  import {
+    COLLECTIONS_PAGE_SIZE_STORAGE_KEY, collectionLink, matchesOverview, overviewStateFromParams, overviewStateToParams, parseYearCounts, worksLabel,
+  } from '../../../../scripts/lib/collection-filter.mjs';
+  import { pageAfterFilterChange, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize, withPageSize } from '../../../../scripts/lib/gallery-filter.mjs';
+  import { normalizeQuery } from '../../../../scripts/lib/search.mjs';
   import { EVENTS, filterEventParams, trackEvent } from '../../../../scripts/lib/analytics.mjs';
   import { rememberListing, revealReturned } from '../../../lib/page-return';
   import { fitYearRow } from '../../../lib/year-row';
+  import { pagerTarget, renderPager } from '../../../lib/pager';
 
+  const list = document.getElementById('list')!;
+  const items = [...list.querySelectorAll<HTMLElement>('.item')];
   const group = document.getElementById('years');
-  const items = [...document.querySelectorAll<HTMLElement>('.list .item')];
-  rememberListing('');
-  if (group) {
-    const buttons = [...group.querySelectorAll<HTMLButtonElement>('button[data-year]')];
-    const offered = buttons.map((b) => b.dataset.year!).filter(Boolean).map(Number);
-    let year = yearFromParams(new URLSearchParams(location.search), offered);
+  const buttons = group ? [...group.querySelectorAll<HTMLButtonElement>('button[data-year]')] : [];
+  const offered = buttons.map((b) => b.dataset.year!).filter(Boolean).map(Number);
+  const search = document.getElementById('collections-search') as HTMLInputElement | null;
+  const pager = document.getElementById('pager');
+  const perPageLabel = document.getElementById('per-page');
+  const perPageSelect = perPageLabel?.querySelector('select') ?? null;
+  const empty = document.getElementById('empty');
+  const head = document.querySelector<HTMLElement>('.page-head')!;
+  const pageSizes: number[] = JSON.parse(list.dataset.pageSizes!);
+  const storage = {
+    get: () => { try { return localStorage.getItem(COLLECTIONS_PAGE_SIZE_STORAGE_KEY); } catch { return null; } },
+    set: (v: string | null) => {
+      try { v === null ? localStorage.removeItem(COLLECTIONS_PAGE_SIZE_STORAGE_KEY) : localStorage.setItem(COLLECTIONS_PAGE_SIZE_STORAGE_KEY, v); } catch { /* ignore */ }
+    },
+  };
+  const params = new URLSearchParams(location.search);
+  let state = overviewStateFromParams(params, offered, pageSizes);
+  if (!search) state.q = '';
+  if (perPageSelect) state.perPage = rememberedPageSize(params, storage.get(), pageSizes) ?? state.perPage;
+  const itemOf = (el: HTMLElement) => ({
+    search: el.dataset.search ?? '', years: parseYearCounts(el.dataset.years!).map(([y]) => y), uncollected: 'uncollected' in el.dataset,
+  });
+  const href = (page: number | 'all') => {
+    const p = overviewStateToParams({ ...state, page });
+    return p.size ? `?${p}` : location.pathname;
+  };
 
-    /** Shows the collections of the picked year and writes it to the URL; returns how many are shown. */
-    const apply = () => {
-      for (const item of items) {
-        const counts = parseYearCounts(item.dataset.years!);
-        item.hidden = !matchesYear(counts.map(([y]) => y), year);
-        const works = item.querySelector<HTMLElement>('[data-works]')!;
-        const total = Number(works.dataset.works);
-        const count = year ? counts.find(([y]) => String(y) === year)?.[1] ?? 0 : total;
-        works.textContent = worksLabel(count, total);
-        (item as HTMLAnchorElement).href = collectionLink(item.dataset.href!, year, count, total);
-      }
-      buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.year === year)));
-      const p = yearToParams(year);
-      history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
-      rememberListing(p);
-      return items.filter((i) => !i.hidden).length;
-    };
-    buttons.forEach((b) => b.addEventListener('click', () => {
-      year = b.dataset.year!;
-      const results = apply();
-      // The same event as the gallery filter (its year parameter), the page tells them apart.
-      trackEvent(EVENTS.filter, filterEventParams({ year }, results));
-    }));
-    apply();
-    // The year chips stay on one line, older years behind "2017–2003 ▾" (src/lib/year-row.ts).
-    fitYearRow(group);
+  /** Shows the items of the state on its page and writes the state to the URL; returns how many match. */
+  function apply() {
+    const matching = items.filter((el) => matchesOverview(itemOf(el), state));
+    const { page, pages, start, end } = paginate(matching.length, state.page, pageSizeOf(state, pageSizes));
+    state.page = page;
+    const visible = new Set(matching.slice(start, end));
+    for (const item of items) {
+      item.hidden = !visible.has(item);
+      const counts = parseYearCounts(item.dataset.years!);
+      const works = item.querySelector<HTMLElement>('[data-works]')!;
+      const total = Number(works.dataset.works);
+      const count = state.year ? counts.find(([y]) => String(y) === state.year)?.[1] ?? 0 : total;
+      works.textContent = worksLabel(count, total);
+      (item as HTMLAnchorElement).href = collectionLink(item.dataset.href!, state.year, count, total);
+    }
+    buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.year === state.year)));
+    if (pager) renderPager(pager, page, pages, matching.length, href);
+    if (perPageSelect) perPageSelect.value = String(pageSizeOf(state, pageSizes));
+    if (perPageLabel) perPageLabel.hidden = matching.length <= pageSizes[0];
+    if (empty) empty.hidden = matching.length > 0;
+    // The field keeps what the visitor types; only a change from elsewhere rewrites it.
+    if (search && normalizeQuery(search.value) !== state.q) search.value = state.q;
+    const p = overviewStateToParams(state);
+    history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
+    rememberListing(p);
+    return matching.length;
   }
+  // The same event as the gallery filter (its year and q parameters), the page tells them apart.
+  const track = (results: number) => trackEvent(EVENTS.filter, filterEventParams({ year: state.year, q: state.q }, results));
+  const toTop = () => head.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  buttons.forEach((b) => b.addEventListener('click', () => {
+    state = { ...state, year: b.dataset.year!, page: pageAfterFilterChange(state.page) };
+    track(apply());
+  }));
+  search?.addEventListener('input', () => {
+    state = { ...state, q: normalizeQuery(search.value), page: pageAfterFilterChange(state.page) };
+    apply();
+  });
+  search?.addEventListener('change', () => track(items.filter((el) => matchesOverview(itemOf(el), state)).length));
+  pager?.addEventListener('click', (e) => {
+    const page = pagerTarget(e);
+    if (page === null) return; // let "open in new tab" work
+    e.preventDefault();
+    state.page = page;
+    apply();
+    toTop();
+  });
+  perPageSelect?.addEventListener('change', () => {
+    state = withPageSize(state, Number(perPageSelect.value), pageSizes);
+    storage.set(pageSizeToRemember(Number(perPageSelect.value), pageSizes));
+    apply();
+    toTop();
+  });
+  apply();
+  // The year chips stay on one line, older years behind "2017–2003 ▾" (src/lib/year-row.ts).
+  if (group) fitYearRow(group);
   // Back from a collection page (← Kolekce): to the card of that collection, when shown for the picked year.
   revealReturned(items, 'slug');
 </script>
 <style>
   .back { margin: -12px 0 24px; font-size: 0.9rem; }
+  /* The search to the right of the heading, on a phone under it. */
+  .page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 24px; }
+  .page-head h1 { margin-right: auto; }
+  @media (max-width: 700px) { .page-head { flex-direction: column; align-items: stretch; margin-bottom: 20px; } }
+  .empty[hidden] { display: none; }
   .back a { text-decoration: none; color: var(--ink-soft); }
   .years { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 32px; }
   .years button {

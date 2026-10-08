@@ -120,6 +120,7 @@ Tohle je závazné pravidlo: každý nový filtr musí mít parametr v URL.
 | Kolekce (jen na `/tvorba/` a stránce roku; za „vše“ volba „žádná“ = díla bez kolekce, jen když nějaká jsou) | `collection` | slug kolekce, `?collection=plener-sumava-2026`; `none` = žádná (`NO_COLLECTION`, v liště čip „bez kolekce“) |
 | Stav (s počty) | `status` | `unsold` = na prodej, `kept` = ještě mám, `gone` = už nemám |
 | Doporučené = výběr autorky (přepínač s počtem a bublinou „Výběr autorky: …“, jen když výpis nějaké má, ale ne všechna) | `featured` | `1` = jen díla s `featured: true`, jiná hodnota se ignoruje |
+| Hledání v názvech a popisech děl (každá galerie, viz *Hledání*) | `q` | `?q=ranni mlha`: každé slovo musí být částí názvu nebo popisu díla |
 | Stránka (viz *Stránkování*) | `page` | číslo stránky od 2, `all` = vše bez stránkování |
 | Na stránku (viz *Stránkování*) | `perPage` | `24` nebo `48` (výchozí 12 se nepíše) |
 
@@ -288,9 +289,28 @@ nic nezmění. Veřejná kopie je `content/_index.yaml` (web `getHome`); bez ní
 „Barvy, voda a trochu náhody“ je dál v `src/pages/index.astro`. Vyzkoušení: `demo-content/_index.yaml`, `/`.
 - Vyzkoušení: `npm run demo`, `/tvorba/2026/` (text z `demo-content/roky/2026.yaml`) a `/tvorba/2025/` (bez textu).
 
+### Hledání
+
+Hledání (`scripts/lib/search.mjs`, pole `src/components/SearchField.astro`) je vždy, na každém výpisu:
+v každé galerii (`/tvorba/`, stránka roku, stránka kolekce) v **názvech a popisech** děl (pole `#works-search`: na
+`/tvorba/` vpravo od nadpisu, u roku a kolekce v úvodu pod nadpisem a textem), na přehledu kolekcí v **názvech
+a popisech** kolekcí (`#collections-search` vpravo od „Kolekce“); na telefonu pod nadpisem. Text každého díla
+i kolekce (`searchText`: název a popis bez diakritiky, malými písmeny) se připraví už při stavbě do karty
+(`data-search`), psaní ho nepřepočítává.
+
+- Pravidla (`matchesQuery`): každé slovo dotazu musí být **částí** názvu nebo popisu (podřetězec, nikdy regulární výraz),
+  bez ohledu na velikost písmen a diakritiku („stek“ najde „Štěkeň“), na pořadí slov ani mezerách nezáleží. Prázdné =
+  vše. Tvary slov se nesrovnávají: „mlha“ nenajde „v mlze“ (kratší kořen „ml“ ano).
+- Filtruje se už při psaní, zpět na 1. stránku, bez skoku na výsledky. Dotaz je v adrese jako `?q=` (mezery srovnané,
+  nejvýš `SEARCH_MAX` = 80 znaků), odkaz jde poslat dál; v galerii se kombinuje se všemi filtry (počty u výběrů
+  i štítky ho započítají) a v liště filtrů je jako čip „„ranní mlha“ ×“.
+- Statistika: událost `gallery_filter` s parametrem `q` až po dopsání (Enter, opuštění pole), ne po každém písmenu.
+- „Mimo kolekce“ při hledání na přehledu kolekcí chybí (hledá se v kolekcích, ta to není); rok sleduje dál.
+
 ### Stránkování
 
-Každý výpis děl (`/tvorba/`, stránky roků, stránky kolekcí) se stránkuje. Pod
+Každý výpis děl (`/tvorba/`, stránky roků, stránky kolekcí) i přehled kolekcí `/tvorba/kolekce/` se stránkuje
+(řádek pod výpisem: `src/components/Pager.astro`, odkazy `src/lib/pager.ts`). Pod
 výpisem jsou čísla stránek, šipky „← Předchozí / Další →“ a mezery „…“ u dlouhých
 seznamů.
 
@@ -302,7 +322,8 @@ seznamů.
   vypnuté. Jiná hodnota v URL se ignoruje. Výběr se ukáže, jen když má výpis
   víc děl, než je nejmenší počet (na stránce roku s 6 díly ho neuvidíš).
 - **Zapamatování počtu:** zvolený počet si prohlížeč pamatuje i pro další
-  návštěvy a pro ostatní výpisy (`localStorage`, klíč `pavla.gallery.perPage`).
+  návštěvy a pro ostatní výpisy děl (`localStorage`, klíč `pavla.gallery.perPage`); přehled kolekcí si ho pamatuje
+  zvlášť (`pavla.collections.perPage`, `COLLECTIONS_PAGE_SIZE_STORAGE_KEY`), volba u kolekcí galerii nemění.
   Volba výchozího počtu paměť smaže. Pravidla, aby odkazy dál ukazovaly všem
   totéž:
   - odkaz s `perPage` nebo `page` v URL má vždy přednost (odkaz `?page=2` od
@@ -614,6 +635,8 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | lišta filtrů při posunu nahoru, panel „Upravit“ (na úzké obrazovce zespodu) | `/tvorba/` (58 děl, stránka je dost dlouhá); úzká obrazovka: DevTools → režim zařízení |
 | počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (8 děl, Kolekce jen Kresby…, Skicák (po 2), Plenér Šumava, Portréty, Ptáci, Tatry (po 1), bez „žádná“), + kolekce Kresby, pastely a kvaš (2 díla; přepínač Doporučené zmizí, oba obrazy jsou vybrané); štítek „krajina“: Technika jen akvarel (23), kresba tužkou, kvaš, linoryt |
 | výběr více štítků („a zároveň“): čipy se zapínají a vypínají, aktivní zůstanou jen ty, které výběr zúží, ostatní zašednou | `/tvorba/`: „krajina“ (28 děl, 17 aktivních čipů), + „voda“ (9 děl, aktivní hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, aktivní jaro a léto), „Vše“ zruší |
+| hledání v názvech a popisech děl | `/tvorba/`: pole vpravo od „Tvorba“, „most noc“ → Most v noci (`?q=most+noc`, v liště čip „„most noc“ ×“); `/tvorba/kolekce/demo-plener-sumava-2026/`: pole pod textem kolekce, „mlha“ → Ráno u rybníka (slovo jen v popisu), Šumava v mlze ne (jiný tvar) |
+| přehled kolekcí: pořadí, stránkování, hledání | `/tvorba/kolekce/`: 16 kolekcí + „Mimo kolekce“ = 2 stránky po 12 (Město 2026 první, „Mimo kolekce“ poslední na 2. stránce), „Na stránku“ 24 = vše na jedné (paměť `pavla.collections.perPage`, galerie se nezmění); hledání „plener“ → Plenér Šumava 2026 a Plenér Krkonoše 2006, „strbskym“ → Tatry 2000 (slovo jen v popisu), „mimo“ → „Hledání neodpovídá žádná kolekce.“ |
 | zašedlé filtry místo schovaných | `/tvorba/2000/`: Kolekce zašedlá s „Tatry 2000 (3)“, „Doporučené (0)“ a čip „#krajina“ zašedlé, Technika a Stav aktivní; `/tvorba/2007/` (jedno dílo) vše zašedlé |
 | doporučení ke štítkům v souhrnu: jeden štítek ve dvou tvarech / dva štítky vždy spolu / čipy přes 2 řádky; statistika štítků | „květiny“ a „květina“ (Pivoňky) / „noc“ a „světla“ (Noční město 2019) / 31 štítků asi na 3 řádky, kandidáti jen u jednoho díla; výpis `npm run demo:prepare` (`? advice: Štítky: …`) |
 | filtr bez zbytečných voleb: Stav jen „na prodej“, bez Výběru autorky (všechna díla vybraná) / bez filtru Stav | Ze zahrady 2025 / Kresby, pastely a kvaš 2025–2026 / Město 2026 |
@@ -838,6 +861,11 @@ private_note: kde … # NEPOVINNÉ, soukromé, na web se nedostane
   zapíše do adresy (`?year=2025`, jiná nebo nenabízená hodnota = vše), odkaz jde poslat dál. Jako u filtrů galerie
   se nenabízí rok, který ukazuje všechny kolekce (= „Vše“); bez takového roku se filtr neukáže vůbec. Bez JavaScriptu
   jsou vidět všechny kolekce. Změna roku posílá událost `gallery_filter` (parametr `year`, `results` = počet kolekcí).
+- Pořadí přehledu (`sortCollections`): kolekce s nejnovějším dílem první (nový obraz kolekci posune nahoru), ve stejný
+  den abecedně podle názvu, „Mimo kolekce“ vždy poslední.
+- Přehled se stránkuje jako galerie (`?page=`, `?perPage=`, `page=all`, viz *Stránkování*; „Mimo kolekce“ je položka
+  seznamu) a má vpravo od nadpisu hledání v názvech a popisech kolekcí (`?q=`, viz *Hledání*). Stav celého přehledu `{ year, q, page, perPage }` je v adrese (`overviewStateFromParams`,
+  `overviewStateToParams`, `matchesOverview` ve `scripts/lib/collection-filter.mjs`) a zapamatuje se pro „← Kolekce“.
   Logika `scripts/lib/collection-filter.mjs`. Vyzkoušet: `npm run demo`, `/tvorba/kolekce/` (testovací kolekce
   jsou z let 2025 a 2026, jedna z obou).
 - Stránka kolekce má nahoře odkaz **„← Kolekce“** na přehled; vede zpět s rokem, který tam návštěvník měl
@@ -1225,7 +1253,7 @@ analytics:
 
   | Událost | Kdy | Parametry |
   |---|---|---|
-  | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav) nebo na přehledu kolekcí rok; ne stránkování ani počet na stránku | aktivní filtry `tag` (víc štítků jako jedna hodnota spojená čárkou v abecedním pořadí, např. `krajina,voda`), `technique`, `year`, `collection`, `status`, `featured` (prázdné se neposílají) a `results` (kolik děl, na přehledu kolekcí kolik kolekcí odpovídá) |
+  | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav, hledání) nebo na přehledu kolekcí rok či hledání; ne stránkování ani počet na stránku | aktivní filtry `tag` (víc štítků jako jedna hodnota spojená čárkou v abecedním pořadí, např. `krajina,voda`), `technique`, `year`, `collection`, `status`, `featured`, `q` (hledání, i na přehledu kolekcí; prázdné se neposílají) a `results` (kolik děl, na přehledu kolekcí kolik kolekcí odpovídá) |
   | `fler_click` | klik na „Koupit na Fleru“ u díla | `work_id`, `work_title` |
   | `email_click` | jen odkazy `mailto:`: klik na e-mailovou adresu na Kontaktu (kdo píše rovnou z pošty místo formuláře); bez formuláře zpráv i klik na „Napsat autorce“ u díla. Předmět e-mailu má stejný tvar jako odeslaná zpráva (`[pavla-web] Pozdrav nebo vzkaz`, u díla `[pavla-web] Dotaz na obraz: <název> (<id>)` / `Zájem o koupi: …`) | u díla `work_id`, `work_title`, na Kontaktu žádné |
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
@@ -1236,7 +1264,7 @@ analytics:
 - **Jednorázově v GA** (bez toho se parametry v přehledech neukážou, jen počty událostí):
   *Administrátor → Vlastní definice → Vytvořit vlastní dimenzi*, rozsah **Událost**, pro každý parametr zvlášť:
   `tag` (Štítek), `technique` (Technika), `year` (Rok), `collection` (Kolekce), `status` (Stav filtru),
-  `featured` (Výběr autorky), `work_id` (ID díla), `work_title` (Název díla), `message_type` (Typ zprávy), `palette` (Barvy webu); a *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru,
+  `featured` (Výběr autorky), `q` (Hledání), `work_id` (ID díla), `work_title` (Název díla), `message_type` (Typ zprávy), `palette` (Barvy webu); a *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru,
   jednotka Standardní). Data se v nich ukazují až od chvíle registrace, zpětně ne.
   Přehledy: *Přehledy → Zapojení → Události* (počty a proklik na parametry) nebo *Průzkum* (tabulka např.
   Událost × Technika).

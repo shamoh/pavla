@@ -93,6 +93,11 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   ke každému roku s díly; veřejná kopie `content/roky/<rok>.yaml` (`description`, `cover`, `aspect`, `focus`), web `getYear`.
 - Úvodní stránka: `_index.yaml` v kořeni obsahového repa (`HOME_SCHEMA`, `scripts/lib/home.mjs`; text `description`,
   `cover`, `aspect`, `focus`), kostra s výchozím textem `HOME_TEXT` (= text úvodu ve skutečném obsahu); veřejná kopie `content/_index.yaml`, web `getHome`.
+- Hledání (`?q=`, `scripts/lib/search.mjs`, `SearchField.astro`), vždy na každém výpisu: každá galerie v názvech a popisech
+  děl (`searchText` předem v `data-search` karty), přehled kolekcí v názvech a popisech kolekcí; každé slovo podřetězcem, bez
+  diakritiky a velikosti písmen, nikdy regexp. Přehled kolekcí: pořadí `sortCollections` (nejnovější dílo první), stav
+  `{ year, q, page, perPage }` v adrese (`overviewStateFromParams`), stránkování jako galerie, paměť počtu zvlášť
+  (`pavla.collections.perPage`). Řádek stránek pro každý výpis: `Pager.astro` + `src/lib/pager.ts`.
 - Každý výpis děl se stránkuje, v prohlížeči nad vyfiltrovaným seznamem (`paginate`); návštěvník volí počet
   na stránku (`gallery.pageSizes`, `?perPage=`, pamatuje se v `localStorage`, ale odkaz s `perPage`/`page` má vždy
   přednost) a může stránkování jednorázově vypnout („Zobrazit vše“, `?page=all`, nepamatuje se).

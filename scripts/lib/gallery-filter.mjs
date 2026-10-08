@@ -1,10 +1,11 @@
 // Gallery filter logic shared by the browser script in WorkGallery.astro and the tests.
-// A filter state: { tag, technique, year, collection, status, featured, page, perPage } where each empty value means
-// "all", tag is a list of picked tags (a work must have all of them, [] = all; ?tag=krajina&tag=voda), page is the 1-based page of the filtered list (or 'all' when the visitor switched paging off) and
+// A filter state: { tag, technique, year, collection, status, featured, q, page, perPage } where each empty value means
+// "all", q is the search in the titles of the works (scripts/lib/search.mjs), tag is a list of picked tags (a work must have all of them, [] = all; ?tag=krajina&tag=voda), page is the 1-based page of the filtered list (or 'all' when the visitor switched paging off) and
 // perPage the page size the visitor picked (null = the default size). Everything lives in the URL, so a filtered and
 // paged gallery can be shared as a link.
 
 import { isOnSale } from './works.mjs';
+import { matchesQuery, normalizeQuery, searchText } from './search.mjs';
 
 /** Statuses of works the author does not have any more (sold or given away). */
 export const GONE_STATUSES = ['sold', 'gifted'];
@@ -54,7 +55,7 @@ export function yearFilterOptions(years) {
 /** Former status filter values, still accepted in shared links: old value → current one. */
 export const STATUS_ALIASES = { available: 'unsold' };
 
-export const FILTER_KEYS = ['tag', 'technique', 'year', 'collection', 'status', 'featured'];
+export const FILTER_KEYS = ['tag', 'technique', 'year', 'collection', 'status', 'featured', 'q'];
 /** Value of `featured` when the visitor shows only the author's selection ("Výběr autorky", ?featured=1). */
 export const FEATURED_ON = '1';
 /**
@@ -68,7 +69,10 @@ export const NO_COLLECTION_TITLE = 'Mimo kolekce';
 /** True when a work (its collection slug, '' = none) passes the collection filter `picked` ('' = all). */
 const inCollection = (collection, picked) => !picked || (picked === NO_COLLECTION ? !collection : collection === picked);
 
-/** True when a work ({ tags, technique, year as string, collection, status, featured }) passes every active filter. */
+/**
+ * True when a work ({ search or title + description, tags, technique, year as string, collection, status, featured })
+ * passes every active filter, the search (`q`) in its title and description too (`search`: searchText, from the card).
+ */
 export function matchesFilters(work, state) {
   return (
     state.tag.every((t) => work.tags.includes(t)) &&
@@ -76,7 +80,8 @@ export function matchesFilters(work, state) {
     (!state.year || work.year === state.year) &&
     inCollection(work.collection, state.collection) &&
     (!state.status || (STATUS_FILTERS[state.status]?.(work.status) ?? true)) &&
-    (!state.featured || work.featured === true)
+    (!state.featured || work.featured === true) &&
+    matchesQuery(work.search ?? searchText(work), state.q)
   );
 }
 
@@ -177,15 +182,32 @@ export const DEFAULT_PAGE_SIZES = [12, 24, 48];
 export function stateFromParams(params, pageSizes = DEFAULT_PAGE_SIZES) {
   const state = Object.fromEntries(FILTER_KEYS.map((k) => [k, params.get(k) ?? '']));
   state.tag = sortTags(params.getAll('tag'));
+  state.q = normalizeQuery(state.q);
   state.status = STATUS_ALIASES[state.status] ?? state.status;
   if (!(state.status in STATUS_FILTERS)) state.status = '';
   if (state.featured !== FEATURED_ON) state.featured = '';
+  return { ...state, ...pagingFromParams(params, pageSizes) };
+}
+
+/**
+ * The page and the page size of any paged listing (the gallery, the collections overview) from URL search params:
+ * { page: 1-based or ALL_PAGES (bad values = 1), perPage: an offered size other than the default, otherwise null }.
+ */
+export function pagingFromParams(params, pageSizes = DEFAULT_PAGE_SIZES) {
   const raw = params.get('page');
   const page = Number(raw);
-  state.page = raw === ALL_PAGES ? ALL_PAGES : Number.isInteger(page) && page > 1 ? page : 1;
   const perPage = Number(params.get('perPage'));
-  state.perPage = pageSizes.includes(perPage) && perPage !== pageSizes[0] ? perPage : null;
-  return state;
+  return {
+    page: raw === ALL_PAGES ? ALL_PAGES : Number.isInteger(page) && page > 1 ? page : 1,
+    perPage: pageSizes.includes(perPage) && perPage !== pageSizes[0] ? perPage : null,
+  };
+}
+
+/** Writes the page (only when > 1 or 'all') and a picked page size of `state` to URL search `params`. */
+export function pagingToParams(params, state) {
+  if (state.page === ALL_PAGES || state.page > 1) params.set('page', String(state.page));
+  if (state.perPage) params.set('perPage', String(state.perPage));
+  return params;
 }
 
 /**
@@ -198,9 +220,7 @@ export function stateToParams(state) {
     if (key === 'tag') state.tag.forEach((t) => params.append('tag', t));
     else if (state[key]) params.set(key, state[key]);
   }
-  if (state.page === ALL_PAGES || state.page > 1) params.set('page', String(state.page));
-  if (state.perPage) params.set('perPage', String(state.perPage));
-  return params;
+  return pagingToParams(params, state);
 }
 
 /** Page size in effect: the visitor's pick, otherwise the default (first offered size). */

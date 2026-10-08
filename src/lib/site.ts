@@ -9,6 +9,7 @@ import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
 import { HOME_TEXT, UNCOLLECTED_TEXT } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
 import { NO_COLLECTION_TITLE } from '../../scripts/lib/gallery-filter.mjs';
+import { sortCollections } from '../../scripts/lib/collection-filter.mjs';
 import { measurementIdFor } from '../../scripts/lib/analytics.mjs';
 import { messagesSettings } from '../../scripts/lib/messages.mjs';
 import { workTooltip } from '../../scripts/lib/tooltip.mjs';
@@ -169,7 +170,7 @@ export function getCollections(): Collection[] {
     const cover = resolveCover(members, data, coverDir(page), ogFile(page), data.title ?? slug)!;
     collections.push({ slug, title: data.title ?? slug, description: data.description, cover, works: members });
   }
-  collectionCache = collections.sort((a, b) => b.works[0].date.getTime() - a.works[0].date.getTime());
+  collectionCache = sortCollections(collections);
   return collectionCache;
 }
 

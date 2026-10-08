@@ -1,0 +1,35 @@
+---
+// Under a paged listing (the gallery, the collections overview): the page links in the middle (src/lib/pager.ts
+// draws them into #pager), the page size on the right (#per-page, on a phone below them). The page size select
+// only when there are more items than the smallest page.
+interface Props { pageSizes: number[]; total: number }
+const { pageSizes, total } = Astro.props;
+---
+<div class="pager-row">
+  <nav class="pager" id="pager" aria-label="Stránky" hidden></nav>
+  {total > pageSizes[0] && (
+    <label class="per-page" id="per-page">Na stránku
+      <select name="perPage">{pageSizes.map((n) => <option value={n}>{n}</option>)}</select>
+    </label>
+  )}
+</div>
+
+<style>
+  .pager-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 12px; margin: 16px 0 8px; }
+  .pager { grid-column: 2; display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 6px 14px; font-size: 0.95rem; }
+  .pager[hidden] { display: none; }
+  .per-page { grid-column: 3; justify-self: end; display: flex; gap: 8px; align-items: center; font-size: 0.9rem; color: var(--ink-soft); white-space: nowrap; }
+  .per-page[hidden] { display: none; }
+  .per-page select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 4px 8px; border-radius: 2px; }
+  @media (max-width: 700px) {
+    .pager-row { grid-template-columns: 1fr; justify-items: center; }
+    .pager, .per-page { grid-column: 1; justify-self: center; }
+  }
+  /* The links are made by the script (src/lib/pager.ts), so :global. */
+  .pager :global(a) { text-decoration: none; color: var(--ink-soft); padding: 4px 8px; border-bottom: 1px solid transparent; }
+  .pager :global(a:hover) { color: var(--ink); }
+  .pager :global(a[aria-current='page']) { color: var(--ink); border-bottom-color: var(--ink); }
+  .pager :global(.step) { font-family: var(--serif); font-size: 1.1rem; }
+  .pager :global(.gap) { color: var(--ink-soft); }
+  .pager :global(.mode) { flex-basis: 100%; text-align: center; font-size: 0.88rem; text-decoration: underline; text-underline-offset: 3px; }
+</style>

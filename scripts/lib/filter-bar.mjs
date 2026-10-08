@@ -12,13 +12,15 @@ export const HIDE_AFTER = 8;
 
 /**
  * The active filters in the order of the form, [{ key, value, text }]: picked tags ("#krajina"), then technique, year,
- * collection and status by `label(key, value)` (the text of the option), the author's selection as "doporučené".
+ * collection and status by `label(key, value)` (the text of the option), the author's selection as "doporučené",
+ * the search in titles as the query in quotes („ranní mlha“).
  */
 export function activeFilters(state, label) {
   return [
     ...state.tag.map((t) => ({ key: 'tag', value: t, text: `#${t}` })),
     ...['technique', 'year', 'collection', 'status'].filter((k) => state[k]).map((k) => ({ key: k, value: state[k], text: label(k, state[k]) })),
     ...(state.featured ? [{ key: 'featured', value: state.featured, text: 'doporučené' }] : []),
+    ...(state.q ? [{ key: 'q', value: state.q, text: `„${state.q}“` }] : []),
   ];
 }
 

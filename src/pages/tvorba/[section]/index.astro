@@ -4,6 +4,7 @@
 //   /tvorba/k3f9a/  permanent short link of a work, redirects to its current detail URL
 import Base from '../../../layouts/Base.astro';
 import WorkGallery from '../../../components/WorkGallery.astro';
+import SearchField from '../../../components/SearchField.astro';
 import Cover from '../../../components/Cover.astro';
 import { coverShareImage, getWorks, getYear, getYears, site, workUrl, type Work } from '../../../lib/site';
 import { breadcrumbLd, collectionPageLd, graphLd } from '../../../../scripts/lib/seo.mjs';
@@ -44,6 +45,7 @@ const jsonLd = year ? graphLd(
       <div>
         <h1>Tvorba {year}</h1>
         {text ? <p class="desc">{text}</p> : null}
+        <SearchField id="works-search" label={`Hledat v názvech a popisech obrazů roku ${year}`} placeholder="Hledat v názvech a popisech…" />
       </div>
       {yearPage?.cover ? <Cover cover={yearPage.cover} sizes="(max-width: 900px) 100vw, 45vw" eager /> : null}
     </header>
@@ -53,6 +55,8 @@ const jsonLd = year ? graphLd(
 <style>
   .intro { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 5vw, 64px); align-items: center; margin-bottom: 48px; }
   .intro h1 { margin-top: 0.1em; }
+  /* The search in the works of this page, under the heading and its text (SearchField.astro). */
+  .intro :global(.search) { margin-top: 12px; }
   .desc { white-space: pre-line; font-size: 1.05rem; }
   @media (max-width: 900px) { .intro { grid-template-columns: 1fr; } }
 </style>

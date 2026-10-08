@@ -2,11 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FEATURED_ON, NO_COLLECTION,
   countStatuses, matchesFilters, offersOption, statusOptions, yearFilterOptions, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
-  facetChoices, facetDisplay, facetValues, sortTags, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
+  facetChoices, facetDisplay, facetValues, pagingFromParams, pagingToParams, sortTags, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
 } from './gallery-filter.mjs';
 
 const work = (status, extra = {}) => ({ tags: ['krajina'], technique: 'akvarel', year: '2026', collection: '', status, ...extra });
-const all = { tag: [], technique: '', year: '', collection: '', status: '', featured: '' };
+const all = { tag: [], technique: '', year: '', collection: '', status: '', featured: '', q: '' };
 const allState = { ...all, page: 1, perPage: null };
 const statuses = ['available', 'reserved', 'sold', 'gifted', 'not-for-sale'];
 const passing = (state) => statuses.filter((s) => matchesFilters(work(s), { ...all, ...state }));
@@ -59,7 +59,7 @@ test('stateFromParams reads every filter and drops an unknown status', () => {
 
 test('stateToParams leaves out empty filters and round-trips any combination', () => {
   assert.equal(stateToParams(all).toString(), '');
-  const state = { tag: ['řeka a mlha'], technique: 'akvarel', year: '2025', collection: 'plener', status: 'gone', featured: '1', page: 3, perPage: 48 };
+  const state = { tag: ['řeka a mlha'], technique: 'akvarel', year: '2025', collection: 'plener', status: 'gone', featured: '1', q: 'mlha', page: 3, perPage: 48 };
   assert.equal(stateToParams({ ...all, technique: 'akvarel', status: 'kept' }).toString(), 'technique=akvarel&status=kept');
   assert.deepEqual(stateFromParams(new URLSearchParams(stateToParams(state).toString())), state);
 });
@@ -315,4 +315,24 @@ test('stateFromForm: a greyed (off) select shows a shared value, which never bec
   assert.equal(next.year, '', 'the shown year is not picked');
   assert.deepEqual(stateFromForm(state, [{ key: 'year', value: '2026', off: false }]).year, '2026', 'an active select is read');
   assert.equal(state.collection, 'tatry', 'the state itself is not changed');
+});
+
+test('search in titles: ?q= tidied, every word in the title, written back, round-trips with other filters', () => {
+  const state = stateFromParams(new URLSearchParams('q=%20%20ranni%20%20MLHA&tag=voda'));
+  assert.equal(state.q, 'ranni MLHA');
+  assert.ok(matchesFilters(work('sold', { title: 'Ranní mlha u jezu', tags: ['voda'] }), state));
+  assert.ok(!matchesFilters(work('sold', { title: 'Ranní slunce', tags: ['voda'] }), state), 'every word must match');
+  assert.ok(matchesFilters(work('sold'), all), 'no query: a work without a title passes too');
+  assert.ok(matchesFilters(work('sold', { title: 'Krmelec', description: 'Ranní mlha nad lesem.', tags: ['voda'] }), state), 'words found in the description');
+  assert.ok(matchesFilters(work('sold', { search: 'ranni mlha', tags: ['voda'] }), state), 'the prepared text of a card');
+  assert.equal(stateToParams(state).toString(), 'tag=voda&q=ranni+MLHA');
+  assert.deepEqual(stateFromParams(stateToParams(state)), state);
+});
+
+test('pagingFromParams / pagingToParams: the paging of any listing', () => {
+  assert.deepEqual(pagingFromParams(new URLSearchParams('page=3&perPage=24')), { page: 3, perPage: 24 });
+  assert.deepEqual(pagingFromParams(new URLSearchParams('page=all&perPage=12')), { page: 'all', perPage: null }, 'the default size is not kept');
+  assert.deepEqual(pagingFromParams(new URLSearchParams('page=-2&perPage=13')), { page: 1, perPage: null });
+  assert.equal(pagingToParams(new URLSearchParams('year=2025'), { page: 2, perPage: 48 }).toString(), 'year=2025&page=2&perPage=48');
+  assert.equal(pagingToParams(new URLSearchParams(), { page: 1, perPage: null }).toString(), '');
 });

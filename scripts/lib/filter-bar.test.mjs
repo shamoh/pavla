@@ -2,12 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { BAR_START, HIDE_AFTER, REVEAL_AFTER, activeFilters, scrollBar, withoutFilter, worksCount } from './filter-bar.mjs';
 
-const none = { tag: [], technique: '', year: '', collection: '', status: '', featured: '' };
+const none = { tag: [], technique: '', year: '', collection: '', status: '', featured: '', q: '' };
 const label = (key, value) => ({ collection: { 'demo-mesto': 'Město 2026' }, status: { unsold: 'na prodej' } }[key]?.[value] ?? value);
 
-test('activeFilters: tags first, then the selects in form order, the author\'s selection last', () => {
+test('activeFilters: tags first, then the selects in form order, the author\'s selection, the search last', () => {
   assert.deepEqual(activeFilters(none, label), []);
-  const state = { tag: ['krajina', 'voda'], technique: 'akvarel', year: '2026', collection: 'demo-mesto', status: 'unsold', featured: '1' };
+  const state = { tag: ['krajina', 'voda'], technique: 'akvarel', year: '2026', collection: 'demo-mesto', status: 'unsold', featured: '1', q: 'ranní mlha' };
   assert.deepEqual(activeFilters(state, label), [
     { key: 'tag', value: 'krajina', text: '#krajina' },
     { key: 'tag', value: 'voda', text: '#voda' },
@@ -16,6 +16,7 @@ test('activeFilters: tags first, then the selects in form order, the author\'s s
     { key: 'collection', value: 'demo-mesto', text: 'Město 2026' },
     { key: 'status', value: 'unsold', text: 'na prodej' },
     { key: 'featured', value: '1', text: 'doporučené' },
+    { key: 'q', value: 'ranní mlha', text: '„ranní mlha“' },
   ]);
 });
 
@@ -24,6 +25,7 @@ test('withoutFilter: the "×" of a chip turns just that filter off, back to the 
   assert.deepEqual(withoutFilter(state, { key: 'tag', value: 'krajina' }), { ...state, tag: ['voda'], page: 1 });
   assert.deepEqual(withoutFilter(state, { key: 'technique', value: 'akvarel' }), { ...state, technique: '', page: 1 });
   assert.deepEqual(withoutFilter(state, { key: 'featured', value: '1' }), { ...state, featured: '', page: 1 });
+  assert.deepEqual(withoutFilter({ ...state, q: 'mlha' }, { key: 'q', value: 'mlha' }), { ...state, q: '', page: 1 }, 'the search too');
   assert.equal(withoutFilter({ ...state, page: 'all' }, { key: 'tag', value: 'voda' }).page, 'all', 'paging stays off');
 });
 

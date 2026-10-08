@@ -1,10 +1,48 @@
-// Year filter of the collections overview (/tvorba/kolekce/), shared by its build, its browser script and the tests.
+// The collections overview (/tvorba/kolekce/): order, year filter, search and paging, shared by its build, its browser
+// script and the tests. Its state { year, q, page, perPage } lives in the URL (?year=2025&q=plener&page=2), like the
+// gallery's; the page size the visitor picks is remembered apart from the gallery's (COLLECTIONS_PAGE_SIZE_STORAGE_KEY).
+// Year filter:
 // A collection belongs to every year one of its works was painted in (the year of its `date`); picking a year
 // leaves the collections with at least one work of that year, each with the number of its works from that year
 // and a link opening the collection filtered to it. The year lives in the URL (?year=2025), so the filtered
 // overview can be shared as a link.
 
-import { offersOption } from './gallery-filter.mjs';
+import { offersOption, pagingFromParams, pagingToParams } from './gallery-filter.mjs';
+import { matchesQuery, normalizeQuery, searchText } from './search.mjs';
+
+/** localStorage key of the page size picked on the collections overview (the gallery has its own). */
+export const COLLECTIONS_PAGE_SIZE_STORAGE_KEY = 'pavla.collections.perPage';
+
+/**
+ * Collections in the order of the overview: the one with the newest work first (a collection gets a new picture, it
+ * moves up), on the same day in Czech alphabetical order of titles. Each { title, works } with works newest first.
+ */
+export const sortCollections = (collections) => [...collections].sort((a, b) =>
+  b.works[0].date - a.works[0].date || a.title.localeCompare(b.title, 'cs'));
+
+/**
+ * The overview state from URL search params: the year when offered (`offered`: yearOptions years), the search, the
+ * paging (pagingFromParams); { year, q, page, perPage }.
+ */
+export function overviewStateFromParams(params, offered, pageSizes) {
+  return { year: yearFromParams(params, offered), q: normalizeQuery(params.get('q')), ...pagingFromParams(params, pageSizes) };
+}
+
+/** URL search params of an overview state; empty values, page 1 and the default size left out. */
+export function overviewStateToParams(state) {
+  const params = yearToParams(state.year);
+  if (state.q) params.set('q', state.q);
+  return pagingToParams(params, state);
+}
+
+/**
+ * True when an item of the overview ({ search or title + description, years, uncollected }) is shown for the state: a
+ * collection of the picked year whose title or description has every word of the search (`search`: searchText, from
+ * the card). "Mimo kolekce" (`uncollected`) is no collection: it follows the year,
+ * but is left out while searching (the search is in the names of collections).
+ */
+export const matchesOverview = (item, state) =>
+  matchesYear(item.years, state.year) && (!state.q || (!item.uncollected && matchesQuery(item.search ?? searchText(item), state.q)));
 
 /** Works of a collection per year, newest first: [[2026, 2], [2025, 3]]. */
 export function yearCounts(works) {
