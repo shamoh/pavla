@@ -1189,12 +1189,24 @@ kalendářní verzování (CalVer): verze **je** čas, kdy se web sestavil, ve f
   šablony stránek). Trvá asi minutu. U pushe do `main` se nespouští pro aktualizace obsahu
   (`content/`, vygenerované `public/…`) ani pro změny dokumentace (`*.md`); u pull requestu běží vždy,
   protože je to povinná kontrola rulesetu na `main` (auto-merge aktualizací obsahu čeká na ni). Ručně jde spustit
-  v *Actions → Kontrola kódu → Run workflow*.
+  v *Actions → Kontrola kódu → Run workflow*. Selhání při pushi do `main` založí issue „Kontrola kódu na main selhala“,
+  selhání u pull requestu aktualizace obsahu (větev `obsah/aktualizace`, jinak by se jen nesloučil) issue
+  „Aktualizace obsahu neprošla kontrolou kódu“ s odkazem na pull request (job `notify`, viz *Issue při selhání*);
+  ostatní pull requesty a ruční běhy ne.
 - **Kontrola workflow** (job `workflows` v „Kontrola kódu“): `actionlint` (verze 1.7.12, se shellcheckem) projde
   všechna workflow tohoto repa (syntaxe, výrazy `${{ }}`, vstupy akcí, skripty v `run:`) a `shellcheck`
   pomocné skripty `.github/*.sh`. Chyby, které vzniknou až za běhu (chybějící složka apod.),
   actionlint nenajde, na ty je zkušební běh zpracování. Lokálně: `brew install actionlint` a v kořeni repa
   `actionlint` (shellcheck použije, když je nainstalovaný: `brew install shellcheck`).
+- **Nasazení** (`.github/workflows/deploy.yml`, „Deploy na GitHub Pages“): při každém pushi do `main` (i po sloučení
+  aktualizace obsahu) postaví web (`npm run build`) a nasadí ho. Když build nebo nasazení selže, job `notify` založí
+  issue „Nasazení webu selhalo“ (viz *Issue při selhání*).
+- **Issue při selhání** (`.github/failure-issue.sh`, job `notify` v `deploy.yml` a `check.yml`): selhaný běh založí issue
+  přidělené vlastníkovi repa, nebo k otevřenému issue se stejným názvem přidá komentář, takže mu přijde e-mail, ať běh
+  spustil kdokoli; další úspěšný běh téhož druhu issue zavře. Repo je veřejné: issue obsahuje jen odkaz na běh,
+  commit, případně pull request, a jednu větu. Běh zrušený novějším pushem nedělá nic. E-maily vyžadují v nastavení
+  upozornění GitHubu zapnuté *Participating, @mentions and custom → Email*. Skript kontroluje `shellcheck`
+  (job `workflows`).
 - **Web z testovacích dat se na GitHubu nestaví:** nikde se nezveřejňuje a na runneru GitHubu
   trvá kvůli mockupům několik minut. Změny webu a pipeline proto před commitem ověř lokálně:
   `npm run demo:build` (případně `npm run demo` a proklikat).

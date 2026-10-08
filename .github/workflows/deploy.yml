@@ -40,3 +40,30 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+
+  # A failed build or deploy opens an issue assigned to the repository owner (or comments on the open one), so he
+  # gets an e-mail whoever started the run; the next successful deploy closes it (.github/failure-issue.sh). This
+  # repository is public: the issue only links the run and names the commit. A run cancelled by a newer push does nothing.
+  notify:
+    needs: [build, deploy]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      FAILED: ${{ contains(needs.*.result, 'failure') }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+
+      - name: Open or update the issue (sends an e-mail), or close it when the deploy passed
+        run: |
+          .github/failure-issue.sh "Nasazení webu selhalo" "$FAILED" "Běh: $RUN_URL
+          Commit: ${GITHUB_SHA::7}
+
+          Web se nepostavil nebo nenasadil, na webu zůstává předchozí verze. Podrobnosti jsou v běhu."

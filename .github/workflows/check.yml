@@ -4,6 +4,9 @@
 # A push of content updates (content/, public/ generated data) or documentation to main does not trigger it,
 # but every pull request does: it is the required check of the ruleset on main, so a content pull request (auto-merge)
 # is merged only when the site still builds.
+# A failure on a push to main, or on the content pull request (branch obsah/aktualizace, it would otherwise just
+# never merge), opens an issue assigned to the repository owner (.github/failure-issue.sh), so he gets an e-mail;
+# the next passing run of the same kind closes it.
 name: Kontrola kódu
 
 on:
@@ -62,3 +65,40 @@ jobs:
 
       - name: shellcheck of the helper scripts
         run: shellcheck .github/*.sh
+
+  # The issue of a failed check (see the top): only for a push to main and for the content pull request; other pull
+  # requests and manual runs are watched by whoever started them. A run cancelled by a newer push does nothing.
+  notify:
+    needs: [check, workflows]
+    if: >-
+      always() && !cancelled() &&
+      (github.event_name == 'push' || (github.event_name == 'pull_request' && github.head_ref == 'obsah/aktualizace'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      FAILED: ${{ contains(needs.*.result, 'failure') }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+      EVENT: ${{ github.event_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+
+      - name: Open or update the issue (sends an e-mail), or close it when the check passed
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            .github/failure-issue.sh "Aktualizace obsahu neprošla kontrolou kódu" "$FAILED" "Běh: $RUN_URL
+          Pull request: $PR_URL
+
+          Testy nebo build webu s novým obsahem selhaly, pull request se proto sám nesloučí. Podrobnosti jsou v běhu."
+          else
+            .github/failure-issue.sh "Kontrola kódu na main selhala" "$FAILED" "Běh: $RUN_URL
+          Commit: ${GITHUB_SHA::7}
+
+          Testy, build webu nebo kontrola workflow na main selhaly. Podrobnosti jsou v běhu."
+          fi

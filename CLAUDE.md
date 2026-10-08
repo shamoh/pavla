@@ -128,7 +128,10 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   nasazeného webu `scripts/lib/site-check.mjs`):
   `scripts/check-health.mjs` + `scripts/lib/health.mjs`, spouští ji obsahové repo.
   Workflow kontroluje `actionlint` (job `workflows` v `check.yml`); po každé úpravě workflow ho spusť i lokálně.
-- Deploy workflow tohoto repa obrázky negeneruje, jen staví web z toho, co je commitnuté.
+- Deploy workflow tohoto repa obrázky negeneruje, jen staví web z toho, co je commitnuté. Při selhání buildu nebo
+  nasazení job `notify` založí (nebo komentuje) issue „Nasazení webu selhalo“ přidělené vlastníkovi (e-mail), další
+  úspěšné nasazení ho zavře; issue je veřejné, jen odkaz na běh a commit. Stejně „Kontrola kódu“ při pushi do `main`
+  a u PR z `obsah/aktualizace` (jiné PR ne); obojí přes `.github/failure-issue.sh`.
 - Srovnání fotek obrazů (perspektiva, ořez podkladu): `npm run straighten -- <fotka|složka>` (`scripts/straighten.mjs`),
   originály nikdy nepřepisuje, výstup do `upravene/`; ruční rohy a další výřezy v `<fotka>.orez.yaml`, `--white-balance`, `--width`, `--margin` (výchozí okraj podkladu kolem listu, aby byly vidět okraje papíru).
   S okrajem zapíše do JPEGu polohu listu (XMP `pavla:sheet`, `scripts/lib/sheet-box.mjs`); pipeline podle ní
