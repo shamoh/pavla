@@ -75,6 +75,7 @@ test('collectionLink carries the year only when it narrows the collection', () =
   assert.equal(collectionLink(href, '2025', 3, 4), '/tvorba/kolekce/kresby/?year=2025');
   assert.equal(collectionLink(href, '2026', 4, 4), href);
   assert.equal(collectionLink(href, '', 4, 4), href);
+  assert.equal(collectionLink('/tvorba/?collection=none', '2019', 1, 12), '/tvorba/?collection=none&year=2019', 'a link with a query');
 });
 
 test('overviewLink filters the overview only to an offered year', () => {

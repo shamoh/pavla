@@ -96,7 +96,7 @@ test('a new image without metadata becomes a draft that never leaves the content
   await addWork('2026', 'novy', undefined);
   const r = await run(opts({ today: new Date('2026-05-01') }));
   assert.equal(r.ok, true);
-  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml', '_index.yaml']);
+  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml', '_index.yaml', 'tvorba/_index.yaml']);
   assert.equal(YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/novy.yaml'), 'utf8')).meta_draft, true);
   assert.equal(r.processed, 0);
   assert.deepEqual(r.missing, []);
@@ -124,7 +124,7 @@ test('a draft gets no outputs; turning a published work back into a draft remove
   await fs.writeFile(rano, (await fs.readFile(rano, 'utf8')).replace('meta_draft: false', 'meta_draft: true'));
   const again = await run(opts());
   assert.deepEqual(again.pruned.sort(), [
-    'content/tvorba/rano.yaml', `export/fler/2026/rano-${id}.jpg`,
+    'content/tvorba/_index.yaml', 'content/tvorba/rano.yaml', `export/fler/2026/rano-${id}.jpg`,
     `export/instagram/2026/rano-${id}-clean.jpg`, `public/tvorba/2026/rano-${id}/`,
   ]);
   assert.equal(await exists(path.join(siteDir, 'content/tvorba')), false, 'empty folders are removed too');
@@ -982,7 +982,7 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   const r = await run(opts({ prepareOnly: true, today: new Date('2026-05-01') }));
   assert.equal(r.ok, true);
   assert.equal(r.prepared, true);
-  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml', '_index.yaml']);
+  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml', '_index.yaml', 'tvorba/_index.yaml']);
   assert.equal(r.assigned.length, 1);
   const skeleton = YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/novy.yaml'), 'utf8'));
   assert.equal(skeleton.date, '2026-05-01', 'a new work is dated today');

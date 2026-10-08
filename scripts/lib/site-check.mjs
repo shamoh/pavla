@@ -54,8 +54,8 @@ export function pageReferences(html, pageUrl, origin) {
 /**
  * Walks the site from `siteUrl` (its home page and the pages of its sitemap.xml) and checks every image its pages
  * refer to. Returns { pages, images (counts), sitemap (pages listed in it, 0 without one), missing: [{ image, page }],
- * brokenPages: [{ page, status }] }. `fetchFn(url, { method })` like fetch; images are asked for with HEAD,
- * `concurrency` at a time. A page listed in the sitemap counts as linked from "sitemap.xml".
+ * brokenPages: [{ page, status }], html: [{ path, html }] (every page read, for the checks of their texts) }.
+ * `fetchFn(url, { method })` like fetch; images are asked for with HEAD, `concurrency` at a time. A page listed in the sitemap counts as linked from "sitemap.xml".
  */
 export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concurrency = 8 } = {}) {
   const origin = new URL(siteUrl).origin;
@@ -66,6 +66,7 @@ export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concu
   const seen = new Set(queue);
   const imageFrom = new Map();
   const brokenPages = [];
+  const html = [];
   while (queue.length && seen.size <= maxPages) {
     const page = queue.shift();
     const res = await fetchFn(page, { method: 'GET' });
@@ -73,7 +74,9 @@ export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concu
       brokenPages.push({ page, status: res.status });
       continue;
     }
-    const { pages, images } = pageReferences(await res.text(), page, origin);
+    const text = await res.text();
+    html.push({ path: new URL(page).pathname, html: text });
+    const { pages, images } = pageReferences(text, page, origin);
     for (const p of pages) {
       if (!seen.has(p)) {
         seen.add(p);
@@ -91,7 +94,7 @@ export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concu
     }));
   }
   missing.sort((a, b) => a.image.localeCompare(b.image));
-  return { pages: seen.size - brokenPages.length, images: all.length, sitemap: listed.length, missing, brokenPages };
+  return { pages: seen.size - brokenPages.length, images: all.length, sitemap: listed.length, missing, brokenPages, html };
 }
 
 /**

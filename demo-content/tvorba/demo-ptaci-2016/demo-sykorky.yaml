@@ -1,0 +1,94 @@
+# Rohy listu na fotce: všechno vně čtyřúhelníku (podlaha) bude na webu průhledné. Najde je pipeline, smíš je
+# upravit. photo = [šířka, výška] fotky; tl/tr/br/bl = levý horní, pravý horní, pravý dolní, levý dolní roh jako
+# [px vodorovně, px svisle] od toho rohu fotky směrem dovnitř, např. tl: [40, 25]. false = nic neořezávat.
+# Po výměně fotky za jinou velikost atribut smaž, pipeline rohy najde znovu.
+meta_corners:
+  photo: [1600, 1600]
+  tl: [0, 0]
+  tr: [0, 0]
+  br: [0, 0]
+  bl: [0, 0]
+
+# Rozpracovaný obraz, možnosti:
+# - true - rozpracovaný, na webu se nezobrazí
+# - false - zveřejnit
+meta_draft: false
+
+# Fotky pro Instagram, možnosti:
+# - true - připravit (export/instagram: originál a detailní fotky)
+# - false - žádné
+meta_instagram: false
+
+# Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
+# Generuje ho pipeline, NIKDY neměnit. Hodí se napsat tužkou na zadní stranu obrazu.
+id: ke5k4
+
+# Den vzniku ve tvaru 2026-06-14. Rok z něj určuje rok obrazu na webu (stránka roku, adresa).
+date: 2016-01-14
+
+# Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.
+description: |
+  Sýkorky na krmítku v lednovém sněhu.
+
+# NEPOVINNÉ. Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.
+# details: { 1-mlha: Ranní mlha nad vodou }
+
+# Výběr autorky, možnosti:
+# - true - ve výběru: přepínač „Doporučené“ v galerii; z 10 nejnovějších vybraných se náhodně střídají
+#   obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover)
+# - false - ne
+featured: false
+
+# NEPOVINNÉ. Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
+# fler: https://www.fler.cz/zbozi/…
+
+# Mockupy (obraz v rámu v interiéru), možnosti:
+# - true - na webu, u obrazu na prodej i pro Fler
+# - false - žádné
+mockups: false
+
+# NEPOVINNÉ. Cena v Kč, např. 2500. Povinná u available a reserved.
+# price: 2500
+
+# Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu.
+# Podle rozměrů se dělají mockupy ve skutečné velikosti. Nejčastější možnosti jsou:
+# - [38, 29] - Baohong
+# - [20, 20] - Khadi malý
+# - [30, 30] - Khadi velký
+# - [42, 30] - Canson Montval A3
+# - [21, 30] - Canson Montval A4
+# - [41, 30] - Canson XL A3
+# - [43, 31] - Chamoix A3
+size_cm: [20, 20]
+
+# Stav obrazu, možnosti:
+# - available - k prodeji (s cenou price)
+# - reserved - rezervováno (s cenou price)
+# - sold - prodáno, na webu „V soukromé sbírce“
+# - gifted - darováno, na webu „V soukromé sbírce“ (stejně jako prodané)
+# - not-for-sale - není na prodej, na webu bez štítku
+status: sold
+
+# NEPOVINNÉ. Podklad, např. papír. Bez něj se na webu nezobrazí. Nejčastější možnosti jsou:
+# - papír Baohong Cold Pressed (300 g), 100% bavlna
+# - ruční papír Khadi (320 g), 100% bavlna
+# - papír Canson Montval Cold Pressed (300 g), 100% celulóza
+# - papír Canson XL Aquarelle (300 g), 100% celulóza
+# - akvarelový karton Chamoix (220 g)
+# support: papír Canson XL Aquarelle (300 g), 100% celulóza
+
+# Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
+tags: [ptáci, zima, sníh]
+
+# Technika, podle ní se filtruje v galerii. Nejčastější možnosti jsou:
+# - akvarel
+# - brush pen
+# - tisk z výšky
+# - kresba tužkou
+technique: akvarel
+
+# Název obrazu, jak ho uvidí návštěvníci webu.
+title: Sýkorky
+
+# NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+# private_note: kde obraz visí, komu patří

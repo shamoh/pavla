@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   artform, artworkLd, authorId, breadcrumbLd, collectionPageLd, graphLd, jsonLdText, personLd, robotsTxt, summarize,
-  tagKeywords, verificationMeta, websiteLd, workDescription,
+  tagKeywords, verificationMeta, websiteLd, workDescription, workPageDescription, workPageTitle,
 } from './seo.mjs';
 
 const site = { url: 'https://web.test', title: 'Pavla Kramolišová', tagline: 'Akvarely a kresby', author: 'Pavla Kramolišová', instagram: 'pavla.k', fler: '' };
@@ -112,4 +112,38 @@ test('verificationMeta and robotsTxt', () => {
   ]);
   assert.deepEqual(verificationMeta(undefined), []);
   assert.equal(robotsTxt({ url: 'https://web.test/' }), 'User-agent: *\nAllow: /\n\nSitemap: https://web.test/sitemap.xml\n');
+});
+
+const slat = { ...work, id: 'rk9ct', title: 'Tetřevská slať', technique: 'akvarel', size_cm: [30, 42] };
+const tisk = { ...work, id: 'fkhm2', title: 'Tetřevská slať', technique: 'tisk z výšky', size_cm: [6, 10.5] };
+
+test('workPageTitle: the title alone, with the technique when another work has the same title', () => {
+  const ovce = { ...work, id: 'v39nd' };
+  assert.equal(workPageTitle(ovce, [ovce, slat, tisk]), 'Ovce');
+  assert.equal(workPageTitle(slat, [ovce, slat, tisk]), 'Tetřevská slať (akvarel)');
+  assert.equal(workPageTitle(tisk, [ovce, slat, tisk]), 'Tetřevská slať (tisk z výšky)');
+  const shouted = { ...tisk, title: 'TETŘEVSKÁ SLAŤ' };
+  assert.equal(workPageTitle(shouted, [slat, shouted]), 'TETŘEVSKÁ SLAŤ (tisk z výšky)', 'case does not tell them apart');
+});
+
+test('workPageTitle: the same technique too adds size and year, then the id', () => {
+  const a = { ...slat, id: 'aaaaa' };
+  const b = { ...slat, id: 'bbbbb', size_cm: [20, 20] };
+  assert.equal(workPageTitle(a, [a, b]), 'Tetřevská slať (akvarel, 30 × 42 cm, 2026)');
+  const c = { ...slat, id: 'ccccc' };
+  assert.equal(workPageTitle(c, [a, c]), 'Tetřevská slať (akvarel, 30 × 42 cm, 2026, ccccc)');
+});
+
+test('workPageDescription: the own description, with technique, size and year when another work has the same', () => {
+  const k1 = { ...work, id: 'zwpza', title: 'Krmelec u lesa', description: 'Krmelec na okraji lesa.\n', size_cm: [30, 30] };
+  const k2 = { ...work, id: 'rekgm', title: 'Krmelec u lesa (2)', description: 'Krmelec na okraji lesa.\n', size_cm: [27.5, 40] };
+  const other = { ...work, id: 'v39nd', description: 'Tři ovce z pastviny.' };
+  assert.equal(workPageDescription(other, [k1, k2, other], site), 'Tři ovce z pastviny.');
+  assert.equal(workPageDescription(k1, [k1, k2, other], site), 'Krmelec na okraji lesa. Akvarel, 30 × 30 cm, 2026.');
+  assert.equal(workPageDescription(k2, [k1, k2, other], site), 'Krmelec na okraji lesa. Akvarel, 27,5 × 40 cm, 2026.');
+  // a long own text is cut first, the facts always fit into 160 characters
+  const long = 'slovo '.repeat(40);
+  const d = workPageDescription({ ...k2, description: long }, [{ ...k1, description: long }, { ...k2, description: long }], site);
+  assert.ok(d.length <= 160, String(d.length));
+  assert.match(d, /… Akvarel, 27,5 × 40 cm, 2026\.$/);
 });

@@ -42,3 +42,15 @@ export function sitemapXml(siteUrl, entries) {
 
 /** The addresses listed in a sitemap.xml. */
 export const sitemapUrls = (xml) => [...xml.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/g)].map((m) => m[1].replace(/&amp;/g, '&'));
+
+/** A page that asks search engines not to index it (the 404 page, short addresses of works, the thank-you page). */
+export const isNoindex = (html) => /<meta name="robots" content="[^"]*noindex/i.test(html);
+
+/**
+ * Paths of built pages (`pages`: [{ path, html }], path like "/tvorba/2026/") that search engines may index but the
+ * sitemap (`urls`, absolute) leaves out, sorted: a page forgotten in STATIC_PAGES. Pages with noindex are left out.
+ */
+export function unlistedPages(pages, urls) {
+  const listed = new Set(urls.map((u) => new URL(u).pathname));
+  return pages.filter((p) => !isNoindex(p.html) && !listed.has(p.path)).map((p) => p.path).sort();
+}

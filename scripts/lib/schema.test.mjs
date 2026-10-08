@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA, attributeGroup, compareKeys, docLines, fieldKeys,
+  COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, UNCOLLECTED_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA, attributeGroup, compareKeys, docLines, fieldKeys,
   optionProblems, publicKeys,
 } from './schema.mjs';
 
-const SCHEMAS = [WORK_SCHEMA, COLLECTION_SCHEMA, PHOTO_SCHEMA, YEAR_SCHEMA, HOME_SCHEMA];
+const SCHEMAS = [WORK_SCHEMA, COLLECTION_SCHEMA, PHOTO_SCHEMA, YEAR_SCHEMA, HOME_SCHEMA, UNCOLLECTED_SCHEMA];
 
 test('attributeGroup: the prefix decides the group', () => {
   assert.equal(attributeGroup('meta_draft'), 'meta');

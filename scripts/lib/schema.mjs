@@ -374,12 +374,17 @@ export const WORK_SCHEMA = {
       options: [true, false],
       doc: [
         'Výběr autorky, možnosti:',
-        '- true - ve výběru: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně střídají',
+        '- true - ve výběru: přepínač „Doporučené“ v galerii; z 10 nejnovějších vybraných se náhodně střídají',
         '  obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover)',
         '- false - ne',
       ],
       value: false,
       previous: [[
+        'Výběr autorky, možnosti:',
+        '- true - ve výběru: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně střídají',
+        '  obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover)',
+        '- false - ne',
+      ], [
         'Výběr autorky, možnosti:',
         '- true – ve výběru: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně střídají',
         '  obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover)',
@@ -500,6 +505,39 @@ export const YEAR_SCHEMA = {
       value: '',
     },
     coverField('z toho roku', '<rok>.jpg vedle tohoto souboru'),
+    aspectField,
+    focusField(),
+    {
+      key: 'private_note',
+      commented: true,
+      example: 'kde obraz visí, komu patří',
+      doc: 'Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.',
+      value: '',
+    },
+  ]),
+};
+
+/** Default text of "Mimo kolekce" on the collections overview, while tvorba/_index.yaml has no description. */
+export const UNCOLLECTED_TEXT = 'Obrazy, které nepatří do žádné kolekce.';
+
+export const UNCOLLECTED_SCHEMA = {
+  name: 'uncollected',
+  header: [
+    'Obrazy mimo kolekce (obrazy přímo ve složce tvorba/) - kostru vytvořila pipeline.',
+    'Na přehledu kolekcí jsou poslední položkou „Mimo kolekce“. Úvodní obraz je nepovinný.',
+  ],
+  fields: ordered([
+    coverField('mimo kolekce', '_cover.jpg vedle tohoto souboru'),
+    {
+      key: 'description',
+      commented: true,
+      example: 'Obrazy, které nepatří do žádné kolekce: samostatné listy, dárky a skici.',
+      doc: [
+        'Pár vět pod „Mimo kolekce“ na přehledu kolekcí. Víc řádků: napiš description: | a pod to text odsazený',
+        `dvěma mezerami. Prázdné = „${UNCOLLECTED_TEXT}“`,
+      ],
+      value: '',
+    },
     aspectField,
     focusField(),
     {

@@ -4,10 +4,11 @@ import YAML from 'yaml';
 import { coverCandidates, dateYear, detailKey, formatSizeCm, isValidId, workKey } from '../../scripts/lib/works.mjs';
 import { photoFocus } from '../../scripts/lib/photos.mjs';
 import { readCopies } from '../../scripts/lib/site-content.mjs';
-import { HOME_PAGE_DIR, collectionPageDir, coverDir, ogFile, photoDir, workImageDir, yearPageDir } from '../../scripts/lib/site-images.mjs';
+import { HOME_PAGE_DIR, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, ogFile, photoDir, workImageDir, yearPageDir } from '../../scripts/lib/site-images.mjs';
 import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
-import { HOME_TEXT } from '../../scripts/lib/schema.mjs';
+import { HOME_TEXT, UNCOLLECTED_TEXT } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
+import { NO_COLLECTION_TITLE } from '../../scripts/lib/gallery-filter.mjs';
 import { measurementIdFor } from '../../scripts/lib/analytics.mjs';
 import { messagesSettings } from '../../scripts/lib/messages.mjs';
 import { workTooltip } from '../../scripts/lib/tooltip.mjs';
@@ -170,6 +171,21 @@ export function getCollections(): Collection[] {
   }
   collectionCache = collections.sort((a, b) => b.works[0].date.getTime() - a.works[0].date.getTime());
   return collectionCache;
+}
+
+/**
+ * The works in no collection as one more item of the collections overview ("Mimo kolekce", leading to the gallery
+ * filtered to them, ?collection=none). Its cover follows the rule of every place (resolveCover) from tvorba/_index.yaml
+ * of the content repository: its own photo tvorba/_cover.jpg, `cover` among these works, otherwise random. No share
+ * image (no page of its own). Its text: `description` of that file, otherwise UNCOLLECTED_TEXT.
+ * Null when every work is in a collection.
+ */
+export function getUncollected(): { title: string; description: string; cover: Cover; works: Work[] } | null {
+  const works = getWorks().filter((w) => !w.collection);
+  if (!works.length) return null;
+  const cover = resolveCover(works, copies().uncollected ?? {}, coverDir(UNCOLLECTED_PAGE_DIR), ogFile(UNCOLLECTED_PAGE_DIR), NO_COLLECTION_TITLE)!;
+  const description = String(copies().uncollected?.description ?? '').trim() || UNCOLLECTED_TEXT;
+  return { title: NO_COLLECTION_TITLE, description, cover, works };
 }
 
 export const getCollection = (slug?: string) => (slug ? getCollections().find((c) => c.slug === slug) : undefined);

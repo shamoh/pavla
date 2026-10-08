@@ -13,6 +13,8 @@ nikdy nejdou.
 <obsahové repo>/                            (soukromé, zdroj obsahu)
   tvorba/<slug>.yaml + <slug>.jpg           dílo bez kolekce: popis (vč. id a soukromé poznámky) a master fotka
   tvorba/<slug>/*.jpg                       detailní fotky díla (nepovinné, složka jménem díla vedle něj)
+  tvorba/_index.yaml                        díla mimo kolekce: text a úvodní obraz položky „Mimo kolekce“ (kostru založí pipeline)
+  tvorba/_cover.jpg                         vlastní úvodní fotka „Mimo kolekce“ (nepovinné)
   tvorba/<kolekce>/                         kolekce: každá jiná složka v tvorba/, např. 2026-plener-sumava/
   tvorba/<kolekce>/_index.yaml              popis kolekce
   tvorba/<kolekce>/_cover.jpg               úvodní fotka kolekce (nepovinné)
@@ -26,7 +28,7 @@ nikdy nejdou.
   export/fler/<rok>/…                       pro Fler: originál a mockupy s vodoznakem, jen díla na prodej
 
 Systémové soubory obsahu mají všude stejná dvě jména: `_index.yaml` popisuje místo, kde leží (v kořeni úvodní
-stránku, ve složce kolekce kolekci), `_cover.<jpg|jpeg|png|webp>` je jeho vlastní úvodní fotka. Podtržítko je odliší
+stránku, ve složce kolekce kolekci, přímo v `tvorba/` díla mimo kolekce), `_cover.<jpg|jpeg|png|webp>` je jeho vlastní úvodní fotka. Podtržítko je odliší
 od děl (jméno díla jím začínat nemůže). Složky (`tvorba/`, `roky/`, `fotky/`) a jména děl zůstávají česky.
 Stará jména (`_kolekce.yaml`, `_uvod.jpg`, `uvod.yaml`, `uvod.jpg`) pipeline odmítne chybou „tento soubor se teď
 jmenuje …, přejmenuj ho“ a vedle nich nezaloží kostru, takže se nic neztratí; soubory se přejmenují ručně.
@@ -39,6 +41,7 @@ pavla/                                      (toto repo, veřejné)
   content/                                  veřejné kopie popisů = zrcadlo obsahového repa (generuje pipeline, needitovat):
     _index.yaml                             úvodní stránka
     tvorba/<slug>.yaml                      dílo bez kolekce
+    tvorba/_index.yaml                      díla mimo kolekce (description, cover, aspect, focus)
     tvorba/<kolekce>/_index.yaml            kolekce (složka = její slug)
     tvorba/<kolekce>/<slug>.yaml            dílo kolekce (kolekce = složka, žádný atribut)
     roky/<rok>.yaml                         rok
@@ -49,6 +52,7 @@ pavla/                                      (toto repo, veřejné)
     tvorba/<rok>/_cover/, tvorba/<rok>/og.jpg      rok: vlastní úvodní fotka, obrázek pro sdílení vybraného obalu
     tvorba/kolekce/<slug>/_cover/, …/og.jpg totéž pro kolekci
     _cover/, og.jpg                         totéž pro úvodní stránku
+    tvorba/_cover/                          vlastní úvodní fotka „Mimo kolekce“ (bez og.jpg, nemá vlastní stránku)
     fotky/<název>/                          ostatní fotky (O mně, Kontakt), jen obrázky + info.json
   mockups/                                  scény pro mockupy a jejich kalibrace (scenes.yaml)
   scripts/process-images.mjs                pipeline (npm run images)
@@ -91,7 +95,15 @@ v `dist/sitemap.xml`.
 stejná kontrola jako týdenní u nasazeného webu, jen čte soubory z `dist/` (`distFetch`, jako GitHub Pages:
 `/a/` i `/a` = `/a/index.html`). Začne od úvodní stránky a od všech stránek z mapy webu, projde jejich odkazy,
 z `src`, `srcset`, `href` a `og:image` posbírá obrázky a ověří, že existují. Chybějící vypíše se stránkou, která
-na ně odkazuje, a skončí kódem 1. Testovací web: `SITE_DATA_DIR=.demo/site npm run check:images` po
+na ně odkazuje, a skončí kódem 1. Navíc ověří, že každá postavená stránka bez `noindex` je v mapě webu
+(`unlistedPages`, `isNoindex` v `scripts/lib/sitemap.mjs`): stránka zapomenutá v `STATIC_PAGES` skončí kódem 1.
+A u každé stránky bez `noindex` texty a strukturovaná data (`pageProblems` v `scripts/lib/page-check.mjs`):
+titulek i popis (`<meta name="description">`) má a žádná jiná stránka nemá stejný, popis má nejvýš 160 znaků
+(`DESCRIPTION_MAX`), JSON-LD je platný JSON s `@context` schema.org a každý uzel (v `@graph`) má `@type`. Problémy
+vypíše po stránkách a skončí kódem 1.
+Běží i v „Kontrole kódu“ po stavbě webu (pull request s chybějícím obrázkem, stránkou mimo mapu nebo vadnými
+texty se nesloučí). Texty a strukturovaná data nasazeného webu kontroluje stejně i týdenní kontrola (níže).
+Testovací web: `SITE_DATA_DIR=.demo/site npm run check:images` po
 `npm run demo:build`; jiná složka: `npm run check:images -- <složka>`.
 
 ### Filtry v galerii
@@ -105,9 +117,9 @@ Tohle je závazné pravidlo: každý nový filtr musí mít parametr v URL.
 | Téma (čipy s počty, lze vybrat víc, viz níže) | `tag` | každý vybraný zvlášť, např. `?tag=krajina&tag=voda` (dílo musí mít všechny); jeden `?tag=krajina` jako dřív |
 | Technika (s počty) | `technique` | např. `?technique=akvarel` |
 | Rok (jen na `/tvorba/` a u kolekce; u kolekce jen roky jejích děl s počty, bez roku se všemi díly, když nic nezbude, bez výběru) | `year` | `?year=2025` (nenabízený rok = vše) |
-| Kolekce (jen na `/tvorba/` a stránce roku) | `collection` | slug kolekce, `?collection=plener-sumava-2026` |
+| Kolekce (jen na `/tvorba/` a stránce roku; za „vše“ volba „žádná“ = díla bez kolekce, jen když nějaká jsou) | `collection` | slug kolekce, `?collection=plener-sumava-2026`; `none` = žádná (`NO_COLLECTION`, v liště čip „bez kolekce“) |
 | Stav (s počty) | `status` | `unsold` = na prodej, `kept` = ještě mám, `gone` = už nemám |
-| Výběr autorky (přepínač s počtem, jen když výpis nějaké má, ale ne všechna) | `featured` | `1` = jen díla s `featured: true`, jiná hodnota se ignoruje |
+| Doporučené = výběr autorky (přepínač s počtem a bublinou „Výběr autorky: …“, jen když výpis nějaké má, ale ne všechna) | `featured` | `1` = jen díla s `featured: true`, jiná hodnota se ignoruje |
 | Stránka (viz *Stránkování*) | `page` | číslo stránky od 2, `all` = vše bez stránkování |
 | Na stránku (viz *Stránkování*) | `perPage` | `24` nebo `48` (výchozí 12 se nepíše) |
 
@@ -131,8 +143,20 @@ vede odkaz na výpis bez filtrů.
 - Vyzkoušet: `npm run demo`, v `/tvorba/` vybrat štítek a stranu 2, otevřít dílo, „← Tvorba“ vrátí stejný výběr
   a posune se na kartu díla; z kolekce „← Kolekce“ na kartu kolekce na přehledu; přes „Úvod“ a zpět na dílo vede „← Tvorba“ na galerii bez filtrů.
 
-Když je vybraná kolekce, vedle výběru se objeví odkaz **„O kolekci →“** na její
-stránku. Odkaz **Kolekce** v řádku s roky vede na přehled `/tvorba/kolekce/`, na stránce roku
+Když je vybraná kolekce, vedle výběru se objeví odkaz **„O kolekci ›“** na její
+stránku.
+
+**Roky na jeden řádek** (`scripts/lib/year-row.mjs`, v prohlížeči `src/lib/year-row.ts`, `fitYearRow`): řádek roků
+nad galerií (odkazy na stránky roků) i čipy roků na přehledu kolekcí zůstanou na jednom řádku, od nejnovějšího roku.
+Co se nevejde, schová se za ovládací prvek s rozsahem skrytých let („2017–2003 ▾“, jeden rok „2003 ▾“,
+`hiddenYearsLabel`), který je na místě rozbalí (řádek se zalomí) a „▴ méně“ zase sbalí (bez rámečku, šipka v barvě odkazů, aby se nepletl s rokem; třída `open`). Šipka je v obou
+stavech tentýž znak „▾“ se stejným písmem a velikostí, pro „méně“ jen otočený o 180° (CSS `transform`), takže
+jsou obě pixelově stejné. Kolik se vejde, se měří
+v prohlížeči a přepočítá při změně šířky (`visibleCount`). Vybraný rok mezi skrytými (stránka staršího roku,
+`?year=2003` na přehledu) rozbalí řádek sám (`pickedIsHidden`). V HTML jsou vždy všechny roky, bez JavaScriptu se
+řádek jen zalomí.
+
+Odkaz **Kolekce** v řádku s roky vede na přehled `/tvorba/kolekce/`, na stránce roku
 rovnou na přehled vyfiltrovaný na ten rok (`/tvorba/kolekce/?year=2026`), pokud ho přehled nabízí (`overviewLink`).
 
 Filtr **Stav** má čtyři volby (`STATUS_FILTERS` v `scripts/lib/gallery-filter.mjs`):
@@ -142,11 +166,16 @@ Filtr **Stav** má čtyři volby (`STATUS_FILTERS` v `scripts/lib/gallery-filter
 - **už nemám** (`gone`): `sold` + `gifted` (`GONE_STATUSES`).
 
 Volba, za kterou na dané stránce není žádné dílo nebo která ukáže totéž co „vše“ (všechna díla), se nenabízí
-(`offersOption`, `statusOptions`); bez žádné volby není filtr Stav vůbec. Totéž platí pro přepínač „Výběr autorky“: jen
+(`offersOption`, `statusOptions`); bez žádné volby není filtr Stav vůbec. Totéž platí pro přepínač „Doporučené“ (výběr autorky): jen
 na stránce, kde jsou vybraná díla, ale ne všechna. Odkaz s takovou volbou ukáže vše. Dřívější volba `?status=available` (jen k prodeji) se přečte jako `unsold`
 (`STATUS_ALIASES`), sdílené odkazy dál fungují. Příklad kombinace:
 `/tvorba/?collection=plener-sumava-2026&status=unsold&tag=voda`, nebo jen výběr autorky
 na prodej: `/tvorba/?featured=1&status=unsold`.
+
+**Řádek filtrů** (výběry, „Doporučené“ a počet děl) je ve formuláři první, čipy štítků pod ním. Na počítači (okno od 1280 px) se vejde vždy na jeden řádek (ověřeno i v nejhorším případě: všechny filtry, nejdelší texty a 9999 děl): výběry mají pevnou největší šířku
+(`max-width` 11em, Kolekce 13em) a delší volbu zavřené zkrátí „…“ (rozbalené ukážou vše celé), přepínač výběru
+autorky se jmenuje krátce „Doporučené“ (plný název v bublině) a „Na stránku“ je pod díly. Pipeline doporučí kratší
+název kolekce (nad 19 znaků) a techniku (nad 14 znaků), viz *Souhrn běhu*. Na telefonu se řádek zalamuje.
 
 **Lišta filtrů** (`scripts/lib/filter-bar.mjs`, `WorkGallery.astro`): když formulář filtrů odjede z obrazovky, posun
 stránky nahoru o `REVEAL_AFTER` (40 px) od posledního obratu vysune shora tenkou lištu s vybranými filtry jako
@@ -164,7 +193,7 @@ Skrytá lišta je `inert`, při `prefers-reduced-motion` bez animace, bez JavaSc
 `npm run demo`, v `/tvorba/` sjet dolů, kousek nahoru, „Upravit“, vybrat štítek, pak ho v liště zrušit „×“.
 
 **Počty a nabízené volby podle aktuálního výběru** (`facetChoices`, `facetValues`): po každé změně filtru má každá
-volba výběrů Technika, Rok, Kolekce a Stav i přepínač „Výběr autorky“ počet děl, která by ukázala spolu s ostatními
+volba výběrů Technika, Rok, Kolekce a Stav i přepínač „Doporučené“ počet děl, která by ukázala spolu s ostatními
 aktivními filtry (sama sebe nepočítá, takže počty u jiných voleb téhož výběru říkají, co dá přepnutí; volby Stavu se
 překrývají, každá se počítá zvlášť). Ve výběru zůstanou jen volby, které zobrazená díla zúží a nevyprázdní
 (`offersOption` nad díly, která nechají ostatní filtry); vybraná zůstane vždy. Skryté volby se z výběru odeberou
@@ -176,7 +205,7 @@ změna nevrátí. Bez JavaScriptu jsou počty ze všech děl stránky. Na co se 
 Každý další vybraný štítek výběr zúží: zůstanou díla, která mají všechny vybrané (`matchesFilters`). Po každé změně
 (i jiného filtru) zůstanou jen čipy, které zobrazená díla zúží a nevyprázdní (`tagChoices`, `offersOption`), s počtem
 mezi zobrazenými díly; vybrané čipy zůstanou vždy (bez počtu). Bez žádného nabízeného čipu se řada čipů skryje. Pořadí
-čipů se nemění (podle počtu děl na stránce). V adrese jsou vybrané štítky v českém abecedním pořadí bez opakování
+čipů se nemění: česky abecedně (`localeCompare('cs')`, „ch“ za „h“), takže známý štítek jde rychle najít a nové dílo čipy nepřehází. V adrese jsou vybrané štítky v českém abecedním pořadí bez opakování
 (`sortTags`, `toggleTag`), takže stejný výběr má vždy stejný odkaz; štítek, který na stránce žádné dílo nemá
 (starý odkaz), se ignoruje. Bez JavaScriptu čipy nic nedělají a ukáže se vše.
 
@@ -214,7 +243,7 @@ dílo z jiného místa, rozpracované dílo, neexistující detail, neplatný `a
 v kostrách prázdné. V přehledu kolekcí obal nikam
 nevede (celá položka vede na kolekci).
 
-Díla s `featured: true` jsou zároveň filtrovatelná přepínačem „Výběr autorky“ (`?featured=1`). Na úvodní stránce
+Díla s `featured: true` jsou zároveň filtrovatelná přepínačem „Doporučené“ (`?featured=1`). Na úvodní stránce
 „Nejnovější“ neopakuje dílo z úvodního obrazu (vždy 6 děl).
 
 Náhodný obraz: stránka obsahuje všechny kandidáty, první viditelný a ostatní `hidden` s líně načítanými obrázky
@@ -264,8 +293,9 @@ Každý výpis děl (`/tvorba/`, stránky roků, stránky kolekcí) se stránkuj
 výpisem jsou čísla stránek, šipky „← Předchozí / Další →“ a mezery „…“ u dlouhých
 seznamů.
 
-- **Počet děl na stránku** si návštěvník vybere ve výběru „Na stránku“ mezi
-  filtry: 12, 24 nebo 48 (`gallery.pageSizes` v `site.config.yaml`, první je
+- **Počet děl na stránku** si návštěvník vybere ve výběru „Na stránku“ pod
+  díly, vpravo na řádku se stránkami (na telefonu pod nimi; jen když se zobrazená díla nevejdou
+  na nejmenší stránku): 12, 24 nebo 48 (`gallery.pageSizes` v `site.config.yaml`, první je
   výchozí). Výběr je v URL jako `perPage` (jen když není výchozí, např.
   `?perPage=24`), změna vrátí na 1. stránku a zapne stránkování, i když bylo
   vypnuté. Jiná hodnota v URL se ignoruje. Výběr se ukáže, jen když má výpis
@@ -423,7 +453,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `date` | den vzniku (`2026-06-14`): určuje řazení i rok díla (stránky roků, adresa, složky v `pavla`) |
 | `description` | veřejný popis na webu |
 | `details` | popisky detailních fotek (viz *Detailní fotky*) |
-| `featured` | `true` = ve **výběru autorky**: filtr „Výběr autorky“; z 10 nejnovějších vybraných (`FEATURED_PICK`) se náhodně střídá obraz nahoře na úvodní stránce, na stránce roku a úvod kolekce bez `cover`; nejnovější z nich je náhled pro sdílení (úvod, rok, kolekce) |
+| `featured` | `true` = ve **výběru autorky**: přepínač „Doporučené“ v galerii; z 10 nejnovějších vybraných (`FEATURED_PICK`) se náhodně střídá obraz nahoře na úvodní stránce, na stránce roku a úvod kolekce bez `cover`; nejnovější z nich je náhled pro sdílení (úvod, rok, kolekce) |
 | `fler` | odkaz na Fler, tlačítko „Koupit na Fleru“ |
 | `mockups` | `true` = mockupy, nezávisle na prodeji (výchozí `false`) |
 | `price` | Kč, povinná u `available` a `reserved` |
@@ -530,22 +560,24 @@ jen v obsahovém repu. Nové veřejné pole stačí přidat do schématu bez pre
 a fotek platí totéž (`PUBLIC_COLLECTION_FIELDS`, `PUBLIC_YEAR_FIELDS`, `PUBLIC_HOME_FIELDS`, `PUBLIC_PHOTO_FIELDS`).
 
 **Testovací data** jsou úplně oddělená od skutečných (viz *Testovací data (demo)*):
-19 děl (18 publikovaných, 1 rozpracované), 4 kolekce a 3 zástupné fotky
+59 děl (58 publikovaných, 1 rozpracované) z let 1998–2026 s mezerami, 16 kolekcí, 31 štítků a 3 zástupné fotky
 v `demo-content/`, zobrazené přes `npm run demo`.
 
 | Funkce | Kde ji testovací data ukazují |
 |---|---|
-| roky | 2025 (6 děl), 2026 (12 publikovaných) |
-| stránkování | `/tvorba/` má 18 děl = 2 stránky po 12, při 24 nebo 48 jedna; stránky roků (6 a 12 děl) se nestránkují |
+| roky | 25 let od 1998 do 2026 s mezerami (chybí 2004, 2008, 2013, 2022): 2026 (9 publikovaných), 2025 (6), 2005, 2011, 2016, 2019 (po 4), 2000, 2023, 2024 (po 3), 2006, 2021 (po 2), ostatní po jednom díle; kostry `demo-content/roky/<rok>.yaml` bez textu (kromě 2025 a 2026) |
+| kolekce přes víc let a starší kolekce | Skicák 1998–2003 (4 díla ve 4 letech), Tatry 2000, Portréty 2005, Plenér Krkonoše 2006, Z cest 2009–2012 (Vinice na prodej), Podzim v lese 2011, U moře 2014–2015, Ptáci za oknem 2016, Zátiší 2017–2020, Noční město 2019, Řeky 2021–2023 (2021 a 2023), Louky 2024 |
+| roky na jeden řádek | `/tvorba/`: na počítači část let a „<rok>–1998 ▾“, v úzkém okně (DevTools → režim zařízení) méně; klik rozbalí, „▴ méně“ (tatáž šipka otočená) sbalí; `/tvorba/1998/` začne rozbalený; totéž čipy na `/tvorba/kolekce/` (roky kolekcí) |
+| stránkování | `/tvorba/` má 58 děl = 5 stránek po 12, 3 po 24, 2 po 48; stránky roků (nejvýš 9 děl) se nestránkují |
 | rozpracované dílo (`meta_draft`) | Rozpracovaný obraz: nesmí být nikde na webu |
-| `available` | Pivoňky, Zimní sad, Ráno u rybníka, Město v dešti, Náměstí v mlze, Máky, Bouřka nad polem, Na podlaze |
-| `reserved` | Kočka na okně, Modravské slatě, Rybník v zimě |
-| `sold` | Jablka na stole, Šumava v mlze, Nádraží |
-| `gifted` | Lípa u kaple |
-| `not-for-sale` | Kytice z louky, Kvilda skica, Slunečnice |
-| techniky | akvarel, akvarel a tuš, pastel, kresba tužkou, kvaš (Slunečnice, Rybník v zimě), linoryt (Lípa u kaple) |
-| tagy | krajina, voda, plenér, hory, květiny, zátiší, ovoce, zvířata, zima, město, déšť, mlha, léto (i kombinace) |
-| `featured` (výběr autorky, 9 děl) | Máky, Ráno u rybníka, Šumava v mlze, Nádraží, Rybník v zimě… (2026 a přelom roku), Pivoňky, Zimní sad, Kočka na okně, Jablka na stole (2025): úvodní stránka náhodně střídá všech 9, `/tvorba/?featured=1` je ukáže |
+| `available` (14) | Pivoňky, Zimní sad, Ráno u rybníka, Město v dešti, Náměstí v mlze, Máky, Bouřka nad polem, Na podlaze, Vinice, Lesní cesta, Čáp u rybníka, Oblaka, Sázava, Louka s kopretinami |
+| `reserved` (4) | Kočka na okně, Modravské slatě, Rybník v zimě, Kostel za soumraku |
+| `sold` (16) | Jablka na stole, Šumava v mlze, Nádraží a 13 starších (např. Štrbské pleso, Buky, Most v noci, Seno) |
+| `gifted` (7) | Lípa u kaple, Kočka na plotu, Hruška, Cibule, Smrky pod štítem, Rybář, Podzimní alej |
+| `not-for-sale` (17) | Kytice z louky, Kvilda skica, Slunečnice a 14 dalších (např. Babička, Houby, Lampy, Gerlach) |
+| techniky | akvarel (35), kresba tužkou (8), akvarel a tuš (6), kvaš (5), pastel (3), linoryt (1, Lípa u kaple) |
+| tagy (31, nerovnoměrně) | hodně: krajina (28), voda (15), město (12); středně: léto (9), zátiší (7), květiny (6), podzim, hory, plenér (po 5), ulice, zima, řeka, strom, les (po 4); málo: déšť, zvířata, ovoce, noc, světla, portrét, ptáci (po 3), loď, louka, nebe, sníh (po 2), jaro, kostel, květina, mlha, most, západ slunce (po 1) |
+| `featured` (výběr autorky, 15 děl, v 8 ze 16 kolekcí a 3 bez kolekce) | Máky, Ráno u rybníka, Šumava v mlze, Nádraží, Rybník v zimě… (2026 a přelom roku), Pivoňky, Zimní sad, Kočka na okně, Jablka na stole (2025), Louka s kopretinami (2024), Vltava u Zbraslavi, Oblaka, Čáp u rybníka, Buky, Babička: úvodní stránka náhodně střídá 10 nejnovějších (po Louku s kopretinami, `FEATURED_PICK`), `/tvorba/?featured=1` ukáže všech 15; kolekce bez vybraných: Skicák, Tatry, Krkonoše, Z cest, U moře, Zátiší, Noční město, Město 2026 |
 | text o roce | `/tvorba/2026/` má text (`demo-content/roky/2026.yaml`), `/tvorba/2025/` ne (`description: ""`) |
 | tlačítko „Koupit na Fleru“ | Máky |
 | export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail), Kytice z louky (+ 1 detail, není na prodej), Máky, Na podlaze; ostatní díla žádný |
@@ -562,8 +594,8 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | rok: vlastní úvodní fotka, jen `focus` (ořez 1:1) | 2025 (`demo-content/roky/2025.yaml`, panorama `roky/2025.jpg`) |
 | úvodní stránka: text z `_index.yaml`, náhodný obraz | `demo-content/_index.yaml` |
 | kolekce přes víc let a přelom roku | `demo-kresby-2025-2026/`: Kočka na okně, Jablka na stole (2025), Rybník v zimě (prosinec 2025), Nádraží (únor 2026) |
-| filtr roku na přehledu kolekcí | `/tvorba/kolekce/`: 2026 (3 kolekce: Město, Plenér Šumava, Kresby), 2025 (2: Ze zahrady, Kresby); Kresby jsou v obou letech: s rokem 2025 „3 z 4 děl“ a odkaz `?year=2025`, ostatní celé v jednom roce bez roku v odkazu; „Kolekce“ na `/tvorba/2025/` vede na `/tvorba/kolekce/?year=2025`; „← Kolekce“ z Kresby otevřených z přehledu s 2025 vede zpět na `?year=2025`, i po prokliku na dílo a zpět na kolekci (viz *Návrat do výpisu*); výběr Rok jen u Kresby (2025 (3), 2026 (1)), ostatní testovací kolekce jsou z jednoho roku |
-| díla bez kolekce | Zimní sad, Slunečnice, Máky, Bouřka nad polem, Lípa u kaple, Na podlaze, Rozpracovaný obraz |
+| filtr roku na přehledu kolekcí | `/tvorba/kolekce/`: 2026 (3 kolekce: Město, Plenér Šumava, Kresby), 2025 (2: Ze zahrady, Kresby); Kresby jsou v obou letech: s rokem 2025 „3 z 4 děl“ a odkaz `?year=2025`, ostatní celé v jednom roce bez roku v odkazu; „Kolekce“ na `/tvorba/2025/` vede na `/tvorba/kolekce/?year=2025`; „← Kolekce“ z Kresby otevřených z přehledu s 2025 vede zpět na `?year=2025`, i po prokliku na dílo a zpět na kolekci (viz *Návrat do výpisu*); výběr Rok u kolekcí přes víc let (Kresby: 2025 (3), 2026 (1); dále Skicák, Z cest, U moře, Zátiší, Řeky), ostatní testovací kolekce jsou z jednoho roku |
+| díla bez kolekce (12 zveřejněných), volba Kolekce „žádná“ | Zimní sad, Slunečnice, Máky, Bouřka nad polem, Lípa u kaple, Na podlaze, Zahrada po dešti, Kočka na plotu, Osamělý strom, Podzimní alej, Lodky na břehu, Oblaka, Rozpracovaný obraz; `/tvorba/?collection=none` (12 děl, v liště „bez kolekce ×“); s technikou „kresba tužkou“ „žádná“ zmizí (žádná kresba není bez kolekce) |
 | ořez podlahy: rohy listu najde pipeline (průhledné okolí na webu, papír v JPEG a na Instagramu, bílá pro Fler, mockupy bez podlahy) | Na podlaze (list vyfocený nakřivo, recept `floor` v `demo-content/images.yaml`) |
 | ořez podlahy: rohy zadané ručně | Bouřka nad polem (`meta_corners` v `demo-content/`) |
 | ořez podlahy vypnutý (`meta_corners: false`) | Lípa u kaple |
@@ -578,11 +610,14 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | stránka 404 s výběrem autorky | libovolná neexistující adresa, např. `/tvorba/nic/` (v `npm run demo`) nebo `.demo/site/dist/404.html` |
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
 | doporučení v souhrnu běhu: bez štítků, popis s malým písmenem a bez tečky / popisky detailů bez tečky / na prodej bez mockupů / text kolekce bez tečky / popis a popisek fotky bez tečky | Rozpracovaný obraz / Ráno u rybníka, Pivoňky / Máky, Bouřka nad polem, Modravské slatě, Pivoňky / Město 2026 / fotky stránek |
-| lišta filtrů při posunu nahoru, panel „Upravit“ (na úzké obrazovce zespodu) | `/tvorba/` (18 děl, stránka je dost dlouhá); úzká obrazovka: DevTools → režim zařízení |
-| počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (3 díla, Kolekce jen Kresby… a Plenér Šumava), + kolekce Kresby, pastely a kvaš (2 díla; Výběr autorky zmizí, oba obrazy ho mají); štítek „krajina“: Technika jen akvarel (6), kresba tužkou, kvaš, linoryt |
-| výběr více štítků („a zároveň“): čipy se zapínají a vypínají, zůstanou jen ty, které výběr zúží | `/tvorba/`: „krajina“ (9 děl, čipy léto, plenér, voda, déšť, zima, hory), + „voda“ (3 díla, zbudou plenér a zima), + „plenér“ (2 díla), „Vše“ zruší |
-| doporučení ke štítkům v souhrnu: jeden štítek ve dvou tvarech / dva štítky vždy spolu; statistika štítků | „květiny“ a „květina“ (Pivoňky) / „město“ a „ulice“ (Náměstí v mlze, Město v dešti, Nádraží); výpis `npm run demo:prepare` (`? advice: Štítky: …`). Příliš mnoho čipů testovací data nemají (vypadala by špatně), pokrývají ho testy |
+| lišta filtrů při posunu nahoru, panel „Upravit“ (na úzké obrazovce zespodu) | `/tvorba/` (58 děl, stránka je dost dlouhá); úzká obrazovka: DevTools → režim zařízení |
+| počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (8 děl, Kolekce jen Kresby…, Skicák (po 2), Plenér Šumava, Portréty, Ptáci, Tatry (po 1), bez „žádná“), + kolekce Kresby, pastely a kvaš (2 díla; přepínač Doporučené zmizí, oba obrazy jsou vybrané); štítek „krajina“: Technika jen akvarel (23), kresba tužkou, kvaš, linoryt |
+| výběr více štítků („a zároveň“): čipy se zapínají a vypínají, zůstanou jen ty, které výběr zúží | `/tvorba/`: „krajina“ (28 děl, zbude 17 čipů), + „voda“ (9 děl, zbudou hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, zbudou jaro a léto), „Vše“ zruší |
+| doporučení ke štítkům v souhrnu: jeden štítek ve dvou tvarech / dva štítky vždy spolu / čipy přes 2 řádky; statistika štítků | „květiny“ a „květina“ (Pivoňky) / „noc“ a „světla“ (Noční město 2019) / 31 štítků asi na 3 řádky, kandidáti jen u jednoho díla; výpis `npm run demo:prepare` (`? advice: Štítky: …`) |
 | filtr bez zbytečných voleb: Stav jen „na prodej“, bez Výběru autorky (všechna díla vybraná) / bez filtru Stav | Ze zahrady 2025 / Kresby, pastely a kvaš 2025–2026 / Město 2026 |
+| řádek filtrů na jeden řádek, zkrácená volba, „Na stránku“ pod díly | `/tvorba/?collection=demo-kresby-2025-2026`: „Kresby, pastely a kva…“, rozbalený výběr ukáže celý název; `/tvorba/` dole vpravo „Na stránku“, při filtru s nejvýš 12 díly zmizí |
+| doporučení: dlouhý název kolekce | Kresby, pastely a kvaš 2025–2026 (32 znaků); dlouhou techniku testovací data nemají, pokrývají ji testy |
+| „Mimo kolekce“ na přehledu kolekcí, `cover` + `aspect`, `description` | `/tvorba/kolekce/` poslední položka (12 děl, úvodní obraz Oblaka oříznutý na 3:2 a vlastní text z `demo-content/tvorba/_index.yaml`) → `/tvorba/?collection=none`; s rokem 2019 „1 z 12 děl“ a odkaz s `&year=2019` |
 | bublina nad obrazem: s popisem a stavem / detail jako úvodní obraz / vlastní fotka bez bubliny | Máky v galerii / Ze zahrady 2025 / Plenér Šumava 2026 |
 
 ### Kontroly (pipeline při chybě nic nezveřejní)
@@ -780,8 +815,19 @@ private_note: kde … # NEPOVINNÉ, soukromé, na web se nedostane
   lepší připravit široký detail a použít `cover: <id>#<detail>`. Komponenta `src/components/Cover.astro`.
 - Stránka `/tvorba/kolekce/<slug>/` vznikne jen pro kolekci s aspoň jedním
   publikovaným dílem. Vedou na ni: přehled `/tvorba/kolekce/`, řádek „Kolekce“
-  u každého jejího díla a odkaz „O kolekci →“ v galerii při vybrané kolekci.
-- V galerii je výběr „Kolekce“ s počty děl.
+  u každého jejího díla a odkaz „O kolekci ›“ v galerii při vybrané kolekci.
+- V galerii je výběr „Kolekce“ s počty děl; volba „žádná“ (`?collection=none`) ukáže díla, která v žádné kolekci nejsou.
+- Přehled `/tvorba/kolekce/` končí položkou **„Mimo kolekce“** (`NO_COLLECTION_TITLE`, `getUncollected` v `src/lib/site.ts`,
+  název kurzívou, protože to kolekce není): díla bez kolekce, vede do galerie `/tvorba/?collection=none`. Úvodní
+  obraz podle stejného pravidla jako u kolekce z `tvorba/_index.yaml` obsahového repa (`UNCOLLECTED_SCHEMA`,
+  `scripts/lib/uncollected.mjs`; kostru založí pipeline, jakmile v `tvorba/` leží nějaké dílo): vlastní fotka
+  `tvorba/_cover.jpg` (→ `public/tvorba/_cover/`), `cover: <id>` jen dílo mimo kolekce (jinak chyba „nepatří do obrazů
+  mimo kolekce“), s `aspect`/`focus` oříznutý, jinak náhodně z výběru autorky. Obrázek pro sdílení nemá (žádná vlastní
+  stránka); veřejná kopie `content/tvorba/_index.yaml` jen dokud je nějaké zveřejněné dílo mimo kolekci. Text pod
+  názvem: nepovinný `description` téhož souboru (v kostře zakomentovaný), prázdný = `UNCOLLECTED_TEXT` („Obrazy, které
+  nepatří do žádné kolekce.“); doporučení k velkému písmenu a tečce jako u kolekce, `DOPLNIT` = chyba. Řídí se vybraným rokem jako kolekce („2 z 12 děl“, odkaz s `&year=`), čipy roků
+  ale počítají jen kolekce. Bez děl mimo kolekce (nebo bez kolekcí) chybí.
+- Složka kolekce, jejíž adresa by byla `none`, je chyba („adresu „none“ web používá pro obrazy bez kolekce“).
 - Přehled `/tvorba/kolekce/` jde filtrovat podle roku (čipy „Vše“, „2026 (3)“: rok a počet kolekcí). Kolekce patří ke každému
   roku, ve kterém vzniklo aspoň jedno její dílo (rok z `date`); vybraný rok nechá jen tyto kolekce. U každé pak počet
   jejích děl z toho roku („2 z 5 děl“, `worksLabel`; má-li v tom roce všechna, jen „5 děl“) a odkaz na ni nese rok
@@ -947,7 +993,9 @@ Návštěvník si v patičce vybere barvy webu: **Automaticky** (podle světléh
   `ok` „k prodeji“, `error` chyby formuláře) a `picture` (síla stínu obrazů `shadow`, 1 = jako na Papíru; `edge` =
   jemná linka kolem obrazu na tmavém podkladu, jinak `null`). Z nich vznikne CSS (proměnné `--paper`, `--ink-soft`…,
   `--shadow-soft` pro karty galerie, `--shadow-deep` pro úvodní obraz a dílo, `--paper-blend` podle `scheme`)
-  i kroužky přepínače.
+  i kroužky přepínače. Zaškrtávátka (`input[type=checkbox]`, teď „Doporučené“ v galerii) kreslí web sám z palety
+  (`Base.astro`): prázdné `--paper` s rámečkem `--ink-soft`, zaškrtnuté `--ink` s fajfkou v barvě papíru, fokus
+  z klávesnice `--accent`; nativní (bílé, modrý fokus) zůstane jen v režimu vysokého kontrastu (`forced-colors`).
   **Nová paleta = nový záznam v `PALETTES`**, nic dalšího.
 - **Automaticky** = první světlá paleta ve dne, první tmavá v tmavém režimu systému (a mění se s ním).
 - **Kontrola** (`checkPalettes`, test): každá paleta má všechny barvy jako `#rrggbb`, unikátní `id` (ne `auto`),
@@ -986,7 +1034,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | Změna | Jak ověřit |
 |---|---|
 | filtry | `/tvorba/`: klikej na filtry, sleduj URL; zkopíruj URL do nového okna, musí ukázat totéž. Testovací data mají pro každou kombinaci aspoň jedno dílo. |
-| stránkování | `/tvorba/`: 12 děl a stránky 1, 2; klikni na 2, v URL `?page=2`, zkopíruj do nového okna. Vyber filtr, vrátí tě na 1. stránku; `?page=99` se opraví na poslední. „Zobrazit vše (17)“: všech 17 děl, v URL `?page=all`; změň filtr, zůstane vše; „Zobrazit po stránkách“ vrátí 1. stránku. „Na stránku“ 24: všech 17 na jedné stránce, v URL `?perPage=24`; zpět na 12 parametr zmizí; `?perPage=13` se ignoruje. Paměť: zvol 24, otevři `/tvorba/` znovu bez parametrů (nebo stránku kolekce) → 24 a `?perPage=24` v URL; otevři `/tvorba/?page=2` → 12 na stránku (odkaz má přednost); zvol 12 → paměť se smaže. Smazat ručně: DevTools → Application → Local Storage → `pavla.gallery.perPage`. Menší první hodnota `gallery.pageSizes` (např. `[4, 12]`) ukáže mezery „…“. |
+| stránkování | `/tvorba/`: 12 děl a stránky 1, 2, …, 5 (mezera „…“); klikni na 2, v URL `?page=2`, zkopíruj do nového okna. Vyber filtr, vrátí tě na 1. stránku; `?page=99` se opraví na poslední. „Zobrazit vše (58)“: všech 58 děl, v URL `?page=all`; změň filtr, zůstane vše; „Zobrazit po stránkách“ vrátí 1. stránku. „Na stránku“ 24: stránky 1, 2, 3, v URL `?perPage=24`; 48: stránky 1, 2; zpět na 12 parametr zmizí; `?perPage=13` se ignoruje. Paměť: zvol 24, otevři `/tvorba/` znovu bez parametrů (nebo stránku kolekce) → 24 a `?perPage=24` v URL; otevři `/tvorba/?page=2` → 12 na stránku (odkaz má přednost); zvol 12 → paměť se smaže. Smazat ručně: DevTools → Application → Local Storage → `pavla.gallery.perPage`. Menší první hodnota `gallery.pageSizes` (např. `[4, 12]`) ukáže mezery na obou stranách aktuální stránky. |
 | náhledy pro sdílení | `grep -o '<meta property="og:image[^>]*>' dist/tvorba/2026/*/index.html` po `npm run build`; soubory `public/tvorba/*/*/og.jpg` a `public/tvorba/kolekce/*/og.jpg`. Online: po nasazení vlož odkaz do <https://www.opengraph.xyz/> nebo do Facebook Sharing Debuggeru. |
 | rozpracované dílo | „Rozpracovaný obraz“ nesmí být v galerii, v roce 2026 ani na adrese `/tvorba/dhsh5/` |
 | web bez děl | `mkdir -p /tmp/prazdny/public && cp public/favicon.svg /tmp/prazdny/public/ && SITE_DATA_DIR=/tmp/prazdny npx astro build`: úvodní stránka ukáže „Obrazy tu brzy přibudou.“ a odkaz na Instagram (bez `site.instagram` jen první větu) |
@@ -995,7 +1043,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | exporty | `ls .demo/content/export/*/*/`: Instagram jen Ráno u rybníka, Pivoňky, Kytice z louky a Máky (`meta_instagram: true`) s `-clean` a `-detail-*`, Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export zmizí (originál + `-mockup-*`) |
 | cena | zakomentuj nebo smaž `price` u díla `available` (`demo-maky.yaml`): `npm run images` skončí chybou „stav „available“ potřebuje cenu“ |
 | úklid exportů | přejmenuj dílo (yaml, fotku i složku detailů), `npm run images`: v logu `- removed export/…` se starým názvem, v `export/` zůstanou jen soubory s novým názvem; totéž po smazání díla. Nebo nakopíruj do `export/fler/<rok>/` cizí soubor `<slug>-<id>-mockup-xyz.jpg` existujícího díla: další běh ho smaže, i když nic nepřegeneruje. |
-| kolekce | `/tvorba/kolekce/` (přehled), `/tvorba/kolekce/demo-plener-sumava-2026/` (s úvodní fotkou), `/tvorba/kolekce/demo-zahrada-2025/` (bez ní), výběr „Kolekce“ a „O kolekci →“ v galerii, řádek „Kolekce“ na detailu díla |
+| kolekce | `/tvorba/kolekce/` (přehled), `/tvorba/kolekce/demo-plener-sumava-2026/` (s úvodní fotkou), `/tvorba/kolekce/demo-zahrada-2025/` (bez ní), výběr „Kolekce“ a „O kolekci ›“ v galerii, řádek „Kolekce“ na detailu díla |
 | detailní fotky | `/tvorba/2026/demo-rano-u-rybnika-pf7ru/` (2 detaily s popisky), `/tvorba/2025/demo-kytice-z-louky-q6bn6/` (1 detail bez popisku): náhledy pod popisem, prohlížečka; v `export/instagram` soubory `-detail-*` |
 | soukromá poznámka | `grep -r private_note .demo/site/content/` nesmí nic najít; `demo-rano-u-rybnika` a `demo-jablka-na-stole` ji v `demo-content/` mají |
 | oddělení testovacích dat | zkopíruj `demo-content/tvorba/demo-maky.yaml` do `tvorba/` obsahového repa a spusť `npm run images`: skončí chybou „test data do not belong in the real content“ a nic nezapíše (pak soubor smaž). Obráceně: dílo bez jména `demo-…` v `demo-content/` nebo smazaná značka `demo-content/demo-content.yaml` zastaví `npm run demo`. |
@@ -1043,9 +1091,13 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
   3. **Doporučení** (`### 💡 Doporučení (počet)`, `workAdvice` v `scripts/lib/advice.mjs`): po souborech, u všech děl
      (i rozpracovaných), běh nezastaví ani nezmění: dílo bez štítků (`tags`); `title` začíná malým písmenem nebo končí
      tečkou; `description` a popisky detailů (`details`) začínají malým písmenem nebo nekončí tečkou (stačí i `!`, `?`,
-     `…`, případně před uzavírací uvozovkou či závorkou); dílo na prodej (`available`, `reserved`) bez `mockups: true`.
+     `…`, případně před uzavírací uvozovkou či závorkou); dílo na prodej (`available`, `reserved`) bez `mockups: true`;
+     název díla delší než `workTitleChars` (60 znaků titulku stránky ve výsledcích vyhledávání, `SEARCH_TITLE_MAX`,
+     minus „ · “ a `site.title`, teď 40): ve výsledcích vyhledávání a v záložce se zkrátí (bublina nad obrazem název
+     nezkracuje).
      Stejně `title` a `description` kolekce, `description` roku a úvodní stránky a `alt` a `caption` fotek stránek
-     (`pageAdvice`).
+     (`pageAdvice`). Název kolekce delší než `COLLECTION_TITLE_CHARS` (19) a technika delší než `TECHNIQUE_CHARS` (14)
+     znaků (`techniqueAdvice`, jednou za techniku s počtem děl): zavřený výběr v galerii je zkrátí (viz *Řádek filtrů*).
      Texty začínající `DOPLNIT` a prázdné přeskočí (ty hlídají kontroly).
      Pod „**Štítky**“ doporučení k seznamu štítků všech děl (i rozpracovaných; `tagAdvice`): jen tam, kde jde něco
      udělat. Jeden štítek ve dvou tvarech (velká písmena, diakritika nebo koncové samohlásky: „plener“ / „plenér“,
@@ -1085,6 +1137,11 @@ nepovinný). Kontroluje:
   odkazuje, a nedostupné stránky. Adresa webu je `site.url` ze `site.config.yaml`, `--site-url <adresa>` ji
   přepíše (např. lokálně spuštěný web). Vyzkoušení: `node scripts/check-health.mjs --site-url <adresa>`
   (bez tokenů ohlásí i token; za proxy navíc `NODE_USE_ENV_PROXY=1`).
+- že stránky nasazeného webu (tytéž, které prošla kontrola obrázků, bez `noindex`) mají vlastní titulek a popis
+  (žádné dvě stejné, popis nejvýš 160 znaků) a platná strukturovaná data (JSON-LD se schema.org a typem u každého
+  uzlu): `evaluatePageTexts` ve `scripts/lib/page-check.mjs`, stejná pravidla jako `npm run check:images` u buildu,
+  hlášky česky (nejvýš 10, pak „… a dalších N“). Když se web nepodařilo načíst, tahle kontrola se přeskočí
+  (chybu ohlásí kontrola obrázků).
 
 Výsledek je markdown (`formatReport`) na stránce běhu a ve výstupu kroku `report`; když je něco špatně,
 skript skončí kódem 1.
@@ -1116,7 +1173,11 @@ Co web dělá, aby mu vyhledávače rozuměly (`scripts/lib/seo.mjs`, `src/layou
 - **Popis každé stránky** (`<meta name="description">`, max. 160 znaků, `summarize`): úvod = text z `_index.yaml`,
   dílo = jeho popis, jinak složený z techniky, podkladu, rozměrů a roku (`workDescription`), rok a kolekce = jejich
   text, jinak věta s názvem; Tvorba, Kolekce, O mně a Kontakt mají vlastní. Žádné dvě stránky nemají stejný titulek
-  ani popis.
+  ani popis: dílo se stejným názvem jako jiné dostane v titulku stránky v závorce techniku („Tetřevská slať
+  (tisk z výšky)“; se stejnou technikou i rozměr a rok, pak `id`; `workPageTitle`), dílo se stejným popisem jako
+  jiné za něj techniku, rozměr a rok („Krmelec na okraji lesa. Akvarel, 27,5 × 40 cm, 2026.“, vlastní text se
+  případně zkrátí, aby se vše vešlo do 160 znaků; `workPageDescription`). Název a text na stránce se nemění.
+  Hlídá to `npm run check:images` (viz *Kontrola obrázků postaveného webu*).
 - **Strukturovaná data** (schema.org jako JSON-LD v `<script type="application/ld+json">`, `graphLd`):
   úvod = web (`WebSite`) a autorka (`Person` s portrétem, odkazy na Instagram a Fler a místem `homeLocation` ze `site.location`), O mně = `ProfilePage`,
   Kontakt = `ContactPage`, dílo = `VisualArtwork` (název, popis, obrázek, technika, podklad, rozměry v cm, datum,

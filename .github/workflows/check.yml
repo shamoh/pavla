@@ -1,5 +1,6 @@
-# Checks that nothing stopped working after a change of the code: unit tests and a build of the site from
-# the committed data (it also compiles every page template), and the workflows themselves (actionlint). The site from the test data (`npm run demo:build`)
+# Checks that nothing stopped working after a change of the code: unit tests, a build of the site from
+# the committed data (it also compiles every page template), its images and sitemap (npm run check:images), and
+# the workflows themselves (actionlint). The site from the test data (`npm run demo:build`)
 # is not built here: it takes minutes on a GitHub runner and is never published; build it locally instead.
 # A push of content updates (content/, public/ generated data) or documentation to main does not trigger it,
 # but every pull request does: it is the required check of the ruleset on main, so a content pull request (auto-merge)
@@ -51,6 +52,11 @@ jobs:
 
       - name: Build the site
         run: npm run build
+
+      # Every image the pages refer to exists, every indexable page is in the sitemap (a pull request breaking
+      # either is not merged).
+      - name: Images and sitemap of the built site
+        run: npm run check:images
 
   # Syntax, expressions, action inputs and shell scripts (shellcheck) of every workflow in this repo.
   workflows:

@@ -58,6 +58,16 @@ export const STATUS_ALIASES = { available: 'unsold' };
 export const FILTER_KEYS = ['tag', 'technique', 'year', 'collection', 'status', 'featured'];
 /** Value of `featured` when the visitor shows only the author's selection ("Výběr autorky", ?featured=1). */
 export const FEATURED_ON = '1';
+/**
+ * Value of `collection` for the works in no collection ("žádná", ?collection=none). Collection slugs come from
+ * Czech names (slugify), so none is ever "none".
+ */
+export const NO_COLLECTION = 'none';
+/** The name of the works in no collection: the item of the collections overview, the chip in the filter bar (lower case). */
+export const NO_COLLECTION_TITLE = 'Mimo kolekce';
+
+/** True when a work (its collection slug, '' = none) passes the collection filter `picked` ('' = all). */
+const inCollection = (collection, picked) => !picked || (picked === NO_COLLECTION ? !collection : collection === picked);
 
 /** True when a work ({ tags, technique, year as string, collection, status, featured }) passes every active filter. */
 export function matchesFilters(work, state) {
@@ -65,7 +75,7 @@ export function matchesFilters(work, state) {
     state.tag.every((t) => work.tags.includes(t)) &&
     (!state.technique || work.technique === state.technique) &&
     (!state.year || work.year === state.year) &&
-    (!state.collection || work.collection === state.collection) &&
+    inCollection(work.collection, state.collection) &&
     (!state.status || (STATUS_FILTERS[state.status]?.(work.status) ?? true)) &&
     (!state.featured || work.featured === true)
   );
@@ -99,12 +109,13 @@ export const FACETS = ['technique', 'year', 'collection', 'status', 'featured'];
 
 /**
  * The options of filter `key` a work ({ technique, year, collection, status, featured }) falls under: one technique,
- * year or collection (none without a collection), every status option its status passes (an available work is both
+ * year or collection (NO_COLLECTION without a collection), every status option its status passes (an available work is both
  * "na prodej" and "ještě mám"), FEATURED_ON for a featured work.
  */
 export function facetValues(work, key) {
   if (key === 'status') return Object.keys(STATUS_FILTERS).filter((k) => STATUS_FILTERS[k](work.status));
   if (key === 'featured') return work.featured ? [FEATURED_ON] : [];
+  if (key === 'collection') return [work.collection || NO_COLLECTION];
   return work[key] ? [String(work[key])] : [];
 }
 

@@ -35,7 +35,7 @@ description: |
 # details: { 1-mlha: Ranní mlha nad vodou }
 
 # Výběr autorky, možnosti:
-# - true - ve výběru: filtr „Výběr autorky“ v galerii; z 10 nejnovějších vybraných se náhodně střídají
+# - true - ve výběru: přepínač „Doporučené“ v galerii; z 10 nejnovějších vybraných se náhodně střídají
 #   obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover)
 # - false - ne
 featured: true

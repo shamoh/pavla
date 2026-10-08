@@ -16,6 +16,9 @@ export const authorId = (site) => `${baseOf(site)}/#autorka`;
 /** Identifier of the site in the structured data. */
 export const siteId = (site) => `${baseOf(site)}/#web`;
 
+/** Longest page title (with " · <site title>") a search result shows whole; a browser tab shows even less. */
+export const SEARCH_TITLE_MAX = 60;
+
 /**
  * A description for a search result: whitespace collapsed, at most `max` characters, cut after a whole word
  * (with "…"); '' for nothing.
@@ -36,6 +39,50 @@ export function workDescription(work, site) {
   if (work.description?.trim()) return summarize(work.description);
   const facts = [work.technique, work.support, formatSizeCm(work.size_cm), work.year].filter(Boolean).join(', ');
   return summarize(`${work.title}${facts ? ` – ${facts}` : ''}. ${site.author}.`);
+}
+
+/**
+ * What tells a work from another with the same name or text, from the shortest: its technique; with that, size and
+ * year; with those, its id (always distinct).
+ */
+const distinctions = (w) => [[w.technique], [w.technique, formatSizeCm(w.size_cm), w.year], [w.technique, formatSizeCm(w.size_cm), w.year, w.id]]
+  .map((parts) => parts.filter(Boolean).join(', '));
+
+/** The shortest level of `distinctions` that tells every work of `group` apart (the last one always does). */
+const distinctLevel = (group) => {
+  const levels = distinctions(group[0]).length;
+  for (let level = 0; level < levels - 1; level++) if (new Set(group.map((w) => distinctions(w)[level])).size === group.length) return level;
+  return levels - 1;
+};
+
+const sameText = (a, b) => String(a ?? '').trim().toLocaleLowerCase('cs') === String(b ?? '').trim().toLocaleLowerCase('cs');
+
+/**
+ * The title of a work page (in <title>, before the site's name): its title, and when another work (`works`, all
+ * shown works) has the same title, what tells them apart in brackets, "Tetřevská slať (tisk z výšky)" (technique;
+ * with the same technique also size and year, then the id). The title on the page itself never changes.
+ */
+export function workPageTitle(work, works) {
+  const group = [work, ...works.filter((w) => w !== work && w.id !== work.id && sameText(w.title, work.title))];
+  if (group.length < 2) return work.title;
+  return `${work.title} (${distinctions(work)[distinctLevel(group)]})`;
+}
+
+/**
+ * The description of a work page: workDescription, and when another work (`works`) has the same one, followed by
+ * what tells them apart from technique, size and year up, "Krmelec na okraji lesa. Akvarel, 27,5 × 40 cm, 2026.",
+ * within the 160 characters a search result shows (the own text is cut first).
+ */
+export function workPageDescription(work, works, site) {
+  const own = workDescription(work, site);
+  const group = [work, ...works.filter((w) => w !== work && w.id !== work.id && workDescription(w, site) === own)];
+  if (group.length < 2) return own;
+  const level = Math.max(1, distinctLevel(group));
+  const facts = distinctions(work)[level];
+  const suffix = `${facts.charAt(0).toLocaleUpperCase('cs')}${facts.slice(1)}.`;
+  const text = work.description?.trim() ? work.description : own;
+  const lead = summarize(text, 160 - suffix.length - 1);
+  return `${/[.!?…]$/.test(lead) ? lead : `${lead}.`} ${suffix}`;
 }
 
 /** The author: Pavla, with her profiles elsewhere (Instagram, Fler) so search engines join them. */

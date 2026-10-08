@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  TAG_ROWS, endsSentence, endsWithFullStop, pageAdvice, sameTag, startsLowercase, tagAdvice, tagKey, tagRows, tagStats, workAdvice,
+  COLLECTION_TITLE_CHARS, TAG_ROWS, TECHNIQUE_CHARS, endsSentence, endsWithFullStop, pageAdvice, sameTag, startsLowercase, tagAdvice, tagKey, tagRows, tagStats, techniqueAdvice, workAdvice, workTitleChars,
 } from './advice.mjs';
 
 const good = {
@@ -159,4 +159,41 @@ test('tagAdvice: too many chips for the gallery, naming tags of one work and lon
   assert.equal(advice.length, 1);
   assert.match(advice[0], new RegExp(`^Štítky: v galerii zaberou asi 5 řádků \\(41 štítků\\), přehledné je nejvýš ${TAG_ROWS}; `));
   assert.match(advice[0], /\(jen u jednoho díla „akvarelová krajina“; dlouhé „akvarelová krajina“\)$/);
+});
+
+test('techniqueAdvice: a technique longer than the closed select shows, once with its works', () => {
+  const w = (technique) => ({ data: { technique } });
+  assert.deepEqual(techniqueAdvice([w('akvarel'), w('kresba tužkou'), w('tisk z výšky')]), [], `up to ${TECHNIQUE_CHARS} characters`);
+  assert.deepEqual(techniqueAdvice([w('akvarel a kresba tuší'), w('akvarel a kresba tuší'), w('DOPLNIT'), w(undefined)]), [
+    `Technika „akvarel a kresba tuší“ (2 díla) má 21 znaků, ve výběru Technika v galerii se zkrátí (celá je vidět po rozbalení); celá se vejde do ${TECHNIQUE_CHARS} znaků`,
+  ]);
+});
+
+test('pageAdvice: a collection title longer than the closed select shows', () => {
+  const at = (title) => pageAdvice({ collections: [{ yamlPath: 'tvorba/k/_index.yaml', data: { title, description: 'Text.' } }] });
+  assert.deepEqual(at('Plenér Šumava 2026'), []);
+  assert.deepEqual(at('X'.repeat(COLLECTION_TITLE_CHARS)), []);
+  assert.deepEqual(at('Plenér Štěkeň podzim 2025'), [
+    `tvorba/k/_index.yaml: název kolekce má 25 znaků, ve výběru Kolekce v galerii se zkrátí (celý je vidět po rozbalení); celý se vejde do ${COLLECTION_TITLE_CHARS} znaků`,
+  ]);
+});
+
+test('workAdvice: a title too long for the page title in search results, with the site title after it', () => {
+  const site = 'Pavla Kramolišová';
+  assert.equal(workTitleChars(site), 40, '60 - " · Pavla Kramolišová"');
+  const at = (title) => workAdvice([{ yamlPath: 'tvorba/x.yaml', data: { title, tags: ['voda'] } }], { siteTitle: site });
+  assert.deepEqual(at('V'.repeat(40)), []);
+  assert.deepEqual(at('Ranní mlha nad Modravskými slatěmi v září po dešti'), [
+    'tvorba/x.yaml: název má 50 znaků, ve výsledcích vyhledávání a v záložce prohlížeče se zkrátí; celý se vejde do 40 znaků',
+  ]);
+  assert.deepEqual(at('DOPLNIT název, který je opravdu hodně dlouhý a ještě delší'), [], 'a placeholder is not advised on');
+});
+
+test('pageAdvice: the description of the works without a collection, like other page texts', () => {
+  const at = (description) => pageAdvice({ uncollected: { yamlPath: 'tvorba/_index.yaml', data: { description } } });
+  assert.deepEqual(at('Samostatné listy a dárky.'), []);
+  assert.deepEqual(at('samostatné listy'), [
+    'tvorba/_index.yaml: description začíná malým písmenem', 'tvorba/_index.yaml: description by měl končit tečkou',
+  ]);
+  assert.deepEqual(at(undefined), [], 'no description = the default text');
 });

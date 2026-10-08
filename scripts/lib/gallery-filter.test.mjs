@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FEATURED_ON,
+import { FEATURED_ON, NO_COLLECTION,
   countStatuses, matchesFilters, offersOption, statusOptions, yearFilterOptions, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
   facetChoices, facetValues, sortTags, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
 } from './gallery-filter.mjs';
@@ -241,7 +241,7 @@ const shelf = [
 test('facetValues: the options a work falls under, several status options at once', () => {
   assert.deepEqual(facetValues(shelf[0], 'technique'), ['akvarel']);
   assert.deepEqual(facetValues(shelf[0], 'year'), ['2026']);
-  assert.deepEqual(facetValues(shelf[2], 'collection'), [], 'no collection');
+  assert.deepEqual(facetValues(shelf[2], 'collection'), [NO_COLLECTION], 'no collection');
   assert.deepEqual(facetValues(shelf[0], 'status'), ['unsold', 'kept']);
   assert.deepEqual(facetValues(shelf[3], 'status'), ['gone']);
   assert.deepEqual(facetValues(shelf[0], 'featured'), [FEATURED_ON]);
@@ -279,4 +279,17 @@ test('facetChoices: status options overlap, each counted on its own', () => {
     [1, true], [1, true], [1, true],
   ]);
   assert.deepEqual(facetChoices(shelf, { ...all, collection: 'plener' }, 'collection', ['plener']), [{ value: 'plener', count: 2, picked: true, offered: true }]);
+});
+
+test('collection filter "žádná": only works in no collection, counted among the options', () => {
+  const state = { ...all, collection: NO_COLLECTION };
+  assert.ok(matchesFilters(work('sold'), state));
+  assert.ok(!matchesFilters(work('sold', { collection: 'plener' }), state));
+  assert.deepEqual(facetChoices(shelf, all, 'collection', [NO_COLLECTION, 'plener']).map((c) => [c.value, c.count, c.offered]), [
+    [NO_COLLECTION, 2, true], ['plener', 2, true],
+  ]);
+  // Every shown work is in no collection: "žádná" gives the same as "vše", not offered.
+  assert.deepEqual(facetChoices(shelf, { ...all, year: '2025' }, 'collection', [NO_COLLECTION]).map((c) => [c.count, c.offered]), [[2, false]]);
+  assert.deepEqual(stateFromParams(new URLSearchParams('collection=none')).collection, NO_COLLECTION);
+  assert.equal(stateToParams(state).toString(), 'collection=none');
 });

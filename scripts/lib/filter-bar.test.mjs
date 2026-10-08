@@ -15,7 +15,7 @@ test('activeFilters: tags first, then the selects in form order, the author\'s s
     { key: 'year', value: '2026', text: '2026' },
     { key: 'collection', value: 'demo-mesto', text: 'Město 2026' },
     { key: 'status', value: 'unsold', text: 'na prodej' },
-    { key: 'featured', value: '1', text: 'výběr autorky' },
+    { key: 'featured', value: '1', text: 'doporučené' },
   ]);
 });
 

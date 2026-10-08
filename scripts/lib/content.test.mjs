@@ -215,10 +215,11 @@ test('findUnknownAttributes lists typos in works, collections and photos, change
   await write('rano.yaml', 'id: k3f9a\ntitle: Ráno\nmockup: true\nprivate_kupec: teta\n');
   await write('plener/_index.yaml', 'title: Plenér\nkryt: k3f9a\n');
   await write('plener/vecer.yaml', 'id: m7q2x\ntitle: Večer\n');
+  await write('_index.yaml', 'cover: k3f9a\nobal: x\n'); // the works without a collection
   await fs.mkdir(path.join(dir, 'fotky'));
   await fs.writeFile(path.join(dir, 'fotky/portret.yaml'), 'alt: Pavla\npopis: x\n');
   const before = await read('rano.yaml');
-  assert.deepEqual(await findUnknownAttributes(dir), ['tvorba/rano.yaml: mockup', 'tvorba/plener/_index.yaml: kryt', 'fotky/portret.yaml: popis']);
+  assert.deepEqual(await findUnknownAttributes(dir), ['tvorba/rano.yaml: mockup', 'tvorba/plener/_index.yaml: kryt', 'tvorba/_index.yaml: obal', 'fotky/portret.yaml: popis']);
   assert.equal(await read('rano.yaml'), before);
 });
 
@@ -239,12 +240,14 @@ test('placeholderProblems: texts starting with DOPLNIT in collections, years, th
     collections: [{ yamlPath: 'tvorba/plener/_index.yaml', data: { title: 'DOPLNIT název', private_note: 'DOPLNIT' } }],
     years: [{ yamlPath: 'roky/2026.yaml', data: { description: 'DOPLNIT pár vět' } }, { yamlPath: 'roky/2025.yaml', data: { description: 'Rok.' } }],
     home: { yamlPath: '_index.yaml', data: { description: ' DOPLNIT' } },
+    uncollected: { yamlPath: 'tvorba/_index.yaml', data: { description: 'DOPLNIT text' } },
     photos: [{ name: 'portret', data: { alt: 'Portrét', caption: 'DOPLNIT popisek' } }],
   });
   assert.deepEqual(problems, [
     'tvorba/plener/_index.yaml: title pořád začíná „DOPLNIT“, přepiš ho',
     'roky/2026.yaml: description pořád začíná „DOPLNIT“, přepiš ho',
     '_index.yaml: description pořád začíná „DOPLNIT“, přepiš ho',
+    'tvorba/_index.yaml: description pořád začíná „DOPLNIT“, přepiš ho',
     'fotky/portret.yaml: caption pořád začíná „DOPLNIT“, přepiš ho',
   ]);
   assert.deepEqual(placeholderProblems({}), []);

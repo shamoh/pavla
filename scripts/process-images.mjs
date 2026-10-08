@@ -44,10 +44,12 @@ import YAML from 'yaml';
 import { PUBLIC_COLLECTION_FIELDS, coverSource, prepareCollections, validateCollectionCovers } from './lib/collections.mjs';
 import { PUBLIC_YEAR_FIELDS, prepareYears } from './lib/years.mjs';
 import { PUBLIC_HOME_FIELDS, prepareHome } from './lib/home.mjs';
+import { PUBLIC_UNCOLLECTED_FIELDS, prepareUncollected } from './lib/uncollected.mjs';
+import { NO_COLLECTION_TITLE } from './lib/gallery-filter.mjs';
 import {
-  HOME_PAGE_DIR, OUTPUT_ROOTS, collectionPageDir, coverDir, ogFile, photoDir, staleOutputs, workImageDir, yearPageDir,
+  HOME_PAGE_DIR, OUTPUT_ROOTS, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, ogFile, photoDir, staleOutputs, workImageDir, yearPageDir,
 } from './lib/site-images.mjs';
-import { HOME_COPY, MODIFIED, collectionCopyPath, photoCopyPath, staleCopies, workCopyPath, yearCopyPath } from './lib/site-content.mjs';
+import { HOME_COPY, MODIFIED, UNCOLLECTED_COPY, collectionCopyPath, photoCopyPath, staleCopies, workCopyPath, yearCopyPath } from './lib/site-content.mjs';
 import { coverProblems, coverShareSource } from './lib/covers.mjs';
 import { placeholderProblems, prepareContent } from './lib/content.mjs';
 import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
@@ -58,7 +60,7 @@ import { cutOut, prepareCorners, trimTransparent, writePreviews } from './lib/co
 import { EDGE_DEFAULTS, cutsSheet, edgeLook, innerRegion } from './lib/edges.mjs';
 import { PALETTES } from './lib/palettes.mjs';
 import { formatSummary } from './lib/summary.mjs';
-import { pageAdvice, tagAdvice, tagStats, workAdvice } from './lib/advice.mjs';
+import { pageAdvice, tagAdvice, tagStats, techniqueAdvice, workAdvice } from './lib/advice.mjs';
 import {
   PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, wantsInstagram, wantsMockups, planExportPrune, publicFields, validateWorks, workKey,
 } from './lib/works.mjs';
@@ -387,21 +389,33 @@ export async function run({
   const home = await prepareHome(contentDir);
   created.push(...home.created);
   updated.push(...home.updated);
+  // tvorba/_index.yaml: the cover of "Mimo kolekce" (the works without a collection) on the collections overview.
+  const uncollected = await prepareUncollected(contentDir, works.some((w) => !w.collection));
+  created.push(...uncollected.created);
+  updated.push(...uncollected.updated);
   created.forEach((p) => log(`+ new metadata skeleton: ${p}`));
   assigned.forEach((p) => log(`+ id assigned: ${p}`));
   updated.forEach((p) => log(`~ metadata brought in line with the schema: ${p}`));
   pending.forEach((p) => log(`! published, still marked DOPLNIT: ${p}`));
   const tags = tagStats(works);
-  const advice = [...workAdvice(works), ...tagAdvice(works), ...pageAdvice({ collections: collections.collections, years: years.years, home: home.home, photos: photos.photos })];
+  const advice = [...workAdvice(works, { siteTitle: config.site?.title ?? '' }), ...techniqueAdvice(works), ...tagAdvice(works), ...pageAdvice({
+    collections: collections.collections, years: years.years, home: home.home, uncollected: uncollected.uncollected, photos: photos.photos,
+  })];
   advice.forEach((p) => log(`? advice: ${p}`));
   const problems = [
-    ...scanProblems, ...corners.problems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems, ...home.problems,
+    ...scanProblems, ...corners.problems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems, ...home.problems, ...uncollected.problems,
     ...years.years.flatMap((y) => coverProblems({
       where: y.yamlPath, data: y.data, photoPath: y.coverPath, works, inScope: (w) => w.year === y.year, scope: y.year,
     })),
     ...(home.home ? coverProblems({ where: home.home.yamlPath, data: home.home.data, photoPath: home.home.coverPath, works }) : []),
+    ...(uncollected.uncollected ? coverProblems({
+      where: uncollected.uncollected.yamlPath, data: uncollected.uncollected.data, photoPath: uncollected.uncollected.coverPath, works,
+      inScope: (w) => !w.collection, scope: 'obrazů mimo kolekce',
+    }) : []),
     ...validateCollectionCovers(collections.collections, works),
-    ...placeholderProblems({ collections: collections.collections, years: years.years, home: home.home, photos: photos.photos }),
+    ...placeholderProblems({
+      collections: collections.collections, years: years.years, home: home.home, uncollected: uncollected.uncollected, photos: photos.photos,
+    }),
     ...demoProblems({ works, collections: collections.collections, marked: await exists(path.join(contentDir, DEMO_MARKER)) }, dataset),
   ];
   const detected = corners.detected;
@@ -594,6 +608,15 @@ export async function run({
     await writeCopy(HOME_COPY, h.data, PUBLIC_HOME_FIELDS);
     const source = coverShareSource({ photoPath: h.coverPath, data: h.data, works });
     await pageCover(HOME_PAGE_DIR, { photoPath: h.coverPath, alt: config.site?.title ?? '', source, label: 'uvod' });
+  }
+
+  // Works without a collection: content/tvorba/_index.yaml (cover); public/tvorba/_cover/ (own cover photo). The
+  // item "Mimo kolekce" has no page of its own, so no share image.
+  // Only while some published work is without a collection (otherwise the site shows no such item).
+  if (uncollected.uncollected && !only.length && works.some((w) => !w.collection && !w.data.meta_draft)) {
+    const u = uncollected.uncollected;
+    await writeCopy(UNCOLLECTED_COPY, u.data, PUBLIC_UNCOLLECTED_FIELDS);
+    await pageCover(UNCOLLECTED_PAGE_DIR, { photoPath: u.coverPath, alt: NO_COLLECTION_TITLE, source: null, label: 'mimo-kolekce' });
   }
 
   // Images nobody produced in this full run: deleted, renamed or unpublished items, covers no longer used.

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { STATIC_PAGES, sitemapEntries, sitemapUrls, sitemapXml } from './sitemap.mjs';
+import { STATIC_PAGES, isNoindex, sitemapEntries, sitemapUrls, sitemapXml, unlistedPages } from './sitemap.mjs';
 
 test('sitemapEntries: static pages, years, collections and works; never the short addresses of works', () => {
   const rano = { year: 2026, key: 'rano-k3f9a', id: 'k3f9a', collection: 'plener', modified: '2026-10-07' };
@@ -28,4 +28,20 @@ test('sitemapXml and sitemapUrls: absolute addresses on the site, escaped, read 
   assert.match(xml, /^<\?xml version="1\.0" encoding="UTF-8"\?>\n<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/);
   assert.match(xml, /<loc>https:\/\/web\.test\/tvorba\/a&amp;b\/<\/loc>/);
   assert.deepEqual(sitemapUrls(xml), ['https://web.test/', 'https://web.test/tvorba/a&b/']);
+});
+
+test('unlistedPages: indexable built pages missing in the sitemap, never noindex ones', () => {
+  const page = (path, robots = '') => ({ path, html: `<html><head>${robots}<title>x</title></head></html>` });
+  const noindex = '<meta name="robots" content="noindex">';
+  const pages = [page('/'), page('/tvorba/'), page('/novinky/'), page('/tvorba/k3f9a/', noindex), page('/kontakt/odeslano/', noindex), page('/akce/')];
+  const urls = ['https://pavla.example/', 'https://pavla.example/tvorba/'];
+  assert.deepEqual(unlistedPages(pages, urls), ['/akce/', '/novinky/']);
+  assert.deepEqual(unlistedPages(pages.slice(0, 2), urls), []);
+});
+
+test('isNoindex: the robots meta with noindex, in any case and with other values', () => {
+  assert.ok(isNoindex('<meta name="robots" content="noindex">'));
+  assert.ok(isNoindex('<meta name="robots" content="noindex, follow">'));
+  assert.ok(!isNoindex('<meta name="robots" content="index">'));
+  assert.ok(!isNoindex('<p>noindex</p>'));
 });

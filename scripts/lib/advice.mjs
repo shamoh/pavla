@@ -3,6 +3,7 @@
 // scripts/lib/summary.mjs). Messages are Czech ("<file>: <what and how>") because Pavla reads them. Texts still starting with DOPLNIT are left to the checks.
 
 import { TODO } from './schema.mjs';
+import { SEARCH_TITLE_MAX } from './seo.mjs';
 import { isOnSale, wantsMockups, workPath } from './works.mjs';
 
 /** The first letter (after quotes, brackets and digits) is a small one: "ráno" yes, "„ráno“" yes, "3 ovce" no. */
@@ -35,14 +36,28 @@ function titleAdvice(where, value) {
   ].filter(Boolean);
 }
 
-/** Recommendations for all works (drafts too, they are the ones being written): ["<file>: <advice>"]. */
-export function workAdvice(works) {
+/**
+ * Characters of a work title that fit the page title search results show (SEARCH_TITLE_MAX with " · <site title>"
+ * after it, Base.astro).
+ */
+export const workTitleChars = (siteTitle = '') => SEARCH_TITLE_MAX - [...` · ${siteTitle}`].length;
+
+/**
+ * Recommendations for all works (drafts too, they are the ones being written): ["<file>: <advice>"]. `siteTitle`
+ * (site.title of site.config.yaml) ends every page title, so it decides how long a work title may be.
+ */
+export function workAdvice(works, { siteTitle = '' } = {}) {
   const advice = [];
+  const titleChars = workTitleChars(siteTitle);
   for (const w of works) {
     const where = workPath(w);
     const data = w.data ?? {};
     if (!Array.isArray(data.tags) || data.tags.length === 0) advice.push(`${where}: nemá štítky (tags), podle nich se v galerii filtruje`);
     advice.push(...titleAdvice(where, data.title));
+    const title = textOf(data.title);
+    if (title && [...title].length > titleChars) {
+      advice.push(`${where}: název má ${[...title].length} znaků, ve výsledcích vyhledávání a v záložce prohlížeče se zkrátí; celý se vejde do ${titleChars} znaků`);
+    }
     advice.push(...sentenceAdvice(where, 'description', data.description));
     if (data.details && typeof data.details === 'object') {
       for (const [name, caption] of Object.entries(data.details)) advice.push(...sentenceAdvice(where, `popisek detailu ${name}`, caption));
@@ -54,16 +69,52 @@ export function workAdvice(works) {
   return advice;
 }
 
+// The gallery selects have a fixed width on a computer (WorkGallery.astro, so the filters stay on one line): closed,
+// a longer option is cut ("…"), opened, the list shows it whole. These many characters of a name still show whole
+// (measured in the browser at max-width 11em / 13em with ordinary Czech text; the worst case of the whole row is
+// every filter shown with the longest texts and 9999 works, which still fits a 1280 px window).
+/** Characters of a technique the closed "Technika" select shows whole (its count may be cut). */
+export const TECHNIQUE_CHARS = 14;
+/** Characters of a collection title the closed "Kolekce" select shows whole (its count may be cut). */
+export const COLLECTION_TITLE_CHARS = 19;
+
+/** Advice on a collection title too long for the closed "Kolekce" select of the gallery. */
+function collectionTitleAdvice(where, value) {
+  const title = textOf(value);
+  if (!title || [...title].length <= COLLECTION_TITLE_CHARS) return [];
+  return [`${where}: název kolekce má ${[...title].length} znaků, ve výběru Kolekce v galerii se zkrátí (celý je vidět po rozbalení); celý se vejde do ${COLLECTION_TITLE_CHARS} znaků`];
+}
+
 /**
- * Recommendations for the texts of collections (title, description), years and the home page (description), as
- * prepareCollections / prepareYears / prepareHome give them ({ yamlPath, data }), and of photos (alt, caption),
+ * Advice on techniques too long for the closed "Technika" select of the gallery, once per technique with the number
+ * of its works (drafts too). ["Technika „…“: …"]
+ */
+export function techniqueAdvice(works) {
+  const counts = new Map();
+  for (const w of works) {
+    const t = textOf(w.data?.technique);
+    if (t) counts.set(t, (counts.get(t) ?? 0) + 1);
+  }
+  return [...counts]
+    .filter(([t]) => [...t].length > TECHNIQUE_CHARS)
+    .sort((a, b) => a[0].localeCompare(b[0], 'cs'))
+    .map(([t, n]) => `Technika „${t}“ (${worksCount(n)}) má ${[...t].length} znaků, ve výběru Technika v galerii se zkrátí (celá je vidět po rozbalení); celá se vejde do ${TECHNIQUE_CHARS} znaků`);
+}
+
+/**
+ * Recommendations for the texts of collections (title, description), years, the home page and the works without a
+ * collection (description), as prepareCollections / prepareYears / prepareHome / prepareUncollected give them
+ * ({ yamlPath, data }), and of photos (alt, caption),
  * as preparePhotos gives them ({ name, data }).
  */
-export function pageAdvice({ collections = [], years = [], home = null, photos = [] }) {
-  const pages = [...collections.map((c) => [c, true]), ...years.map((y) => [y, false]), ...(home ? [[home, false]] : [])];
+export function pageAdvice({ collections = [], years = [], home = null, uncollected = null, photos = [] }) {
+  const pages = [
+    ...collections.map((c) => [c, true]), ...years.map((y) => [y, false]), ...(home ? [[home, false]] : []),
+    ...(uncollected ? [[uncollected, false]] : []),
+  ];
   return [
     ...pages.flatMap(([page, titled]) => [
-      ...(titled ? titleAdvice(page.yamlPath, page.data?.title) : []),
+      ...(titled ? [...titleAdvice(page.yamlPath, page.data?.title), ...collectionTitleAdvice(page.yamlPath, page.data?.title)] : []),
       ...sentenceAdvice(page.yamlPath, 'description', page.data?.description),
     ]),
     ...photos.flatMap((p) => ['alt', 'caption'].flatMap((key) => sentenceAdvice(`fotky/${p.name}.yaml`, key, p.data?.[key]))),

@@ -1,7 +1,7 @@
 ---
 import WorkCard from './WorkCard.astro';
 import { type Work, collectionUrl, config, getCollection, getCollections, getYears, url } from '../lib/site';
-import { offersOption, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
+import { NO_COLLECTION, NO_COLLECTION_TITLE, offersOption, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
 import { overviewLink, yearCounts, yearOptions } from '../../scripts/lib/collection-filter.mjs';
 
 interface Props { works: Work[]; year?: number; collection?: string }
@@ -13,9 +13,12 @@ const count = (vals: string[]) => {
   vals.forEach((v) => m.set(v, (m.get(v) ?? 0) + 1));
   return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'cs'));
 };
-const tags = count(works.flatMap((w) => w.tags));
+// Tag chips in Czech alphabetical order: easy to find a known one, and a new work never reorders them.
+const tags = count(works.flatMap((w) => w.tags)).sort((a, b) => a[0].localeCompare(b[0], 'cs'));
 const techniques = count(works.map((w) => w.technique));
 const collections = count(works.flatMap((w) => (w.collection ? [w.collection] : []))).map(([slug, n]) => ({ slug, n, title: getCollection(slug)?.title ?? slug }));
+// "žádná" right after "vše": the works in no collection (?collection=none), when some are.
+const uncollected = works.filter((w) => !w.collection).length;
 // Status options showing nothing or the same as "vše" are not offered (offersOption); with none left, no status filter.
 const statuses = statusOptions(works.map((w) => w.status));
 // The author's selection (featured): a switch, shown only when it changes something (offersOption: some works,
@@ -36,9 +39,9 @@ const collectionsHref = overviewLink(url('/tvorba/kolekce/'), year, collectionYe
 const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
 ---
 {!collection && (
-  <nav class="years" aria-label="Roky">
+  <nav class="years" id="years" aria-label="Roky">
     <a href={url('/tvorba/')} aria-current={year ? undefined : 'page'}>Vše</a>
-    {years.map((y) => <a href={url(`/tvorba/${y}/`)} aria-current={y === year ? 'page' : undefined}>{y}</a>)}
+    {years.map((y) => <a href={url(`/tvorba/${y}/`)} data-year-item={y} aria-current={y === year ? 'page' : undefined}>{y}</a>)}
     {allCollections.length > 0 && <a class="to-collections" href={collectionsHref}>Kolekce</a>}
   </nav>
 )}
@@ -54,10 +57,6 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
 
 <div class="filters-slot" id="filters-slot">
 <form class="filters" id="filters" aria-label="Filtrovat díla">
-  <div class="chips" id="chips" role="group" aria-label="Témata (lze vybrat víc najednou)">
-    <button type="button" data-filter="tag" data-value="" aria-pressed="true">Vše</button>
-    {tags.map(([t, n]) => <button type="button" data-filter="tag" data-value={t} aria-pressed="false">#{t} <small>{n}</small></button>)}
-  </div>
   <div class="selects">
     <label>Technika
       <select name="technique"><option value="">vše</option>{techniques.map(([t, n]) => <option value={t} data-label={t}>{t} ({n})</option>)}</select>
@@ -69,11 +68,11 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     )}
     {!collection && collections.length > 0 && (
       <label>Kolekce
-        <select name="collection"><option value="">vše</option>{collections.map((c) => <option value={c.slug} data-label={c.title}>{c.title} ({c.n})</option>)}</select>
+        <select name="collection"><option value="">vše</option>{uncollected > 0 && <option value={NO_COLLECTION} data-label="žádná" data-chip={NO_COLLECTION_TITLE.toLowerCase()}>žádná ({uncollected})</option>}{collections.map((c) => <option value={c.slug} data-label={c.title}>{c.title} ({c.n})</option>)}</select>
       </label>
     )}
     {!collection && collections.map((c) => (
-      <a class="about-collection" href={collectionUrl(c.slug)} data-collection-link={c.slug} hidden>O kolekci →</a>
+      <a class="about-collection" href={collectionUrl(c.slug)} data-collection-link={c.slug} hidden>O kolekci ›</a>
     ))}
     {statuses.length > 0 && (
       <label>Stav
@@ -84,14 +83,14 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
       </label>
     )}
     {offersOption(featuredCount, works.length) && (
-      <label class="switch"><input type="checkbox" name="featured" value="1" /> Výběr autorky (<span data-featured-count>{featuredCount}</span>)</label>
-    )}
-    {works.length > pageSizes[0] && (
-      <label>Na stránku
-        <select name="perPage">{pageSizes.map((n) => <option value={n}>{n}</option>)}</select>
-      </label>
+      <label class="switch" title="Výběr autorky: obrazy, které sama doporučuji"><input type="checkbox" name="featured" value="1" /> <span>Doporučené (<span data-featured-count>{featuredCount}</span>)</span></label>
     )}
     <span class="muted count" id="count" aria-live="polite">{works.length} děl</span>
+  </div>
+  <!-- The selects first (one line on a computer), the tag chips under them. -->
+  <div class="chips" id="chips" role="group" aria-label="Témata (lze vybrat víc najednou)">
+    <button type="button" data-filter="tag" data-value="" aria-pressed="true">Vše</button>
+    {tags.map(([t, n]) => <button type="button" data-filter="tag" data-value={t} aria-pressed="false">#{t} <small>{n}</small></button>)}
   </div>
   <button type="button" class="filters-done" id="filters-done">Hotovo</button>
 </form>
@@ -99,7 +98,15 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
 
 <div class="grid" id="grid" data-page-sizes={JSON.stringify(pageSizes)}>{works.map((w, i) => <WorkCard work={w} eager={i < 3} />)}</div>
 <p class="muted empty" id="empty" hidden>Tomuhle výběru nic neodpovídá.</p>
-<nav class="pager" id="pager" aria-label="Stránky" hidden></nav>
+<!-- Under the grid: the pages in the middle, the page size on the right (on a phone below them). -->
+<div class="pager-row">
+  <nav class="pager" id="pager" aria-label="Stránky" hidden></nav>
+  {works.length > pageSizes[0] && (
+    <label class="per-page" id="per-page">Na stránku
+      <select name="perPage">{pageSizes.map((n) => <option value={n}>{n}</option>)}</select>
+    </label>
+  )}
+</div>
 
 <script>
   // Every filter and the page are written to the URL right away (?tag=krajina&status=unsold&page=2), so the
@@ -120,8 +127,12 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   } from '../../scripts/lib/gallery-filter.mjs';
   import { EVENTS, filterEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
   import { rememberListing, revealReturned } from '../lib/page-return';
+  import { fitYearRow } from '../lib/year-row';
   import { BAR_START, activeFilters, scrollBar, withoutFilter, worksCount } from '../../scripts/lib/filter-bar.mjs';
 
+  // The year links stay on one line, older years behind "2017–2003 ▾" (src/lib/year-row.ts).
+  const yearRow = document.getElementById('years');
+  if (yearRow) fitYearRow(yearRow);
   const form = document.getElementById('filters') as HTMLFormElement;
   const cards = [...document.querySelectorAll<HTMLElement>('#grid .card')];
   const chipGroup = document.getElementById('chips')!;
@@ -139,7 +150,8 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   const grid = document.getElementById('grid')!;
   const pager = document.getElementById('pager')!;
   const pageSizes: number[] = JSON.parse(grid.dataset.pageSizes!);
-  const perPageSelect = form.elements.namedItem('perPage') as HTMLSelectElement | null;
+  const perPageLabel = document.getElementById('per-page');
+  const perPageSelect = perPageLabel?.querySelector('select') ?? null;
   const featuredBox = form.elements.namedItem('featured') as HTMLInputElement | null;
   const select = (name: string) => form.elements.namedItem(name) as HTMLSelectElement | null;
   // Filters without a select on this page (year on a year page, collection on a collection page) are off.
@@ -238,7 +250,9 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
       featuredBox.closest('label')!.hidden = !choice.offered;
     }
     if (perPageSelect) perPageSelect.value = String(pageSizeOf(state, pageSizes));
-    // "O kolekci →" next to the collection filter, only for the selected collection.
+    // The page size matters only when the shown works do not fit the smallest page.
+    if (perPageLabel) perPageLabel.hidden = matching.length <= pageSizes[0];
+    // "O kolekci ›" next to the collection filter, only for the selected collection.
     form.querySelectorAll<HTMLAnchorElement>('[data-collection-link]').forEach((a) => { a.hidden = a.dataset.collectionLink !== state.collection; });
     countEl.textContent = `${shown} ${plural(shown)}`;
     renderBar(shown);
@@ -260,8 +274,10 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   const barCount = document.getElementById('bar-count')!;
   const toggle = document.getElementById('filter-toggle') as HTMLButtonElement;
   const done = document.getElementById('filters-done') as HTMLButtonElement;
+  // The text of a picked option in the bar: its data-chip when the option alone would be unclear ("mimo kolekce").
   function optionLabel(key: string, value: string) {
-    return allOptions[key]?.find((o) => o.value === value)?.dataset.label ?? value;
+    const option = allOptions[key]?.find((o) => o.value === value);
+    return option?.dataset.chip ?? option?.dataset.label ?? value;
   }
   function renderBar(count: number) {
     const items = activeFilters(state, optionLabel);
@@ -351,20 +367,20 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
 
   // A new filter starts again on the first page.
   chips.forEach((b) => b.addEventListener('click', () => { state.tag = b.dataset.value ? toggleTag(state.tag, b.dataset.value) : []; state.page = pageAfterFilterChange(state.page); trackFilter(apply()); toResults(); }));
-  form.addEventListener('change', (e) => {
-    // Picking a page size starts again on page 1 with paging on; any other change is a filter.
-    if (e.target === perPageSelect) {
-      state = withPageSize(state, Number(perPageSelect!.value), pageSizes);
-      storage.set(pageSizeToRemember(Number(perPageSelect!.value), pageSizes));
-      apply();
-    }
-    else {
-      for (const k of selects) state[k] = select(k)!.value;
-      if (featuredBox) state.featured = featuredBox.checked ? FEATURED_ON : '';
-      state.page = pageAfterFilterChange(state.page);
-      trackFilter(apply());
-    }
+  form.addEventListener('change', () => {
+    for (const k of selects) state[k] = select(k)!.value;
+    if (featuredBox) state.featured = featuredBox.checked ? FEATURED_ON : '';
+    state.page = pageAfterFilterChange(state.page);
+    trackFilter(apply());
     toResults();
+  });
+  // Picking a page size (under the grid) starts again on page 1 with paging on, from the top of the works.
+  perPageSelect?.addEventListener('change', () => {
+    state = withPageSize(state, Number(perPageSelect.value), pageSizes);
+    storage.set(pageSizeToRemember(Number(perPageSelect.value), pageSizes));
+    apply();
+    quiet(false);
+    slot.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   pager.addEventListener('click', (e) => {
     const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[data-page]');
@@ -383,8 +399,20 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
 
 <style>
   .years { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: -8px 0 28px; font-family: var(--serif); font-size: 1.25rem; }
-  .years a { text-decoration: none; color: var(--ink-soft); }
+  .years a { flex: none; text-decoration: none; color: var(--ink-soft); }
   .years a[aria-current='page'] { color: var(--ink); border-bottom: 1px solid var(--ink); }
+  .years.one-line { flex-wrap: nowrap; overflow: hidden; }
+  .years [hidden] { display: none; }
+  /* Made by the script (src/lib/year-row.ts), so :global. */
+  .years :global(.year-more) {
+    font: inherit; color: var(--ink-soft); background: transparent; border: 0; padding: 0; cursor: pointer; white-space: nowrap;
+  }
+  .years :global(.year-more:hover) { color: var(--ink); }
+  /* Unfolded: "▴ méně" in the small sans text, the arrow in the accent colour, unlike the serif years. */
+  /* The arrow keeps the serif size of the years in both states ("▾" turned upside down when unfolded). */
+  .years :global(.year-more .arrow) { color: var(--accent); display: inline-block; font-family: var(--serif); font-size: 1.25rem; line-height: 1; }
+  .years :global(.year-more.open) { font-family: var(--sans); font-size: 0.9rem; align-self: center; }
+  .years :global(.year-more.open .arrow) { transform: rotate(180deg); margin-right: 4px; }
   .filter-bar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 30; background: var(--paper);
     border-bottom: 1px solid var(--line); box-shadow: var(--shadow-soft);
@@ -435,14 +463,25 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   .chips button small { color: var(--ink-soft); margin-left: 2px; }
   .chips button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
   .chips button[aria-pressed='true'] small { color: inherit; opacity: .7; }
-  .selects { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; font-size: 0.9rem; }
-  .selects label { display: flex; gap: 8px; align-items: center; color: var(--ink-soft); }
+  .selects { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; font-size: 0.9rem; }
+  .selects label { display: flex; gap: 6px; align-items: center; color: var(--ink-soft); }
   .selects select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 4px 8px; border-radius: 2px; }
+  /* Closed, a select is at most this wide and cuts a long option ("…"); opened, the list shows every option whole.
+     So the filters stay on one line on a computer whatever the names (SELECT_CHARS in scripts/lib/advice.mjs). */
+  .selects select { max-width: 11em; text-overflow: ellipsis; }
+  .selects select[name='collection'] { max-width: 13em; }
   .selects label[hidden] { display: none; }
   .selects .switch { color: var(--ink); cursor: pointer; }
-  .selects .switch input { accent-color: var(--ink); margin: 0; }
   .count { margin-left: auto; }
-  .pager { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 6px 14px; margin: 16px 0 8px; font-size: 0.95rem; }
+  .pager-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 12px; margin: 16px 0 8px; }
+  .pager { grid-column: 2; display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 6px 14px; font-size: 0.95rem; }
+  .per-page { grid-column: 3; justify-self: end; display: flex; gap: 8px; align-items: center; font-size: 0.9rem; color: var(--ink-soft); white-space: nowrap; }
+  .per-page[hidden] { display: none; }
+  .per-page select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 4px 8px; border-radius: 2px; }
+  @media (max-width: 700px) {
+    .pager-row { grid-template-columns: 1fr; justify-items: center; }
+    .pager, .per-page { grid-column: 1; justify-self: center; }
+  }
   .pager a { text-decoration: none; color: var(--ink-soft); padding: 4px 8px; border-bottom: 1px solid transparent; }
   .pager a:hover { color: var(--ink); }
   .pager a[aria-current='page'] { color: var(--ink); border-bottom-color: var(--ink); }

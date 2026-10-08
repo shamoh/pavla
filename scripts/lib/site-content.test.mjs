@@ -29,6 +29,7 @@ test('readCopies: works with their collection from the folder, collections, year
   await write('content/roky/2026.yaml', 'description: Rok.\n');
   await write('content/roky/poznamka.yaml', 'description: x\n'); // not a year
   await write('content/_index.yaml', 'description: Ahoj.\n');
+  await write('content/tvorba/_index.yaml', 'cover: k3f9a\n'); // the works without a collection, not a work
   await write('content/fotky/portret.yaml', 'alt: Já\n');
   const c = readCopies(root);
   assert.deepEqual(c.works, [
@@ -38,12 +39,13 @@ test('readCopies: works with their collection from the folder, collections, year
   assert.deepEqual(c.collections, [{ slug: 'plener', data: { title: 'Plenér' } }]);
   assert.deepEqual([...c.years], [['2026', { description: 'Rok.' }]]);
   assert.deepEqual(c.home, { description: 'Ahoj.' });
+  assert.deepEqual(c.uncollected, { cover: 'k3f9a' });
   assert.deepEqual([...c.photos], [['portret', { alt: 'Já' }]]);
 });
 
 test('readCopies: nothing generated yet gives empty lists and no home page', () => {
   const c = readCopies(root);
-  assert.deepEqual([c.works, c.collections, [...c.years], c.home, [...c.photos]], [[], [], [], null, []]);
+  assert.deepEqual([c.works, c.collections, [...c.years], c.home, c.uncollected, [...c.photos]], [[], [], [], null, null, []]);
 });
 
 test('staleCopies: files under content/ nobody wrote, including an older layout; idempotent', async () => {

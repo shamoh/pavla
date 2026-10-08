@@ -37,6 +37,46 @@ images:
   tvorba/demo-na-podlaze.jpg: { size: [2000, 1500], palette: plener, seed: 26, floor: { angle: 2, margin: 0.05 } }
   tvorba/demo-bourka-nad-polem.jpg: { size: [2400, 1600], palette: voda, seed: 32, floor: { angle: -1, margin: 0.03 } }
   tvorba/demo-plener-sumava-2026/_cover.jpg: { size: [2400, 1000], palette: plener, seed: 19 }
+  tvorba/demo-skicak-1998-2003/demo-stary-most.jpg: { size: [2000, 1400], palette: sediva, seed: 61 }
+  tvorba/demo-skicak-1998-2003/demo-hruska.jpg: { size: [1400, 2000], palette: ovoce, seed: 62 }
+  tvorba/demo-skicak-1998-2003/demo-dvur.jpg: { size: [2000, 1400], palette: sediva, seed: 63 }
+  tvorba/demo-skicak-1998-2003/demo-pole-v-cervnu.jpg: { size: [2400, 1800], palette: slunce, seed: 64 }
+  tvorba/demo-zahrada-po-desti.jpg: { size: [1800, 2400], palette: kvetiny, seed: 65 }
+  tvorba/demo-plener-krkonose-2006/demo-snezka-z-dalky.jpg: { size: [2400, 1600], palette: plener, seed: 66 }
+  tvorba/demo-plener-krkonose-2006/demo-labsky-dul.jpg: { size: [1800, 2400], palette: voda, seed: 67 }
+  tvorba/demo-kocka-na-plotu.jpg: { size: [1600, 1600], palette: sediva, seed: 68 }
+  tvorba/demo-z-cest-2009-2012/demo-benatky-rano.jpg: { size: [2400, 1800], palette: voda, seed: 69 }
+  tvorba/demo-z-cest-2009-2012/demo-krakov.jpg: { size: [1800, 2400], palette: mesto, seed: 70 }
+  tvorba/demo-z-cest-2009-2012/demo-vinice.jpg: { size: [2400, 1600], palette: slunce, seed: 71 }
+  tvorba/demo-more-2014-2015/demo-skaly-u-more.jpg: { size: [2400, 1800], palette: voda, seed: 72 }
+  tvorba/demo-more-2014-2015/demo-pristav.jpg: { size: [2000, 2000], palette: voda, seed: 73 }
+  tvorba/demo-zatisi-2017-2020/demo-cibule.jpg: { size: [2000, 1400], palette: ovoce, seed: 74 }
+  tvorba/demo-zatisi-2017-2020/demo-hrnek-s-kvetinou.jpg: { size: [1400, 2000], palette: kvetiny, seed: 75 }
+  tvorba/demo-zatisi-2017-2020/demo-kosik-jablek.jpg: { size: [2400, 1800], palette: ovoce, seed: 76 }
+  tvorba/demo-tatry-2000/demo-strbske-pleso.jpg: { size: [2400, 1700], palette: voda, seed: 77 }
+  tvorba/demo-tatry-2000/demo-gerlach.jpg: { size: [1700, 2400], palette: plener, seed: 78 }
+  tvorba/demo-tatry-2000/demo-smrky-pod-stitem.jpg: { size: [1600, 2200], palette: sediva, seed: 79 }
+  tvorba/demo-portrety-2005/demo-babicka.jpg: { size: [1700, 2400], palette: sediva, seed: 80 }
+  tvorba/demo-portrety-2005/demo-rybar.jpg: { size: [2400, 1800], palette: voda, seed: 81 }
+  tvorba/demo-portrety-2005/demo-holcicka-s-kockou.jpg: { size: [2000, 2000], palette: kvetiny, seed: 82 }
+  tvorba/demo-osamely-strom.jpg: { size: [1800, 1800], palette: slunce, seed: 83 }
+  tvorba/demo-podzim-v-lese-2011/demo-buky.jpg: { size: [2400, 1700], palette: slunce, seed: 84 }
+  tvorba/demo-podzim-v-lese-2011/demo-houby.jpg: { size: [1600, 1600], palette: ovoce, seed: 85 }
+  tvorba/demo-podzim-v-lese-2011/demo-lesni-cesta.jpg: { size: [1700, 2400], palette: slunce, seed: 86 }
+  tvorba/demo-podzimni-alej.jpg: { size: [2400, 1800], palette: ovoce, seed: 87 }
+  tvorba/demo-ptaci-2016/demo-sykorky.jpg: { size: [1600, 1600], palette: zima, seed: 88 }
+  tvorba/demo-ptaci-2016/demo-cap-u-rybnika.jpg: { size: [2400, 1700], palette: voda, seed: 89 }
+  tvorba/demo-lodky-na-brehu.jpg: { size: [2400, 1800], palette: voda, seed: 90 }
+  tvorba/demo-ptaci-2016/demo-vrabci.jpg: { size: [1600, 2200], palette: sediva, seed: 91 }
+  tvorba/demo-nocni-mesto-2019/demo-most-v-noci.jpg: { size: [2400, 1700], palette: mesto, seed: 92 }
+  tvorba/demo-nocni-mesto-2019/demo-kostel-za-soumraku.jpg: { size: [1700, 2400], palette: mesto, seed: 93 }
+  tvorba/demo-oblaka.jpg: { size: [2000, 2000], palette: voda, seed: 94 }
+  tvorba/demo-nocni-mesto-2019/demo-lampy.jpg: { size: [1600, 2200], palette: mesto, seed: 95 }
+  tvorba/demo-reky-2021-2023/demo-vltava-u-zbraslavi.jpg: { size: [2400, 1700], palette: voda, seed: 96 }
+  tvorba/demo-reky-2021-2023/demo-berounka-v-zime.jpg: { size: [2400, 1800], palette: zima, seed: 97 }
+  tvorba/demo-reky-2021-2023/demo-sazava.jpg: { size: [2400, 1700], palette: plener, seed: 98 }
+  tvorba/demo-louky-2024/demo-louka-s-kopretinami.jpg: { size: [2000, 2000], palette: kvetiny, seed: 99 }
+  tvorba/demo-louky-2024/demo-seno.jpg: { size: [2400, 1700], palette: slunce, seed: 100 }
   fotky/portret.jpg: { size: [1500, 2000], palette: plener, seed: 51 }
   fotky/o-mne-uvod.jpg: { size: [2400, 1800], palette: plener, seed: 52 }
   fotky/kontakt.jpg: { size: [1600, 2000], palette: kvetiny, seed: 53 }

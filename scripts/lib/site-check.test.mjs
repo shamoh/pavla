@@ -59,6 +59,8 @@ test('checkSiteImages: walks the pages once each, asks for each image once, repo
   assert.deepEqual(r.missing, [{ image: `${ORIGIN}/fotky/kontakt/480.jpg`, page: `${ORIGIN}/kontakt/`, status: 404 }]);
   assert.deepEqual(r.brokenPages, [{ page: `${ORIGIN}/tvorba/2026/smazane-a1b2c/`, status: 404 }]);
   assert.equal(asked.filter((a) => a === 'GET /').length, 1, 'each page once');
+  assert.deepEqual(r.html.map((p) => p.path).sort(), ['/', '/kontakt/', '/tvorba/', '/tvorba/2026/rano-k3f9a/'], 'the pages read, for their texts');
+  assert.match(r.html.find((p) => p.path === '/kontakt/').html, /kontakt\/480\.jpg/);
   assert.equal(asked.filter((a) => a === 'HEAD /tvorba/2026/rano-k3f9a/480.jpg').length, 1, 'each image once');
 });
 

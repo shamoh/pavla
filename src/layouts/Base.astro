@@ -139,7 +139,24 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
     --max: 1320px;
   }
   * { box-sizing: border-box; }
-  input[type='checkbox'] { accent-color: var(--ink); }
+  /* Checkboxes in the colours of the palette: a native one stays white with a blue focus ring whatever the palette
+     (accent-color tints only the ticked box). Paper with a quiet frame, ticked = ink with a paper tick, the focus ring
+     in the accent colour. In forced colours (high contrast) the native box is kept. */
+  input[type='checkbox'] {
+    appearance: none; -webkit-appearance: none; margin: 0; flex: none; cursor: pointer;
+    display: inline-grid; place-content: center; width: 1.05em; height: 1.05em; vertical-align: -0.15em;
+    background: var(--paper); border: 1px solid var(--ink-soft); border-radius: 3px;
+  }
+  input[type='checkbox']::before {
+    content: ''; width: 0.62em; height: 0.62em; background: var(--paper); transform: scale(0); transition: transform .12s ease-in-out;
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  }
+  input[type='checkbox']:hover { border-color: var(--ink); }
+  input[type='checkbox']:checked { background: var(--ink); border-color: var(--ink); }
+  input[type='checkbox']:checked::before { transform: scale(1); }
+  input[type='checkbox']:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { input[type='checkbox']::before { transition: none; } }
+  @media (forced-colors: active) { input[type='checkbox'] { appearance: auto; -webkit-appearance: auto; } }
   html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0; background: var(--paper); color: var(--ink);

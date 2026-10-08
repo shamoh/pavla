@@ -5,7 +5,7 @@ import Img from '../../../components/Img.astro';
 import { collectionUrl, detailCaption, getCollection, workShareImage, getWorks, messages, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
 import { isOnSale, wantsMockups } from '../../../../scripts/lib/works.mjs';
 import { EVENTS } from '../../../../scripts/lib/analytics.mjs';
-import { artworkLd, breadcrumbLd, graphLd, workDescription } from '../../../../scripts/lib/seo.mjs';
+import { artworkLd, breadcrumbLd, graphLd, workPageDescription, workPageTitle } from '../../../../scripts/lib/seo.mjs';
 import { defaultType, mailtoLink, workContext } from '../../../../scripts/lib/messages.mjs';
 
 export function getStaticPaths() {
@@ -17,6 +17,9 @@ const { work, prev, next } = Astro.props;
 const date = work.date.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
 
 const collection = getCollection(work.collection);
+// Every shown work: another with the same title or description gets what tells them apart in <title> and the
+// meta description (workPageTitle, workPageDescription), so no two pages look the same in search results.
+const allWorks = getWorks();
 
 // Everything the viewer can step through: the work itself, its details, then its mockups.
 const base = workImagePath(work);
@@ -56,7 +59,7 @@ const jsonLd = graphLd(
   ]),
 );
 ---
-<Base title={work.title} description={workDescription(work, site)} image={share} type="article" jsonLd={jsonLd} message={message}>
+<Base title={workPageTitle(work, allWorks)} description={workPageDescription(work, allWorks, site)} image={share} type="article" jsonLd={jsonLd} message={message}>
   <p class="back"><a href={url('/tvorba/')} data-return data-return-focus={work.id}>← Tvorba</a> · <a href={url(`/tvorba/${work.year}/`)} data-return data-return-focus={work.id}>{work.year}</a></p>
   <article class="work">
     <a class="zoom" href={views[0].src} data-view="0" title="Zvětšit">

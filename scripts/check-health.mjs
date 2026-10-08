@@ -2,7 +2,7 @@
 // Health check of the content automation, run weekly by a workflow of the content repository.
 // Env: TOKEN (the PAVLA_TOKEN secret), RUNS_TOKEN + REPO (token with actions:read on the content repository and its
 // name, e.g. github.token and github.repository), CONTENT_DIR (a checkout of the content repository, optional).
-// The images of the deployed site are checked at site.url of site.config.yaml (`--site-url <url>` overrides it,
+// The images and the page texts of the deployed site are checked at site.url of site.config.yaml (`--site-url <url>` overrides it,
 // e.g. a locally served build).
 // Exit code 1 when something needs attention; the report goes to stdout, the run page and the step output.
 
@@ -10,6 +10,7 @@ import fs from 'node:fs/promises';
 import YAML from 'yaml';
 import { findUnknownAttributes, findUnknownTechniques } from './lib/content.mjs';
 import { checkSiteImages, evaluateSiteImages } from './lib/site-check.mjs';
+import { evaluatePageTexts } from './lib/page-check.mjs';
 import {
   DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, formatReport,
 } from './lib/health.mjs';
@@ -77,12 +78,17 @@ const techniques = process.env.CONTENT_DIR
   : evaluateUnknownTechniques(null);
 
 // Every image the pages of the deployed site refer to exists (a deploy without images, a pipeline that removed some).
+let site = null;
 const siteImages = await guarded('obrázky webu', async () => {
   const config = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
-  return evaluateSiteImages(await checkSiteImages(textArg('--site-url') ?? config.site.url, fetch));
+  site = await checkSiteImages(textArg('--site-url') ?? config.site.url, fetch);
+  return evaluateSiteImages(site);
 });
+// The same pages have their own titles and descriptions and valid structured data (as npm run check:images checks
+// a build); not checked when the site could not be read.
+const pageTexts = evaluatePageTexts(site?.html ?? null);
 
-const report = formatReport(token, runs, dryRun, deploy, pr, unknown, techniques, siteImages);
+const report = formatReport(token, runs, dryRun, deploy, pr, unknown, techniques, siteImages, pageTexts);
 console.log(report.text);
 if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, report.text);
 if (process.env.GITHUB_OUTPUT) await fs.appendFile(process.env.GITHUB_OUTPUT, `report<<EOF\n${report.text}EOF\n`);

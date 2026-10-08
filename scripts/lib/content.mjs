@@ -17,7 +17,7 @@ import YAML from 'yaml';
 import { photoDate } from './exif.mjs';
 import { normalizeMetadata, skeleton, todoKeys, yamlProblem } from './metadata-yaml.mjs';
 import { artform } from './seo.mjs';
-import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, WORK_SCHEMA, YEAR_SCHEMA, publicKeys } from './schema.mjs';
+import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, UNCOLLECTED_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA, publicKeys } from './schema.mjs';
 import { IMAGE_EXTENSIONS, dateYear, generateId, isValidId, slugify, splitExt, titleFromName, todoProblems } from './works.mjs';
 
 export const WORKS_SUBDIR = 'tvorba';
@@ -127,13 +127,14 @@ async function readDetails(dir, where) {
 /**
  * Texts still starting with DOPLNIT in the descriptions that are always public: collections, years, the home page and
  * photos of pages (works: validateWorks, only once published). Each list as the prepare* functions return it:
- * collections and years [{ data, yamlPath }], home { data, yamlPath } or null, photos [{ name, data }].
+ * collections and years [{ data, yamlPath }], home and uncollected { data, yamlPath } or null, photos [{ name, data }].
  */
-export function placeholderProblems({ collections = [], years = [], home = null, photos = [] }) {
+export function placeholderProblems({ collections = [], years = [], home = null, uncollected = null, photos = [] }) {
   return [
     ...collections.flatMap((c) => todoProblems(c.yamlPath, c.data, publicKeys(COLLECTION_SCHEMA))),
     ...years.flatMap((y) => todoProblems(y.yamlPath, y.data, publicKeys(YEAR_SCHEMA))),
     ...(home ? todoProblems(home.yamlPath, home.data, publicKeys(HOME_SCHEMA)) : []),
+    ...(uncollected ? todoProblems(uncollected.yamlPath, uncollected.data, publicKeys(UNCOLLECTED_SCHEMA)) : []),
     ...photos.flatMap((p) => todoProblems(`fotky/${p.name}.yaml`, p.data, publicKeys(PHOTO_SCHEMA))),
   ];
 }
@@ -300,6 +301,7 @@ export async function findUnknownAttributes(contentDir) {
   const yearsDir = path.join(contentDir, 'roky');
   for (const f of (await fs.readdir(yearsDir).catch(() => [])).sort()) if (/\.ya?ml$/.test(f)) files.push([path.join('roky', f), YEAR_SCHEMA]);
   if (await fs.access(path.join(contentDir, INDEX_FILE)).then(() => true, () => false)) files.push([INDEX_FILE, HOME_SCHEMA]);
+  if (await fs.access(path.join(worksRoot, INDEX_FILE)).then(() => true, () => false)) files.push([path.join(WORKS_SUBDIR, INDEX_FILE), UNCOLLECTED_SCHEMA]);
   const photosDir = path.join(contentDir, 'fotky');
   const photos = await fs.readdir(photosDir).catch(() => []);
   for (const f of photos.sort()) if (/\.ya?ml$/.test(f)) files.push([path.join('fotky', f), PHOTO_SCHEMA]);

@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCoverRef, validateCollectionCovers } from './collections.mjs';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { parseCoverRef, prepareCollections, validateCollectionCovers } from './collections.mjs';
 
 test('parseCoverRef splits "<id>#<detail>" and normalises the detail name like detail photos', () => {
   assert.deepEqual(parseCoverRef('vjr39'), { id: 'vjr39', detail: null });
@@ -56,4 +59,13 @@ test('titleFromFolder moves a leading year (or range) to the end of the title', 
   assert.equal(titleFromFolder('2026 Plenér Šumava'), 'Plenér Šumava 2026');
   assert.equal(titleFromFolder('2025-2026 Ovce'), 'Ovce 2025–2026');
   assert.equal(titleFromFolder('zatisi'), 'Zatisi');
+});
+
+test('prepareCollections: a folder whose address would be "none" (the gallery filter for no collection) is an error', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'collections-'));
+  await fs.mkdir(path.join(dir, 'tvorba', 'None'), { recursive: true });
+  const { collections, problems } = await prepareCollections(dir, [{ dir: 'None', slug: 'none' }]);
+  assert.deepEqual(collections, []);
+  assert.deepEqual(problems, ['tvorba/None/: adresu „none“ web používá pro obrazy bez kolekce, přejmenuj složku']);
+  await fs.rm(dir, { recursive: true });
 });

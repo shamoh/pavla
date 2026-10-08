@@ -14,6 +14,7 @@ import { skeleton, yamlProblem } from './metadata-yaml.mjs';
 import { COLLECTION_SCHEMA, fieldKeys, publicKeys } from './schema.mjs';
 import { coverProblems, coverShareSource, parseCoverRef } from './covers.mjs';
 import { isValidSlug, titleFromName } from './works.mjs';
+import { NO_COLLECTION } from './gallery-filter.mjs';
 
 /** Former home of collections; now they are folders in tvorba/. */
 export const LEGACY_COLLECTIONS_SUBDIR = 'kolekce';
@@ -61,6 +62,11 @@ export async function prepareCollections(contentDir, folders = []) {
     const yamlPath = collectionMetaPath(f.dir);
     if (!isValidSlug(f.slug)) {
       problems.push(`${WORKS_SUBDIR}/${f.dir}/: přejmenuj složku, její název potřebuje písmena nebo číslice`);
+      continue;
+    }
+    // The gallery uses ?collection=none for the works in no collection ("žádná"): no collection may have that address.
+    if (f.slug === NO_COLLECTION) {
+      problems.push(`${WORKS_SUBDIR}/${f.dir}/: adresu „${NO_COLLECTION}“ web používá pro obrazy bez kolekce, přejmenuj složku`);
       continue;
     }
     if (bySlug.has(f.slug)) {

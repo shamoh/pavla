@@ -73,6 +73,13 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   aby šel odkaz poslat dál. Platí vždy, i pro každý nový filtr a pro stránku (`page`, i `page=all`).
   Štítky: víc najednou „a zároveň“ (`state.tag` = pole, `?tag=a&tag=b`, `sortTags`/`toggleTag`), zůstanou jen čipy,
   které zobrazená díla zúží a nevyprázdní (`tagChoices`), vybrané vždy; GA `tag` = spojené čárkou.
+  Kolekce má za „vše“ volbu „žádná“ (`NO_COLLECTION` = `?collection=none`, díla bez kolekce; čip v liště z `data-chip`),
+  přehled kolekcí končí položkou „Mimo kolekce“ (`NO_COLLECTION_TITLE`, `getUncollected`); slug `none` pipeline odmítne.
+  Její text (`description`, prázdný = `UNCOLLECTED_TEXT`) a úvodní obraz: `tvorba/_index.yaml` + `tvorba/_cover.jpg` obsahového repa (`UNCOLLECTED_SCHEMA`, `scripts/lib/uncollected.mjs`,
+  výstup `public/tvorba/_cover/`, kopie `content/tvorba/_index.yaml`, bez og), stejné pravidlo jako kolekce.
+  Řádek filtrů na počítači (od 1280 px) vždy na jeden řádek: výběry s `max-width` a zkrácením „…“, přepínač „Doporučené“
+  (= výběr autorky), „Na stránku“ pod díly; nový filtr = ověřit nejhorší případ (všechny volby, nejdelší texty, 9999 děl) a
+  případně limity `TECHNIQUE_CHARS` / `COLLECTION_TITLE_CHARS` v `scripts/lib/advice.mjs` (doporučení v souhrnu).
   Výběry (Technika, Rok, Kolekce, Stav) a přepínač Výběr autorky stejně: počty s ostatními filtry, jen volby,
   které zúží a nevyprázdní (`facetChoices`), vybraná vždy, bez žádné se filtr skryje; nový filtr = do `FACETS`.
   Lišta filtrů (`scripts/lib/filter-bar.mjs`): po posunu nahoru tenký řádek s vybranými filtry jako čipy s „×“
@@ -133,7 +140,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   „Zkušební běh zpracování“ (`.github/workflows/dry-run.yml`, každou neděli na testovacích datech, nic nepushne)
   prochází tytéž kroky: změna kroků zpracování obsahu = stejná změna ve `dry-run.yml`.
   Týdenní kontrola (token, selhané běhy, zkušební běh, nasazení, čekající PR, neznámé atributy, chybějící obrázky
-  nasazeného webu `scripts/lib/site-check.mjs`):
+  nasazeného webu `scripts/lib/site-check.mjs`, texty a JSON-LD jeho stránek `evaluatePageTexts`; hlášky `pageProblems`
+  jsou kódy s anglickým i českým textem `problemText`):
   `scripts/check-health.mjs` + `scripts/lib/health.mjs`, spouští ji obsahové repo.
   Workflow kontroluje `actionlint` (job `workflows` v `check.yml`); po každé úpravě workflow ho spusť i lokálně.
 - Deploy workflow tohoto repa obrázky negeneruje, jen staví web z toho, co je commitnuté. Při selhání buildu nebo
@@ -160,7 +168,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `workTooltip` (`scripts/lib/tooltip.mjs`) přes `workTitle` v `src/lib/site.ts`, všude stejná (název, technika · rozměr · rok,
   podklad, stav prodeje, zkrácený popis).
 - Patička nese verzi buildu `vRR.MMDD.HHMM` (pražský čas) s bublinou (datum, commit): `scripts/lib/build-version.mjs`.
-- „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` jen `npm test` + `npm run build` (rychlé).
+- „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` jen `npm test` + `npm run build`
+  + `npm run check:images` (obrázky, úplnost mapy webu `unlistedPages`, unikátní titulky a popisy a platné JSON-LD
+  `pageProblems`; rychlé). Stejný název nebo popis dvou děl řeší web sám (`workPageTitle`, `workPageDescription`).
   U každého PR běží vždy: job `check` je povinná kontrola rulesetu na `main`, na kterou čeká auto-merge aktualizací
   obsahu (správce má výjimku pro přímé pushe). Job `check` nepřejmenovávat, jinak se auto-merge zasekne.
   Web z testovacích dat se na GitHubu nestaví (pomalé, nikde se nezveřejňuje): před commitem změn webu nebo pipeline
@@ -187,12 +197,16 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Texty na webu jsou česky, s diakritikou, ve 1. osobě autorky.
 - Minimalistický design: papírové tóny, serif nadpisy (Cormorant Garamond), Work Sans text. Obraz má vždy přednost před UI.
 - Barvy jen z palet (`scripts/lib/palettes.mjs`, Papír / Pergamen / Noc, volba v patičce): v CSS vždy proměnné
-  (`var(--paper)`, `var(--shadow-deep)`…), nikdy barva natvrdo; nová paleta = záznam v `PALETTES` (test hlídá kontrast).
+  (`var(--paper)`, `var(--shadow-deep)`…), nikdy barva natvrdo; i prvky formulářů (zaškrtávátko v `Base.astro`
+  `appearance: none` z palety, nativní jen ve `forced-colors`); nová paleta = záznam v `PALETTES` (test hlídá kontrast).
 - Vodoznak pro Fler: jen jméno, nikdy URL ani @handle (pravidla Fleru).
 - Mockupy musí držet reálné měřítko podle `size_cm`.
 - Před commitem: `npm test`, `npm run build` a `npm run demo:build` musí projít; `npm run check:images` (a pro testovací
   web `SITE_DATA_DIR=.demo/site npm run check:images`) ověří, že žádný obrázek, na který stránky odkazují, nechybí.
-- Mapa webu `/sitemap.xml` (`scripts/lib/sitemap.mjs`): nová stránka v `src/pages` bez dat za sebou = do `STATIC_PAGES`.
+- Mapa webu `/sitemap.xml` (`scripts/lib/sitemap.mjs`): nová stránka v `src/pages` bez dat za sebou = do `STATIC_PAGES`
+  (jinak `check:images` selže; stránka, která do mapy nepatří, musí mít `noindex`).
+- Řádky roků (nad galerií, na přehledu kolekcí) vždy na jeden řádek přes `fitYearRow` (`src/lib/year-row.ts`), roky
+  značené `data-year-item`; čipy štítků česky abecedně.
 - README obou rep (toto technicky, obsahové repo pro Pavlu a pro jeho automatiku) musí **vždy obsahovat kompletní popis všech
   vlastností**: celou strukturu, každou schopnost webu i pipeline (včetně voleb, parametrů v URL, kontrol a chyb),
   jak ji nastavit a jak ji lokálně vyzkoušet. Nic, co web nebo pipeline umí, nesmí v README chybět.

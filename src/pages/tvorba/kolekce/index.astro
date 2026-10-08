@@ -4,12 +4,17 @@
 // link opening it filtered to the year; scripts/lib/collection-filter.mjs).
 import Base from '../../../layouts/Base.astro';
 import Cover from '../../../components/Cover.astro';
-import { collectionShareImage, collectionUrl, getCollections, site, url } from '../../../lib/site';
+import { collectionShareImage, collectionUrl, getCollections, getUncollected, site, url } from '../../../lib/site';
+import { NO_COLLECTION } from '../../../../scripts/lib/gallery-filter.mjs';
 import { encodeYearCounts, worksLabel, yearCounts, yearOptions } from '../../../../scripts/lib/collection-filter.mjs';
 import { breadcrumbLd, collectionPageLd, graphLd } from '../../../../scripts/lib/seo.mjs';
 
 const collections = getCollections();
 const counts = collections.map((c) => yearCounts(c.works));
+// The works in no collection close the list ("Mimo kolekce"), leading to the gallery filtered to them; they count
+// for no year chip (the chips count collections) but follow the picked year like a collection.
+const uncollected = collections.length ? getUncollected() : null;
+const uncollectedHref = url(`/tvorba/?collection=${NO_COLLECTION}`);
 // Years narrowing the list (no year with none or all collections); none left = no year filter.
 const options = yearOptions(counts.map((yc) => yc.map(([y]) => y)));
 const description = 'Obrazy seskupené podle plenérů, výletů a témat: co vzniklo na jednom místě nebo patří k sobě.';
@@ -25,7 +30,7 @@ const jsonLd = graphLd(
   {options.length > 0 && (
     <div class="years" id="years" role="group" aria-label="Roky">
       <button type="button" data-year="" aria-pressed="true">Vše</button>
-      {options.map((o) => <button type="button" data-year={o.year} aria-pressed="false">{o.year} <small>({o.count})</small></button>)}
+      {options.map((o) => <button type="button" data-year={o.year} data-year-item={o.year} aria-pressed="false">{o.year} <small>({o.count})</small></button>)}
     </div>
   )}
   <div class="list">
@@ -37,6 +42,14 @@ const jsonLd = graphLd(
         {c.description && <span class="desc">{c.description}</span>}
       </a>
     ))}
+    {uncollected && (
+      <a class="item uncollected" href={uncollectedHref} data-href={uncollectedHref} data-years={encodeYearCounts(yearCounts(uncollected.works))}>
+        <Cover cover={uncollected.cover} sizes="(max-width: 700px) 100vw, 50vw" link={false} class="collection-cover" />
+        <span class="title">{uncollected.title}</span>
+        <span class="muted" data-works={uncollected.works.length}>{worksLabel(uncollected.works.length, uncollected.works.length)}</span>
+        <span class="desc">{uncollected.description}</span>
+      </a>
+    )}
   </div>
 </Base>
 <script>
@@ -48,6 +61,7 @@ const jsonLd = graphLd(
   import { collectionLink, matchesYear, parseYearCounts, worksLabel, yearFromParams, yearToParams } from '../../../../scripts/lib/collection-filter.mjs';
   import { EVENTS, filterEventParams, trackEvent } from '../../../../scripts/lib/analytics.mjs';
   import { rememberListing, revealReturned } from '../../../lib/page-return';
+  import { fitYearRow } from '../../../lib/year-row';
 
   const group = document.getElementById('years');
   const items = [...document.querySelectorAll<HTMLElement>('.list .item')];
@@ -81,6 +95,8 @@ const jsonLd = graphLd(
       trackEvent(EVENTS.filter, filterEventParams({ year }, results));
     }));
     apply();
+    // The year chips stay on one line, older years behind "2017–2003 ▾" (src/lib/year-row.ts).
+    fitYearRow(group);
   }
   // Back from a collection page (← Kolekce): to the card of that collection, when shown for the picked year.
   revealReturned(items, 'slug');
@@ -96,10 +112,26 @@ const jsonLd = graphLd(
   .years button small { color: var(--ink-soft); margin-left: 2px; }
   .years button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
   .years button[aria-pressed='true'] small { color: inherit; opacity: .7; }
+  .years.one-line { flex-wrap: nowrap; overflow: hidden; }
+  .years [hidden] { display: none; }
+  .years button, .years :global(.year-more) { flex: none; }
+  /* Made by the script (src/lib/year-row.ts), so :global; a chip with a dashed border. */
+  .years :global(.year-more) {
+    font: inherit; font-size: 0.88rem; color: var(--ink-soft); background: transparent; cursor: pointer; white-space: nowrap;
+    border: 1px dashed var(--line); border-radius: 99px; padding: 5px 14px;
+  }
+  .years :global(.year-more:hover) { color: var(--ink); }
+  /* Unfolded: "▴ méně" is no year, so no chip around it; the arrow in the accent colour leads the eye. */
+  .years :global(.year-more.open) { border-color: transparent; padding-inline: 6px; }
+  /* The same "▾" in both states, turned upside down when unfolded, so both arrows look exactly alike. */
+  .years :global(.year-more .arrow) { color: var(--accent); display: inline-block; line-height: 1; }
+  .years :global(.year-more.open .arrow) { transform: rotate(180deg); margin-right: 4px; }
   .item[hidden] { display: none; }
   .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 48px 36px; }
   .item { display: flex; flex-direction: column; gap: 6px; text-decoration: none; }
   .item :global(.collection-cover) { margin-bottom: 8px; }
   .title { font-family: var(--serif); font-size: 1.5rem; line-height: 1.2; }
+  /* Not a collection: the title in italics tells it apart. */
+  .uncollected .title { font-style: italic; }
   .desc { font-size: 0.92rem; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
 </style>

@@ -56,9 +56,11 @@ export const worksLabel = (count, total) => (count < total ? `${count} z ${total
 
 /**
  * The link to a collection page from the overview: with the picked year (?year=2025) the collection opens filtered
- * to it, unless the year has all its works (the filter would change nothing).
+ * to it, unless the year has all its works (the filter would change nothing). A link that has a query already
+ * (the works in no collection, /tvorba/?collection=none) gets the year added to it.
  */
-export const collectionLink = (href, year, count, total) => (year && count < total ? `${href}?${yearToParams(year)}` : href);
+export const collectionLink = (href, year, count, total) =>
+  (year && count < total ? `${href}${href.includes('?') ? '&' : '?'}${yearToParams(year)}` : href);
 
 /**
  * The link to the collections overview from a year page: filtered to the year when the overview offers it

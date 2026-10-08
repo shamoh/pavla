@@ -3,6 +3,7 @@
 //   public/tvorba/<year>/_cover/, og.jpg     a year: its own cover photo, the share image of a chosen cover (page /tvorba/<year>/)
 //   public/tvorba/kolekce/<slug>/_cover/, og.jpg   a collection (page /tvorba/kolekce/<slug>/)
 //   public/_cover/, public/og.jpg            the home page (page /)
+//   public/tvorba/_cover/                    the works without a collection: own cover photo of "Mimo kolekce" (page /tvorba/)
 //   public/fotky/<name>/                     another photo of the site (O mně, Kontakt)
 // _cover is the same name as the own cover photo in the content repository (_cover.jpg); a work key never starts with "_".
 
@@ -22,6 +23,8 @@ export const workImageDir = (year, key) => `${WORKS_PAGES}/${year}/${key}`;
 export const yearPageDir = (year) => `${WORKS_PAGES}/${year}`;
 /** Folder of the page of a collection. */
 export const collectionPageDir = (slug) => `${WORKS_PAGES}/kolekce/${slug}`;
+/** Folder of the works without a collection (their gallery /tvorba/?collection=none); only an own cover photo. */
+export const UNCOLLECTED_PAGE_DIR = WORKS_PAGES;
 /** Folder of the home page (the root). */
 export const HOME_PAGE_DIR = '';
 /** Folder of the own cover photo of a page (collection, year, home page). */

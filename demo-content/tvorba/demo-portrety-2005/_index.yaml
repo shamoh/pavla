@@ -1,0 +1,22 @@
+# NEPOVINNÉ. Ořez vybraného obrazu (cover nebo vlastní fotky) na poměr stran šířka:výška v uvozovkách, např. "3:2", "2:1",
+# "1:1". Jen s focus = "1:1". Bez aspect i focus = celý.
+# aspect: "3:2"
+
+# NEPOVINNÉ. Vybraný úvodní obraz: id díla z kolekce (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;
+# vede na to dílo. Nebo místo toho vlastní fotka _cover.jpg (bez odkazu). Ukáže se celý, s aspect nebo focus oříznutý.
+# Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.
+# cover: k3f9a
+
+# Pár vět o kolekci: kde a kdy obrazy vznikly. Víc řádků pod sebou, odsazených dvěma mezerami.
+description: |
+  Lidé kolem mě: rodina, sousedé a jeden rybář od řeky.
+
+# NEPOVINNÉ. Při ořezu vybraného obrazu zůstane vidět [zleva %, shora %], např. [50, 50] = střed, [80, 30] = vpravo nahoře.
+# Jen s aspect = střed. Náhodný obraz se neořezává.
+# focus: [50, 50]
+
+# Název kolekce na webu, např. Plenér Šumava 2026.
+title: Portréty 2005
+
+# NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+# private_note: kde obraz visí, komu patří
