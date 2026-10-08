@@ -29,27 +29,26 @@ export const STATUS_FILTER_LABELS = { unsold: 'na prodej', kept: 'ještě mám',
 export const offersOption = (count, total) => count > 0 && count < total;
 
 /**
- * The status filter options worth offering for these work statuses (offersOption): [{ value, label, count }];
- * [] = no status filter at all.
+ * The status filter options for these work statuses, those with at least one work, in the order of the select:
+ * [{ value, label, count }]. Which of them are offered after a filter change decides facetChoices; [] = no works.
  */
 export function statusOptions(statuses) {
   const counts = countStatuses(statuses);
   return Object.entries(STATUS_FILTER_LABELS)
     .map(([value, label]) => ({ value, label, count: counts[value] }))
-    .filter((o) => offersOption(o.count, statuses.length));
+    .filter((o) => o.count > 0);
 }
 
 /**
- * The year filter options of a collection's gallery for the years of its works: [{ value, count }] newest first,
- * only those worth offering (offersOption); [] = no year filter at all.
+ * The year filter options of a collection's gallery: the years of its works with counts, [{ value, count }] newest
+ * first. Which of them are offered after a filter change decides facetChoices; [] = no works.
  */
 export function yearFilterOptions(years) {
   const counts = new Map();
   for (const y of years) counts.set(y, (counts.get(y) ?? 0) + 1);
   return [...counts]
     .sort((a, b) => b[0] - a[0])
-    .map(([y, count]) => ({ value: String(y), count }))
-    .filter((o) => offersOption(o.count, years.length));
+    .map(([y, count]) => ({ value: String(y), count }));
 }
 
 /** Former status filter values, still accepted in shared links: old value → current one. */
@@ -135,6 +134,28 @@ export function facetChoices(works, state, key, values) {
     const picked = state[key] === value;
     return { value, count, picked, offered: picked || offersOption(count, base.length) };
   });
+}
+
+/**
+ * How a filter shows after a change (choices of facetChoices): `off` when none of its options narrows the shown works
+ * (every shown work has the same value, or none has any). An off filter stays in place, greyed and disabled, so the
+ * visitor sees it is there and why it gives nothing: its select shows `common`, the index of the option every
+ * shown work falls under (-1 when none), instead of "vše". A picked option is always offered, so never off then.
+ */
+export function facetDisplay(choices) {
+  const off = !choices.some((c) => c.offered);
+  return { off, common: off ? choices.findIndex((c) => c.count > 0) : -1 };
+}
+
+/**
+ * The filter state after a change of the form: `fields` [{ key, value, off }] are its selects (and the switch as
+ * FEATURED_ON or ''). An off filter (facetDisplay: greyed, disabled) only shows the value all shown works share, never
+ * a choice of the visitor, so its key keeps the state's value ('' then: a picked option keeps a filter on).
+ */
+export function stateFromForm(state, fields) {
+  const next = { ...state };
+  for (const { key, value, off } of fields) if (!off) next[key] = value;
+  return next;
 }
 
 /** Number of works per status filter option, e.g. { unsold: 3, kept: 10, gone: 2 }. */

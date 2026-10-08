@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FEATURED_ON, NO_COLLECTION,
   countStatuses, matchesFilters, offersOption, statusOptions, yearFilterOptions, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
-  facetChoices, facetValues, sortTags, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
+  facetChoices, facetDisplay, facetValues, sortTags, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
 } from './gallery-filter.mjs';
 
 const work = (status, extra = {}) => ({ tags: ['krajina'], technique: 'akvarel', year: '2026', collection: '', status, ...extra });
@@ -169,22 +169,32 @@ test('offersOption: an option is offered when it shows some works, but not all o
   assert.deepEqual([[0, 5], [1, 5], [4, 5], [5, 5], [0, 0]].map(([n, total]) => offersOption(n, total)), [false, true, true, false, false]);
 });
 
-test('statusOptions offers only options showing something other than "vše", in order, with counts', () => {
+test('statusOptions: every option with some works, in order, with counts (offering is up to facetChoices)', () => {
   assert.deepEqual(statusOptions(['available', 'sold', 'not-for-sale', 'not-for-sale']), [
     { value: 'unsold', label: 'na prodej', count: 1 },
     { value: 'kept', label: 'ještě mám', count: 3 },
     { value: 'gone', label: 'už nemám', count: 1 },
   ]);
-  assert.deepEqual(statusOptions(['available', 'not-for-sale', 'not-for-sale']), [{ value: 'unsold', label: 'na prodej', count: 1 }],
-    'nothing gone: "ještě mám" is the same as "vše", "už nemám" shows nothing');
-  assert.deepEqual(statusOptions(['sold', 'gifted']), [], 'everything gone: "už nemám" = "vše"');
-  assert.deepEqual(statusOptions([]), [], 'no works, no status filter');
+  assert.deepEqual(statusOptions(['available', 'available']), [
+    { value: 'unsold', label: 'na prodej', count: 2 }, { value: 'kept', label: 'ještě mám', count: 2 },
+  ], '"už nemám" shows nothing');
+  assert.deepEqual(statusOptions([]), [], 'no works');
 });
 
-test('yearFilterOptions: the years of the works with counts, newest first, none with all works', () => {
+test('yearFilterOptions: the years of the works with counts, newest first, also a single one', () => {
   assert.deepEqual(yearFilterOptions([2025, 2026, 2025, 2025]), [{ value: '2026', count: 1 }, { value: '2025', count: 3 }]);
-  assert.deepEqual(yearFilterOptions([2026, 2026]), []);
+  assert.deepEqual(yearFilterOptions([2026, 2026]), [{ value: '2026', count: 2 }]);
   assert.deepEqual(yearFilterOptions([]), []);
+});
+
+test('facetDisplay: a filter with no option narrowing the shown works is off and shows the common value', () => {
+  const off = facetChoices(shelf, { ...all, year: '2026' }, 'technique', ['kresba', 'akvarel']);
+  assert.deepEqual(facetDisplay(off), { off: true, common: 1 }, 'both 2026 works are akvarel');
+  assert.deepEqual(facetDisplay(facetChoices(shelf, all, 'technique', ['akvarel', 'kresba'])), { off: false, common: -1 });
+  const picked = facetChoices(shelf, { ...all, technique: 'akvarel', year: '2026' }, 'technique', ['akvarel', 'kresba']);
+  assert.equal(facetDisplay(picked).off, false, 'a picked option keeps the filter on');
+  assert.deepEqual(facetDisplay(facetChoices(shelf, all, 'featured', [FEATURED_ON])), { off: false, common: -1 });
+  assert.deepEqual(facetDisplay(facetChoices(shelf, { ...all, year: '2026', status: 'gone' }, 'featured', [FEATURED_ON])), { off: true, common: -1 }, 'none featured');
 });
 
 test('several tags narrow together: a work must have every picked tag', () => {
@@ -292,4 +302,17 @@ test('collection filter "žádná": only works in no collection, counted among t
   assert.deepEqual(facetChoices(shelf, { ...all, year: '2025' }, 'collection', [NO_COLLECTION]).map((c) => [c.count, c.offered]), [[2, false]]);
   assert.deepEqual(stateFromParams(new URLSearchParams('collection=none')).collection, NO_COLLECTION);
   assert.equal(stateToParams(state).toString(), 'collection=none');
+});
+
+test('stateFromForm: a greyed (off) select shows a shared value, which never becomes a filter', () => {
+  // Collection picked: every shown work is from 2000, so the year select is off and shows "2000".
+  const state = { ...all, collection: 'tatry' };
+  const next = stateFromForm(state, [
+    { key: 'collection', value: '', off: false }, // the visitor switched the collection to "vše"
+    { key: 'year', value: '2000', off: true },
+  ]);
+  assert.equal(next.collection, '');
+  assert.equal(next.year, '', 'the shown year is not picked');
+  assert.deepEqual(stateFromForm(state, [{ key: 'year', value: '2026', off: false }]).year, '2026', 'an active select is read');
+  assert.equal(state.collection, 'tatry', 'the state itself is not changed');
 });

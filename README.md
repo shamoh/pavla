@@ -143,9 +143,6 @@ vede odkaz na výpis bez filtrů.
 - Vyzkoušet: `npm run demo`, v `/tvorba/` vybrat štítek a stranu 2, otevřít dílo, „← Tvorba“ vrátí stejný výběr
   a posune se na kartu díla; z kolekce „← Kolekce“ na kartu kolekce na přehledu; přes „Úvod“ a zpět na dílo vede „← Tvorba“ na galerii bez filtrů.
 
-Když je vybraná kolekce, vedle výběru se objeví odkaz **„O kolekci ›“** na její
-stránku.
-
 **Roky na jeden řádek** (`scripts/lib/year-row.mjs`, v prohlížeči `src/lib/year-row.ts`, `fitYearRow`): řádek roků
 nad galerií (odkazy na stránky roků) i čipy roků na přehledu kolekcí zůstanou na jednom řádku, od nejnovějšího roku.
 Co se nevejde, schová se za ovládací prvek s rozsahem skrytých let („2017–2003 ▾“, jeden rok „2003 ▾“,
@@ -166,13 +163,14 @@ Filtr **Stav** má čtyři volby (`STATUS_FILTERS` v `scripts/lib/gallery-filter
 - **už nemám** (`gone`): `sold` + `gifted` (`GONE_STATUSES`).
 
 Volba, za kterou na dané stránce není žádné dílo nebo která ukáže totéž co „vše“ (všechna díla), se nenabízí
-(`offersOption`, `statusOptions`); bez žádné volby není filtr Stav vůbec. Totéž platí pro přepínač „Doporučené“ (výběr autorky): jen
-na stránce, kde jsou vybraná díla, ale ne všechna. Odkaz s takovou volbou ukáže vše. Dřívější volba `?status=available` (jen k prodeji) se přečte jako `unsold`
+(`offersOption`; `statusOptions` dá jen volby s nějakým dílem); když nezbude žádná, filtr Stav zašedne (viz níže).
+Totéž platí pro přepínač „Doporučené“ (výběr autorky): zašedne, když jsou vybraná všechna zobrazená díla, nebo žádné.
+Odkaz s takovou volbou ukáže vše. Dřívější volba `?status=available` (jen k prodeji) se přečte jako `unsold`
 (`STATUS_ALIASES`), sdílené odkazy dál fungují. Příklad kombinace:
 `/tvorba/?collection=plener-sumava-2026&status=unsold&tag=voda`, nebo jen výběr autorky
 na prodej: `/tvorba/?featured=1&status=unsold`.
 
-**Řádek filtrů** (výběry, „Doporučené“ a počet děl) je ve formuláři první, čipy štítků pod ním. Na počítači (okno od 1280 px) se vejde vždy na jeden řádek (ověřeno i v nejhorším případě: všechny filtry, nejdelší texty a 9999 děl): výběry mají pevnou největší šířku
+**Řádek filtrů** (výběry, „Doporučené“ a počet děl) je ve formuláři první, čipy štítků pod ním. Na počítači (okno od 1280 px) se vejde vždy na jeden řádek (ověřeno i v nejhorším případě: všechny filtry, nejdelší texty a 9999 děl; ještě s odkazem „O kolekci“, který už v řádku není): výběry mají pevnou největší šířku
 (`max-width` 11em, Kolekce 13em) a delší volbu zavřené zkrátí „…“ (rozbalené ukážou vše celé), přepínač výběru
 autorky se jmenuje krátce „Doporučené“ (plný název v bublině) a „Na stránku“ je pod díly. Pipeline doporučí kratší
 název kolekce (nad 19 znaků) a techniku (nad 14 znaků), viz *Souhrn běhu*. Na telefonu se řádek zalamuje.
@@ -197,9 +195,12 @@ volba výběrů Technika, Rok, Kolekce a Stav i přepínač „Doporučené“ p
 aktivními filtry (sama sebe nepočítá, takže počty u jiných voleb téhož výběru říkají, co dá přepnutí; volby Stavu se
 překrývají, každá se počítá zvlášť). Ve výběru zůstanou jen volby, které zobrazená díla zúží a nevyprázdní
 (`offersOption` nad díly, která nechají ostatní filtry); vybraná zůstane vždy. Skryté volby se z výběru odeberou
-(skrývání `<option>` Safari na iOS nerespektuje). Výběr ani přepínač bez žádné takové volby se skryje, dokud ji jiná
-změna nevrátí. Bez JavaScriptu jsou počty ze všech děl stránky. Na co se při sestavení stránky volba nenabízí vůbec
-(viz níže u Stavu), to se nevrátí ani po změně.
+(skrývání `<option>` Safari na iOS nerespektuje). Výběr ani přepínač bez žádné takové volby se **neskryje, ale zašedne**
+(`facetDisplay`, třída `off`, `disabled`, bublina s důvodem), aby bylo vidět, že filtr nechybí: výběr místo „vše“
+ukáže hodnotu, kterou mají všechna zobrazená díla (např. „akvarel (3)“), dokud jiná změna nějakou volbu nevrátí.
+Stejně čipy štítků: ten, který by výběr nezúžil (mají ho všechna zobrazená díla, nebo žádné), zůstane na místě
+zašedlý a nedá se kliknout. Bez JavaScriptu jsou počty ze všech děl stránky. Rok na stránce roku a Kolekce na stránce
+kolekce nejsou vůbec (nahrazují je odkazy), Kolekce chybí i na webu bez kolekcí.
 
 **Výběr více štítků („a zároveň“):** čip štítku se klikem zapne a dalším klikem vypne, „Vše“ zruší celý výběr.
 Každý další vybraný štítek výběr zúží: zůstanou díla, která mají všechny vybrané (`matchesFilters`). Po každé změně
@@ -612,7 +613,8 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | doporučení v souhrnu běhu: bez štítků, popis s malým písmenem a bez tečky / popisky detailů bez tečky / na prodej bez mockupů / text kolekce bez tečky / popis a popisek fotky bez tečky | Rozpracovaný obraz / Ráno u rybníka, Pivoňky / Máky, Bouřka nad polem, Modravské slatě, Pivoňky / Město 2026 / fotky stránek |
 | lišta filtrů při posunu nahoru, panel „Upravit“ (na úzké obrazovce zespodu) | `/tvorba/` (58 děl, stránka je dost dlouhá); úzká obrazovka: DevTools → režim zařízení |
 | počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (8 děl, Kolekce jen Kresby…, Skicák (po 2), Plenér Šumava, Portréty, Ptáci, Tatry (po 1), bez „žádná“), + kolekce Kresby, pastely a kvaš (2 díla; přepínač Doporučené zmizí, oba obrazy jsou vybrané); štítek „krajina“: Technika jen akvarel (23), kresba tužkou, kvaš, linoryt |
-| výběr více štítků („a zároveň“): čipy se zapínají a vypínají, zůstanou jen ty, které výběr zúží | `/tvorba/`: „krajina“ (28 děl, zbude 17 čipů), + „voda“ (9 děl, zbudou hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, zbudou jaro a léto), „Vše“ zruší |
+| výběr více štítků („a zároveň“): čipy se zapínají a vypínají, aktivní zůstanou jen ty, které výběr zúží, ostatní zašednou | `/tvorba/`: „krajina“ (28 děl, 17 aktivních čipů), + „voda“ (9 děl, aktivní hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, aktivní jaro a léto), „Vše“ zruší |
+| zašedlé filtry místo schovaných | `/tvorba/2000/`: Kolekce zašedlá s „Tatry 2000 (3)“, „Doporučené (0)“ a čip „#krajina“ zašedlé, Technika a Stav aktivní; `/tvorba/2007/` (jedno dílo) vše zašedlé |
 | doporučení ke štítkům v souhrnu: jeden štítek ve dvou tvarech / dva štítky vždy spolu / čipy přes 2 řádky; statistika štítků | „květiny“ a „květina“ (Pivoňky) / „noc“ a „světla“ (Noční město 2019) / 31 štítků asi na 3 řádky, kandidáti jen u jednoho díla; výpis `npm run demo:prepare` (`? advice: Štítky: …`) |
 | filtr bez zbytečných voleb: Stav jen „na prodej“, bez Výběru autorky (všechna díla vybraná) / bez filtru Stav | Ze zahrady 2025 / Kresby, pastely a kvaš 2025–2026 / Město 2026 |
 | řádek filtrů na jeden řádek, zkrácená volba, „Na stránku“ pod díly | `/tvorba/?collection=demo-kresby-2025-2026`: „Kresby, pastely a kva…“, rozbalený výběr ukáže celý název; `/tvorba/` dole vpravo „Na stránku“, při filtru s nejvýš 12 díly zmizí |
@@ -814,8 +816,8 @@ private_note: kde … # NEPOVINNÉ, soukromé, na web se nedostane
   `og.jpg` díla. Když ořez nestačí, je
   lepší připravit široký detail a použít `cover: <id>#<detail>`. Komponenta `src/components/Cover.astro`.
 - Stránka `/tvorba/kolekce/<slug>/` vznikne jen pro kolekci s aspoň jedním
-  publikovaným dílem. Vedou na ni: přehled `/tvorba/kolekce/`, řádek „Kolekce“
-  u každého jejího díla a odkaz „O kolekci ›“ v galerii při vybrané kolekci.
+  publikovaným dílem. Vedou na ni přehled `/tvorba/kolekce/` a řádek „Kolekce“
+  u každého jejího díla (řádek filtrů galerie na ni neodkazuje).
 - V galerii je výběr „Kolekce“ s počty děl; volba „žádná“ (`?collection=none`) ukáže díla, která v žádné kolekci nejsou.
 - Přehled `/tvorba/kolekce/` končí položkou **„Mimo kolekce“** (`NO_COLLECTION_TITLE`, `getUncollected` v `src/lib/site.ts`,
   název kurzívou, protože to kolekce není): díla bez kolekce, vede do galerie `/tvorba/?collection=none`. Úvodní
@@ -841,7 +843,7 @@ private_note: kde … # NEPOVINNÉ, soukromé, na web se nedostane
 - Stránka kolekce má nahoře odkaz **„← Kolekce“** na přehled; vede zpět s rokem, který tam návštěvník měl
   vybraný (viz *Návrat do výpisu*).
 - Výběr „Rok“ v galerii kolekce nabízí jen roky jejích děl s počty („2025 (3)“, `yearFilterOptions` ve
-  `scripts/lib/gallery-filter.mjs`), bez roku se všemi díly; kolekce celá z jednoho roku výběr roku nemá.
+  `scripts/lib/gallery-filter.mjs`); u kolekce celé z jednoho roku je zašedlý s tím rokem.
 - Kód: `scripts/lib/content.mjs` (čtení složek), `scripts/lib/collections.mjs` (popisy kolekcí), `src/lib/site.ts#getCollections`
   a `src/pages/tvorba/kolekce/` (přehled `index.astro`, stránka `[collection].astro`).
 
@@ -1043,7 +1045,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | exporty | `ls .demo/content/export/*/*/`: Instagram jen Ráno u rybníka, Pivoňky, Kytice z louky a Máky (`meta_instagram: true`) s `-clean` a `-detail-*`, Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export zmizí (originál + `-mockup-*`) |
 | cena | zakomentuj nebo smaž `price` u díla `available` (`demo-maky.yaml`): `npm run images` skončí chybou „stav „available“ potřebuje cenu“ |
 | úklid exportů | přejmenuj dílo (yaml, fotku i složku detailů), `npm run images`: v logu `- removed export/…` se starým názvem, v `export/` zůstanou jen soubory s novým názvem; totéž po smazání díla. Nebo nakopíruj do `export/fler/<rok>/` cizí soubor `<slug>-<id>-mockup-xyz.jpg` existujícího díla: další běh ho smaže, i když nic nepřegeneruje. |
-| kolekce | `/tvorba/kolekce/` (přehled), `/tvorba/kolekce/demo-plener-sumava-2026/` (s úvodní fotkou), `/tvorba/kolekce/demo-zahrada-2025/` (bez ní), výběr „Kolekce“ a „O kolekci ›“ v galerii, řádek „Kolekce“ na detailu díla |
+| kolekce | `/tvorba/kolekce/` (přehled), `/tvorba/kolekce/demo-plener-sumava-2026/` (s úvodní fotkou), `/tvorba/kolekce/demo-zahrada-2025/` (bez ní), výběr „Kolekce“ v galerii, řádek „Kolekce“ na detailu díla |
 | detailní fotky | `/tvorba/2026/demo-rano-u-rybnika-pf7ru/` (2 detaily s popisky), `/tvorba/2025/demo-kytice-z-louky-q6bn6/` (1 detail bez popisku): náhledy pod popisem, prohlížečka; v `export/instagram` soubory `-detail-*` |
 | soukromá poznámka | `grep -r private_note .demo/site/content/` nesmí nic najít; `demo-rano-u-rybnika` a `demo-jablka-na-stole` ji v `demo-content/` mají |
 | oddělení testovacích dat | zkopíruj `demo-content/tvorba/demo-maky.yaml` do `tvorba/` obsahového repa a spusť `npm run images`: skončí chybou „test data do not belong in the real content“ a nic nezapíše (pak soubor smaž). Obráceně: dílo bez jména `demo-…` v `demo-content/` nebo smazaná značka `demo-content/demo-content.yaml` zastaví `npm run demo`. |

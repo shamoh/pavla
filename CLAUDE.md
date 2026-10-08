@@ -50,7 +50,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   mají Fler exporty a filtr „na prodej“; `not-for-sale`, `sold` a `gifted` (darováno) nikdy.
   Filtr Stav (`STATUS_FILTERS`): na prodej (`unsold`), ještě mám (`kept`), už nemám (`gone` = `sold` + `gifted`);
   staré `?status=available` = `unsold` (`STATUS_ALIASES`); volba bez děl nebo se všemi díly (= „vše“) se nenabízí
-  (`offersOption`, `statusOptions`), stejně přepínač „Výběr autorky“. Štítek stavu na kartě i stránce díla, `not-for-sale` bez štítku; `sold` i `gifted` mají
+  (`offersOption`), bez žádné filtr zašedne (`facetDisplay`), stejně přepínač „Doporučené“. Štítek stavu na kartě i stránce díla, `not-for-sale` bez štítku; `sold` i `gifted` mají
   společný štítek „V soukromé sbírce“ (`GONE_LABEL`), web je nikdy nerozlišuje.
 - Mockupy jen s `mockups: true` v popisu díla (výchozí false), nezávisle na stavu prodeje (`wantsMockups`);
   Fler mockupy jen u díla na prodej, které mockupy má.
@@ -71,8 +71,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
 - Filtry galerie (`scripts/lib/gallery-filter.mjs`): všechny se kombinují a každá změna se hned zapisuje do URL,
   aby šel odkaz poslat dál. Platí vždy, i pro každý nový filtr a pro stránku (`page`, i `page=all`).
-  Štítky: víc najednou „a zároveň“ (`state.tag` = pole, `?tag=a&tag=b`, `sortTags`/`toggleTag`), zůstanou jen čipy,
-  které zobrazená díla zúží a nevyprázdní (`tagChoices`), vybrané vždy; GA `tag` = spojené čárkou.
+  Štítky: víc najednou „a zároveň“ (`state.tag` = pole, `?tag=a&tag=b`, `sortTags`/`toggleTag`), aktivní jsou jen čipy,
+  které zobrazená díla zúží a nevyprázdní (`tagChoices`), vybrané vždy, ostatní zašedlé na místě; GA `tag` = spojené čárkou.
   Kolekce má za „vše“ volbu „žádná“ (`NO_COLLECTION` = `?collection=none`, díla bez kolekce; čip v liště z `data-chip`),
   přehled kolekcí končí položkou „Mimo kolekce“ (`NO_COLLECTION_TITLE`, `getUncollected`); slug `none` pipeline odmítne.
   Její text (`description`, prázdný = `UNCOLLECTED_TEXT`) a úvodní obraz: `tvorba/_index.yaml` + `tvorba/_cover.jpg` obsahového repa (`UNCOLLECTED_SCHEMA`, `scripts/lib/uncollected.mjs`,
@@ -81,7 +81,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (= výběr autorky), „Na stránku“ pod díly; nový filtr = ověřit nejhorší případ (všechny volby, nejdelší texty, 9999 děl) a
   případně limity `TECHNIQUE_CHARS` / `COLLECTION_TITLE_CHARS` v `scripts/lib/advice.mjs` (doporučení v souhrnu).
   Výběry (Technika, Rok, Kolekce, Stav) a přepínač Výběr autorky stejně: počty s ostatními filtry, jen volby,
-  které zúží a nevyprázdní (`facetChoices`), vybraná vždy, bez žádné se filtr skryje; nový filtr = do `FACETS`.
+  které zúží a nevyprázdní (`facetChoices`), vybraná vždy, bez žádné filtr zašedne (nikdy se neskryje, `facetDisplay`, ukáže společnou hodnotu); nový filtr = do `FACETS`.
   Lišta filtrů (`scripts/lib/filter-bar.mjs`): po posunu nahoru tenký řádek s vybranými filtry jako čipy s „×“
   (`withoutFilter`) + „Upravit“ = týž formulář jako panel (nikdy kopie); nový filtr = i do `activeFilters`.
   Prvky tvořené skriptem stylovat přes `:global(…)` (scoped CSS Astra na ně nedosáhne).

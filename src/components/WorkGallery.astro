@@ -1,7 +1,7 @@
 ---
 import WorkCard from './WorkCard.astro';
-import { type Work, collectionUrl, config, getCollection, getCollections, getYears, url } from '../lib/site';
-import { NO_COLLECTION, NO_COLLECTION_TITLE, offersOption, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
+import { type Work, config, getCollection, getCollections, getYears, url } from '../lib/site';
+import { NO_COLLECTION, NO_COLLECTION_TITLE, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
 import { overviewLink, yearCounts, yearOptions } from '../../scripts/lib/collection-filter.mjs';
 
 interface Props { works: Work[]; year?: number; collection?: string }
@@ -19,14 +19,13 @@ const techniques = count(works.map((w) => w.technique));
 const collections = count(works.flatMap((w) => (w.collection ? [w.collection] : []))).map(([slug, n]) => ({ slug, n, title: getCollection(slug)?.title ?? slug }));
 // "žádná" right after "vše": the works in no collection (?collection=none), when some are.
 const uncollected = works.filter((w) => !w.collection).length;
-// Status options showing nothing or the same as "vše" are not offered (offersOption); with none left, no status filter.
+// Every status option with some works; the browser greys the filter out while none of them narrows (facetDisplay).
 const statuses = statusOptions(works.map((w) => w.status));
-// The author's selection (featured): a switch, shown only when it changes something (offersOption: some works,
-// not all of them).
+// The author's selection (featured): a switch, greyed out while it changes nothing (all shown works or none).
 const featuredCount = works.filter((w) => w.featured).length;
 const years = getYears();
 // Year options: every year of the site in the gallery; in a collection only the years of its works with counts,
-// none with nothing or all of them (yearFilterOptions), so with all works from one year no year filter.
+// greyed out while all shown works are from one year.
 const yearChoices = collection
   ? yearFilterOptions(works.map((w) => w.year)).map((o) => ({ value: o.value, label: `${o.value} (${o.count})` }))
   : years.map((y) => ({ value: String(y), label: String(y) }));
@@ -66,14 +65,11 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
         <select name="year"><option value="">vše</option>{yearChoices.map((o) => <option value={o.value} data-label={o.value}>{o.label}</option>)}</select>
       </label>
     )}
-    {!collection && collections.length > 0 && (
+    {!collection && allCollections.length > 0 && (
       <label>Kolekce
         <select name="collection"><option value="">vše</option>{uncollected > 0 && <option value={NO_COLLECTION} data-label="žádná" data-chip={NO_COLLECTION_TITLE.toLowerCase()}>žádná ({uncollected})</option>}{collections.map((c) => <option value={c.slug} data-label={c.title}>{c.title} ({c.n})</option>)}</select>
       </label>
     )}
-    {!collection && collections.map((c) => (
-      <a class="about-collection" href={collectionUrl(c.slug)} data-collection-link={c.slug} hidden>O kolekci ›</a>
-    ))}
     {statuses.length > 0 && (
       <label>Stav
         <select name="status">
@@ -82,7 +78,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
         </select>
       </label>
     )}
-    {offersOption(featuredCount, works.length) && (
+    {works.length > 0 && (
       <label class="switch" title="Výběr autorky: obrazy, které sama doporučuji"><input type="checkbox" name="featured" value="1" /> <span>Doporučené (<span data-featured-count>{featuredCount}</span>)</span></label>
     )}
     <span class="muted count" id="count" aria-live="polite">{works.length} děl</span>
@@ -122,8 +118,8 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   // Paging happens here too: the filtered list is split into pages, cards of other pages are hidden
   // (hidden cards load no images). Without JavaScript every work is shown.
   import {
-    ALL_PAGES, FEATURED_ON, PAGE_SIZE_STORAGE_KEY, facetChoices, matchesFilters, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate,
-    rememberedPageSize, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
+    ALL_PAGES, FEATURED_ON, PAGE_SIZE_STORAGE_KEY, facetChoices, facetDisplay, matchesFilters, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate,
+    rememberedPageSize, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
   } from '../../scripts/lib/gallery-filter.mjs';
   import { EVENTS, filterEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
   import { rememberListing, revealReturned } from '../lib/page-return';
@@ -160,6 +156,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   // instead of hiding, which Safari on iOS ignores).
   const allOptions = Object.fromEntries(selects.map((k) => [k, [...select(k)!.options]]));
   const featuredCount = form.querySelector<HTMLElement>('[data-featured-count]');
+  const FEATURED_TITLE = featuredBox?.closest('label')?.title ?? '';
   const params = new URLSearchParams(location.search);
   let state = stateFromParams(params, pageSizes);
   // The page size the visitor picked earlier is remembered in this browser (not "Zobrazit vše", that one is
@@ -226,34 +223,46 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     renderPager(page, pages, matching.length);
     chips[0].setAttribute('aria-pressed', String(state.tag.length === 0));
     const choices = tagChoices(tagNames, matching.map(tagsOf), state.tag);
+    // A chip that would not narrow the shown works stays, greyed and disabled (every shown work has it, or none).
     tagChips.forEach((b, i) => {
       const { count, picked, offered } = choices[i];
-      b.hidden = !offered;
+      b.disabled = !offered;
+      b.title = offered ? '' : count ? 'Mají ho všechna zobrazená díla' : 'Nemá ho žádné zobrazené dílo';
       b.setAttribute('aria-pressed', String(picked));
       // A picked chip shows no count: all the shown works have it.
       b.querySelector('small')!.textContent = picked ? '' : String(count);
     });
-    // Only "Vše" left (no tag narrows the shown works and none is picked): no chips at all.
-    chipGroup.hidden = !choices.some((c) => c.offered);
+    // No chips only when the works of this page have no tags at all.
+    chipGroup.hidden = tagChips.length === 0;
     for (const k of selects) {
       const [all, ...options] = allOptions[k];
       const choices = facetChoices(works, state, k, options.map((o) => o.value));
       options.forEach((o, i) => { o.textContent = `${o.dataset.label} (${choices[i].count})`; });
-      select(k)!.replaceChildren(all, ...options.filter((_, i) => choices[i].offered));
-      select(k)!.value = state[k];
-      select(k)!.closest('label')!.hidden = !choices.some((c) => c.offered);
+      // No option narrows the shown works: the filter stays greyed and disabled, showing the value they all share.
+      const { off, common } = facetDisplay(choices);
+      const s = select(k)!;
+      if (off) s.replaceChildren(common >= 0 ? options[common] : all);
+      else s.replaceChildren(all, ...options.filter((_, i) => choices[i].offered));
+      s.value = off ? (common >= 0 ? options[common].value : '') : state[k];
+      s.disabled = off;
+      const label = s.closest('label')!;
+      label.classList.toggle('off', off);
+      label.title = off ? 'Všechna zobrazená díla mají stejnou hodnotu, není z čeho vybírat' : '';
     }
     if (featuredBox) {
       featuredBox.checked = state.featured === FEATURED_ON;
       const [choice] = facetChoices(works, state, 'featured', [FEATURED_ON]);
       featuredCount!.textContent = String(choice.count);
-      featuredBox.closest('label')!.hidden = !choice.offered;
+      // Greyed and disabled while it changes nothing: all shown works are in the selection, or none.
+      const { off } = facetDisplay([choice]);
+      const label = featuredBox.closest('label')!;
+      featuredBox.disabled = off;
+      label.classList.toggle('off', off);
+      label.title = !off ? FEATURED_TITLE : choice.count ? 'Všechna zobrazená díla jsou doporučená' : 'Žádné zobrazené dílo není doporučené';
     }
     if (perPageSelect) perPageSelect.value = String(pageSizeOf(state, pageSizes));
     // The page size matters only when the shown works do not fit the smallest page.
     if (perPageLabel) perPageLabel.hidden = matching.length <= pageSizes[0];
-    // "O kolekci ›" next to the collection filter, only for the selected collection.
-    form.querySelectorAll<HTMLAnchorElement>('[data-collection-link]').forEach((a) => { a.hidden = a.dataset.collectionLink !== state.collection; });
     countEl.textContent = `${shown} ${plural(shown)}`;
     renderBar(shown);
     emptyEl.hidden = shown > 0;
@@ -368,8 +377,11 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   // A new filter starts again on the first page.
   chips.forEach((b) => b.addEventListener('click', () => { state.tag = b.dataset.value ? toggleTag(state.tag, b.dataset.value) : []; state.page = pageAfterFilterChange(state.page); trackFilter(apply()); toResults(); }));
   form.addEventListener('change', () => {
-    for (const k of selects) state[k] = select(k)!.value;
-    if (featuredBox) state.featured = featuredBox.checked ? FEATURED_ON : '';
+    // Greyed (disabled) filters only show the value all works share: never read as a choice (stateFromForm).
+    state = stateFromForm(state, [
+      ...selects.map((k) => ({ key: k, value: select(k)!.value, off: select(k)!.disabled })),
+      ...(featuredBox ? [{ key: 'featured', value: featuredBox.checked ? FEATURED_ON : '', off: featuredBox.disabled }] : []),
+    ]);
     state.page = pageAfterFilterChange(state.page);
     trackFilter(apply());
     toResults();
@@ -459,6 +471,10 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     border: 1px solid var(--line); border-radius: 99px; padding: 5px 14px;
   }
   .chips[hidden], .chips button[hidden] { display: none; }
+  /* A chip or a filter that would change nothing now: greyed and disabled, but in place (facetDisplay). */
+  .chips button:disabled { opacity: .4; cursor: default; }
+  .selects label.off { opacity: .45; }
+  .selects label.off select, .selects label.off input { cursor: default; }
   .chips button small:empty { display: none; }
   .chips button small { color: var(--ink-soft); margin-left: 2px; }
   .chips button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
@@ -488,7 +504,6 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   .pager .step { font-family: var(--serif); font-size: 1.1rem; }
   .pager .gap { color: var(--ink-soft); }
   .pager .mode { flex-basis: 100%; text-align: center; font-size: 0.88rem; text-decoration: underline; text-underline-offset: 3px; }
-  .about-collection { color: var(--accent); text-decoration: none; }
   .years .to-collections { margin-left: auto; font-size: 1rem; font-family: var(--sans); align-self: center; }
   .grid { columns: 3 300px; column-gap: 36px; }
   .grid :global(.card[hidden]) { display: none; }
