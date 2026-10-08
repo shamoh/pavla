@@ -39,6 +39,19 @@ export function statusOptions(statuses) {
     .filter((o) => offersOption(o.count, statuses.length));
 }
 
+/**
+ * The year filter options of a collection's gallery for the years of its works: [{ value, count }] newest first,
+ * only those worth offering (offersOption); [] = no year filter at all.
+ */
+export function yearFilterOptions(years) {
+  const counts = new Map();
+  for (const y of years) counts.set(y, (counts.get(y) ?? 0) + 1);
+  return [...counts]
+    .sort((a, b) => b[0] - a[0])
+    .map(([y, count]) => ({ value: String(y), count }))
+    .filter((o) => offersOption(o.count, years.length));
+}
+
 /** Former status filter values, still accepted in shared links: old value → current one. */
 export const STATUS_ALIASES = { available: 'unsold' };
 

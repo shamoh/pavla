@@ -22,7 +22,7 @@ const jsonLd = graphLd(
 );
 ---
 <Base title={title} description={pageDescription} image={collectionShareImage(collection)} jsonLd={jsonLd}>
-  <p class="back"><a href={url('/tvorba/')}>← Tvorba</a></p>
+  <p class="back"><a href={url('/tvorba/kolekce/')} data-return data-return-focus={collection.slug}>← Kolekce</a></p>
   <header class="intro">
     <div>
       <p class="eyebrow">Kolekce</p>

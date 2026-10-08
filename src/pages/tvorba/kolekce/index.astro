@@ -1,12 +1,17 @@
 ---
-// Overview of all collections: /tvorba/kolekce/ (the one with the newest work first).
+// Overview of all collections: /tvorba/kolekce/ (the one with the newest work first), filtered by year in the
+// browser (?year=2025: the collections with at least one work of that year, each with its works of that year and a
+// link opening it filtered to the year; scripts/lib/collection-filter.mjs).
 import Base from '../../../layouts/Base.astro';
 import Cover from '../../../components/Cover.astro';
 import { collectionShareImage, collectionUrl, getCollections, site, url } from '../../../lib/site';
+import { encodeYearCounts, worksLabel, yearCounts, yearOptions } from '../../../../scripts/lib/collection-filter.mjs';
 import { breadcrumbLd, collectionPageLd, graphLd } from '../../../../scripts/lib/seo.mjs';
 
 const collections = getCollections();
-const plural = (n: number) => (n === 1 ? 'dílo' : n >= 2 && n <= 4 ? 'díla' : 'děl');
+const counts = collections.map((c) => yearCounts(c.works));
+// Years narrowing the list (no year with none or all collections); none left = no year filter.
+const options = yearOptions(counts.map((yc) => yc.map(([y]) => y)));
 const description = 'Obrazy seskupené podle plenérů, výletů a témat: co vzniklo na jednom místě nebo patří k sobě.';
 const jsonLd = graphLd(
   collectionPageLd(site, { path: '/tvorba/kolekce/', name: 'Kolekce', description, items: collections, itemPath: (c) => `/tvorba/kolekce/${c.slug}/` }),
@@ -14,23 +19,84 @@ const jsonLd = graphLd(
 );
 ---
 <Base title="Kolekce" description={description} image={collections[0] && collectionShareImage(collections[0])} jsonLd={jsonLd}>
-  <p class="back"><a href={url('/tvorba/')}>← Tvorba</a></p>
+  <p class="back"><a href={url('/tvorba/')} data-return>← Tvorba</a></p>
   <h1>Kolekce</h1>
   {collections.length === 0 && <p class="muted">Zatím tu žádná kolekce není.</p>}
+  {options.length > 0 && (
+    <div class="years" id="years" role="group" aria-label="Roky">
+      <button type="button" data-year="" aria-pressed="true">Vše</button>
+      {options.map((o) => <button type="button" data-year={o.year} aria-pressed="false">{o.year} <small>({o.count})</small></button>)}
+    </div>
+  )}
   <div class="list">
     {collections.map((c, i) => (
-      <a class="item" href={collectionUrl(c.slug)}>
+      <a class="item" href={collectionUrl(c.slug)} data-href={collectionUrl(c.slug)} data-slug={c.slug} data-years={encodeYearCounts(counts[i])}>
         <Cover cover={c.cover} sizes="(max-width: 700px) 100vw, 50vw" eager={i < 2} link={false} class="collection-cover" />
         <span class="title">{c.title}</span>
-        <span class="muted">{c.works.length} {plural(c.works.length)}</span>
+        <span class="muted" data-works={c.works.length}>{worksLabel(c.works.length, c.works.length)}</span>
         {c.description && <span class="desc">{c.description}</span>}
       </a>
     ))}
   </div>
 </Base>
+<script>
+  // The picked year is written to the URL right away (?year=2025), so the filtered overview can be shared as a
+  // link. With a year picked, each shown collection tells its works of that year ("2 z 5 děl") and its link opens
+  // the collection filtered to the year. The year is also remembered for this tab (scripts/lib/page-return.mjs), so
+  // "← Kolekce" on a collection page leads back to it even through a work page. Without JavaScript every collection
+  // is shown.
+  import { collectionLink, matchesYear, parseYearCounts, worksLabel, yearFromParams, yearToParams } from '../../../../scripts/lib/collection-filter.mjs';
+  import { EVENTS, filterEventParams, trackEvent } from '../../../../scripts/lib/analytics.mjs';
+  import { rememberListing, revealReturned } from '../../../lib/page-return';
+
+  const group = document.getElementById('years');
+  const items = [...document.querySelectorAll<HTMLElement>('.list .item')];
+  rememberListing('');
+  if (group) {
+    const buttons = [...group.querySelectorAll<HTMLButtonElement>('button[data-year]')];
+    const offered = buttons.map((b) => b.dataset.year!).filter(Boolean).map(Number);
+    let year = yearFromParams(new URLSearchParams(location.search), offered);
+
+    /** Shows the collections of the picked year and writes it to the URL; returns how many are shown. */
+    const apply = () => {
+      for (const item of items) {
+        const counts = parseYearCounts(item.dataset.years!);
+        item.hidden = !matchesYear(counts.map(([y]) => y), year);
+        const works = item.querySelector<HTMLElement>('[data-works]')!;
+        const total = Number(works.dataset.works);
+        const count = year ? counts.find(([y]) => String(y) === year)?.[1] ?? 0 : total;
+        works.textContent = worksLabel(count, total);
+        (item as HTMLAnchorElement).href = collectionLink(item.dataset.href!, year, count, total);
+      }
+      buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.year === year)));
+      const p = yearToParams(year);
+      history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
+      rememberListing(p);
+      return items.filter((i) => !i.hidden).length;
+    };
+    buttons.forEach((b) => b.addEventListener('click', () => {
+      year = b.dataset.year!;
+      const results = apply();
+      // The same event as the gallery filter (its year parameter), the page tells them apart.
+      trackEvent(EVENTS.filter, filterEventParams({ year }, results));
+    }));
+    apply();
+  }
+  // Back from a collection page (← Kolekce): to the card of that collection, when shown for the picked year.
+  revealReturned(items, 'slug');
+</script>
 <style>
   .back { margin: -12px 0 24px; font-size: 0.9rem; }
   .back a { text-decoration: none; color: var(--ink-soft); }
+  .years { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 32px; }
+  .years button {
+    font: inherit; font-size: 0.88rem; color: var(--ink); background: transparent; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 99px; padding: 5px 14px;
+  }
+  .years button small { color: var(--ink-soft); margin-left: 2px; }
+  .years button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .years button[aria-pressed='true'] small { color: inherit; opacity: .7; }
+  .item[hidden] { display: none; }
   .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 48px 36px; }
   .item { display: flex; flex-direction: column; gap: 6px; text-decoration: none; }
   .item :global(.collection-cover) { margin-bottom: 8px; }

@@ -64,7 +64,7 @@ pavla/                                      (toto repo, veřejné)
 |---|---|
 | `/tvorba/` | všechna díla s filtry (viz níže) |
 | `/tvorba/2026/` | díla z jednoho roku (filtry bez roku) |
-| `/tvorba/kolekce/` | přehled kolekcí (úvodní fotka, název, počet děl, popis) |
+| `/tvorba/kolekce/` | přehled kolekcí (úvodní fotka, název, počet děl, popis), filtr podle roku (`?year=2025`) |
 | `/tvorba/kolekce/plener-sumava-2026/` | kolekce: název, popis, úvodní fotka a její díla s filtry |
 | `/tvorba/2026/rano-u-rybnika-k3f9a/` | detail díla |
 | `/tvorba/k3f9a/` | trvalý krátký odkaz, přesměruje na detail |
@@ -104,15 +104,36 @@ Tohle je závazné pravidlo: každý nový filtr musí mít parametr v URL.
 |---|---|---|
 | Téma (čipy s počty) | `tag` | jeden tag, např. `?tag=krajina` |
 | Technika | `technique` | např. `?technique=akvarel` |
-| Rok (jen na `/tvorba/` a u kolekce) | `year` | `?year=2025` |
+| Rok (jen na `/tvorba/` a u kolekce; u kolekce jen roky jejích děl s počty, bez roku se všemi díly, když nic nezbude, bez výběru) | `year` | `?year=2025` (nenabízený rok = vše) |
 | Kolekce (jen na `/tvorba/` a stránce roku) | `collection` | slug kolekce, `?collection=plener-sumava-2026` |
 | Stav (s počty, jen volby s jiným výsledkem než „vše“) | `status` | `unsold` = na prodej, `kept` = ještě mám, `gone` = už nemám |
 | Výběr autorky (přepínač s počtem, jen když výpis nějaké má, ale ne všechna) | `featured` | `1` = jen díla s `featured: true`, jiná hodnota se ignoruje |
 | Stránka (viz *Stránkování*) | `page` | číslo stránky od 2, `all` = vše bez stránkování |
 | Na stránku (viz *Stránkování*) | `perPage` | `24` nebo `48` (výchozí 12 se nepíše) |
 
+**Návrat do výpisu** (`scripts/lib/page-return.mjs`, v prohlížeči `src/lib/page-return.ts`): každý výpis
+(galerie `/tvorba/`, stránka roku, stránka kolekce, přehled kolekcí) si pro tuto záložku pamatuje svůj stav
+v adrese (filtry, stránka, počet na stránku) v `sessionStorage` (`RETURN_STORAGE_KEY` = `pavla.return`, JSON cesta →
+parametry, nejvýš `RETURN_MAX_PATHS` cest). Přepíše ho při každém načtení a změně, výpis bez filtrů ho zapomene.
+Odkazy zpět označené `data-return` (`Base.astro` je doplní při načtení stránky) pak vedou na výpis tak, jak ho
+návštěvník opustil, i přes další stránky: na stránce díla **„← Tvorba“**, rok a kolekce, na stránce kolekce
+**„← Kolekce“**, na přehledu kolekcí **„← Tvorba“**. Odkaz, který už parametry má, se nemění. Když je úložiště
+zablokované, vezmou se parametry z adresy předchozí stránky, pokud to byl tentýž výpis; jinak (i bez JavaScriptu)
+vede odkaz na výpis bez filtrů.
+- Paměť platí jen v sekci Tvorba (`RETURN_SCOPE` = `/tvorba/`, `insideScope`): každá stránka mimo ni (úvod,
+  O mně, Kontakt, 404) ji celou smaže, takže se odkaz zpět nevrátí k filtrům z dřívějšího, nesouvisejícího prohlížení.
+- Hlavní menu paměť nemá: „Tvorba“ v hlavičce vždy otevře galerii bez filtrů (a tím paměť galerie smaže).
+- Odkaz zpět označený `data-return-focus` si při kliku zapamatuje, odkud návštěvník jde (`RETURN_FOCUS_KEY` =
+  `pavla.return.focus`): ze stránky díla jeho `id` („← Tvorba“, rok, kolekce), ze stránky kolekce její slug
+  („← Kolekce“). Výpis se po návratu posune na kartu díla, resp. kolekce na přehledu, a krátce ji orámuje
+  (`revealReturned`, třída `.returned` v `Base.astro`, barva `--accent`, bez animace při `prefers-reduced-motion`);
+  jen když je karta zobrazená (na zobrazené stránce, u přehledu ve vybraném roce). Použije se jednou.
+- Vyzkoušet: `npm run demo`, v `/tvorba/` vybrat štítek a stranu 2, otevřít dílo, „← Tvorba“ vrátí stejný výběr
+  a posune se na kartu díla; z kolekce „← Kolekce“ na kartu kolekce na přehledu; přes „Úvod“ a zpět na dílo vede „← Tvorba“ na galerii bez filtrů.
+
 Když je vybraná kolekce, vedle výběru se objeví odkaz **„O kolekci →“** na její
-stránku. Odkaz **Kolekce** v řádku s roky vede na přehled `/tvorba/kolekce/`.
+stránku. Odkaz **Kolekce** v řádku s roky vede na přehled `/tvorba/kolekce/`, na stránce roku
+rovnou na přehled vyfiltrovaný na ten rok (`/tvorba/kolekce/?year=2026`), pokud ho přehled nabízí (`overviewLink`).
 
 Filtr **Stav** má čtyři volby (`STATUS_FILTERS` v `scripts/lib/gallery-filter.mjs`):
 - **vše**,
@@ -509,6 +530,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | rok: vlastní úvodní fotka, jen `focus` (ořez 1:1) | 2025 (`demo-content/roky/2025.yaml`, panorama `roky/2025.jpg`) |
 | úvodní stránka: text z `_index.yaml`, náhodný obraz | `demo-content/_index.yaml` |
 | kolekce přes víc let a přelom roku | `demo-kresby-2025-2026/`: Kočka na okně, Jablka na stole (2025), Rybník v zimě (prosinec 2025), Nádraží (únor 2026) |
+| filtr roku na přehledu kolekcí | `/tvorba/kolekce/`: 2026 (3 kolekce: Město, Plenér Šumava, Kresby), 2025 (2: Ze zahrady, Kresby); Kresby jsou v obou letech: s rokem 2025 „3 z 4 děl“ a odkaz `?year=2025`, ostatní celé v jednom roce bez roku v odkazu; „Kolekce“ na `/tvorba/2025/` vede na `/tvorba/kolekce/?year=2025`; „← Kolekce“ z Kresby otevřených z přehledu s 2025 vede zpět na `?year=2025`, i po prokliku na dílo a zpět na kolekci (viz *Návrat do výpisu*); výběr Rok jen u Kresby (2025 (3), 2026 (1)), ostatní testovací kolekce jsou z jednoho roku |
 | díla bez kolekce | Zimní sad, Slunečnice, Máky, Bouřka nad polem, Lípa u kaple, Na podlaze, Rozpracovaný obraz |
 | ořez podlahy: rohy listu najde pipeline (průhledné okolí na webu, papír v JPEG a na Instagramu, bílá pro Fler, mockupy bez podlahy) | Na podlaze (list vyfocený nakřivo, recept `floor` v `demo-content/images.yaml`) |
 | ořez podlahy: rohy zadané ručně | Bouřka nad polem (`meta_corners` v `demo-content/`) |
@@ -724,6 +746,20 @@ private_note: kde … # NEPOVINNÉ, soukromé, na web se nedostane
   publikovaným dílem. Vedou na ni: přehled `/tvorba/kolekce/`, řádek „Kolekce“
   u každého jejího díla a odkaz „O kolekci →“ v galerii při vybrané kolekci.
 - V galerii je výběr „Kolekce“ s počty děl.
+- Přehled `/tvorba/kolekce/` jde filtrovat podle roku (čipy „Vše“, „2026 (3)“: rok a počet kolekcí). Kolekce patří ke každému
+  roku, ve kterém vzniklo aspoň jedno její dílo (rok z `date`); vybraný rok nechá jen tyto kolekce. U každé pak počet
+  jejích děl z toho roku („2 z 5 děl“, `worksLabel`; má-li v tom roce všechna, jen „5 děl“) a odkaz na ni nese rok
+  (`/tvorba/kolekce/<slug>/?year=2025`), takže se otevře s galerií vyfiltrovanou na ten rok (`collectionLink`; ne když
+  jsou v tom roce všechna její díla). Rok se hned
+  zapíše do adresy (`?year=2025`, jiná nebo nenabízená hodnota = vše), odkaz jde poslat dál. Jako u filtrů galerie
+  se nenabízí rok, který ukazuje všechny kolekce (= „Vše“); bez takového roku se filtr neukáže vůbec. Bez JavaScriptu
+  jsou vidět všechny kolekce. Změna roku posílá událost `gallery_filter` (parametr `year`, `results` = počet kolekcí).
+  Logika `scripts/lib/collection-filter.mjs`. Vyzkoušet: `npm run demo`, `/tvorba/kolekce/` (testovací kolekce
+  jsou z let 2025 a 2026, jedna z obou).
+- Stránka kolekce má nahoře odkaz **„← Kolekce“** na přehled; vede zpět s rokem, který tam návštěvník měl
+  vybraný (viz *Návrat do výpisu*).
+- Výběr „Rok“ v galerii kolekce nabízí jen roky jejích děl s počty („2025 (3)“, `yearFilterOptions` ve
+  `scripts/lib/gallery-filter.mjs`), bez roku se všemi díly; kolekce celá z jednoho roku výběr roku nemá.
 - Kód: `scripts/lib/content.mjs` (čtení složek), `scripts/lib/collections.mjs` (popisy kolekcí), `src/lib/site.ts#getCollections`
   a `src/pages/tvorba/kolekce/` (přehled `index.astro`, stránka `[collection].astro`).
 
@@ -1081,7 +1117,7 @@ analytics:
 
   | Událost | Kdy | Parametry |
   |---|---|---|
-  | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav); ne stránkování ani počet na stránku | aktivní filtry `tag`, `technique`, `year`, `collection`, `status`, `featured` (prázdné se neposílají) a `results` (kolik děl odpovídá) |
+  | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav) nebo na přehledu kolekcí rok; ne stránkování ani počet na stránku | aktivní filtry `tag`, `technique`, `year`, `collection`, `status`, `featured` (prázdné se neposílají) a `results` (kolik děl, na přehledu kolekcí kolik kolekcí odpovídá) |
   | `fler_click` | klik na „Koupit na Fleru“ u díla | `work_id`, `work_title` |
   | `email_click` | jen odkazy `mailto:`: klik na e-mailovou adresu na Kontaktu (kdo píše rovnou z pošty místo formuláře); bez formuláře zpráv i klik na „Napsat autorce“ u díla. Předmět e-mailu má stejný tvar jako odeslaná zpráva (`[pavla-web] Pozdrav nebo vzkaz`, u díla `[pavla-web] Dotaz na obraz: <název> (<id>)` / `Zájem o koupi: …`) | u díla `work_id`, `work_title`, na Kontaktu žádné |
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |

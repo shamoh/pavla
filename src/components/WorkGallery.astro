@@ -1,7 +1,8 @@
 ---
 import WorkCard from './WorkCard.astro';
 import { type Work, collectionUrl, config, getCollection, getCollections, getYears, url } from '../lib/site';
-import { offersOption, statusOptions } from '../../scripts/lib/gallery-filter.mjs';
+import { offersOption, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
+import { overviewLink, yearCounts, yearOptions } from '../../scripts/lib/collection-filter.mjs';
 
 interface Props { works: Work[]; year?: number; collection?: string }
 // `year` set: a year page (/tvorba/2026/), the year filter is replaced by links.
@@ -21,6 +22,15 @@ const statuses = statusOptions(works.map((w) => w.status));
 // not all of them).
 const featuredCount = works.filter((w) => w.featured).length;
 const years = getYears();
+// Year options: every year of the site in the gallery; in a collection only the years of its works with counts,
+// none with nothing or all of them (yearFilterOptions), so with all works from one year no year filter.
+const yearChoices = collection
+  ? yearFilterOptions(works.map((w) => w.year)).map((o) => ({ value: o.value, label: `${o.value} (${o.count})` }))
+  : years.map((y) => ({ value: String(y), label: String(y) }));
+// "Kolekce" next to the years: on a year page the overview filtered to that year, when it offers it.
+const allCollections = getCollections();
+const collectionYears = yearOptions(allCollections.map((c) => yearCounts(c.works).map(([y]) => y))).map((o) => o.year);
+const collectionsHref = overviewLink(url('/tvorba/kolekce/'), year, collectionYears);
 // Page sizes the visitor can pick (the first is the default); the rest of the filtered list is on further
 // pages (?page=2), hidden cards load no images.
 const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
@@ -29,7 +39,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   <nav class="years" aria-label="Roky">
     <a href={url('/tvorba/')} aria-current={year ? undefined : 'page'}>Vše</a>
     {years.map((y) => <a href={url(`/tvorba/${y}/`)} aria-current={y === year ? 'page' : undefined}>{y}</a>)}
-    {getCollections().length > 0 && <a class="to-collections" href={url('/tvorba/kolekce/')}>Kolekce</a>}
+    {allCollections.length > 0 && <a class="to-collections" href={collectionsHref}>Kolekce</a>}
   </nav>
 )}
 
@@ -42,9 +52,9 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     <label>Technika
       <select name="technique"><option value="">vše</option>{techniques.map(([t]) => <option value={t}>{t}</option>)}</select>
     </label>
-    {!year && (
+    {!year && yearChoices.length > 0 && (
       <label>Rok
-        <select name="year"><option value="">vše</option>{years.map((y) => <option value={y}>{y}</option>)}</select>
+        <select name="year"><option value="">vše</option>{yearChoices.map((o) => <option value={o.value}>{o.label}</option>)}</select>
       </label>
     )}
     {!collection && collections.length > 0 && (
@@ -89,6 +99,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     rememberedPageSize, stateFromParams, stateToParams, withPageSize,
   } from '../../scripts/lib/gallery-filter.mjs';
   import { EVENTS, filterEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
+  import { rememberListing, revealReturned } from '../lib/page-return';
 
   const form = document.getElementById('filters') as HTMLFormElement;
   const cards = [...document.querySelectorAll<HTMLElement>('#grid .card')];
@@ -116,9 +127,11 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   };
   if (perPageSelect) state.perPage = rememberedPageSize(params, storage.get(), pageSizes) ?? state.perPage;
   for (const k of ['year', 'collection'] as const) if (!select(k)) state[k] = '';
-  // A status option not offered here (nothing behind it, e.g. an old link) is off, like a missing filter.
-  const statusSelect = select('status');
-  if (!statusSelect || ![...statusSelect.options].some((o) => o.value === state.status)) state.status = '';
+  // A year or status option not offered here (nothing behind it, e.g. an old link) is off, like a missing filter.
+  for (const k of ['year', 'status'] as const) {
+    const s = select(k);
+    if (!s || ![...s.options].some((o) => o.value === state[k])) state[k] = '';
+  }
   if (!featuredBox) state.featured = '';
 
   const plural = (n: number) => (n === 1 ? 'dílo' : n >= 2 && n <= 4 ? 'díla' : 'děl');
@@ -176,6 +189,8 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     emptyEl.hidden = shown > 0;
     const p = stateToParams(state);
     history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
+    // Links back here (← Tvorba, the year, the collection on a work page) return to these filters and this page.
+    rememberListing(p);
     return matching.length;
   }
 
@@ -207,6 +222,9 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   apply();
+
+  // Back from a work page (← Tvorba, its year or collection): to the card of that work, when on the shown page.
+  revealReturned(cards, 'id');
 </script>
 
 <style>

@@ -111,6 +111,11 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
 <script>
   // Statistics: clicks on elements marked with data-track (buttons of a work), see scripts/lib/analytics.mjs.
   import { trackEvent, trackedClick } from '../../scripts/lib/analytics.mjs';
+  // Links back to a listing (data-return) open it with the filters the visitor left it with; pages outside the
+  // Tvorba section forget them. The main menu has no data-return: "Tvorba" there always opens the gallery afresh.
+  import { applyReturnLinks } from '../lib/page-return';
+
+  applyReturnLinks();
 
   document.addEventListener('click', (e) => {
     const el = (e.target as HTMLElement).closest<HTMLElement>('[data-track]');
@@ -121,6 +126,11 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
 
 <style is:global>
   [hidden] { display: none !important; }
+  /* The card a visitor came back to (revealReturned, src/lib/page-return.ts): a frame fading out, only while marked,
+     so keyboard focus keeps its own outline. */
+  .returned { outline: 2px solid var(--accent); outline-offset: 8px; animation: returned 2.4s ease-in forwards; }
+  @keyframes returned { 60% { outline-color: var(--accent); } to { outline-color: transparent; } }
+  @media (prefers-reduced-motion: reduce) { .returned { animation: none; } }
   /* Colours: the palettes in scripts/lib/palettes.mjs (inline in <head>, before this). */
   :root {
     --serif: 'Cormorant Garamond', Georgia, serif;

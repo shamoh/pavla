@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FEATURED_ON,
-  countStatuses, matchesFilters, offersOption, statusOptions, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
+  countStatuses, matchesFilters, offersOption, statusOptions, yearFilterOptions, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
   stateFromParams, stateToParams, withPageSize,
 } from './gallery-filter.mjs';
 
@@ -179,4 +179,10 @@ test('statusOptions offers only options showing something other than "vše", in 
     'nothing gone: "ještě mám" is the same as "vše", "už nemám" shows nothing');
   assert.deepEqual(statusOptions(['sold', 'gifted']), [], 'everything gone: "už nemám" = "vše"');
   assert.deepEqual(statusOptions([]), [], 'no works, no status filter');
+});
+
+test('yearFilterOptions: the years of the works with counts, newest first, none with all works', () => {
+  assert.deepEqual(yearFilterOptions([2025, 2026, 2025, 2025]), [{ value: '2026', count: 1 }, { value: '2025', count: 3 }]);
+  assert.deepEqual(yearFilterOptions([2026, 2026]), []);
+  assert.deepEqual(yearFilterOptions([]), []);
 });

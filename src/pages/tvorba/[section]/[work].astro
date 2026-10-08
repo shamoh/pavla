@@ -57,7 +57,7 @@ const jsonLd = graphLd(
 );
 ---
 <Base title={work.title} description={workDescription(work, site)} image={share} type="article" jsonLd={jsonLd} message={message}>
-  <p class="back"><a href={url('/tvorba/')}>← Tvorba</a> · <a href={url(`/tvorba/${work.year}/`)}>{work.year}</a></p>
+  <p class="back"><a href={url('/tvorba/')} data-return data-return-focus={work.id}>← Tvorba</a> · <a href={url(`/tvorba/${work.year}/`)} data-return data-return-focus={work.id}>{work.year}</a></p>
   <article class="work">
     <a class="zoom" href={views[0].src} data-view="0" title="Zvětšit">
       <Picture work={work} sizes="(max-width: 900px) 100vw, 64vw" eager />
@@ -69,7 +69,7 @@ const jsonLd = graphLd(
         {work.support && <><dt>Podklad</dt><dd>{work.support}</dd></>}
         {work.size_cm && <><dt>Rozměr</dt><dd>{formatSize(work.size_cm)}</dd></>}
         <dt>Vzniklo</dt><dd>{date}</dd>
-        {collection && <><dt>Kolekce</dt><dd><a href={collectionUrl(collection.slug)}>{collection.title}</a></dd></>}
+        {collection && <><dt>Kolekce</dt><dd><a href={collectionUrl(collection.slug)} data-return data-return-focus={work.id}>{collection.title}</a></dd></>}
       </dl>
       {work.description && <p class="desc">{work.description}</p>}
       {work.tags.length > 0 && (
