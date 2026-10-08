@@ -85,7 +85,7 @@ status: available
 support: papír 250 g
 
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
-tags: [město, mlha]
+tags: [město, mlha, ulice]
 
 # Technika, podle ní se filtruje v galerii. Nejčastější možnosti jsou:
 # - akvarel

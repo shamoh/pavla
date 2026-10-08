@@ -43,23 +43,33 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   </nav>
 )}
 
+<div class="filter-bar" id="filter-bar" inert>
+  <div class="filter-bar-inner">
+    <span class="eyebrow">Filtry</span>
+    <span class="bar-chips" id="bar-chips" role="group" aria-label="Vybrané filtry"></span>
+    <span class="bar-count" id="bar-count"></span>
+    <button type="button" class="filter-toggle" id="filter-toggle" aria-expanded="false" aria-controls="filters">Upravit</button>
+  </div>
+</div>
+
+<div class="filters-slot" id="filters-slot">
 <form class="filters" id="filters" aria-label="Filtrovat díla">
-  <div class="chips" role="group" aria-label="Témata">
+  <div class="chips" id="chips" role="group" aria-label="Témata (lze vybrat víc najednou)">
     <button type="button" data-filter="tag" data-value="" aria-pressed="true">Vše</button>
     {tags.map(([t, n]) => <button type="button" data-filter="tag" data-value={t} aria-pressed="false">#{t} <small>{n}</small></button>)}
   </div>
   <div class="selects">
     <label>Technika
-      <select name="technique"><option value="">vše</option>{techniques.map(([t]) => <option value={t}>{t}</option>)}</select>
+      <select name="technique"><option value="">vše</option>{techniques.map(([t, n]) => <option value={t} data-label={t}>{t} ({n})</option>)}</select>
     </label>
     {!year && yearChoices.length > 0 && (
       <label>Rok
-        <select name="year"><option value="">vše</option>{yearChoices.map((o) => <option value={o.value}>{o.label}</option>)}</select>
+        <select name="year"><option value="">vše</option>{yearChoices.map((o) => <option value={o.value} data-label={o.value}>{o.label}</option>)}</select>
       </label>
     )}
     {!collection && collections.length > 0 && (
       <label>Kolekce
-        <select name="collection"><option value="">vše</option>{collections.map((c) => <option value={c.slug}>{c.title} ({c.n})</option>)}</select>
+        <select name="collection"><option value="">vše</option>{collections.map((c) => <option value={c.slug} data-label={c.title}>{c.title} ({c.n})</option>)}</select>
       </label>
     )}
     {!collection && collections.map((c) => (
@@ -69,12 +79,12 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
       <label>Stav
         <select name="status">
           <option value="">vše</option>
-          {statuses.map((o) => <option value={o.value}>{o.label} ({o.count})</option>)}
+          {statuses.map((o) => <option value={o.value} data-label={o.label}>{o.label} ({o.count})</option>)}
         </select>
       </label>
     )}
     {offersOption(featuredCount, works.length) && (
-      <label class="switch"><input type="checkbox" name="featured" value="1" /> Výběr autorky ({featuredCount})</label>
+      <label class="switch"><input type="checkbox" name="featured" value="1" /> Výběr autorky (<span data-featured-count>{featuredCount}</span>)</label>
     )}
     {works.length > pageSizes[0] && (
       <label>Na stránku
@@ -83,7 +93,9 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     )}
     <span class="muted count" id="count" aria-live="polite">{works.length} děl</span>
   </div>
+  <button type="button" class="filters-done" id="filters-done">Hotovo</button>
 </form>
+</div>
 
 <div class="grid" id="grid" data-page-sizes={JSON.stringify(pageSizes)}>{works.map((w, i) => <WorkCard work={w} eager={i < 3} />)}</div>
 <p class="muted empty" id="empty" hidden>Tomuhle výběru nic neodpovídá.</p>
@@ -92,18 +104,36 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
 <script>
   // Every filter and the page are written to the URL right away (?tag=krajina&status=unsold&page=2), so the
   // current selection can be copied and shared as a link and opens with the same works.
+  // Tag chips toggle: each picked tag narrows the works further (?tag=krajina&tag=voda = both), "Vše" unpicks them
+  // all. After every change only the chips that would narrow the shown works without emptying them stay
+  // (tagChoices), with their counts among the shown works; picked ones always stay. Without JavaScript the chips
+  // do nothing and every work is shown.
+  // The selects (technique, year, collection, status) and the author's selection switch work the same way: after every
+  // change each option shows how many works it would give with the other filters, and only options that narrow
+  // the works without emptying them are left in the select (facetChoices; the picked one always stays). A filter
+  // with no such option left is hidden until another change brings one back.
   // Paging happens here too: the filtered list is split into pages, cards of other pages are hidden
   // (hidden cards load no images). Without JavaScript every work is shown.
   import {
-    ALL_PAGES, FEATURED_ON, PAGE_SIZE_STORAGE_KEY, matchesFilters, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate,
-    rememberedPageSize, stateFromParams, stateToParams, withPageSize,
+    ALL_PAGES, FEATURED_ON, PAGE_SIZE_STORAGE_KEY, facetChoices, matchesFilters, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate,
+    rememberedPageSize, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
   } from '../../scripts/lib/gallery-filter.mjs';
   import { EVENTS, filterEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
   import { rememberListing, revealReturned } from '../lib/page-return';
+  import { BAR_START, activeFilters, scrollBar, withoutFilter, worksCount } from '../../scripts/lib/filter-bar.mjs';
 
   const form = document.getElementById('filters') as HTMLFormElement;
   const cards = [...document.querySelectorAll<HTMLElement>('#grid .card')];
+  const chipGroup = document.getElementById('chips')!;
   const chips = [...form.querySelectorAll<HTMLButtonElement>('[data-filter="tag"]')];
+  const tagChips = chips.filter((b) => b.dataset.value);
+  const tagNames = tagChips.map((b) => b.dataset.value!);
+  const tagsOf = (card: HTMLElement) => card.dataset.tags!.split('|').filter(Boolean);
+  const workOf = (c: HTMLElement) => {
+    const d = c.dataset;
+    return { tags: tagsOf(c), technique: d.technique!, year: d.year!, collection: d.collection!, status: d.status!, featured: d.featured === '1' };
+  };
+  const works = cards.map(workOf);
   const countEl = document.getElementById('count')!;
   const emptyEl = document.getElementById('empty')!;
   const grid = document.getElementById('grid')!;
@@ -114,6 +144,10 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   const select = (name: string) => form.elements.namedItem(name) as HTMLSelectElement | null;
   // Filters without a select on this page (year on a year page, collection on a collection page) are off.
   const selects = (['technique', 'year', 'collection', 'status'] as const).filter((k) => select(k));
+  // Every option of each select as built ("vše" first); apply() puts back only the offered ones (removing them
+  // instead of hiding, which Safari on iOS ignores).
+  const allOptions = Object.fromEntries(selects.map((k) => [k, [...select(k)!.options]]));
+  const featuredCount = form.querySelector<HTMLElement>('[data-featured-count]');
   const params = new URLSearchParams(location.search);
   let state = stateFromParams(params, pageSizes);
   // The page size the visitor picked earlier is remembered in this browser (not "Zobrazit vše", that one is
@@ -133,6 +167,8 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     if (!s || ![...s.options].some((o) => o.value === state[k])) state[k] = '';
   }
   if (!featuredBox) state.featured = '';
+  // A tag without a chip here (no work of this page has it, e.g. an old link) is off.
+  state.tag = state.tag.filter((t) => tagNames.includes(t));
 
   const plural = (n: number) => (n === 1 ? 'dílo' : n >= 2 && n <= 4 ? 'díla' : 'děl');
 
@@ -169,23 +205,43 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
 
   /** Shows the works of the current state and writes it to the URL; returns how many works match. */
   function apply() {
-    const matching = cards.filter((c) => {
-      const d = c.dataset;
-      return matchesFilters({ tags: d.tags!.split('|'), technique: d.technique!, year: d.year!, collection: d.collection!, status: d.status!, featured: d.featured === '1' }, state);
-    });
+    const matching = cards.filter((_, i) => matchesFilters(works[i], state));
     const { page, pages, start, end } = paginate(matching.length, state.page, pageSizeOf(state, pageSizes));
     state.page = page;
     const visible = new Set(matching.slice(start, end));
     for (const c of cards) c.hidden = !visible.has(c);
     const shown = matching.length;
     renderPager(page, pages, matching.length);
-    chips.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === state.tag)));
-    for (const k of selects) select(k)!.value = state[k];
-    if (featuredBox) featuredBox.checked = state.featured === FEATURED_ON;
+    chips[0].setAttribute('aria-pressed', String(state.tag.length === 0));
+    const choices = tagChoices(tagNames, matching.map(tagsOf), state.tag);
+    tagChips.forEach((b, i) => {
+      const { count, picked, offered } = choices[i];
+      b.hidden = !offered;
+      b.setAttribute('aria-pressed', String(picked));
+      // A picked chip shows no count: all the shown works have it.
+      b.querySelector('small')!.textContent = picked ? '' : String(count);
+    });
+    // Only "Vše" left (no tag narrows the shown works and none is picked): no chips at all.
+    chipGroup.hidden = !choices.some((c) => c.offered);
+    for (const k of selects) {
+      const [all, ...options] = allOptions[k];
+      const choices = facetChoices(works, state, k, options.map((o) => o.value));
+      options.forEach((o, i) => { o.textContent = `${o.dataset.label} (${choices[i].count})`; });
+      select(k)!.replaceChildren(all, ...options.filter((_, i) => choices[i].offered));
+      select(k)!.value = state[k];
+      select(k)!.closest('label')!.hidden = !choices.some((c) => c.offered);
+    }
+    if (featuredBox) {
+      featuredBox.checked = state.featured === FEATURED_ON;
+      const [choice] = facetChoices(works, state, 'featured', [FEATURED_ON]);
+      featuredCount!.textContent = String(choice.count);
+      featuredBox.closest('label')!.hidden = !choice.offered;
+    }
     if (perPageSelect) perPageSelect.value = String(pageSizeOf(state, pageSizes));
     // "O kolekci →" next to the collection filter, only for the selected collection.
     form.querySelectorAll<HTMLAnchorElement>('[data-collection-link]').forEach((a) => { a.hidden = a.dataset.collectionLink !== state.collection; });
     countEl.textContent = `${shown} ${plural(shown)}`;
+    renderBar(shown);
     emptyEl.hidden = shown > 0;
     const p = stateToParams(state);
     history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
@@ -194,11 +250,107 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     return matching.length;
   }
 
+  // The thin filter bar: once the form is scrolled away, scrolling up slides in a line with the active filters as
+  // chips, each with "×" to turn it off, the number of works and "Upravit", which opens this same form as a panel
+  // (below the bar, on a phone from the bottom); scrolling down slides the bar away (scrollBar). A change in the open
+  // panel or a "×" jumps to the start of the results, right below the bar, which stays.
+  const bar = document.getElementById('filter-bar')!;
+  const slot = document.getElementById('filters-slot')!;
+  const barChips = document.getElementById('bar-chips')!;
+  const barCount = document.getElementById('bar-count')!;
+  const toggle = document.getElementById('filter-toggle') as HTMLButtonElement;
+  const done = document.getElementById('filters-done') as HTMLButtonElement;
+  function optionLabel(key: string, value: string) {
+    return allOptions[key]?.find((o) => o.value === value)?.dataset.label ?? value;
+  }
+  function renderBar(count: number) {
+    const items = activeFilters(state, optionLabel);
+    barChips.replaceChildren(...(items.length ? items.map(({ key, value, text }) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bar-chip';
+      b.dataset.key = key;
+      b.dataset.value = value;
+      b.setAttribute('aria-label', `Zrušit filtr ${text}`);
+      b.append(text, Object.assign(document.createElement('span'), { textContent: '×', ariaHidden: 'true' }));
+      return b;
+    }) : [Object.assign(document.createElement('span'), { className: 'bar-all', textContent: 'Všechna díla' })]));
+    barCount.textContent = worksCount(count);
+  }
+  let barState = BAR_START;
+  let panelOpen = false;
+  // A scroll the page makes itself never slides the bar in: the pager hides it, a jump to the results keeps it.
+  let quietUntil = 0;
+  let quietKeeps = false;
+  const quiet = (keep: boolean) => { quietUntil = performance.now() + 900; quietKeeps = keep; };
+  // The form counts as on screen only below the bar (when shown), so the results right under the bar keep it.
+  const formOnScreen = () => slot.getBoundingClientRect().bottom > (bar.classList.contains('shown') ? bar.offsetHeight : 0);
+  const showBar = (on: boolean) => { bar.classList.toggle('shown', on); bar.inert = !on; };
+  function onScroll() {
+    if (panelOpen) return;
+    const y = Math.min(Math.max(0, scrollY), document.documentElement.scrollHeight - innerHeight);
+    if (performance.now() < quietUntil) barState = { ...BAR_START, y, turn: y, visible: quietKeeps && !formOnScreen() };
+    else barState = scrollBar(barState, y, formOnScreen());
+    // Keyboard focus in the bar keeps it, unless the form itself is back on screen.
+    showBar(barState.visible || (bar.classList.contains('shown') && bar.contains(document.activeElement) && !formOnScreen()));
+  }
+  let ticking = false;
+  addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { ticking = false; onScroll(); });
+  }, { passive: true });
+  function openPanel() {
+    panelOpen = true;
+    slot.style.minHeight = `${slot.offsetHeight}px`; // the page keeps its place while the form floats
+    form.style.setProperty('--bar-h', `${bar.offsetHeight}px`);
+    form.classList.add('floating');
+    toggle.setAttribute('aria-expanded', 'true');
+    toggle.textContent = 'Zavřít';
+    form.querySelector<HTMLElement>('button:not([hidden]), select')?.focus({ preventScroll: true });
+  }
+  function closePanel(focusToggle: boolean) {
+    if (!panelOpen) return;
+    panelOpen = false;
+    form.classList.remove('floating');
+    slot.style.minHeight = '';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.textContent = 'Upravit';
+    barState = { ...barState, visible: !formOnScreen(), y: scrollY, turn: scrollY };
+    showBar(barState.visible);
+    // Keyboard focus back to the bar, or into the form when that is on screen again (the bar then hides).
+    if (focusToggle) (barState.visible ? toggle : form.querySelector<HTMLElement>('button:not([hidden]), select'))?.focus({ preventScroll: true });
+  }
+  toggle.addEventListener('click', () => (panelOpen ? closePanel(true) : openPanel()));
+  done.addEventListener('click', () => closePanel(true));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panelOpen) closePanel(true); });
+  document.addEventListener('pointerdown', (e) => {
+    if (panelOpen && !form.contains(e.target as Node) && !bar.contains(e.target as Node)) closePanel(false);
+  });
+  /** After a change in the open panel (or any, `always`): to the start of the results, right below the bar. */
+  function toResults(always = false) {
+    if (!panelOpen && !always) return;
+    quiet(true);
+    scrollTo({ top: grid.getBoundingClientRect().top + scrollY - bar.offsetHeight - 16 });
+  }
+
+  // "×" on a chip of the bar: that filter off; the keyboard focus moves to the next chip, or to "Upravit".
+  barChips.addEventListener('click', (e) => {
+    const chip = (e.target as HTMLElement).closest<HTMLButtonElement>('.bar-chip');
+    if (!chip) return;
+    const at = [...barChips.children].indexOf(chip);
+    state = withoutFilter(state, { key: chip.dataset.key!, value: chip.dataset.value! });
+    trackFilter(apply());
+    toResults(true);
+    const next = barChips.querySelectorAll<HTMLButtonElement>('.bar-chip')[at] ?? barChips.querySelector<HTMLButtonElement>('.bar-chip:last-of-type') ?? toggle;
+    next.focus({ preventScroll: true });
+  });
+
   // Statistics: every filter change (not paging, not the page size) with the active filters and the result count.
   const trackFilter = (results: number) => trackEvent(EVENTS.filter, filterEventParams(state, results));
 
   // A new filter starts again on the first page.
-  chips.forEach((b) => b.addEventListener('click', () => { state.tag = b.dataset.value!; state.page = pageAfterFilterChange(state.page); trackFilter(apply()); }));
+  chips.forEach((b) => b.addEventListener('click', () => { state.tag = b.dataset.value ? toggleTag(state.tag, b.dataset.value) : []; state.page = pageAfterFilterChange(state.page); trackFilter(apply()); toResults(); }));
   form.addEventListener('change', (e) => {
     // Picking a page size starts again on page 1 with paging on; any other change is a filter.
     if (e.target === perPageSelect) {
@@ -212,6 +364,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
       state.page = pageAfterFilterChange(state.page);
       trackFilter(apply());
     }
+    toResults();
   });
   pager.addEventListener('click', (e) => {
     const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[data-page]');
@@ -219,7 +372,8 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     e.preventDefault();
     state.page = a.dataset.page === ALL_PAGES ? ALL_PAGES : Number(a.dataset.page);
     apply();
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    quiet(false);
+    slot.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   apply();
 
@@ -231,18 +385,60 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   .years { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: -8px 0 28px; font-family: var(--serif); font-size: 1.25rem; }
   .years a { text-decoration: none; color: var(--ink-soft); }
   .years a[aria-current='page'] { color: var(--ink); border-bottom: 1px solid var(--ink); }
+  .filter-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 30; background: var(--paper);
+    border-bottom: 1px solid var(--line); box-shadow: var(--shadow-soft);
+    transform: translateY(-110%); visibility: hidden; transition: transform .25s ease, visibility 0s linear .25s;
+  }
+  .filter-bar.shown { transform: none; visibility: visible; transition: transform .25s ease; }
+  .filter-bar-inner {
+    max-width: var(--max); margin: 0 auto; padding: 8px var(--gutter);
+    display: flex; gap: 12px; align-items: center; font-size: 0.9rem;
+  }
+  .filter-bar .eyebrow { flex: none; }
+  /* The chips stay on one line: more than fit scroll sideways, the bar never grows. The chips are made by the
+     script, so their rules are :global (scoped ones would not reach them). */
+  .bar-chips { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .bar-chips::-webkit-scrollbar { display: none; }
+  .bar-chips :global(.bar-chip) {
+    flex: none; font: inherit; font-size: 0.82rem; color: var(--paper); background: var(--ink); cursor: pointer;
+    border: 1px solid var(--ink); border-radius: 99px; padding: 3px 10px; white-space: nowrap;
+  }
+  .bar-chips :global(.bar-chip span) { margin-left: 6px; opacity: .7; }
+  .bar-chips :global(.bar-chip:hover span) { opacity: 1; }
+  .bar-chips :global(.bar-all) { white-space: nowrap; }
+  .bar-count { flex: none; color: var(--ink-soft); white-space: nowrap; }
+  .filter-toggle, .filters-done {
+    flex: none; font: inherit; font-size: 0.88rem; color: var(--ink); background: transparent; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 99px; padding: 5px 14px;
+  }
+  .filters-done { display: none; align-self: flex-end; }
+  .filters.floating {
+    position: fixed; z-index: 29; top: var(--bar-h); left: 0; right: 0; margin: 0 auto; max-width: var(--max);
+    max-height: calc(100vh - var(--bar-h) - 24px); overflow: auto; background: var(--paper);
+    padding: 20px var(--gutter); border-bottom: 1px solid var(--line); box-shadow: var(--shadow-deep);
+  }
+  .filters.floating .filters-done { display: block; }
+  /* On a phone the open filters come from the bottom, within reach of the thumb, above "Napište mi". */
+  @media (max-width: 700px) {
+    .filters.floating { top: auto; bottom: 0; z-index: 45; max-height: 75vh; border-radius: 12px 12px 0 0; border-top: 1px solid var(--line); }
+  }
+  @media (prefers-reduced-motion: reduce) { .filter-bar, .filter-bar.shown { transition: none; } }
   .filters { display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chips button {
     font: inherit; font-size: 0.88rem; color: var(--ink); background: transparent; cursor: pointer;
     border: 1px solid var(--line); border-radius: 99px; padding: 5px 14px;
   }
+  .chips[hidden], .chips button[hidden] { display: none; }
+  .chips button small:empty { display: none; }
   .chips button small { color: var(--ink-soft); margin-left: 2px; }
   .chips button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
   .chips button[aria-pressed='true'] small { color: inherit; opacity: .7; }
   .selects { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; font-size: 0.9rem; }
   .selects label { display: flex; gap: 8px; align-items: center; color: var(--ink-soft); }
   .selects select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 4px 8px; border-radius: 2px; }
+  .selects label[hidden] { display: none; }
   .selects .switch { color: var(--ink); cursor: pointer; }
   .selects .switch input { accent-color: var(--ink); margin: 0; }
   .count { margin-left: auto; }

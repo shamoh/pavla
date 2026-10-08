@@ -69,3 +69,115 @@ export function pageAdvice({ collections = [], years = [], home = null, photos =
     ...photos.flatMap((p) => ['alt', 'caption'].flatMap((key) => sentenceAdvice(`fotky/${p.name}.yaml`, key, p.data?.[key]))),
   ];
 }
+
+// Tags: the gallery shows every tag used as a chip, so the list should stay short and clear. The advice speaks only
+// where Pavla can do something about it (merge, shorten or drop a tag); a tag on most works is an honest description,
+// it gets no advice, only the statistics (tagStats) in the run summary. Counted over all works, drafts too (they are
+// the ones being tagged now).
+
+/** The gallery chips should fit into this many rows on a wide screen. */
+export const TAG_ROWS = 2;
+/**
+ * One row of chips in characters of the chip text: the page is 1320 px wide without its 2 × 48 px gutters, the chips
+ * use 0.88 rem Work Sans, about 7.7 px a character (src/components/WorkGallery.astro, src/layouts/Base.astro).
+ */
+export const TAG_ROW_CHARS = 158;
+/** Padding, border and the gap of a chip, in characters. */
+const CHIP_EXTRA = 5;
+/** A tag longer than this is named as a candidate for a shorter word when the chips do not fit. */
+export const TAG_LONG = 12;
+/** Two tags this similar (shared works of their works together, Jaccard index) add nothing to each other as filters. */
+export const TAG_TOGETHER = 0.9;
+/** …but only once both have at least this many works (two tags on the same single work are no pattern yet). */
+export const TAG_TOGETHER_MIN = 3;
+
+/** The tags of a work worth counting: non-empty strings, not a DOPLNIT placeholder, each once. */
+const tagsOfWork = (w) => [...new Set((Array.isArray(w.data?.tags) ? w.data.tags : []).filter((t) => textOf(t)).map((t) => t.trim()))];
+
+/** Works per tag, most used first, then in Czech alphabetical order: [{ tag, count }]. */
+export function tagStats(works) {
+  const counts = new Map();
+  for (const w of works) for (const t of tagsOfWork(w)) counts.set(t, (counts.get(t) ?? 0) + 1);
+  return [...counts].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag, 'cs'));
+}
+
+/** Rows the chips of these tags ("Vše" first, then "#<tag> <count>") take in the gallery, wrapped like the page does. */
+export function tagRows(stats, rowChars = TAG_ROW_CHARS) {
+  const widths = ['Vše'.length + CHIP_EXTRA, ...stats.map(({ tag, count }) => tag.length + String(count).length + 2 + CHIP_EXTRA)];
+  let rows = 1;
+  let used = 0;
+  for (const w of widths) {
+    if (used && used + w > rowChars) { rows++; used = 0; }
+    used += w;
+  }
+  return rows;
+}
+
+/** A tag to compare with others: small letters, no diacritics ("Plenér" → "plener"). */
+export const tagKey = (tag) => tag.toLocaleLowerCase('cs').normalize('NFD').replace(/\p{M}/gu, '');
+
+/** A tag without its ending vowels, enough to tell Czech word forms of one word: "hory" / "hora" → "hor". */
+export const tagStem = (tag) => tagKey(tag).replace(/[aeiouy]+$/, '');
+
+/**
+ * Two tags that are most likely one: the same word but for capitals or diacritics ("plener" / "Plenér"), or another
+ * form of it, differing only in the ending vowels ("strom" / "stromy", "hora" / "hory", "květina" / "květiny");
+ * stems shorter than 3 letters are left alone.
+ */
+export function sameTag(a, b) {
+  if (tagKey(a) === tagKey(b)) return true;
+  const stem = tagStem(a);
+  return stem.length >= 3 && stem === tagStem(b);
+}
+
+const quoted = (tag) => `„${tag}“`;
+/** "u 1 díla", "u 3 děl". */
+const worksAt = (n) => `u ${n} ${n === 1 ? 'díla' : 'děl'}`;
+const worksCount = (n) => `${n} ${n === 1 ? 'dílo' : n >= 2 && n <= 4 ? 'díla' : 'děl'}`;
+
+/** Recommendations for the tags of all works, under "Štítky" in the run summary: ["Štítky: <advice>"]. */
+export function tagAdvice(works) {
+  const stats = tagStats(works);
+  const worksOf = new Map(stats.map(({ tag }) => [tag, new Set()]));
+  works.forEach((w, i) => tagsOfWork(w).forEach((t) => worksOf.get(t).add(i)));
+  const advice = [];
+  // 1. one tag in two spellings or forms
+  const merged = new Set();
+  for (let i = 0; i < stats.length; i++) {
+    for (let j = i + 1; j < stats.length; j++) {
+      const [a, b] = [stats[i], stats[j]];
+      if (!sameTag(a.tag, b.tag)) continue;
+      merged.add(`${a.tag}|${b.tag}`);
+      advice.push(`Štítky: ${quoted(a.tag)} (${worksCount(a.count)}) a ${quoted(b.tag)} (${worksCount(b.count)}) jsou nejspíš jeden štítek, sjednoť je na jeden tvar`);
+    }
+  }
+  // 2. two tags that always come together: as filters one adds nothing to the other
+  for (let i = 0; i < stats.length; i++) {
+    for (let j = i + 1; j < stats.length; j++) {
+      const [a, b] = [stats[i], stats[j]];
+      if (merged.has(`${a.tag}|${b.tag}`) || Math.min(a.count, b.count) < TAG_TOGETHER_MIN) continue;
+      const [wa, wb] = [worksOf.get(a.tag), worksOf.get(b.tag)];
+      const both = [...wa].filter((w) => wb.has(w)).length;
+      const either = wa.size + wb.size - both;
+      if (both / either < TAG_TOGETHER) continue;
+      const apart = either - both;
+      const how = apart ? `skoro vždy spolu (spolu ${worksAt(both)}, jen jeden z nich ${worksAt(apart)})` : `vždy spolu (${worksAt(both)})`;
+      advice.push(`Štítky: ${quoted(a.tag)} a ${quoted(b.tag)} jsou ${how}; jako filtr v galerii jeden nic nepřidá, zvaž, jestli potřebuješ oba`);
+    }
+  }
+  // 3. too many chips for the gallery: name the cheapest ones to merge, shorten or drop
+  const rows = tagRows(stats);
+  if (rows > TAG_ROWS) {
+    const single = stats.filter((s) => s.count === 1).map((s) => quoted(s.tag));
+    const long = stats.filter((s) => s.tag.length > TAG_LONG).sort((a, b) => b.tag.length - a.tag.length).map((s) => quoted(s.tag));
+    const candidates = [
+      single.length && `jen u jednoho díla ${single.join(', ')}`,
+      long.length && `dlouhé ${long.join(', ')}`,
+    ].filter(Boolean);
+    advice.push(
+      `Štítky: v galerii zaberou asi ${rows} ${rows <= 4 ? 'řádky' : 'řádků'} (${stats.length} štítků), přehledné je nejvýš ${TAG_ROWS}; ` +
+      'zvaž sloučení, kratší slova nebo vynechání málo užitých' + (candidates.length ? ` (${candidates.join('; ')})` : ''),
+    );
+  }
+  return advice;
+}

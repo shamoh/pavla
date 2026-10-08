@@ -58,7 +58,7 @@ import { cutOut, prepareCorners, trimTransparent, writePreviews } from './lib/co
 import { EDGE_DEFAULTS, cutsSheet, edgeLook, innerRegion } from './lib/edges.mjs';
 import { PALETTES } from './lib/palettes.mjs';
 import { formatSummary } from './lib/summary.mjs';
-import { pageAdvice, workAdvice } from './lib/advice.mjs';
+import { pageAdvice, tagAdvice, tagStats, workAdvice } from './lib/advice.mjs';
 import {
   PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, wantsInstagram, wantsMockups, planExportPrune, publicFields, validateWorks, workKey,
 } from './lib/works.mjs';
@@ -391,7 +391,8 @@ export async function run({
   assigned.forEach((p) => log(`+ id assigned: ${p}`));
   updated.forEach((p) => log(`~ metadata brought in line with the schema: ${p}`));
   pending.forEach((p) => log(`! published, still marked DOPLNIT: ${p}`));
-  const advice = [...workAdvice(works), ...pageAdvice({ collections: collections.collections, years: years.years, home: home.home, photos: photos.photos })];
+  const tags = tagStats(works);
+  const advice = [...workAdvice(works), ...tagAdvice(works), ...pageAdvice({ collections: collections.collections, years: years.years, home: home.home, photos: photos.photos })];
   advice.forEach((p) => log(`? advice: ${p}`));
   const problems = [
     ...scanProblems, ...corners.problems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems, ...home.problems,
@@ -405,7 +406,7 @@ export async function run({
   ];
   const detected = corners.detected;
   if (problems.length) {
-    return { ok: false, problems, created, assigned, detected, updated, pending, advice, processed: 0, skipped: 0, missing: [], pruned: [], previews: [], prepared: prepareOnly };
+    return { ok: false, problems, created, assigned, detected, updated, pending, advice, tags, processed: 0, skipped: 0, missing: [], pruned: [], previews: [], prepared: prepareOnly };
   }
 
   // Cut previews of drafts (all three, writePreviews: like npm run preview), to check the corners before publishing.
@@ -420,7 +421,7 @@ export async function run({
     previews.push(...names);
     log(`→ cut previews: ${names.join(', ')}`);
   }
-  if (prepareOnly) return { ok: true, problems: [], created, assigned, detected, updated, pending, advice, processed: 0, skipped: 0, missing: [], pruned: [], previews, prepared: true };
+  if (prepareOnly) return { ok: true, problems: [], created, assigned, detected, updated, pending, advice, tags, processed: 0, skipped: 0, missing: [], pruned: [], previews, prepared: true };
   const { scenes, text: scenesText } = await loadScenes(scenesDir);
 
   const publicDir = path.join(siteDir, 'public');
@@ -613,7 +614,7 @@ export async function run({
   }
   pruned.forEach((p) => log(`- removed ${p}`));
 
-  return { ok: missing.length === 0, problems: [], created, assigned, detected, updated, pending, advice, processed, skipped, missing, pruned, previews };
+  return { ok: missing.length === 0, problems: [], created, assigned, detected, updated, pending, advice, tags, processed, skipped, missing, pruned, previews };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

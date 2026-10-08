@@ -71,6 +71,13 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
 - Filtry galerie (`scripts/lib/gallery-filter.mjs`): všechny se kombinují a každá změna se hned zapisuje do URL,
   aby šel odkaz poslat dál. Platí vždy, i pro každý nový filtr a pro stránku (`page`, i `page=all`).
+  Štítky: víc najednou „a zároveň“ (`state.tag` = pole, `?tag=a&tag=b`, `sortTags`/`toggleTag`), zůstanou jen čipy,
+  které zobrazená díla zúží a nevyprázdní (`tagChoices`), vybrané vždy; GA `tag` = spojené čárkou.
+  Výběry (Technika, Rok, Kolekce, Stav) a přepínač Výběr autorky stejně: počty s ostatními filtry, jen volby,
+  které zúží a nevyprázdní (`facetChoices`), vybraná vždy, bez žádné se filtr skryje; nový filtr = do `FACETS`.
+  Lišta filtrů (`scripts/lib/filter-bar.mjs`): po posunu nahoru tenký řádek s vybranými filtry jako čipy s „×“
+  (`withoutFilter`) + „Upravit“ = týž formulář jako panel (nikdy kopie); nový filtr = i do `activeFilters`.
+  Prvky tvořené skriptem stylovat přes `:global(…)` (scoped CSS Astra na ně nedosáhne).
 - `featured: true` = výběr autorky: filtr „Výběr autorky“ (`?featured=1`) a kandidáti úvodních obrazů
   (`coverCandidates`, `FEATURED_PICK` = 10 nejnovějších vybraných): úvodní obraz bez vlastní fotky a `cover`
   (`Cover.astro`, vede na zobrazené dílo); stránka ukáže náhodného skriptem `scripts/lib/random-pick.mjs`
@@ -120,7 +127,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `aspect` ořízne na poměr stran kolem `focus: [x, y]` (%) z yaml fotky. O mně: `o-mne-uvod` (2:1) a `portret`.
 - Automatika: workflow obsahového repa spouští tuto pipeline a otevírá PR do tohoto repa (větev `obsah/aktualizace`,
   auto-merge po projití „Kontroly kódu“, větev se po sloučení maže);
-  na jeho ostatních větvích jen `--prepare-only`. Souhrn běhu: `scripts/lib/summary.mjs` (nahoře chyby po souborech, pak „Ke kontrole“, pak „Doporučení“ z `scripts/lib/advice.mjs`, pak co automatika udělala). Pull request připravuje
+  na jeho ostatních větvích jen `--prepare-only`. Souhrn běhu: `scripts/lib/summary.mjs` (nahoře chyby po souborech, pak „Ke kontrole“, pak „Doporučení“ z `scripts/lib/advice.mjs`
+  včetně štítků `tagAdvice` (jen co jde opravit: dva tvary, vždy spolu, čipy přes 2 řádky), pak co automatika udělala, nakonec statistika štítků `tagStats`). Pull request připravuje
   `scripts/pull-request.mjs` (`scripts/lib/pull-request.mjs`, `OUTPUT_PATHS`); text PR nikdy nejmenuje obsahové repo.
   „Zkušební běh zpracování“ (`.github/workflows/dry-run.yml`, každou neděli na testovacích datech, nic nepushne)
   prochází tytéž kroky: změna kroků zpracování obsahu = stejná změna ve `dry-run.yml`.

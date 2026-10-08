@@ -96,3 +96,10 @@ test('formatSummary lists recommendations by file after the warnings and before 
   assert.ok(order.every((i, k) => i >= 0 && (k === 0 || i > order[k - 1])), order.join(', '));
   assert.doesNotMatch(formatSummary(base), /Doporučení/, 'nothing when there is nothing');
 });
+
+test('tag statistics last, one line, only when there are tags', () => {
+  const s = formatSummary({ ...base, processed: 2, skipped: 5, tags: [{ tag: 'krajina', count: 9 }, { tag: 'voda', count: 3 }] });
+  assert.match(s, /Zpracováno: 2, beze změny: 5\.\n\n### Štítky \(2\)\n\n.*\n\nkrajina 9 · voda 3\n$/);
+  assert.doesNotMatch(formatSummary(base), /### Štítky/);
+  assert.match(formatSummary({ ...base, prepared: true, tags: [{ tag: 'les', count: 1 }] }), /### Štítky \(1\)[\s\S]*les 1\n$/);
+});

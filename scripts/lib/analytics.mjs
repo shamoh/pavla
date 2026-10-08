@@ -41,17 +41,23 @@ export function gtagConfigScript(id) {
 
 /** Names of the own events; their parameters must be registered as custom dimensions in GA (see README). */
 export const EVENTS = {
-  filter: 'gallery_filter', // tag, technique, year, collection, status (only the active ones), results
+  filter: 'gallery_filter', // tag (picked tags joined by a comma), technique, year, collection, status (only the active ones), results
   fler: 'fler_click', // work_id, work_title
   email: 'email_click', // the address on the contact page; "Napsat autorce" of a work (work_id, work_title) without messages
   message: 'message_sent', // message_type, work_id and work_title (a message about a work)
   palette: 'palette_change', // palette: the chosen colours (papir, pergamen, noc, auto)
 };
 
-/** Parameters of gallery_filter: the active filters (empty ones left out) and how many works match. */
+/**
+ * Parameters of gallery_filter: the active filters (empty ones left out) and how many works match. Several picked
+ * tags go as one value joined by a comma ("krajina,voda", in the canonical order of sortTags).
+ */
 export function filterEventParams(state, results) {
   const params = {};
-  for (const key of FILTER_KEYS) if (state[key]) params[key] = String(state[key]);
+  for (const key of FILTER_KEYS) {
+    const value = Array.isArray(state[key]) ? state[key].join(',') : state[key];
+    if (value) params[key] = String(value);
+  }
   params.results = results;
   return params;
 }

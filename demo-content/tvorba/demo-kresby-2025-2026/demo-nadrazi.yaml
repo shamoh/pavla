@@ -85,7 +85,7 @@ status: sold
 support: skicák 160 g
 
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
-tags: [město]
+tags: [město, ulice]
 
 # Technika, podle ní se filtruje v galerii. Nejčastější možnosti jsou:
 # - akvarel

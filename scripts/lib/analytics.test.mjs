@@ -38,11 +38,12 @@ test('gtag: loader URL and the config from the installation guide (the page is r
 });
 
 test('filterEventParams: only the active filters, always the number of matching works', () => {
-  const state = { tag: 'krajina', technique: '', year: '2026', collection: '', status: 'unsold', page: 2, perPage: 24 };
+  const state = { tag: ['krajina'], technique: '', year: '2026', collection: '', status: 'unsold', page: 2, perPage: 24 };
   assert.deepEqual(filterEventParams(state, 5), { tag: 'krajina', year: '2026', status: 'unsold', results: 5 });
-  assert.deepEqual(filterEventParams({ tag: '', technique: '', year: '', collection: '', status: '' }, 21), { results: 21 });
+  assert.deepEqual(filterEventParams({ tag: [], technique: '', year: '', collection: '', status: '' }, 21), { results: 21 });
   assert.deepEqual(filterEventParams({ collection: '2026-plener-sumava', technique: 'akvarel' }, 0), { technique: 'akvarel', collection: '2026-plener-sumava', results: 0 });
-  assert.deepEqual(filterEventParams({ tag: '', featured: '1' }, 4), { featured: '1', results: 4 }, 'the author\'s selection too');
+  assert.deepEqual(filterEventParams({ tag: ['krajina', 'voda'] }, 2), { tag: 'krajina,voda', results: 2 }, 'several tags in one value');
+  assert.deepEqual(filterEventParams({ tag: [], featured: '1' }, 4), { featured: '1', results: 4 }, 'the author\'s selection too');
 });
 
 test('trackedClick: the buttons of a work with its id and title, nothing for other elements', () => {

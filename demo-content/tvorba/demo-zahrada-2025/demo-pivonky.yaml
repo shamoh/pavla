@@ -87,7 +87,7 @@ status: available
 support: papír Arches 300 g
 
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
-tags: [květiny]
+tags: [květina]
 
 # Technika, podle ní se filtruje v galerii. Nejčastější možnosti jsou:
 # - akvarel

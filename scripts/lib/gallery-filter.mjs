@@ -1,6 +1,6 @@
 // Gallery filter logic shared by the browser script in WorkGallery.astro and the tests.
 // A filter state: { tag, technique, year, collection, status, featured, page, perPage } where each empty value means
-// "all", page is the 1-based page of the filtered list (or 'all' when the visitor switched paging off) and
+// "all", tag is a list of picked tags (a work must have all of them, [] = all; ?tag=krajina&tag=voda), page is the 1-based page of the filtered list (or 'all' when the visitor switched paging off) and
 // perPage the page size the visitor picked (null = the default size). Everything lives in the URL, so a filtered and
 // paged gallery can be shared as a link.
 
@@ -62,13 +62,68 @@ export const FEATURED_ON = '1';
 /** True when a work ({ tags, technique, year as string, collection, status, featured }) passes every active filter. */
 export function matchesFilters(work, state) {
   return (
-    (!state.tag || work.tags.includes(state.tag)) &&
+    state.tag.every((t) => work.tags.includes(t)) &&
     (!state.technique || work.technique === state.technique) &&
     (!state.year || work.year === state.year) &&
     (!state.collection || work.collection === state.collection) &&
     (!state.status || (STATUS_FILTERS[state.status]?.(work.status) ?? true)) &&
     (!state.featured || work.featured === true)
   );
+}
+
+/** Picked tags in their canonical order (Czech alphabet, no duplicates, no empty ones), so one choice = one URL. */
+export const sortTags = (tags) => [...new Set(tags.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'cs'));
+
+/** Picked tags after a click on the chip of `tag`: picks it, or drops it when it was picked. */
+export const toggleTag = (picked, tag) => sortTags(picked.includes(tag) ? picked.filter((t) => t !== tag) : [...picked, tag]);
+
+/**
+ * The tag chips after a filter change, picked tags narrowing the works together ("a zároveň"): for each tag of the
+ * page (`tags`, in the order of the chips), how many of the works shown now (`shownTags`: the tags of each matching
+ * work) have it, and whether its chip is offered. A picked chip always stays (to be unpicked); any other only when
+ * picking it would narrow the works without leaving none (offersOption), so no chip leads to an empty gallery and
+ * none changes nothing. [{ tag, count, picked, offered }]
+ */
+export function tagChoices(tags, shownTags, picked) {
+  const counts = new Map();
+  for (const list of shownTags) for (const t of new Set(list)) counts.set(t, (counts.get(t) ?? 0) + 1);
+  return tags.map((tag) => {
+    const count = counts.get(tag) ?? 0;
+    const isPicked = picked.includes(tag);
+    return { tag, count, picked: isPicked, offered: isPicked || offersOption(count, shownTags.length) };
+  });
+}
+
+/** The filters with one picked option each (selects and the author's selection switch), besides the tags. */
+export const FACETS = ['technique', 'year', 'collection', 'status', 'featured'];
+
+/**
+ * The options of filter `key` a work ({ technique, year, collection, status, featured }) falls under: one technique,
+ * year or collection (none without a collection), every status option its status passes (an available work is both
+ * "na prodej" and "ještě mám"), FEATURED_ON for a featured work.
+ */
+export function facetValues(work, key) {
+  if (key === 'status') return Object.keys(STATUS_FILTERS).filter((k) => STATUS_FILTERS[k](work.status));
+  if (key === 'featured') return work.featured ? [FEATURED_ON] : [];
+  return work[key] ? [String(work[key])] : [];
+}
+
+/**
+ * The options of filter `key` (`values`, in the order of the select) after a filter change: how many works each
+ * would show together with all the other active filters (the filter itself left out, so the counts tell what
+ * switching to that option gives), and whether it is offered. The picked option always is; any other only when it
+ * shows some works but not the same as "vše" (offersOption over the works the other filters leave), so no option
+ * leads to an empty gallery and none changes nothing. [{ value, count, picked, offered }]
+ */
+export function facetChoices(works, state, key, values) {
+  const base = works.filter((w) => matchesFilters(w, { ...state, [key]: '' }));
+  const counts = new Map();
+  for (const w of base) for (const v of facetValues(w, key)) counts.set(v, (counts.get(v) ?? 0) + 1);
+  return values.map((value) => {
+    const count = counts.get(value) ?? 0;
+    const picked = state[key] === value;
+    return { value, count, picked, offered: picked || offersOption(count, base.length) };
+  });
 }
 
 /** Number of works per status filter option, e.g. { unsold: 3, kept: 10, gone: 2 }. */
@@ -83,12 +138,13 @@ export const ALL_PAGES = 'all';
 export const DEFAULT_PAGE_SIZES = [12, 24, 48];
 
 /**
- * Reads the filter state from URL search params; former status values become current ones (STATUS_ALIASES),
+ * Reads the filter state from URL search params (every ?tag= is a picked tag); former status values become current ones (STATUS_ALIASES),
  * unknown status values, bad pages and page sizes
  * that are not offered are ignored. `pageSizes`: the offered sizes, the first is the default.
  */
 export function stateFromParams(params, pageSizes = DEFAULT_PAGE_SIZES) {
   const state = Object.fromEntries(FILTER_KEYS.map((k) => [k, params.get(k) ?? '']));
+  state.tag = sortTags(params.getAll('tag'));
   state.status = STATUS_ALIASES[state.status] ?? state.status;
   if (!(state.status in STATUS_FILTERS)) state.status = '';
   if (state.featured !== FEATURED_ON) state.featured = '';
@@ -106,7 +162,10 @@ export function stateFromParams(params, pageSizes = DEFAULT_PAGE_SIZES) {
  */
 export function stateToParams(state) {
   const params = new URLSearchParams();
-  for (const key of FILTER_KEYS) if (state[key]) params.set(key, state[key]);
+  for (const key of FILTER_KEYS) {
+    if (key === 'tag') state.tag.forEach((t) => params.append('tag', t));
+    else if (state[key]) params.set(key, state[key]);
+  }
   if (state.page === ALL_PAGES || state.page > 1) params.set('page', String(state.page));
   if (state.perPage) params.set('perPage', String(state.perPage));
   return params;

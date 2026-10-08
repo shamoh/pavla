@@ -1,7 +1,7 @@
 // Markdown summary of a pipeline run, shown on the GitHub Actions run page ($GITHUB_STEP_SUMMARY).
 // Everything is Czech because Pavla reads it. Errors come first (grouped by file), then warnings, then
-// recommendations (grouped by file, scripts/lib/advice.mjs), then what the run did, so whatever needs fixing is
-// visible without scrolling.
+// recommendations (grouped by file, scripts/lib/advice.mjs), then what the run did and last the tag statistics,
+// so whatever needs fixing is visible without scrolling.
 
 /** Problems ("<file>: <message>") grouped by file in order of appearance: [{ file, messages }]; file '' = general. */
 export function groupProblems(problems) {
@@ -92,6 +92,13 @@ export function formatSummary(result, error) {
     lines.push(`**${title}**`, '');
     list(items);
   }
-  if (!result.prepared) lines.push(`Zpracováno: ${result.processed}, beze změny: ${result.skipped}.`);
+  if (!result.prepared) lines.push(`Zpracováno: ${result.processed}, beze změny: ${result.skipped}.`, '');
+
+  // 5. tag statistics: how the gallery chips look (advice on them is under "Doporučení")
+  const tags = result.tags ?? [];
+  if (tags.length) {
+    lines.push(`### Štítky (${tags.length})`, '', 'Kolik děl má který štítek (i rozpracovaná); v galerii je každý štítek jeden čip.', '');
+    lines.push(tags.map(({ tag, count }) => `${tag} ${count}`).join(' · '));
+  }
   return lines.join('\n').replace(/\n+$/, '') + '\n';
 }

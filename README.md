@@ -102,11 +102,11 @@ Tohle je závazné pravidlo: každý nový filtr musí mít parametr v URL.
 
 | Filtr | Parametr v URL | Hodnoty |
 |---|---|---|
-| Téma (čipy s počty) | `tag` | jeden tag, např. `?tag=krajina` |
-| Technika | `technique` | např. `?technique=akvarel` |
+| Téma (čipy s počty, lze vybrat víc, viz níže) | `tag` | každý vybraný zvlášť, např. `?tag=krajina&tag=voda` (dílo musí mít všechny); jeden `?tag=krajina` jako dřív |
+| Technika (s počty) | `technique` | např. `?technique=akvarel` |
 | Rok (jen na `/tvorba/` a u kolekce; u kolekce jen roky jejích děl s počty, bez roku se všemi díly, když nic nezbude, bez výběru) | `year` | `?year=2025` (nenabízený rok = vše) |
 | Kolekce (jen na `/tvorba/` a stránce roku) | `collection` | slug kolekce, `?collection=plener-sumava-2026` |
-| Stav (s počty, jen volby s jiným výsledkem než „vše“) | `status` | `unsold` = na prodej, `kept` = ještě mám, `gone` = už nemám |
+| Stav (s počty) | `status` | `unsold` = na prodej, `kept` = ještě mám, `gone` = už nemám |
 | Výběr autorky (přepínač s počtem, jen když výpis nějaké má, ale ne všechna) | `featured` | `1` = jen díla s `featured: true`, jiná hodnota se ignoruje |
 | Stránka (viz *Stránkování*) | `page` | číslo stránky od 2, `all` = vše bez stránkování |
 | Na stránku (viz *Stránkování*) | `perPage` | `24` nebo `48` (výchozí 12 se nepíše) |
@@ -147,6 +147,38 @@ na stránce, kde jsou vybraná díla, ale ne všechna. Odkaz s takovou volbou uk
 (`STATUS_ALIASES`), sdílené odkazy dál fungují. Příklad kombinace:
 `/tvorba/?collection=plener-sumava-2026&status=unsold&tag=voda`, nebo jen výběr autorky
 na prodej: `/tvorba/?featured=1&status=unsold`.
+
+**Lišta filtrů** (`scripts/lib/filter-bar.mjs`, `WorkGallery.astro`): když formulář filtrů odjede z obrazovky, posun
+stránky nahoru o `REVEAL_AFTER` (40 px) od posledního obratu vysune shora tenkou lištu s vybranými filtry jako
+čipy („#krajina ×“, „akvarel ×“; `activeFilters`, bez filtrů „Všechna díla“), počtem děl (`worksCount`) a tlačítkem
+**Upravit**; posun dolů o `HIDE_AFTER`
+(8 px) ji schová (`scrollBar`). Dokud je formulář na obrazovce, lišta se neukáže; posun, který udělá stránka sama
+(stránkování, skok na výsledky), ji nevysune. „Upravit“ otevře týž formulář jako panel (na počítači pod lištou,
+do 700 px šířky zespodu přes „Napište mi“); místo formuláře na stránce drží jeho výšku. Každá změna filtru
+v otevřeném panelu skočí na začátek výsledků pod lištou, panel zůstane otevřený pro další změny. Zavře ho „Hotovo“,
+„Zavřít“ v liště, Esc nebo klik mimo; fokus z klávesnice se vrátí na „Upravit“, nebo do formuláře, když je zase vidět.
+Klik na čip v liště ten jeden filtr zruší (`withoutFilter`, zpět na 1. stránku, událost `gallery_filter`), skočí
+na začátek výsledků a lišta zůstane; fokus přejde na další čip, po posledním na „Upravit“. Čipy jsou na jednom řádku,
+co se nevejde, jde posunout do strany (lišta nikdy nezvětší). Formulář se počítá jako vidět jen pod lištou.
+Skrytá lišta je `inert`, při `prefers-reduced-motion` bez animace, bez JavaScriptu se neukáže nikdy. Vyzkoušet:
+`npm run demo`, v `/tvorba/` sjet dolů, kousek nahoru, „Upravit“, vybrat štítek, pak ho v liště zrušit „×“.
+
+**Počty a nabízené volby podle aktuálního výběru** (`facetChoices`, `facetValues`): po každé změně filtru má každá
+volba výběrů Technika, Rok, Kolekce a Stav i přepínač „Výběr autorky“ počet děl, která by ukázala spolu s ostatními
+aktivními filtry (sama sebe nepočítá, takže počty u jiných voleb téhož výběru říkají, co dá přepnutí; volby Stavu se
+překrývají, každá se počítá zvlášť). Ve výběru zůstanou jen volby, které zobrazená díla zúží a nevyprázdní
+(`offersOption` nad díly, která nechají ostatní filtry); vybraná zůstane vždy. Skryté volby se z výběru odeberou
+(skrývání `<option>` Safari na iOS nerespektuje). Výběr ani přepínač bez žádné takové volby se skryje, dokud ji jiná
+změna nevrátí. Bez JavaScriptu jsou počty ze všech děl stránky. Na co se při sestavení stránky volba nenabízí vůbec
+(viz níže u Stavu), to se nevrátí ani po změně.
+
+**Výběr více štítků („a zároveň“):** čip štítku se klikem zapne a dalším klikem vypne, „Vše“ zruší celý výběr.
+Každý další vybraný štítek výběr zúží: zůstanou díla, která mají všechny vybrané (`matchesFilters`). Po každé změně
+(i jiného filtru) zůstanou jen čipy, které zobrazená díla zúží a nevyprázdní (`tagChoices`, `offersOption`), s počtem
+mezi zobrazenými díly; vybrané čipy zůstanou vždy (bez počtu). Bez žádného nabízeného čipu se řada čipů skryje. Pořadí
+čipů se nemění (podle počtu děl na stránce). V adrese jsou vybrané štítky v českém abecedním pořadí bez opakování
+(`sortTags`, `toggleTag`), takže stejný výběr má vždy stejný odkaz; štítek, který na stránce žádné dílo nemá
+(starý odkaz), se ignoruje. Bez JavaScriptu čipy nic nedělají a ukáže se vše.
 
 Logika filtrů je v `scripts/lib/gallery-filter.mjs` (sdílí ji prohlížeč i testy),
 stav prodeje v `scripts/lib/works.mjs#isOnSale`.
@@ -546,6 +578,10 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | stránka 404 s výběrem autorky | libovolná neexistující adresa, např. `/tvorba/nic/` (v `npm run demo`) nebo `.demo/site/dist/404.html` |
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
 | doporučení v souhrnu běhu: bez štítků, popis s malým písmenem a bez tečky / popisky detailů bez tečky / na prodej bez mockupů / text kolekce bez tečky / popis a popisek fotky bez tečky | Rozpracovaný obraz / Ráno u rybníka, Pivoňky / Máky, Bouřka nad polem, Modravské slatě, Pivoňky / Město 2026 / fotky stránek |
+| lišta filtrů při posunu nahoru, panel „Upravit“ (na úzké obrazovce zespodu) | `/tvorba/` (18 děl, stránka je dost dlouhá); úzká obrazovka: DevTools → režim zařízení |
+| počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (3 díla, Kolekce jen Kresby… a Plenér Šumava), + kolekce Kresby, pastely a kvaš (2 díla; Výběr autorky zmizí, oba obrazy ho mají); štítek „krajina“: Technika jen akvarel (6), kresba tužkou, kvaš, linoryt |
+| výběr více štítků („a zároveň“): čipy se zapínají a vypínají, zůstanou jen ty, které výběr zúží | `/tvorba/`: „krajina“ (9 děl, čipy léto, plenér, voda, déšť, zima, hory), + „voda“ (3 díla, zbudou plenér a zima), + „plenér“ (2 díla), „Vše“ zruší |
+| doporučení ke štítkům v souhrnu: jeden štítek ve dvou tvarech / dva štítky vždy spolu; statistika štítků | „květiny“ a „květina“ (Pivoňky) / „město“ a „ulice“ (Náměstí v mlze, Město v dešti, Nádraží); výpis `npm run demo:prepare` (`? advice: Štítky: …`). Příliš mnoho čipů testovací data nemají (vypadala by špatně), pokrývají ho testy |
 | filtr bez zbytečných voleb: Stav jen „na prodej“, bez Výběru autorky (všechna díla vybraná) / bez filtru Stav | Ze zahrady 2025 / Kresby, pastely a kvaš 2025–2026 / Město 2026 |
 | bublina nad obrazem: s popisem a stavem / detail jako úvodní obraz / vlastní fotka bez bubliny | Máky v galerii / Ze zahrady 2025 / Plenér Šumava 2026 |
 
@@ -1011,8 +1047,17 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
      Stejně `title` a `description` kolekce, `description` roku a úvodní stránky a `alt` a `caption` fotek stránek
      (`pageAdvice`).
      Texty začínající `DOPLNIT` a prázdné přeskočí (ty hlídají kontroly).
+     Pod „**Štítky**“ doporučení k seznamu štítků všech děl (i rozpracovaných; `tagAdvice`): jen tam, kde jde něco
+     udělat. Jeden štítek ve dvou tvarech (velká písmena, diakritika nebo koncové samohlásky: „plener“ / „plenér“,
+     „hora“ / „hory“, kmen aspoň 3 písmena, `sameTag`); dva štítky skoro vždy spolu (podobnost množin děl
+     ≥ `TAG_TOGETHER` 0,9, oba aspoň u `TAG_TOGETHER_MIN` 3 děl): jako filtr jeden nic nepřidá; čipy v galerii
+     přesáhnou `TAG_ROWS` (2) řádky (odhad šířky po znacích, `tagRows`, `TAG_ROW_CHARS` = řádek stránky 1320 px),
+     s kandidáty: štítky jen u jednoho díla a delší než `TAG_LONG` (12) znaků. Štítek u většiny děl doporučení nemá
+     (je to pravdivý popis, opravit nejde; štítek u všech děl se jako filtr nenabízí sám).
   4. **Co automatika udělala**: nové popisy, přidělené kódy, nalezené rohy, náhledy ořezu, srovnané popisy,
      odstraněné soubory a počty zpracovaných.
+  5. **Štítky** (`### Štítky (počet)`, `tagStats`): jeden řádek „krajina 9 · voda 3 · …“, kolik děl (i rozpracovaných)
+     má který štítek, nejčastější první.
   Spadne-li běh na chybě mimo popisy (výjimka), souhrn to řekne česky a technický text výjimky dá pod to.
 
 Lokální `npm run images` funguje dál stejně. Jen nekombinuj obojí najednou: buď pushni výsledek lokálního
@@ -1117,7 +1162,7 @@ analytics:
 
   | Událost | Kdy | Parametry |
   |---|---|---|
-  | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav) nebo na přehledu kolekcí rok; ne stránkování ani počet na stránku | aktivní filtry `tag`, `technique`, `year`, `collection`, `status`, `featured` (prázdné se neposílají) a `results` (kolik děl, na přehledu kolekcí kolik kolekcí odpovídá) |
+  | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav) nebo na přehledu kolekcí rok; ne stránkování ani počet na stránku | aktivní filtry `tag` (víc štítků jako jedna hodnota spojená čárkou v abecedním pořadí, např. `krajina,voda`), `technique`, `year`, `collection`, `status`, `featured` (prázdné se neposílají) a `results` (kolik děl, na přehledu kolekcí kolik kolekcí odpovídá) |
   | `fler_click` | klik na „Koupit na Fleru“ u díla | `work_id`, `work_title` |
   | `email_click` | jen odkazy `mailto:`: klik na e-mailovou adresu na Kontaktu (kdo píše rovnou z pošty místo formuláře); bez formuláře zpráv i klik na „Napsat autorce“ u díla. Předmět e-mailu má stejný tvar jako odeslaná zpráva (`[pavla-web] Pozdrav nebo vzkaz`, u díla `[pavla-web] Dotaz na obraz: <název> (<id>)` / `Zájem o koupi: …`) | u díla `work_id`, `work_title`, na Kontaktu žádné |
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |

@@ -2,11 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FEATURED_ON,
   countStatuses, matchesFilters, offersOption, statusOptions, yearFilterOptions, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
-  stateFromParams, stateToParams, withPageSize,
+  facetChoices, facetValues, sortTags, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
 } from './gallery-filter.mjs';
 
 const work = (status, extra = {}) => ({ tags: ['krajina'], technique: 'akvarel', year: '2026', collection: '', status, ...extra });
-const all = { tag: '', technique: '', year: '', collection: '', status: '', featured: '' };
+const all = { tag: [], technique: '', year: '', collection: '', status: '', featured: '' };
 const allState = { ...all, page: 1, perPage: null };
 const statuses = ['available', 'reserved', 'sold', 'gifted', 'not-for-sale'];
 const passing = (state) => statuses.filter((s) => matchesFilters(work(s), { ...all, ...state }));
@@ -32,7 +32,7 @@ test('collection filter shows only works of that collection', () => {
 });
 
 test('every filter combines with the others', () => {
-  const state = { ...all, status: 'unsold', tag: 'krajina', technique: 'akvarel', year: '2026', collection: 'k' };
+  const state = { ...all, status: 'unsold', tag: ['krajina'], technique: 'akvarel', year: '2026', collection: 'k' };
   const base = { collection: 'k' };
   assert.ok(matchesFilters(work('reserved', base), state));
   assert.ok(!matchesFilters(work('sold', base), state));
@@ -50,7 +50,7 @@ test('countStatuses counts works per status option', () => {
 test('stateFromParams reads every filter and drops an unknown status', () => {
   assert.deepEqual(
     stateFromParams(new URLSearchParams('tag=voda&year=2026&collection=plener&status=unsold')),
-    { ...allState, tag: 'voda', year: '2026', collection: 'plener', status: 'unsold' },
+    { ...allState, tag: ['voda'], year: '2026', collection: 'plener', status: 'unsold' },
   );
   assert.equal(stateFromParams(new URLSearchParams('status=bogus')).status, '');
   assert.equal(stateFromParams(new URLSearchParams('status=available')).status, 'unsold', 'an old shared link still works');
@@ -59,7 +59,7 @@ test('stateFromParams reads every filter and drops an unknown status', () => {
 
 test('stateToParams leaves out empty filters and round-trips any combination', () => {
   assert.equal(stateToParams(all).toString(), '');
-  const state = { tag: 'řeka a mlha', technique: 'akvarel', year: '2025', collection: 'plener', status: 'gone', featured: '1', page: 3, perPage: 48 };
+  const state = { tag: ['řeka a mlha'], technique: 'akvarel', year: '2025', collection: 'plener', status: 'gone', featured: '1', page: 3, perPage: 48 };
   assert.equal(stateToParams({ ...all, technique: 'akvarel', status: 'kept' }).toString(), 'technique=akvarel&status=kept');
   assert.deepEqual(stateFromParams(new URLSearchParams(stateToParams(state).toString())), state);
 });
@@ -68,7 +68,7 @@ test('page: read from and written to the URL only when > 1, bad values mean page
   assert.equal(stateFromParams(new URLSearchParams('page=3')).page, 3);
   for (const bad of ['page=0', 'page=-2', 'page=2.5', 'page=abc', '']) assert.equal(stateFromParams(new URLSearchParams(bad)).page, 1, bad);
   assert.equal(stateToParams({ ...allState, page: 1 }).toString(), '');
-  assert.equal(stateToParams({ ...allState, tag: 'voda', page: 2 }).toString(), 'tag=voda&page=2');
+  assert.equal(stateToParams({ ...allState, tag: ['voda'], page: 2 }).toString(), 'tag=voda&page=2');
 });
 
 test('paginate splits items into pages and clamps the page', () => {
@@ -92,7 +92,7 @@ test('pageLinks shows first, last and the neighbours of the current page with ga
 test('paging off: page=all is read, written and round-trips with filters', () => {
   assert.equal(stateFromParams(new URLSearchParams('page=all')).page, 'all');
   assert.equal(stateFromParams(new URLSearchParams('page=ALL')).page, 1);
-  assert.equal(stateToParams({ ...allState, tag: 'voda', page: 'all' }).toString(), 'tag=voda&page=all');
+  assert.equal(stateToParams({ ...allState, tag: ['voda'], page: 'all' }).toString(), 'tag=voda&page=all');
   const state = { ...allState, collection: 'plener', status: 'unsold', page: 'all' };
   assert.deepEqual(stateFromParams(stateToParams(state)), state);
 });
@@ -123,7 +123,7 @@ test('perPage: only offered sizes, the default is never written to the URL', () 
 test('pageSizeOf and withPageSize: picking a size goes to page 1 with paging on', () => {
   assert.equal(pageSizeOf(allState), 12);
   assert.equal(pageSizeOf({ ...allState, perPage: 48 }), 48);
-  assert.deepEqual(withPageSize({ ...allState, tag: 'voda', page: 3 }, 24), { ...allState, tag: 'voda', page: 1, perPage: 24 });
+  assert.deepEqual(withPageSize({ ...allState, tag: ['voda'], page: 3 }, 24), { ...allState, tag: ['voda'], page: 1, perPage: 24 });
   assert.deepEqual(withPageSize({ ...allState, page: 'all', perPage: 48 }, 12), { ...allState, page: 1, perPage: null });
   assert.equal(withPageSize(allState, 7).perPage, null);
 });
@@ -157,7 +157,7 @@ test('author\'s selection: only featured works, combines with other filters, ?fe
   const shown = (state) => works.filter((w) => matchesFilters(w, { ...all, ...state })).length;
   assert.equal(shown({}), 3);
   assert.equal(shown({ featured: FEATURED_ON }), 2);
-  assert.equal(shown({ featured: FEATURED_ON, tag: 'voda' }), 1);
+  assert.equal(shown({ featured: FEATURED_ON, tag: ['voda'] }), 1);
   assert.equal(shown({ featured: FEATURED_ON, status: 'unsold' }), 1);
   assert.equal(stateToParams({ ...allState, featured: FEATURED_ON }).toString(), 'featured=1');
   assert.equal(stateFromParams(new URLSearchParams('featured=1')).featured, '1');
@@ -185,4 +185,98 @@ test('yearFilterOptions: the years of the works with counts, newest first, none 
   assert.deepEqual(yearFilterOptions([2025, 2026, 2025, 2025]), [{ value: '2026', count: 1 }, { value: '2025', count: 3 }]);
   assert.deepEqual(yearFilterOptions([2026, 2026]), []);
   assert.deepEqual(yearFilterOptions([]), []);
+});
+
+test('several tags narrow together: a work must have every picked tag', () => {
+  const state = { ...all, tag: ['krajina', 'voda'] };
+  assert.ok(matchesFilters(work('sold', { tags: ['krajina', 'voda', 'plenér'] }), state));
+  assert.ok(!matchesFilters(work('sold', { tags: ['krajina'] }), state));
+  assert.ok(!matchesFilters(work('sold', { tags: ['voda'] }), state));
+  assert.ok(matchesFilters(work('sold', { tags: [] }), all), 'no tag picked = every work');
+});
+
+test('tags in the URL: one parameter per tag, canonical order, duplicates and empty ones dropped', () => {
+  assert.deepEqual(stateFromParams(new URLSearchParams('tag=voda&tag=krajina&tag=voda&tag=')).tag, ['krajina', 'voda']);
+  assert.deepEqual(stateFromParams(new URLSearchParams('tag=krajina')).tag, ['krajina'], 'an old link with one tag still works');
+  assert.equal(stateToParams({ ...allState, tag: ['krajina', 'voda'], status: 'unsold' }).toString(), 'tag=krajina&tag=voda&status=unsold');
+  const state = { ...allState, tag: ['hory', 'chalupa', 'řeka'] };
+  assert.deepEqual(stateFromParams(new URLSearchParams(stateToParams(state).toString())), state);
+});
+
+test('sortTags: Czech alphabet (ch after h, ř after r), no duplicates', () => {
+  assert.deepEqual(sortTags(['řeka', 'chalupa', 'hory', 'rybník', 'hory', '']), ['hory', 'chalupa', 'rybník', 'řeka']);
+});
+
+test('toggleTag picks a tag or drops a picked one', () => {
+  assert.deepEqual(toggleTag([], 'voda'), ['voda']);
+  assert.deepEqual(toggleTag(['voda'], 'krajina'), ['krajina', 'voda']);
+  assert.deepEqual(toggleTag(['krajina', 'voda'], 'voda'), ['krajina']);
+  assert.deepEqual(toggleTag(['voda'], 'voda'), []);
+});
+
+test('tagChoices: counts among the shown works, offers only chips that narrow without emptying', () => {
+  const tags = ['krajina', 'voda', 'plenér', 'město'];
+  const shown = [['krajina', 'voda'], ['krajina', 'plenér'], ['krajina', 'voda', 'voda']];
+  assert.deepEqual(tagChoices(tags, shown, []), [
+    { tag: 'krajina', count: 3, picked: false, offered: false }, // on every shown work: picking it changes nothing
+    { tag: 'voda', count: 2, picked: false, offered: true },
+    { tag: 'plenér', count: 1, picked: false, offered: true },
+    { tag: 'město', count: 0, picked: false, offered: false }, // would leave nothing
+  ]);
+});
+
+test('tagChoices: a picked chip always stays, even with nothing shown', () => {
+  const choices = tagChoices(['krajina', 'voda'], [], ['voda']);
+  assert.deepEqual(choices.map((c) => [c.tag, c.offered]), [['krajina', false], ['voda', true]]);
+  assert.deepEqual(tagChoices(['voda'], [['voda'], ['voda']], ['voda']), [{ tag: 'voda', count: 2, picked: true, offered: true }]);
+});
+
+const shelf = [
+  { tags: ['voda'], technique: 'akvarel', year: '2026', collection: 'plener', status: 'available', featured: true },
+  { tags: ['voda'], technique: 'akvarel', year: '2026', collection: 'plener', status: 'sold', featured: false },
+  { tags: ['les'], technique: 'kresba', year: '2025', collection: '', status: 'not-for-sale', featured: false },
+  { tags: ['les'], technique: 'akvarel', year: '2025', collection: '', status: 'gifted', featured: true },
+];
+
+test('facetValues: the options a work falls under, several status options at once', () => {
+  assert.deepEqual(facetValues(shelf[0], 'technique'), ['akvarel']);
+  assert.deepEqual(facetValues(shelf[0], 'year'), ['2026']);
+  assert.deepEqual(facetValues(shelf[2], 'collection'), [], 'no collection');
+  assert.deepEqual(facetValues(shelf[0], 'status'), ['unsold', 'kept']);
+  assert.deepEqual(facetValues(shelf[3], 'status'), ['gone']);
+  assert.deepEqual(facetValues(shelf[0], 'featured'), [FEATURED_ON]);
+  assert.deepEqual(facetValues(shelf[1], 'featured'), []);
+});
+
+test('facetChoices: counts with the other filters, not offered when empty or the same as "vše"', () => {
+  assert.deepEqual(facetChoices(shelf, all, 'technique', ['akvarel', 'kresba', 'linoryt']), [
+    { value: 'akvarel', count: 3, picked: false, offered: true },
+    { value: 'kresba', count: 1, picked: false, offered: true },
+    { value: 'linoryt', count: 0, picked: false, offered: false },
+  ]);
+  // with "les" picked only the works of 2025 are left: years narrow nothing any more, techniques still do
+  const les = { ...all, tag: ['les'] };
+  assert.deepEqual(facetChoices(shelf, les, 'year', ['2026', '2025']).map((c) => [c.value, c.count, c.offered]), [['2026', 0, false], ['2025', 2, false]]);
+  assert.deepEqual(facetChoices(shelf, les, 'technique', ['akvarel', 'kresba']).map((c) => [c.count, c.offered]), [[1, true], [1, true]]);
+});
+
+test('facetChoices: the filter itself is left out, so the other options of a picked one keep their counts', () => {
+  const kresba = { ...all, technique: 'kresba' };
+  assert.deepEqual(facetChoices(shelf, kresba, 'technique', ['akvarel', 'kresba']), [
+    { value: 'akvarel', count: 3, picked: false, offered: true },
+    { value: 'kresba', count: 1, picked: true, offered: true },
+  ]);
+  // other filters do count: the author's selection with kresba has nothing, but stays while picked
+  assert.deepEqual(facetChoices(shelf, { ...kresba, featured: FEATURED_ON }, 'featured', [FEATURED_ON]), [{ value: FEATURED_ON, count: 0, picked: true, offered: true }]);
+  assert.deepEqual(facetChoices(shelf, kresba, 'featured', [FEATURED_ON]), [{ value: FEATURED_ON, count: 0, picked: false, offered: false }]);
+});
+
+test('facetChoices: status options overlap, each counted on its own', () => {
+  assert.deepEqual(facetChoices(shelf, all, 'status', ['unsold', 'kept', 'gone']).map((c) => [c.value, c.count, c.offered]), [
+    ['unsold', 1, true], ['kept', 2, true], ['gone', 2, true],
+  ]);
+  assert.deepEqual(facetChoices(shelf, { ...all, year: '2026' }, 'status', ['unsold', 'kept', 'gone']).map((c) => [c.count, c.offered]), [
+    [1, true], [1, true], [1, true],
+  ]);
+  assert.deepEqual(facetChoices(shelf, { ...all, collection: 'plener' }, 'collection', ['plener']), [{ value: 'plener', count: 2, picked: true, offered: true }]);
 });
