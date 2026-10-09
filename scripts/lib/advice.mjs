@@ -2,6 +2,7 @@
 // stop a run, only what would make the site better (shown in the run summary under "Doporučení",
 // scripts/lib/summary.mjs). Messages are Czech ("<file>: <what and how>") because Pavla reads them. Texts still starting with DOPLNIT are left to the checks.
 
+import { untranslatedWords } from './instagram.mjs';
 import { TODO } from './schema.mjs';
 import { SEARCH_TITLE_MAX } from './seo.mjs';
 import { isOnSale, wantsMockups, workPath } from './works.mjs';
@@ -231,4 +232,17 @@ export function tagAdvice(works) {
     );
   }
   return advice;
+}
+
+/**
+ * Works with Instagram exports (meta_instagram: true) whose technique or tags have no English hashtag in the text of
+ * the post: ["<file>: …"]. `settings` = instagramPost of site.config.yaml (see scripts/lib/instagram.mjs).
+ */
+export function hashtagAdvice(works, settings = {}) {
+  return works
+    .filter((w) => w.data?.meta_instagram === true)
+    .map((w) => [w, untranslatedWords(w.data, settings)])
+    .filter(([, words]) => words.length)
+    .map(([w, words]) => `${workPath(w)}: ${words.length === 1 ? 'štítek' : 'štítky'} ${words.map((x) => `„${x}“`).join(', ')} `
+      + `${words.length === 1 ? 'nemá' : 'nemají'} v textu příspěvku pro Instagram anglický hashtag (překlad doplní Libor do nastavení webu, instagramPost.en)`);
 }

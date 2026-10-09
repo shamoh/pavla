@@ -54,9 +54,19 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   společný štítek „V soukromé sbírce“ (`GONE_LABEL`), web je nikdy nerozlišuje.
 - Mockupy jen s `mockups: true` v popisu díla (výchozí false), nezávisle na stavu prodeje (`wantsMockups`);
   Fler mockupy jen u díla na prodej, které mockupy má.
-- Exporty: Instagram jen u díla s `meta_instagram: true` (výchozí false), originál (`-clean`) + detailní fotky, nikdy mockupy. Fler jen díla na prodej:
-  originál + mockupy, vše s vodoznakem. Při přegenerování se staré exporty díla mažou (`clearExports`),
-  plný běh navíc porovná `export/` s `expectedExports` a smaže vše navíc (`planExportPrune`), i bez přegenerování.
+- Exporty: Instagram jen u díla s `meta_instagram: true` (výchozí false), nikdy mockupy webu, ve složce díla
+  `export/instagram/[<kolekce>/]<slug>/` (kopíruje `tvorba/`, `exportFolder`; složka je v otisku díla): `caption-<paleta>.jpg` (dílo
+  na papíru každé palety s popiskem název / technika · rozměr · rok / adresa webu, písma z `fonts/` jako křivky přes
+  `opentype.js`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru `mockups/instagram/scenes.yaml`: perspektiva z rohů
+  prázdného listu, skutečné měřítko, stoly mimo rekvizity s opačným pootočením podle `id`, stojan na liště na ose;
+  jen se `size_cm`), `detail-<jméno>.jpg` a `post.txt` (text příspěvku s kolekcí a hashtagy česky a anglicky, slovník
+  `instagramPost` v `site.config.yaml`, kolekce i jako hashtag, píše se každým během; štítek bez překladu = doporučení
+  `hashtagAdvice`); před tím ořez `images.instagram.insetPercent`; `scripts/lib/instagram.mjs`.
+  Nevejde-li se dílo do volné části scény: snímek vznikne, souhrn běhu „Ke kontrole“ (`misfits`).
+  Fler jen díla na prodej, také ve složce díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` + `mockup-<scéna>.jpg`,
+  vše s vodoznakem. Při přegenerování se složky díla mažou (`clearExports`), plný běh navíc porovná `export/`
+  s `expectedExports` a smaže vše navíc (`planFolderPrune`, jen jména z `EXPORT_FILES`, neznámé soubory nechá,
+  staré ploché `<rok>/<slug>-<id>…` smaže), i bez přegenerování.
 - Kolekce = složka `tvorba/<kolekce>/` obsahového repa (slug = slugify názvu, např. `2026-plener-sumava`, i přes víc let)
   s `_index.yaml` a volitelnou `_cover.jpg`; dílo do ní patří umístěním (max. jedna), `collection:` v yaml díla je chyba,
   veřejná kopie leží ve stejné složce. Složka jménem díla vedle něj = detailní fotky. Pipeline `scripts/lib/collections.mjs`,

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
+    "preview": "node scripts/preview.mjs",
     "images": "node --env-file-if-exists=.env scripts/process-images.mjs",
     "check:images": "node scripts/check-images.mjs",
     "test": "node --test \"scripts/**/*.test.mjs\"",
@@ -13,11 +13,11 @@
     "demo": "node scripts/demo.mjs && SITE_DATA_DIR=.demo/site astro dev",
     "demo:build": "node scripts/demo.mjs && SITE_DATA_DIR=.demo/site astro build",
     "straighten": "node scripts/straighten.mjs",
-    "preview": "node scripts/preview.mjs",
     "favicons": "node scripts/favicons.mjs"
   },
   "dependencies": {
     "astro": "^7.3.5",
+    "opentype.js": "2.0.0",
     "sharp": "^0.35.4",
     "yaml": "^2.9.1"
   },

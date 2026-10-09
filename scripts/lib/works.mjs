@@ -1,6 +1,7 @@
 // Pure helpers shared by the image pipeline and the Astro site.
 // No filesystem access here, so everything is easy to unit test.
 
+import path from 'node:path';
 import { TODO, WORK_SCHEMA, fieldKeys, optionProblems, publicKeys } from './schema.mjs';
 
 /** Characters used for work IDs: lowercase letters and digits without look-alikes (0/o, 1/l/i). */
@@ -194,40 +195,61 @@ export function planPrune(existing, wanted) {
   return existing.filter((p) => !keep.has(p)).sort();
 }
 
-/** Suffixes of export file names after "<slug>-<id>" (-wall is a legacy Instagram mockup, still recognised for cleanup). */
-const EXPORT_SUFFIX = '(-clean|-wall|-mockup-[a-z0-9-]+|-detail-([a-z0-9-]+))?\\.jpg';
+/**
+ * Suffixes of export file names after "<slug>-<id>" (.jpg; -post is the text of an Instagram post, .txt). -clean
+ * (the work on paper) and -wall (a mockup) are former Instagram exports, still recognised for cleanup.
+ */
+const EXPORT_SUFFIX = '(-clean|-wall|-caption-[a-z0-9-]+|-scene-[a-z0-9-]+|-mockup-[a-z0-9-]+|-post|-detail-([a-z0-9-]+))?\\.(?:jpg|txt)';
 const ANY_EXPORT_RE = new RegExp(`^[a-z0-9]+(?:-[a-z0-9]+)*-${ID_PATTERN}${EXPORT_SUFFIX}$`);
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** Matches the export files (Instagram, Fler) of the work with the given "<slug>-<id>" key; group 2 is a detail name. */
+/** Matches the files of the former flat layout of exports (<year>/<slug>-<id>-…) of the work with the given key. */
 export const exportPattern = (key) => new RegExp(`^${escapeRe(key)}${EXPORT_SUFFIX}$`);
 
+
 /**
- * Decides which export files are stale: exports of works that no longer exist (deleted or renamed)
- * and exports a current work should not have (a detail photo or mockup scene it no longer has,
- * Fler exports of a work that is not for sale any more).
- * `files` are "<year>/<file name>" paths inside one platform folder. `wanted` maps "<year>/<key>" of every
- * current work to the export suffixes it may have on this platform ('' = "<key>.jpg", '-clean',
- * '-detail-<name>', '-mockup-<scene>'), or to null when any export of the work is fine (unknown state).
- * A plain array of "<year>/<key>" means null for all. Files that do not look like exports are never
- * touched. Returns the paths to delete, sorted.
+ * Exports of a work (Instagram, Fler) live in a folder of their own that mirrors tvorba/ of the content repository:
+ * tvorba/<collection>/<slug>.yaml -> export/<platform>/<collection>/<slug>/ (a work without a collection:
+ * export/<platform>/<slug>/). `yamlPath` is relative to the content repository. Returns the folder relative to
+ * export/<platform>/.
  */
-export function planExportPrune(files, wanted) {
-  const byYear = new Map();
-  for (const [rel, allowed] of wanted instanceof Map ? wanted : new Map(wanted.map((w) => [w, null]))) {
-    const [year, key] = rel.split('/');
-    if (!byYear.has(year)) byYear.set(year, []);
-    byYear.get(year).push({ re: exportPattern(key), allowed: allowed ? new Set(allowed) : null });
-  }
-  const claimed = (year, name) =>
-    (byYear.get(year) ?? []).some(({ re, allowed }) => {
-      const m = re.exec(name);
-      return m !== null && (!allowed || allowed.has(m[1] ?? ''));
-    });
+export const exportFolder = (yamlPath, slug) => {
+  const dir = path.posix.dirname(String(yamlPath).split(path.sep).join('/'));
+  return path.posix.join(path.posix.relative('tvorba', dir), slug);
+};
+
+/**
+ * File name of an export inside the folder of its work, from its suffix (see expectedExports):
+ * '' -> 'original.jpg' (Fler), '-mockup-komoda' -> 'mockup-komoda.jpg', '-caption-papir' -> 'caption-papir.jpg',
+ * '-post' -> 'post.txt'.
+ */
+export const exportFileName = (suffix) => (suffix === '' ? 'original.jpg' : suffix === '-post' ? 'post.txt' : `${suffix.slice(1)}.jpg`);
+
+/** Names of files the pipeline writes into the folder of a work, per platform (anything else there is left alone). */
+export const EXPORT_FILES = {
+  instagram: /^(?:(?:caption|scene|detail)-[a-z0-9-]+\.jpg|post\.txt)$/,
+  fler: /^(?:original|mockup-[a-z0-9-]+)\.jpg$/,
+};
+
+/**
+ * Decides which files under export/<platform>/ are stale. `files` are paths relative to export/<platform>/;
+ * `wanted` maps the folder of every work that may have exports there (exportFolder) to the file names it should have,
+ * or to null when any file of the work is fine (unknown state, e.g. no web images yet). Removed: exports in folders
+ * of no current work (deleted, renamed, moved to another collection, no longer on sale or Instagram switched off),
+ * exports a work should not have (a detail photo, scene or mockup it no longer has) and exports of the former flat
+ * layout (<year>/<slug>-<id>-….jpg). Files whose names the pipeline never writes (`names`) are never touched.
+ * Returns the paths, sorted.
+ */
+export function planFolderPrune(files, wanted, names) {
   return files
     .filter((f) => {
-      const [year, name] = f.split('/');
-      return ANY_EXPORT_RE.test(name) && !claimed(year, name);
+      const parts = f.split('/');
+      const name = parts.at(-1), dir = parts.slice(0, -1).join('/');
+      if (parts.length === 2 && YEAR_RE.test(parts[0]) && ANY_EXPORT_RE.test(name)) return true; // former layout
+      if (!names.test(name)) return false;
+      if (!wanted.has(dir)) return true;
+      const allowed = wanted.get(dir);
+      return allowed !== null && !allowed.has(name);
     })
     .sort();
 }
@@ -239,14 +261,16 @@ export const wantsMockups = (data) => data?.mockups === true;
 export const wantsInstagram = (data) => data?.meta_instagram === true;
 
 /**
- * Export suffixes a work should have, per platform (see planExportPrune).
- * Instagram: only works with `meta_instagram: true`, the original on paper and every detail photo, never mockups.
+ * Export suffixes a work should have, per platform (file names: exportFileName; stale files: planFolderPrune).
+ * Instagram: only works with `meta_instagram: true`: `instagramVariants` (captions and studio scenes, see
+ * scripts/lib/instagram.mjs instagramSuffixes), the text of the post (-post.txt) and every detail photo, never the
+ * mockups of the site.
  * Fler: only works on sale, the original and every mockup. `mockupScenes` null = unknown (no web images yet).
  */
-export function expectedExports({ status, details, mockupScenes, instagram = false }) {
+export function expectedExports({ status, details, mockupScenes, instagram = false, instagramVariants = [] }) {
   const onSale = isOnSale(status);
   return {
-    instagram: instagram ? ['-clean', ...details.map((d) => `-detail-${d}`)] : [],
+    instagram: instagram ? [...instagramVariants, '-post', ...details.map((d) => `-detail-${d}`)] : [],
     fler: !onSale ? [] : mockupScenes === null ? null : ['', ...mockupScenes.map((s) => `-mockup-${s}`)],
   };
 }

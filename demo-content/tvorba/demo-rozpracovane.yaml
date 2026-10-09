@@ -16,7 +16,7 @@ meta_corners:
 meta_draft: true
 
 # Fotky pro Instagram, možnosti:
-# - true - připravit (export/instagram: originál a detailní fotky)
+# - true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, detailní fotky)
 # - false - žádné
 meta_instagram: false
 

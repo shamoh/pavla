@@ -59,6 +59,7 @@ export function formatSummary(result, error) {
   const warnings = [
     ['Zveřejněné obrazy, kterým zůstal DOPLNIT (hodnotu zkontroluj, pak slovo DOPLNIT smaž)', result.pending ?? []],
     ['Podezřelý ořez rohů listu (zkontroluj v náhledu ořezu)', suspicious],
+    ['Obraz se nevejde do scény ateliéru pro Instagram', result.misfits ?? []],
   ].filter(([, items]) => items.length);
   if (warnings.length) {
     lines.push('### ⚠ Ke kontrole', '');

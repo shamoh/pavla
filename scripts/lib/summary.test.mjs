@@ -103,3 +103,8 @@ test('tag statistics last, one line, only when there are tags', () => {
   assert.doesNotMatch(formatSummary(base), /### Štítky/);
   assert.match(formatSummary({ ...base, prepared: true, tags: [{ tag: 'les', count: 1 }] }), /### Štítky \(1\)[\s\S]*les 1\n$/);
 });
+
+test('formatSummary lists works that do not fit a studio scene under "Ke kontrole"', () => {
+  const s = formatSummary({ ...base, misfits: ['tvorba/velky.yaml: obraz se na „Stůl“ nevejde mimo rekvizity'] });
+  assert.match(s, /### ⚠ Ke kontrole\n\n\*\*Obraz se nevejde do scény ateliéru pro Instagram\*\*\n\n- tvorba\/velky\.yaml: obraz se na „Stůl“ nevejde/);
+});

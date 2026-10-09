@@ -342,10 +342,14 @@ export const WORK_SCHEMA = {
       options: [true, false],
       doc: [
         'Fotky pro Instagram, možnosti:',
-        '- true - připravit (export/instagram: originál a detailní fotky)',
+        '- true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, detailní fotky)',
         '- false - žádné',
       ],
       previous: [[
+        'Fotky pro Instagram, možnosti:',
+        '- true - připravit (export/instagram: originál a detailní fotky)',
+        '- false - žádné',
+      ], [
         'Fotky pro Instagram, možnosti:',
         '- true – připravit (export/instagram: originál a detailní fotky)',
         '- false – žádné',

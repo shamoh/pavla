@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planExportPrune, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, workKey } from './works.mjs';
+import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, workKey } from './works.mjs';
 
 /** Deterministic "random" returning the given values in a loop. */
 const sequence = (...values) => {
@@ -191,65 +191,26 @@ test('validateWorks: a value outside the options of status, meta_draft and the s
 
 test('exportPattern matches every export of one work and nothing of another', () => {
   const re = exportPattern('rano-k3f9a');
-  for (const f of ['rano-k3f9a.jpg', 'rano-k3f9a-clean.jpg', 'rano-k3f9a-wall.jpg', 'rano-k3f9a-mockup-obyvak-vecer.jpg', 'rano-k3f9a-detail-1-mlha.jpg']) {
+  for (const f of [
+    'rano-k3f9a.jpg', 'rano-k3f9a-clean.jpg', 'rano-k3f9a-wall.jpg', 'rano-k3f9a-mockup-obyvak-vecer.jpg', 'rano-k3f9a-detail-1-mlha.jpg',
+    'rano-k3f9a-caption-papir.jpg', 'rano-k3f9a-scene-stul-tmavy.jpg', 'rano-k3f9a-post.txt',
+  ]) {
     assert.ok(re.test(f), f);
   }
   for (const f of ['rano-k3f9a.png', 'rano-m7q2x.jpg', 'x-rano-k3f9a.jpg', 'rano-k3f9a-poznamka.jpg']) assert.ok(!re.test(f), f);
 });
 
-test('planExportPrune removes exports of deleted and renamed works, keeps current ones', () => {
-  const files = [
-    '2026/rano-k3f9a-clean.jpg', '2026/rano-k3f9a-detail-kvet.jpg',       // current work
-    '2026/stary-nazev-k3f9a.jpg', '2026/stary-nazev-k3f9a-clean.jpg',     // renamed (same id, old slug)
-    '2025/smazane-p4r8t-clean.jpg', '2025/smazane-p4r8t-mockup-police.jpg', // deleted
-    '2025/rano-k3f9a-clean.jpg',                                           // current key, but wrong year
-    '2026/poznamky.jpg', '2026/.DS_Store',                                 // not exports, never touched
-  ];
-  assert.deepEqual(planExportPrune(files, ['2026/rano-k3f9a']), [
-    '2025/rano-k3f9a-clean.jpg', '2025/smazane-p4r8t-clean.jpg', '2025/smazane-p4r8t-mockup-police.jpg',
-    '2026/stary-nazev-k3f9a-clean.jpg', '2026/stary-nazev-k3f9a.jpg',
-  ]);
-  assert.deepEqual(planExportPrune(files.slice(0, 2), ['2026/rano-k3f9a']), []);
-});
-
-test('planExportPrune keeps a detail export whose name looks like another key', () => {
-  // "rano-k3f9a-detail-ab-mn2pq.jpg" is a detail of rano-k3f9a, not a work "…-mn2pq"
-  assert.deepEqual(planExportPrune(['2026/rano-k3f9a-detail-ab-mn2pq.jpg'], ['2026/rano-k3f9a']), []);
-});
-
-test('planExportPrune removes exports a current work should not have, keeps the rest', () => {
-  const files = [
-    '2026/rano-k3f9a-clean.jpg', '2026/rano-k3f9a.jpg', '2026/rano-k3f9a-mockup-police.jpg', '2026/rano-k3f9a-mockup-predsin.jpg',
-    '2026/rano-k3f9a-detail-kvet.jpg', '2026/rano-k3f9a-detail-lodka.jpg', '2026/rano-k3f9a-wall.jpg',
-  ];
-  // Instagram: original and detail "kvet" only
-  assert.deepEqual(planExportPrune(files, new Map([['2026/rano-k3f9a', ['-clean', '-detail-kvet']]])), [
-    '2026/rano-k3f9a-detail-lodka.jpg', '2026/rano-k3f9a-mockup-police.jpg', '2026/rano-k3f9a-mockup-predsin.jpg',
-    '2026/rano-k3f9a-wall.jpg', '2026/rano-k3f9a.jpg',
-  ]);
-  // Fler of a work not on sale: nothing may stay
-  assert.equal(planExportPrune(files, new Map([['2026/rano-k3f9a', []]])).length, files.length);
-  // null (or a plain list of keys) = unknown, keep everything of the work
-  assert.deepEqual(planExportPrune(files, new Map([['2026/rano-k3f9a', null]])), []);
-  assert.deepEqual(planExportPrune(files, ['2026/rano-k3f9a']), []);
-});
-
-test('planExportPrune: a detail export is kept when another reading of its name matches a current detail', () => {
-  const file = ['2026/rano-k3f9a-detail-ab-mn2pq.jpg'];
-  assert.deepEqual(planExportPrune(file, new Map([['2026/rano-k3f9a', ['-detail-ab-mn2pq']]])), []);
-  assert.deepEqual(planExportPrune(file, new Map([['2026/rano-k3f9a', ['-detail-ab']]])), file);
-});
-
-test('expectedExports: Instagram (when asked for) original and details, Fler only on sale with original and mockups', () => {
+test('expectedExports: Instagram (when asked for) captions, scenes and details, Fler only on sale with original and mockups', () => {
   const details = ['kvet'];
   const mockupScenes = ['police', 'pracovna'];
-  assert.deepEqual(expectedExports({ status: 'available', details, mockupScenes, instagram: true }), {
-    instagram: ['-clean', '-detail-kvet'],
+  const instagramVariants = ['-caption-papir', '-scene-stojan'];
+  assert.deepEqual(expectedExports({ status: 'available', details, mockupScenes, instagram: true, instagramVariants }), {
+    instagram: ['-caption-papir', '-scene-stojan', '-post', '-detail-kvet'],
     fler: ['', '-mockup-police', '-mockup-pracovna'],
   });
-  assert.deepEqual(expectedExports({ status: 'reserved', details: [], mockupScenes: [], instagram: true }), { instagram: ['-clean'], fler: [''] });
+  assert.deepEqual(expectedExports({ status: 'reserved', details: [], mockupScenes: [], instagram: true, instagramVariants }), { instagram: [...instagramVariants, '-post'], fler: [''] });
   // Instagram only when asked for
-  assert.deepEqual(expectedExports({ status: 'available', details, mockupScenes }).instagram, []);
+  assert.deepEqual(expectedExports({ status: 'available', details, mockupScenes, instagramVariants }).instagram, []);
   for (const status of ['sold', 'not-for-sale', undefined]) {
     assert.deepEqual(expectedExports({ status, details, mockupScenes }).fler, [], String(status));
   }
@@ -284,4 +245,61 @@ test('formatSizeCm: Czech decimal comma, whole numbers as they are, nothing with
   assert.equal(formatSizeCm([16.5, 4]), '16,5 × 4 cm');
   assert.equal(formatSizeCm([42, 30]), '42 × 30 cm');
   for (const bad of [undefined, null, [0, 0], [30], 'A4']) assert.equal(formatSizeCm(bad), '', String(bad));
+});
+
+test('exportFolder mirrors tvorba/: the folder of the collection (if any) and the slug', () => {
+  assert.equal(exportFolder('tvorba/2026-plener-sumava/bobri-hraz.yaml', 'bobri-hraz'), '2026-plener-sumava/bobri-hraz');
+  assert.equal(exportFolder('tvorba/maly-princ.yaml', 'maly-princ'), 'maly-princ');
+});
+
+test('exportFileName: the suffix without the work, original.jpg for Fler, .txt for the post', () => {
+  assert.equal(exportFileName(''), 'original.jpg');
+  assert.equal(exportFileName('-mockup-komoda'), 'mockup-komoda.jpg');
+  assert.equal(exportFileName('-caption-papir'), 'caption-papir.jpg');
+  assert.equal(exportFileName('-scene-stul-tmavy'), 'scene-stul-tmavy.jpg');
+  assert.equal(exportFileName('-detail-1-kvet'), 'detail-1-kvet.jpg');
+  assert.equal(exportFileName('-post'), 'post.txt');
+});
+
+test('planFolderPrune (Instagram): removes what no current work wants and the former flat layout, keeps own files', () => {
+  const wanted = new Map([
+    ['kolekce/rano', new Set(['caption-papir.jpg', 'scene-stojan.jpg', 'post.txt', 'detail-kvet.jpg'])],
+    ['vecer', new Set(['caption-papir.jpg', 'post.txt'])],
+  ]);
+  const files = [
+    'kolekce/rano/caption-papir.jpg', 'kolekce/rano/scene-stojan.jpg', 'kolekce/rano/post.txt', 'kolekce/rano/detail-kvet.jpg',
+    'kolekce/rano/detail-lodka.jpg',          // a detail the work no longer has
+    'kolekce/rano/scene-stary.jpg',           // a scene that no longer exists
+    'kolekce/rano/moje-poznamka.txt',         // own file: stays
+    'vecer/caption-papir.jpg', 'vecer/post.txt',
+    'smazane/caption-papir.jpg', 'smazane/post.txt', // a deleted work (or renamed, or Instagram switched off)
+    '2026/rano-k3f9a-clean.jpg', '2026/rano-k3f9a-caption-papir.jpg', // the former flat layout
+    '2026/poznamky.txt',                      // own file in an old year folder: stays
+  ];
+  assert.deepEqual(planFolderPrune(files, wanted, EXPORT_FILES.instagram), [
+    '2026/rano-k3f9a-caption-papir.jpg', '2026/rano-k3f9a-clean.jpg',
+    'kolekce/rano/detail-lodka.jpg', 'kolekce/rano/scene-stary.jpg',
+    'smazane/caption-papir.jpg', 'smazane/post.txt',
+  ]);
+  assert.deepEqual(planFolderPrune(files.slice(0, 4), wanted, EXPORT_FILES.instagram), []);
+});
+
+test('planFolderPrune (Fler): a work no longer on sale goes, an unknown state keeps everything, the flat layout goes', () => {
+  const files = [
+    'kolekce/volny/original.jpg', 'kolekce/volny/mockup-komoda.jpg', 'kolekce/volny/mockup-stara.jpg',
+    'prodany/original.jpg', 'prodany/mockup-police.jpg',          // sold: not in `wanted`
+    'novy/original.jpg', 'novy/mockup-cokoli.jpg',                // no web images yet: null keeps all
+    'kolekce/volny/cenik.pdf',                                    // own file
+    '2025/rybnik-u-stekne-gh8r2.jpg', '2025/rybnik-u-stekne-gh8r2-mockup-komoda.jpg', // former flat layout
+  ];
+  const wanted = new Map([['kolekce/volny', new Set(['original.jpg', 'mockup-komoda.jpg'])], ['novy', null]]);
+  assert.deepEqual(planFolderPrune(files, wanted, EXPORT_FILES.fler), [
+    '2025/rybnik-u-stekne-gh8r2-mockup-komoda.jpg', '2025/rybnik-u-stekne-gh8r2.jpg',
+    'kolekce/volny/mockup-stara.jpg', 'prodany/mockup-police.jpg', 'prodany/original.jpg',
+  ]);
+});
+
+test('planFolderPrune never takes a file of the other platform for its own', () => {
+  assert.deepEqual(planFolderPrune(['rano/post.txt', 'rano/caption-papir.jpg'], new Map(), EXPORT_FILES.fler), []);
+  assert.deepEqual(planFolderPrune(['rano/original.jpg'], new Map(), EXPORT_FILES.instagram), []);
 });

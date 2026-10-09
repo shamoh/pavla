@@ -16,7 +16,7 @@ meta_draft: false
 
 # testovací data: exporty pro Instagram (originál a detaily), i když není na prodej
 # Fotky pro Instagram, možnosti:
-# - true - připravit (export/instagram: originál a detailní fotky)
+# - true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, detailní fotky)
 # - false - žádné
 meta_instagram: true
 

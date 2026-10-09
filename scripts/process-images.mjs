@@ -14,13 +14,18 @@
 //   public/<page>/_cover/, public/<page>/og.jpg                            own cover photo and share image of the chosen cover of a
 //                                                                        collection (tvorba/kolekce/<slug>), year (tvorba/<year>) or
 //                                                                        the home page (the root); see scripts/lib/site-images.mjs (commit)
-//   <contentDir>/export/instagram/<year>/<key>-clean.jpg          Instagram, the original on paper, 4:5
-//   <contentDir>/export/instagram/<year>/<key>-detail-<name>.jpg  Instagram, a detail photo cropped to 4:5 (never mockups)
+//   <contentDir>/export/<platform>/[<collection>/]<slug>/  exports, a folder per work mirroring tvorba/ (exportFolder)
+//   <contentDir>/export/instagram/[<collection>/]<slug>/      Instagram:
+//     caption-<palette>.jpg   the work on the paper of a palette of the site with a caption, 4:5 (scripts/lib/instagram.mjs)
+//     scene-<scene>.jpg       the work in a studio scene, 4:5 (mockups/instagram/scenes.yaml)
+//     detail-<name>.jpg       a detail photo cropped to 4:5
+//     post.txt                the text of the post (description, collection, hashtags in Czech and English)
 //   (Instagram exports only for works with `meta_instagram: true`; otherwise they are removed)
 //
 // Copies for the public site repository contain only public fields: private_note never leaves the content repository.
-//   <contentDir>/export/fler/<year>/<key>.jpg                     Fler, the original with the author's name as watermark
-//   <contentDir>/export/fler/<year>/<key>-mockup-<scene>.jpg      Fler, the mockups with the same watermark
+//   <contentDir>/export/fler/[<collection>/]<slug>/           Fler:
+//     original.jpg            the original with the author's name as watermark
+//     mockup-<scene>.jpg      the mockups with the same watermark
 //   (Fler exports only for works on sale: available or reserved; otherwise they are removed)
 //   <contentDir>/tvorba/…/<slug>.yaml  meta_corners (corners of the sheet) written when missing (scripts/lib/corners.mjs)
 //   .previews/<slug>-<id>-*.jpg        cut previews of drafts: -backgrounds, -cut, -frames (outside git; on GitHub the
@@ -54,15 +59,17 @@ import { coverProblems, coverShareSource } from './lib/covers.mjs';
 import { placeholderProblems, prepareContent } from './lib/content.mjs';
 import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
+import { insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, renderCaption, renderScene, siteHost } from './lib/instagram.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
 import { cutOut, prepareCorners, trimTransparent, writePreviews } from './lib/corners.mjs';
 import { EDGE_DEFAULTS, cutsSheet, edgeLook, innerRegion } from './lib/edges.mjs';
 import { PALETTES } from './lib/palettes.mjs';
 import { formatSummary } from './lib/summary.mjs';
-import { pageAdvice, tagAdvice, tagStats, techniqueAdvice, workAdvice } from './lib/advice.mjs';
+import { hashtagAdvice, pageAdvice, tagAdvice, tagStats, techniqueAdvice, workAdvice } from './lib/advice.mjs';
 import {
-  PUBLIC_WORK_FIELDS, expectedExports, exportPattern, isOnSale, wantsInstagram, wantsMockups, planExportPrune, publicFields, validateWorks, workKey,
+  EXPORT_FILES, PUBLIC_WORK_FIELDS, expectedExports, exportFileName, exportFolder, exportPattern, isOnSale, wantsInstagram, wantsMockups,
+  planFolderPrune, publicFields, validSize, validateWorks, workKey,
 } from './lib/works.mjs';
 
 /** Bump when the output format changes, so every work is regenerated once. */
@@ -211,16 +218,6 @@ async function shareImage(file, m, img) {
   return { width: img.og.width, height: img.og.height };
 }
 
-async function instagramClean(file, m, img) {
-  const { width: W, height: H, background, padding } = img.instagram;
-  const pad = Math.round(W * padding);
-  const inner = await sharp(m.buf).resize({ width: W - 2 * pad, height: H - 2 * pad, fit: 'inside' }).toBuffer();
-  await sharp({ create: { width: W, height: H, channels: 3, background } })
-    .composite([{ input: inner, gravity: 'center' }])
-    .jpeg({ quality: 92, mozjpeg: true })
-    .toFile(file);
-}
-
 // A detail photo is a close-up, so it fills the whole 4:5 frame (centre crop) instead of sitting on paper.
 async function instagramDetail(file, buf, img) {
   const { width: W, height: H } = img.instagram;
@@ -272,8 +269,12 @@ async function photoSet(masterPath, dir, img, extra, { force, log, label }) {
   return true;
 }
 
-/** Removes every export of one work (both platforms), so a regeneration never leaves stale files behind. */
-async function clearExports(exportRoot, year, key) {
+/**
+ * Removes every export of one work, so a regeneration never leaves stale files behind: its folders on both
+ * platforms (`folder`, see exportFolder) and its files of the former flat layout <year>/<key>-….
+ */
+async function clearExports(exportRoot, year, key, folder) {
+  for (const sub of ['instagram', 'fler']) await fs.rm(path.join(exportRoot, sub, folder), { recursive: true, force: true });
   const own = exportPattern(key);
   for (const sub of ['instagram', 'fler']) {
     const dir = path.join(exportRoot, sub, year);
@@ -282,18 +283,18 @@ async function clearExports(exportRoot, year, key) {
   }
 }
 
-/** Lists "<year>/<name>" entries one level below `root` (name without `ext` when given). */
-async function listGenerated(root, ext) {
+/** Every file under `root` (recursively), as paths relative to it with "/". */
+async function listFiles(root) {
+  if (!(await exists(root))) return [];
   const out = [];
-  if (!(await exists(root))) return out;
-  for (const year of await fs.readdir(root, { withFileTypes: true })) {
-    if (!year.isDirectory()) continue;
-    for (const e of await fs.readdir(path.join(root, year.name), { withFileTypes: true })) {
-      if (ext ? e.isFile() && e.name.endsWith(ext) : e.isDirectory()) {
-        out.push(`${year.name}/${ext ? e.name.slice(0, -ext.length) : e.name}`);
-      }
+  const walk = async (dir, rel) => {
+    for (const e of await fs.readdir(dir, { withFileTypes: true })) {
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) await walk(path.join(dir, e.name), r);
+      else if (e.isFile()) out.push(r);
     }
-  }
+  };
+  await walk(root, '');
   return out;
 }
 
@@ -304,14 +305,6 @@ async function removeEmptyDirs(root) {
     if (e.isDirectory()) await removeEmptyDirs(path.join(root, e.name));
   }
   if ((await fs.readdir(root)).length === 0) await fs.rmdir(root);
-}
-
-async function removeEmptyYearDirs(root) {
-  if (!(await exists(root))) return;
-  for (const year of await fs.readdir(root, { withFileTypes: true })) {
-    const dir = path.join(root, year.name);
-    if (year.isDirectory() && (await fs.readdir(dir)).length === 0) await fs.rmdir(dir);
-  }
 }
 
 /**
@@ -331,6 +324,8 @@ export async function run({
   force = false,
   only = [],
   scenesDir,
+  instagramScenesDir,
+  fontsDir,
   log = console.log,
   today,
   random,
@@ -398,7 +393,7 @@ export async function run({
   updated.forEach((p) => log(`~ metadata brought in line with the schema: ${p}`));
   pending.forEach((p) => log(`! published, still marked DOPLNIT: ${p}`));
   const tags = tagStats(works);
-  const advice = [...workAdvice(works, { siteTitle: config.site?.title ?? '' }), ...techniqueAdvice(works), ...tagAdvice(works), ...pageAdvice({
+  const advice = [...workAdvice(works, { siteTitle: config.site?.title ?? '' }), ...techniqueAdvice(works), ...tagAdvice(works), ...hashtagAdvice(works, config.instagramPost), ...pageAdvice({
     collections: collections.collections, years: years.years, home: home.home, uncollected: uncollected.uncollected, photos: photos.photos,
   })];
   advice.forEach((p) => log(`? advice: ${p}`));
@@ -437,6 +432,12 @@ export async function run({
   }
   if (prepareOnly) return { ok: true, problems: [], created, assigned, detected, updated, pending, advice, tags, processed: 0, skipped: 0, missing: [], pruned: [], previews, prepared: true };
   const { scenes, text: scenesText } = await loadScenes(scenesDir);
+  // Instagram: captions on the papers of the palettes of the site, scenes of the studio (loaded once, when needed)
+  const instagramScenes = await loadInstagramScenes(instagramScenesDir);
+  const captionPalettes = PALETTES.map((p) => p.id);
+  const instagramVariants = instagramSuffixes(captionPalettes, instagramScenes.scenes.map((s) => s.name));
+  const instagramSettings = JSON.stringify({ ...img.instagram, host: siteHost(config.site?.url) });
+  let fonts = null;
 
   const publicDir = path.join(siteDir, 'public');
   const exportRoot = path.join(contentDir, 'export');
@@ -446,6 +447,8 @@ export async function run({
 
   let processed = 0, skipped = 0;
   const missing = [];
+  // works that do not fit the free part of a studio scene (their Instagram photo covers props): "Ke kontrole"
+  const misfits = [];
   // Public copies of the descriptions (content/, a mirror of the content repository): every path written by a full
   // run; anything else under content/ is removed at the end.
   const copies = new Set();
@@ -489,8 +492,15 @@ export async function run({
     const instagram = wantsInstagram(w.data);
     const mockupsOn = wantsMockups(w.data);
     const details = await Promise.all(w.details.map(async (d) => ({ name: d.name, buf: await fs.readFile(d.path) })));
+    // Instagram exports also show the title, technique, size and date (caption) and depend on the scenes and settings.
+    // Exports live in a folder mirroring tvorba/: a work moved to another collection gets them made again there.
+    const instagramInputs = instagram
+      ? [instagramScenes.text, instagramSettings, JSON.stringify([w.data.title, w.data.technique, w.data.size_cm, w.year])]
+      : [];
+    const folderInputs = instagram || onSale ? [exportFolder(w.yamlPath, w.slug)] : [];
     const fingerprint = sha1(
       String(PIPELINE_VERSION), master, JSON.stringify(w.data.size_cm ?? null), scenesText, String(onSale), String(instagram), String(mockupsOn),
+      ...instagramInputs, ...folderInputs,
       JSON.stringify(w.data.meta_corners ?? null), JSON.stringify(cutsSheet(w.data.meta_corners) ? edgeLook(edges) : null),
       ...details.flatMap((d) => [d.name, d.buf]),
     );
@@ -504,53 +514,88 @@ export async function run({
     if (mockupsOn && !picked.length) log(`  ! no mockup scene is big enough for ${rel} (see mockups/scenes.yaml maxCm)`);
     const mockups = await web(webDir, m, img, { work: w.data, picked, details, fingerprint });
 
-    // Exports. Instagram: only when asked for (meta_instagram: true), the original and the detail photos, never mockups.
+    // Exports. Instagram: only when asked for (meta_instagram: true): the work with a caption on the paper of every
+    // palette, the work in every studio scene and the detail photos; never the mockups of the site.
     // Fler: only works on sale, the original and the mockups, all with the watermark.
-    await clearExports(exportRoot, w.year, key);
+    const folder = exportFolder(w.yamlPath, w.slug);
+    await clearExports(exportRoot, w.year, key, folder);
     if (instagram) {
-      const insta = path.join(exportRoot, 'instagram', w.year);
+      const insta = path.join(exportRoot, 'instagram', folder);
       await fs.mkdir(insta, { recursive: true });
-      await instagramClean(path.join(insta, `${key}-clean.jpg`), m, img);
-      for (const d of details) await instagramDetail(path.join(insta, `${key}-detail-${d.name}.jpg`), d.buf, img);
+      fonts ??= await loadFonts(fontsDir);
+      const art = await insetWork(m.buf, img.instagram.insetPercent ?? 0);
+      const host = siteHost(config.site?.url);
+      for (const p of PALETTES) {
+        const buf = await renderCaption({ art, work: w.data, year: w.year, host, colors: p.colors, fonts, config: img.instagram });
+        await fs.writeFile(path.join(insta, exportFileName(`-caption-${p.id}`)), buf);
+      }
+      if (validSize(w.data.size_cm)) {
+        for (const scene of instagramScenes.scenes) {
+          const { buf, placement } = await renderScene({ art, work: { ...w.data, id: w.id }, scene, config: img.instagram });
+          if (!placement.fits) {
+            log(`  ! ${rel}: does not fit the free part of the scene ${scene.name} (see mockups/instagram/scenes.yaml)`);
+            misfits.push(`${w.yamlPath}: obraz se na „${scene.label ?? scene.name}“ nevejde mimo rekvizity, `
+              + `na fotce export/instagram/${folder}/${exportFileName(`-scene-${scene.name}`)} je částečně `
+              + 'zakrývá (tuhle fotku raději nepoužij)');
+          }
+          await fs.writeFile(path.join(insta, exportFileName(`-scene-${scene.name}`)), buf);
+        }
+      }
+      for (const d of details) await instagramDetail(path.join(insta, exportFileName(`-detail-${d.name}`)), d.buf, img);
     }
     if (onSale) {
-      const flerDir = path.join(exportRoot, 'fler', w.year);
+      const flerDir = path.join(exportRoot, 'fler', folder);
       await fs.mkdir(flerDir, { recursive: true });
-      await fler(path.join(flerDir, `${key}.jpg`), m.buf, img);
-      for (const mk of mockups) await fler(path.join(flerDir, `${key}-mockup-${mk.scene}.jpg`), mk.buf, img);
+      await fler(path.join(flerDir, exportFileName('')), m.buf, img);
+      for (const mk of mockups) await fler(path.join(flerDir, exportFileName(`-mockup-${mk.scene}`)), mk.buf, img);
     }
     processed++;
     return true;
   };
 
+  // titles of the collections by slug, for the text of Instagram posts
+  const collectionTitles = new Map(collections.collections.map((c) => [c.slug, typeof c.data?.title === 'string' ? c.data.title : '']));
   for (const w of published) {
     if (only.length && !only.includes(w.slug)) continue;
     const key = workKey(w.slug, w.id);
     outputs.add(workImageDir(w.year, key));
     const imagesChanged = await workImages(w, key, `${w.year}/${key}`);
     await writeWorkCopy(w, imagesChanged);
+    // The text of an Instagram post: cheap, so written by every run (it follows the description and tags at once).
+    if (wantsInstagram(w.data)) {
+      const text = instagramPost({
+        work: w.data, year: w.year, host: siteHost(config.site?.url), onSale: isOnSale(w.data.status), settings: config.instagramPost,
+        collection: collectionTitles.get(w.collection) ?? '',
+      });
+      await writeIfChanged(path.join(exportRoot, 'instagram', exportFolder(w.yamlPath, w.slug), exportFileName('-post')), text);
+    }
   }
 
   const pruned = [];
   if (!only.length) {
     // Stale exports, independent of whether the work was regenerated in this run: exports of deleted, renamed
     // or draft works, of detail photos and mockup scenes a work no longer has, Fler exports of works not on sale.
-    const expected = new Map();
+    // folder of a work (exportFolder) -> the file names it should have there (null = any, state unknown), per platform
+    const wanted = { instagram: new Map(), fler: new Map() };
     for (const w of published) {
-      const rel = `${w.year}/${workKey(w.slug, w.id)}`;
       const info = await readJson(path.join(publicDir, workImageDir(w.year, workKey(w.slug, w.id)), 'info.json'));
       const mockupScenes = info ? (info.mockups ?? []).map((m) => m.scene) : null;
-      expected.set(rel, expectedExports({ status: w.data.status, details: w.details.map((d) => d.name), mockupScenes, instagram: wantsInstagram(w.data) }));
+      const variants = validSize(w.data.size_cm) ? instagramVariants : instagramVariants.filter((v) => !v.startsWith('-scene-'));
+      const e = expectedExports({ status: w.data.status, details: w.details.map((d) => d.name), mockupScenes, instagram: wantsInstagram(w.data), instagramVariants: variants });
+      const folder = exportFolder(w.yamlPath, w.slug);
+      for (const sub of ['instagram', 'fler']) {
+        if (e[sub] === null) wanted[sub].set(folder, null);
+        else if (e[sub].length) wanted[sub].set(folder, new Set(e[sub].map(exportFileName)));
+      }
     }
     for (const sub of ['instagram', 'fler']) {
       const root = path.join(exportRoot, sub);
-      const wantedExports = new Map([...expected].map(([rel, e]) => [rel, e[sub]]));
-      for (const rel of planExportPrune((await listGenerated(root, '.jpg')).map((f) => `${f}.jpg`), wantedExports)) {
+      for (const rel of planFolderPrune(await listFiles(root), wanted[sub], EXPORT_FILES[sub])) {
         await fs.rm(path.join(root, rel));
         pruned.push(`export/${sub}/${rel}`);
       }
+      await removeEmptyDirs(root);
     }
-    for (const sub of ['instagram', 'fler']) await removeEmptyYearDirs(path.join(exportRoot, sub));
   }
 
   // Other photos (portrait, studio): public/fotky/<name>/ (images), content/fotky/<name>.yaml (alt, caption, focus)
@@ -637,7 +682,7 @@ export async function run({
   }
   pruned.forEach((p) => log(`- removed ${p}`));
 
-  return { ok: missing.length === 0, problems: [], created, assigned, detected, updated, pending, advice, tags, processed, skipped, missing, pruned, previews };
+  return { ok: missing.length === 0, problems: [], created, assigned, detected, updated, pending, advice, tags, processed, skipped, missing, pruned, previews, misfits };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

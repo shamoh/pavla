@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  COLLECTION_TITLE_CHARS, TAG_ROWS, TECHNIQUE_CHARS, endsSentence, endsWithFullStop, pageAdvice, sameTag, startsLowercase, tagAdvice, tagKey, tagRows, tagStats, techniqueAdvice, workAdvice, workTitleChars,
+  COLLECTION_TITLE_CHARS, TAG_ROWS, TECHNIQUE_CHARS, endsSentence, endsWithFullStop, hashtagAdvice, pageAdvice, sameTag, startsLowercase, tagAdvice, tagKey, tagRows, tagStats, techniqueAdvice, workAdvice, workTitleChars,
 } from './advice.mjs';
 
 const good = {
@@ -196,4 +196,19 @@ test('pageAdvice: the description of the works without a collection, like other 
     'tvorba/_index.yaml: description začíná malým písmenem', 'tvorba/_index.yaml: description by měl končit tečkou',
   ]);
   assert.deepEqual(at(undefined), [], 'no description = the default text');
+});
+
+test('hashtagAdvice: only works with Instagram exports, every word without an English hashtag', () => {
+  const settings = { en: { akvarel: 'watercolor', krajina: 'landscape' } };
+  const works = [
+    { yamlPath: 'tvorba/a.yaml', data: { meta_instagram: true, technique: 'akvarel', tags: ['krajina', 'mlha'] } },
+    { yamlPath: 'tvorba/b.yaml', data: { meta_instagram: true, technique: 'kvaš', tags: ['mlha'] } },
+    { yamlPath: 'tvorba/c.yaml', data: { meta_instagram: false, technique: 'kvaš', tags: ['mlha'] } },
+    { yamlPath: 'tvorba/d.yaml', data: { meta_instagram: true, technique: 'akvarel', tags: ['krajina'] } },
+  ];
+  assert.deepEqual(hashtagAdvice(works, settings), [
+    'tvorba/a.yaml: štítek „mlha“ nemá v textu příspěvku pro Instagram anglický hashtag (překlad doplní Libor do nastavení webu, instagramPost.en)',
+    'tvorba/b.yaml: štítky „kvaš“, „mlha“ nemají v textu příspěvku pro Instagram anglický hashtag (překlad doplní Libor do nastavení webu, instagramPost.en)',
+  ]);
+  assert.deepEqual(hashtagAdvice(works, { en: { akvarel: 'a', krajina: 'b', kvaš: 'c', mlha: 'd' } }), []);
 });
