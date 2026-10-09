@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FEATURED_ON, NO_COLLECTION,
+import { FEATURED_ON, NO_COLLECTION, czechOrder,
   countStatuses, matchesFilters, offersOption, statusOptions, yearFilterOptions, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
   facetChoices, facetDisplay, facetValues, pagingFromParams, pagingToParams, sortTags, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
 } from './gallery-filter.mjs';
@@ -335,4 +335,12 @@ test('pagingFromParams / pagingToParams: the paging of any listing', () => {
   assert.deepEqual(pagingFromParams(new URLSearchParams('page=-2&perPage=13')), { page: 1, perPage: null });
   assert.equal(pagingToParams(new URLSearchParams('year=2025'), { page: 2, perPage: 48 }).toString(), 'year=2025&page=2&perPage=48');
   assert.equal(pagingToParams(new URLSearchParams(), { page: 1, perPage: null }).toString(), '');
+});
+
+test('czechOrder: Czech alphabetical order (ch after h, diacritics), by title or a given name, a new array', () => {
+  const items = [{ title: 'Řeky 2021–2023' }, { title: 'Chalupa' }, { title: 'Hory' }, { title: 'Cesty' }, { title: 'Rybníky' }, { title: 'Čápi' }];
+  assert.deepEqual(czechOrder(items).map((i) => i.title), ['Cesty', 'Čápi', 'Hory', 'Chalupa', 'Rybníky', 'Řeky 2021–2023']);
+  assert.equal(items[0].title, 'Řeky 2021–2023', 'input left as it was');
+  const techniques = [['tempera', 1], ['akvarel', 23], ['kresba tužkou', 8], ['kvaš', 4]];
+  assert.deepEqual(czechOrder(techniques, ([t]) => t).map(([t]) => t), ['akvarel', 'kresba tužkou', 'kvaš', 'tempera']);
 });

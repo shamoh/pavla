@@ -63,6 +63,14 @@ export const FEATURED_ON = '1';
  * Czech names (slugify), so none is ever "none".
  */
 export const NO_COLLECTION = 'none';
+
+/**
+ * `items` in Czech alphabetical order of `name(item)` (the title by default), a new array: the collections and
+ * techniques of the gallery filters, easy to find a known one.
+ */
+export function czechOrder(items, name = (item) => item.title) {
+  return [...items].sort((a, b) => name(a).localeCompare(name(b), 'cs'));
+}
 /** The name of the works in no collection: the item of the collections overview, the chip in the filter bar (lower case). */
 export const NO_COLLECTION_TITLE = 'Mimo kolekce';
 

@@ -1,8 +1,8 @@
 ---
 import WorkCard from './WorkCard.astro';
 import Pager from './Pager.astro';
-import { type Work, config, getCollection, getCollections, getYears, url } from '../lib/site';
-import { NO_COLLECTION, NO_COLLECTION_TITLE, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
+import { type Work, config, getCollections, getYears, url } from '../lib/site';
+import { NO_COLLECTION, NO_COLLECTION_TITLE, czechOrder, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
 import { overviewLink, yearCounts, yearOptions } from '../../scripts/lib/collection-filter.mjs';
 
 interface Props { works: Work[]; year?: number; collection?: string }
@@ -16,8 +16,12 @@ const count = (vals: string[]) => {
 };
 // Tag chips in Czech alphabetical order: easy to find a known one, and a new work never reorders them.
 const tags = count(works.flatMap((w) => w.tags)).sort((a, b) => a[0].localeCompare(b[0], 'cs'));
-const techniques = count(works.map((w) => w.technique));
-const collections = count(works.flatMap((w) => (w.collection ? [w.collection] : []))).map(([slug, n]) => ({ slug, n, title: getCollection(slug)?.title ?? slug }));
+// Techniques in Czech alphabetical order, like the collections.
+const techniques = czechOrder(count(works.map((w) => w.technique)), ([t]) => t);
+// Collections in Czech alphabetical order (easy to find a known one), each with its works on this page;
+// the collection filter is a combobox over this select (src/lib/combobox.ts).
+const inPage = new Map(count(works.flatMap((w) => (w.collection ? [w.collection] : []))));
+const collections = czechOrder(getCollections()).filter((c) => inPage.has(c.slug)).map((c) => ({ slug: c.slug, n: inPage.get(c.slug)!, title: c.title }));
 // "žádná" right after "vše": the works in no collection (?collection=none), when some are.
 const uncollected = works.filter((w) => !w.collection).length;
 // Every status option with some works; the browser greys the filter out while none of them narrows (facetDisplay).
@@ -111,7 +115,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   // Paging happens here too: the filtered list is split into pages, cards of other pages are hidden
   // (hidden cards load no images). Without JavaScript every work is shown.
   import {
-    ALL_PAGES, FEATURED_ON, PAGE_SIZE_STORAGE_KEY, facetChoices, facetDisplay, matchesFilters, pageAfterFilterChange, pageSizeOf, pageSizeToRemember, paginate,
+    ALL_PAGES, FEATURED_ON, NO_COLLECTION, PAGE_SIZE_STORAGE_KEY, facetChoices, facetDisplay, matchesFilters, pageAfterFilterChange, pageSizeOf, pageSizeToRemember, paginate,
     rememberedPageSize, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
   } from '../../scripts/lib/gallery-filter.mjs';
   import { EVENTS, filterEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
@@ -119,6 +123,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   import { fitYearRow } from '../lib/year-row';
   import { pagerTarget, renderPager } from '../lib/pager';
   import { normalizeQuery } from '../../scripts/lib/search.mjs';
+  import { selectCombobox } from '../lib/combobox';
   import { BAR_START, activeFilters, scrollBar, withoutFilter, worksCount } from '../../scripts/lib/filter-bar.mjs';
 
   // The year links stay on one line, older years behind "2017–2003 ▾" (src/lib/year-row.ts).
@@ -153,6 +158,11 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   // instead of hiding, which Safari on iOS ignores).
   const allOptions = Object.fromEntries(selects.map((k) => [k, [...select(k)!.options]]));
   const featuredCount = form.querySelector<HTMLElement>('[data-featured-count]');
+  // The collection filter as a combobox over its select ("vše" and "žádná" stay on top while typing).
+  const collectionSelect = select('collection');
+  const collectionCombo = collectionSelect
+    ? selectCombobox(collectionSelect, { keep: collectionSelect.querySelector(`option[value="${NO_COLLECTION}"]`) ? 2 : 1, placeholder: 'vše' })
+    : null;
   const FEATURED_TITLE = featuredBox?.closest('label')?.title ?? '';
   const params = new URLSearchParams(location.search);
   let state = stateFromParams(params, pageSizes);
@@ -240,6 +250,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     if (perPageLabel) perPageLabel.hidden = matching.length <= pageSizes[0];
     countEl.textContent = `${shown} ${plural(shown)}`;
     renderBar(shown);
+    collectionCombo?.sync();
     emptyEl.hidden = shown > 0;
     const p = stateToParams(state);
     history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
@@ -469,6 +480,30 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
      So the filters stay on one line on a computer whatever the names (SELECT_CHARS in scripts/lib/advice.mjs). */
   .selects select { max-width: 11em; text-overflow: ellipsis; }
   .selects select[name='collection'] { max-width: 13em; }
+  /* The collection combobox (src/lib/combobox.ts, made by the script, so :global): looks like the selects, as wide as
+     the collection select was; the list under it is as wide as its longest name needs and shows every name whole. */
+  .selects :global(.combo) { position: relative; display: inline-flex; }
+  .selects :global(.combo-input) {
+    font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 2px;
+    padding: 4px 22px 4px 8px; width: 13em; text-overflow: ellipsis;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%), linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+    background-position: calc(100% - 12px) 55%, calc(100% - 8px) 55%; background-size: 4px 4px; background-repeat: no-repeat;
+  }
+  /* The hint "vše" of an emptied field: lighter, so it is not mistaken for typed text (Enter picks it). */
+  .selects :global(.combo-input::placeholder) { color: var(--ink-soft); opacity: 1; }
+  .selects :global(.combo-input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .selects :global(.combo-input:disabled) { cursor: default; }
+  .selects :global(.combo-list) {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 50; margin: 0; padding: 4px 0; list-style: none;
+    min-width: 100%; width: max-content; max-width: min(28rem, 90vw); max-height: 18rem; overflow-y: auto;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 2px; box-shadow: var(--shadow-soft);
+  }
+  .selects :global(.combo-list[hidden]) { display: none; }
+  .selects :global(.combo-list li) { padding: 5px 12px; color: var(--ink); cursor: pointer; }
+  /* The option the arrows are on: clearly marked (shade and an accent bar), the typed text stays as it is. */
+  .selects :global(.combo-list li:hover) { background: var(--paper-2); }
+  .selects :global(.combo-list li.active) { background: var(--paper-2); box-shadow: inset 3px 0 0 var(--accent); }
+  .selects :global(.combo-list li[aria-selected='true']) { font-weight: 500; }
   .selects label[hidden] { display: none; }
   .selects .switch { color: var(--ink); cursor: pointer; }
   .count { margin-left: auto; }

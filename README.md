@@ -193,7 +193,7 @@ Skrytá lišta je `inert`, při `prefers-reduced-motion` bez animace, bez JavaSc
 
 **Počty a nabízené volby podle aktuálního výběru** (`facetChoices`, `facetValues`): po každé změně filtru má každá
 volba výběrů Technika, Rok, Kolekce a Stav i přepínač „Doporučené“ počet děl, která by ukázala spolu s ostatními
-aktivními filtry (sama sebe nepočítá, takže počty u jiných voleb téhož výběru říkají, co dá přepnutí; volby Stavu se
+aktivními filtry (Technika a Kolekce česky podle abecedy, `czechOrder`; sama sebe nepočítá, takže počty u jiných voleb téhož výběru říkají, co dá přepnutí; volby Stavu se
 překrývají, každá se počítá zvlášť). Ve výběru zůstanou jen volby, které zobrazená díla zúží a nevyprázdní
 (`offersOption` nad díly, která nechají ostatní filtry); vybraná zůstane vždy. Skryté volby se z výběru odeberou
 (skrývání `<option>` Safari na iOS nerespektuje). Výběr ani přepínač bez žádné takové volby se **neskryje, ale zašedne**
@@ -636,6 +636,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (8 děl, Kolekce jen Kresby…, Skicák (po 2), Plenér Šumava, Portréty, Ptáci, Tatry (po 1), bez „žádná“), + kolekce Kresby, pastely a kvaš (2 díla; přepínač Doporučené zmizí, oba obrazy jsou vybrané); štítek „krajina“: Technika jen akvarel (23), kresba tužkou, kvaš, linoryt |
 | výběr více štítků („a zároveň“): čipy se zapínají a vypínají, aktivní zůstanou jen ty, které výběr zúží, ostatní zašednou | `/tvorba/`: „krajina“ (28 děl, 17 aktivních čipů), + „voda“ (9 děl, aktivní hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, aktivní jaro a léto), „Vše“ zruší |
 | hledání v názvech a popisech děl | `/tvorba/`: pole vpravo od „Tvorba“, „most noc“ → Most v noci (`?q=most+noc`, v liště čip „„most noc“ ×“); `/tvorba/kolekce/demo-plener-sumava-2026/`: pole pod textem kolekce, „mlha“ → Ráno u rybníka (slovo jen v popisu), Šumava v mlze ne (jiný tvar) |
+| combobox Kolekce | `/tvorba/`: klik do „Kolekce“, napiš „plener“ → vše, žádná, Plenér Krkonoše 2006, Plenér Šumava 2026 (podle abecedy), ↓ a Enter vybere Krkonoše (`?collection=demo-plener-krkonose-2006`), Esc zavře seznam a vrátí vybranou; „xyz“ nechá jen vše a žádná |
 | přehled kolekcí: pořadí, stránkování, hledání | `/tvorba/kolekce/`: 16 kolekcí + „Mimo kolekce“ = 2 stránky po 12 (Město 2026 první, „Mimo kolekce“ poslední na 2. stránce), „Na stránku“ 24 = vše na jedné (paměť `pavla.collections.perPage`, galerie se nezmění); hledání „plener“ → Plenér Šumava 2026 a Plenér Krkonoše 2006, „strbskym“ → Tatry 2000 (slovo jen v popisu), „mimo“ → „Hledání neodpovídá žádná kolekce.“ |
 | zašedlé filtry místo schovaných | `/tvorba/2000/`: Kolekce zašedlá s „Tatry 2000 (3)“, „Doporučené (0)“ a čip „#krajina“ zašedlé, Technika a Stav aktivní; `/tvorba/2007/` (jedno dílo) vše zašedlé |
 | doporučení ke štítkům v souhrnu: jeden štítek ve dvou tvarech / dva štítky vždy spolu / čipy přes 2 řádky; statistika štítků | „květiny“ a „květina“ (Pivoňky) / „noc“ a „světla“ (Noční město 2019) / 31 štítků asi na 3 řádky, kandidáti jen u jednoho díla; výpis `npm run demo:prepare` (`? advice: Štítky: …`) |
@@ -842,6 +843,13 @@ private_note: kde … # NEPOVINNÉ, soukromé, na web se nedostane
   publikovaným dílem. Vedou na ni přehled `/tvorba/kolekce/` a řádek „Kolekce“
   u každého jejího díla (řádek filtrů galerie na ni neodkazuje).
 - V galerii je výběr „Kolekce“ s počty děl; volba „žádná“ (`?collection=none`) ukáže díla, která v žádné kolekci nejsou.
+  Výběr je **combobox** (ARIA vzor, `src/lib/combobox.ts`, logika `scripts/lib/combobox.mjs`): kolekce česky podle abecedy
+  (`czechOrder`), kliknutí nebo Tab označí celý text (psaní ho přepíše), smazaný text ukáže světlou nápovědu „vše“ a Enter
+  ji vybere (`typedActive`), aktivní položka má podklad a pruh v barvě `--accent`, psaním se seznam zužuje podle pravidel hledání (`comboMatches`; „vše“ a „žádná“ zůstávají
+  nahoře), šipky ↓/↑ seznam otevřou a posouvají, Enter vybere, Esc zavře jen seznam (panel filtrů zůstane), Tab odejde.
+  Rozbalený seznam ukáže celé názvy. Psaný text se nikam nezapisuje, do adresy jde jen vybraná kolekce. Pod ním zůstává
+  skrytý nativní `<select name="collection">`, jediný stav filtru (počty, nabízené volby, zašednutí, čip v liště); combobox
+  ho jen nastavuje a po každé změně se srovná (`sync`).
 - Přehled `/tvorba/kolekce/` končí položkou **„Mimo kolekce“** (`NO_COLLECTION_TITLE`, `getUncollected` v `src/lib/site.ts`,
   název kurzívou, protože to kolekce není): díla bez kolekce, vede do galerie `/tvorba/?collection=none`. Úvodní
   obraz podle stejného pravidla jako u kolekce z `tvorba/_index.yaml` obsahového repa (`UNCOLLECTED_SCHEMA`,
@@ -1031,6 +1039,9 @@ Návštěvník si v patičce vybere barvy webu: **Automaticky** (podle světléh
 - **Kontrola** (`checkPalettes`, test): každá paleta má všechny barvy jako `#rrggbb`, unikátní `id` (ne `auto`),
   kladnou sílu stínu, a každá barva textu (`ink`, `inkSoft`, `accent`, `ok`, `error`) má proti `paper` kontrast
   aspoň 4,5 : 1 (WCAG AA). Aspoň jedna světlá a jedna tmavá paleta. Nečitelná paleta neprojde `npm test`.
+- **Kontrola proměnných** (`scripts/lib/css-vars.mjs`, test `css-vars.test.mjs`): každé `var(--…)` v `src/` musí být
+  definované, paletou (`paletteCss`) nebo v kódu (`--název:` v CSS či atributu `style`, `setProperty('--název', …)`).
+  Překlep (`--paper2` místo `--paper-2`) prohlížeč tiše zahodí, tady neprojde `npm test` a vypíše soubor a název.
 - **Bez probliknutí**: CSS všech palet a malý skript (`paletteScript`) jsou vložené v `<head>` (`Base.astro`) před
   vykreslením; skript nastaví `data-palette` (zobrazená paleta) a `data-palette-choice` (volba) na `<html>`
   a barvu lišty prohlížeče (`theme-color`). Bez JavaScriptu rozhoduje systém a přepínač se neukáže.
