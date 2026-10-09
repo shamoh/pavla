@@ -112,7 +112,8 @@ images:
     longEdge: 2000
     quality: 90
     watermark: Pavla Kramolišová         # jen jméno, žádný odkaz ven (pravidla Fleru)
-    watermarkOpacity: 0.55
+    watermarkOpacity: 0.9                # krytí světlého písma podpisu (písmo webu, vpravo dole, scripts/lib/watermark.mjs)
+    watermarkShadow: 0.6                 # krytí jeho měkkého tmavého stínu (čitelné na světlém i tmavém pozadí)
     background: "#ffffff"                # místo průhledného okolí díla (podlahy vně rohů listu)
   edges:                                 # ořez podlahy podle rohů listu (meta_corners), viz README „Ořez podlahy“
     feather: 0.01                        # šířka prolnutí hrany s pozadím (podíl kratší strany)

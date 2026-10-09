@@ -193,7 +193,7 @@ test('exportPattern matches every export of one work and nothing of another', ()
   const re = exportPattern('rano-k3f9a');
   for (const f of [
     'rano-k3f9a.jpg', 'rano-k3f9a-clean.jpg', 'rano-k3f9a-wall.jpg', 'rano-k3f9a-mockup-obyvak-vecer.jpg', 'rano-k3f9a-detail-1-mlha.jpg',
-    'rano-k3f9a-caption-papir.jpg', 'rano-k3f9a-scene-stul-tmavy.jpg', 'rano-k3f9a-post.txt',
+    'rano-k3f9a-caption-papir.jpg', 'rano-k3f9a-scene-stul-tmavy.jpg',
   ]) {
     assert.ok(re.test(f), f);
   }
@@ -205,10 +205,10 @@ test('expectedExports: Instagram (when asked for) captions, scenes and details, 
   const mockupScenes = ['police', 'pracovna'];
   const instagramVariants = ['-caption-papir', '-scene-stojan'];
   assert.deepEqual(expectedExports({ status: 'available', details, mockupScenes, instagram: true, instagramVariants }), {
-    instagram: ['-caption-papir', '-scene-stojan', '-post', '-detail-kvet'],
+    instagram: ['-caption-papir', '-scene-stojan', '-detail-kvet'],
     fler: ['', '-mockup-police', '-mockup-pracovna'],
   });
-  assert.deepEqual(expectedExports({ status: 'reserved', details: [], mockupScenes: [], instagram: true, instagramVariants }), { instagram: [...instagramVariants, '-post'], fler: [''] });
+  assert.deepEqual(expectedExports({ status: 'reserved', details: [], mockupScenes: [], instagram: true, instagramVariants }), { instagram: instagramVariants, fler: [''] });
   // Instagram only when asked for
   assert.deepEqual(expectedExports({ status: 'available', details, mockupScenes, instagramVariants }).instagram, []);
   for (const status of ['sold', 'not-for-sale', undefined]) {
@@ -258,28 +258,28 @@ test('exportFileName: the suffix without the work, original.jpg for Fler, .txt f
   assert.equal(exportFileName('-caption-papir'), 'caption-papir.jpg');
   assert.equal(exportFileName('-scene-stul-tmavy'), 'scene-stul-tmavy.jpg');
   assert.equal(exportFileName('-detail-1-kvet'), 'detail-1-kvet.jpg');
-  assert.equal(exportFileName('-post'), 'post.txt');
 });
 
 test('planFolderPrune (Instagram): removes what no current work wants and the former flat layout, keeps own files', () => {
   const wanted = new Map([
-    ['kolekce/rano', new Set(['caption-papir.jpg', 'scene-stojan.jpg', 'post.txt', 'detail-kvet.jpg'])],
-    ['vecer', new Set(['caption-papir.jpg', 'post.txt'])],
+    ['kolekce/rano', new Set(['README.md', 'caption-papir.jpg', 'scene-stojan.jpg', 'detail-kvet.jpg'])],
+    ['vecer', new Set(['README.md', 'caption-papir.jpg'])],
   ]);
   const files = [
-    'kolekce/rano/caption-papir.jpg', 'kolekce/rano/scene-stojan.jpg', 'kolekce/rano/post.txt', 'kolekce/rano/detail-kvet.jpg',
+    'kolekce/rano/caption-papir.jpg', 'kolekce/rano/scene-stojan.jpg', 'kolekce/rano/README.md', 'kolekce/rano/detail-kvet.jpg',
+    'kolekce/rano/post.txt',                  // the former text of the post (now in README.md)
     'kolekce/rano/detail-lodka.jpg',          // a detail the work no longer has
     'kolekce/rano/scene-stary.jpg',           // a scene that no longer exists
     'kolekce/rano/moje-poznamka.txt',         // own file: stays
-    'vecer/caption-papir.jpg', 'vecer/post.txt',
-    'smazane/caption-papir.jpg', 'smazane/post.txt', // a deleted work (or renamed, or Instagram switched off)
+    'vecer/caption-papir.jpg', 'vecer/README.md',
+    'smazane/caption-papir.jpg', 'smazane/README.md', // a deleted work (or renamed, or Instagram switched off)
     '2026/rano-k3f9a-clean.jpg', '2026/rano-k3f9a-caption-papir.jpg', // the former flat layout
     '2026/poznamky.txt',                      // own file in an old year folder: stays
   ];
   assert.deepEqual(planFolderPrune(files, wanted, EXPORT_FILES.instagram), [
     '2026/rano-k3f9a-caption-papir.jpg', '2026/rano-k3f9a-clean.jpg',
-    'kolekce/rano/detail-lodka.jpg', 'kolekce/rano/scene-stary.jpg',
-    'smazane/caption-papir.jpg', 'smazane/post.txt',
+    'kolekce/rano/detail-lodka.jpg', 'kolekce/rano/post.txt', 'kolekce/rano/scene-stary.jpg',
+    'smazane/README.md', 'smazane/caption-papir.jpg',
   ]);
   assert.deepEqual(planFolderPrune(files.slice(0, 4), wanted, EXPORT_FILES.instagram), []);
 });
@@ -302,4 +302,9 @@ test('planFolderPrune (Fler): a work no longer on sale goes, an unknown state ke
 test('planFolderPrune never takes a file of the other platform for its own', () => {
   assert.deepEqual(planFolderPrune(['rano/post.txt', 'rano/caption-papir.jpg'], new Map(), EXPORT_FILES.fler), []);
   assert.deepEqual(planFolderPrune(['rano/original.jpg'], new Map(), EXPORT_FILES.instagram), []);
+});
+
+test('EXPORT_FILES: the README preview of a folder belongs to the pipeline on both platforms', () => {
+  assert.ok(EXPORT_FILES.instagram.test('README.md') && EXPORT_FILES.fler.test('README.md'));
+  assert.ok(!EXPORT_FILES.fler.test('readme.md') && !EXPORT_FILES.fler.test('poznamka.md'));
 });

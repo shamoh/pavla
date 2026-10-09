@@ -59,10 +59,12 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   na papíru každé palety s popiskem název / technika · rozměr · rok / adresa webu, písma z `fonts/` jako křivky přes
   `opentype.js`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru `mockups/instagram/scenes.yaml`: perspektiva z rohů
   prázdného listu, skutečné měřítko, stoly mimo rekvizity s opačným pootočením podle `id`, stojan na liště na ose;
-  jen se `size_cm`), `detail-<jméno>.jpg` a `post.txt` (text příspěvku s kolekcí a hashtagy česky a anglicky, slovník
+  jen se `size_cm`), `detail-<jméno>.jpg` a `README.md` (náhled pro GitHub s textem příspěvku s kolekcí a hashtagy česky a anglicky, slovník
   `instagramPost` v `site.config.yaml`, kolekce i jako hashtag, píše se každým během; štítek bez překladu = doporučení
   `hashtagAdvice`); před tím ořez `images.instagram.insetPercent`; `scripts/lib/instagram.mjs`.
   Nevejde-li se dílo do volné části scény: snímek vznikne, souhrn běhu „Ke kontrole“ (`misfits`).
+  Každá složka díla (obě platformy) má `README.md` s náhledy (GitHub ho vykreslí), platformy přehled `export/<platforma>/README.md`
+  (`scripts/lib/export-readme.mjs`; Instagram i s textem příspěvku, Fler s cenou).
   Fler jen díla na prodej, také ve složce díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` + `mockup-<scéna>.jpg`,
   vše s vodoznakem. Při přegenerování se složky díla mažou (`clearExports`), plný běh navíc porovná `export/`
   s `expectedExports` a smaže vše navíc (`planFolderPrune`, jen jména z `EXPORT_FILES`, neznámé soubory nechá,
@@ -216,7 +218,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (`var(--paper)`, `var(--shadow-deep)`…), nikdy barva natvrdo; i prvky formulářů (zaškrtávátko v `Base.astro`
   `appearance: none` z palety, nativní jen ve `forced-colors`); nová paleta = záznam v `PALETTES` (test hlídá kontrast);
   každé `var(--…)` musí být definované (paleta nebo `--název:` / `setProperty`), hlídá `css-vars.test.mjs`.
-- Vodoznak pro Fler: jen jméno, nikdy URL ani @handle (pravidla Fleru).
+- Vodoznak pro Fler: jen jméno, nikdy URL ani @handle (pravidla Fleru); světlé písmo webu se stínem (`scripts/lib/watermark.mjs`,
+  `WATERMARK_LOOK` je v otisku díla na prodej).
 - Mockupy musí držet reálné měřítko podle `size_cm`.
 - Před commitem: `npm test`, `npm run build` a `npm run demo:build` musí projít; `npm run check:images` (a pro testovací
   web `SITE_DATA_DIR=.demo/site npm run check:images`) ověří, že žádný obrázek, na který stránky odkazují, nechybí.

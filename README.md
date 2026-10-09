@@ -740,14 +740,14 @@ s `meta_instagram: true` součástí otisku: přesun díla do jiné kolekce ho p
   `-clean.jpg` a `-wall.jpg` pro Instagram).
 
 Ve složkách děl úklid maže jen soubory, které pipeline zapisuje (`EXPORT_FILES`: Instagram `caption-*`, `scene-*`,
-`detail-*`, `post.txt`; Fler `original.jpg`, `mockup-*`). Cokoli jiného (vlastní poznámky) nechá být. Běh s jedním
+`detail-*`, `README.md` a dřívější `post.txt`; Fler `original.jpg`, `mockup-*`, `README.md`). Cokoli jiného (vlastní poznámky) nechá být. Běh s jedním
 dílem (`npm run images -- <slug>`) nic nemaže. Smazané soubory jsou v logu (`- removed export/…`) a v souhrnu běhu
 na GitHubu. Logika: `planFolderPrune` v `scripts/lib/works.mjs`.
 
 | Platforma | Kdy | Soubory |
 |---|---|---|
-| Instagram | jen dílo s `meta_instagram: true` | složka díla `export/instagram/[<kolekce>/]<slug>/` (stejná cesta jako popis v `tvorba/`, `instagramFolder` v `scripts/lib/works.mjs`): `caption-<paleta>.jpg` (dílo s popiskem na papíru každé palety webu: `papir`, `pergamen`, `noc`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru: `stul-tmavy`, `stul-svetly`, `stojan`; jen dílo s `size_cm`), `detail-<jméno>.jpg` (každý detail), vše 4:5 (1080 × 1350), a `post.txt` (text příspěvku). **Nikdy mockupy webu.** |
-| Fler | jen `available` a `reserved` | složka díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` (originál), `mockup-<scéna>.jpg` (každý mockup). Vše s vodoznakem. |
+| Instagram | jen dílo s `meta_instagram: true` | složka díla `export/instagram/[<kolekce>/]<slug>/` (stejná cesta jako popis v `tvorba/`, `exportFolder` v `scripts/lib/works.mjs`): `caption-<paleta>.jpg` (dílo s popiskem na papíru každé palety webu: `papir`, `pergamen`, `noc`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru: `stul-tmavy`, `stul-svetly`, `stojan`; jen dílo s `size_cm`), `detail-<jméno>.jpg` (každý detail), vše 4:5 (1080 × 1350), a `README.md` (náhled s textem příspěvku). **Nikdy mockupy webu.** |
+| Fler | jen `available` a `reserved` | složka díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` (originál), `mockup-<scéna>.jpg` (každý mockup), vše s vodoznakem, a `README.md` (náhled). |
 
 Průhledné okolí díla (podlaha vně rohů listu, viz *Ořez podlahy*) dostane v exportu barvu: pro Instagram
 papír palety (snímek s popiskem) nebo scénu ateliéru, pro Fler bílou (`images.fler.background`, výchozí `#ffffff`);
@@ -783,7 +783,7 @@ nejdřív snímek s popiskem, pak scéna, pak detaily).
   - Všechna nastavení scén jsou s popisem v `mockups/instagram/scenes.yaml`. Nová scéna = dvojice fotek a záznam
     tam (rohy listu, rekvizity, volná plocha, světlo); test `instagram.test.mjs` hlídá, že obě fotky mají stejný
     rozměr a že se do stolů vejdou díla běžných velikostí.
-- **Text příspěvku** (`post.txt`, `instagramPost` v `scripts/lib/instagram.mjs`): název, popis (ne `DOPLNIT`),
+- **Text příspěvku** (v `README.md` složky, `instagramPost` v `scripts/lib/instagram.mjs`): název, popis (ne `DOPLNIT`),
   „technika · rozměr · rok“, „Kolekce: <název kolekce>“ u díla v kolekci, u díla na prodej „Obraz je na prodej.“,
   adresa webu, pak řádek českých hashtagů
   (technika a štítky díla bez diakritiky a mezer, kolekce jako jedno slovo, např. `#plenersumava2026`,
@@ -798,8 +798,23 @@ nejdřív snímek s popiskem, pak scéna, pak detaily).
   v `fonts/` otisk nemění (přegenerovat: `npm run images -- --force` nebo `-- <slug>`).
 
 Vodoznak je jen jméno autorky (`images.fler.watermark`), nikdy odkaz ani @handle
-(pravidla Fleru). Barva se řídí jasem rohu obrázku. Velikosti a kvalitu nastavuje
-`images.instagram` a `images.fler` v `site.config.yaml`.
+(pravidla Fleru), vpravo dole, kurzívou písma webu (`fonts/`, jako křivky): světlé, mírně ztučnělé písmo
+(`watermarkOpacity`) s měkkým tmavým stínem (`watermarkShadow`), takže je čitelné na světlém papíře i na tmavém
+nebo pestrém pozadí mockupu. Tvar podpisu (velikost, odsazení, tloušťka, šířka a rozmazání stínu) je
+`WATERMARK_LOOK` v `scripts/lib/watermark.mjs`; ten i nastavení `images.fler` jsou v otisku díla na prodej,
+takže změna jeho exporty pro Fler vyrobí znovu. Velikosti a kvalitu nastavuje `images.instagram` a `images.fler`
+v `site.config.yaml`.
+
+### Náhled exportů na GitHubu (`README.md`)
+
+Každá složka díla v `export/instagram/` i `export/fler/` má `README.md`, který GitHub vykreslí pod seznamem souborů:
+u Instagramu nahoře text příspěvku v bloku s tlačítkem pro kopírování (jiný soubor s ním není; GitHub neumí vložit
+obsah jiného souboru, ani v AsciiDocu), u Fleru údaje pro inzerát: technika · rozměr · rok, podklad, stav, cena a popis;
+u obou kolekce a odkaz na stránku díla na webu (`site.url` + `/tvorba/<rok>/<slug>-<id>/`), pak náhledy všech fotek
+(klik = plná velikost). Dřívější `post.txt` úklid smaže. `export/instagram/README.md` a `export/fler/README.md` jsou
+přehledy všech děl platformy s miniaturou a odkazem do složky (jen když platforma nějaké dílo má). Kód
+`scripts/lib/export-readme.mjs`; složky děl se píšou každým během (hned následují popis, cenu i štítky), přehledy
+plným během. Úklid je bere jako vlastní soubory pipeline (`EXPORT_FILES`).
 
 ## Obrázky pro sdílení (náhled odkazu)
 
@@ -1133,8 +1148,10 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | web bez děl | `mkdir -p /tmp/prazdny/public && cp public/favicon.svg /tmp/prazdny/public/ && SITE_DATA_DIR=/tmp/prazdny npx astro build`: úvodní stránka ukáže „Obrazy tu brzy přibudou.“ a odkaz na Instagram (bez `site.instagram` jen první větu) |
 | mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla s `mockups: true` do testovacích dat nebo obsahového repa, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
 | stav a mockupy | v yaml díla s `mockups: true` změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, mockupy na detailu zůstanou (nadpis „Jak vypadá na zdi“), z `export/fler` zmizí; pak `mockups: false`: mockupy zmizí i z webu. Testovací data: Ráno u rybníka (na prodej) × Slunečnice, Šumava v mlze (ne) × Pivoňky (vypnuté) |
-| exporty | `ls .demo/content/export/*/*/`: Instagram jen díla s `meta_instagram: true` (Ráno u rybníka, Pivoňky, Kytice z louky, Máky, Na podlaze, Lípa u kaple, Zimní sad), každé ve své složce `export/instagram/[<kolekce>/]<slug>/` (`ls -R .demo/content/export/instagram`) s `caption-papir/-pergamen/-noc.jpg`, `scene-stul-tmavy/-stul-svetly/-stojan.jpg`, `post.txt` a `detail-*.jpg`; Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export pro Instagram zmizí |
-| Instagram: snímky s popiskem a scény | `open .demo/content/export/instagram/demo-plener-sumava-2026/demo-rano-u-rybnika/*`: tři snímky s popiskem (název, technika · rozměr · rok, adresa webu) na papíru palet, dílo na tmavém a světlém stole (pootočené na opačné strany, mimo rekvizity) a na stojanu (na liště, za paletkou); Lípa u kaple přiblížená, Zimní sad hlášený jako nevejde se (log; souhrn „Ke kontrole“ dostane plný běh obsahového repa); `cat …/post.txt`: popis, „Kolekce: …“ u Ráno u rybníka, „Obraz je na prodej.“ u Máků, hashtagy česky a anglicky; štítek bez anglického překladu = „Doporučení“ v souhrnu |
+| exporty | `ls .demo/content/export/*/*/`: Instagram jen díla s `meta_instagram: true` (Ráno u rybníka, Pivoňky, Kytice z louky, Máky, Na podlaze, Lípa u kaple, Zimní sad), každé ve své složce `export/instagram/[<kolekce>/]<slug>/` (`ls -R .demo/content/export/instagram`) s `caption-papir/-pergamen/-noc.jpg`, `scene-stul-tmavy/-stul-svetly/-stojan.jpg`, `README.md` (s textem příspěvku) a `detail-*.jpg`; Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export pro Instagram zmizí |
+| Instagram: snímky s popiskem a scény | `open .demo/content/export/instagram/demo-plener-sumava-2026/demo-rano-u-rybnika/*`: tři snímky s popiskem (název, technika · rozměr · rok, adresa webu) na papíru palet, dílo na tmavém a světlém stole (pootočené na opačné strany, mimo rekvizity) a na stojanu (na liště, za paletkou); Lípa u kaple přiblížená, Zimní sad hlášený jako nevejde se (log; souhrn „Ke kontrole“ dostane plný běh obsahového repa); `cat …/README.md`: text příspěvku s popisem, „Kolekce: …“ u Ráno u rybníka, „Obraz je na prodej.“ u Máků, hashtagy česky a anglicky; štítek bez anglického překladu = „Doporučení“ v souhrnu |
+| náhledy exportů | `cat .demo/content/export/instagram/README.md .demo/content/export/fler/README.md`: přehledy s miniaturami; v každé složce díla `README.md` se všemi fotkami (u Instagramu i textem příspěvku, u Fleru s cenou); vykreslené je uvidíš na GitHubu obsahového repa nebo v náhledu Markdownu v editoru |
+| vodoznak pro Fler | `open .demo/content/export/fler/*/*/mockup-*.jpg`: světlý podpis se stínem čitelný i na tmavém pozadí mockupu |
 | cena | zakomentuj nebo smaž `price` u díla `available` (`demo-maky.yaml`): `npm run images` skončí chybou „stav „available“ potřebuje cenu“ |
 | úklid exportů | přejmenuj dílo (yaml, fotku i složku detailů), `npm run images`: v logu `- removed export/…` se starým názvem, v `export/` zůstanou jen soubory s novým názvem; totéž po smazání díla. Nebo nakopíruj do složky díla v `export/fler/` cizí soubor `mockup-xyz.jpg`: další běh ho smaže, i když nic nepřegeneruje; vlastní soubor jiného jména (`poznamka.txt`) nechá. |
 | kolekce | `/tvorba/kolekce/` (přehled), `/tvorba/kolekce/demo-plener-sumava-2026/` (s úvodní fotkou), `/tvorba/kolekce/demo-zahrada-2025/` (bez ní), výběr „Kolekce“ v galerii, řádek „Kolekce“ na detailu díla |

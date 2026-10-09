@@ -488,7 +488,7 @@ export const hashtag = (text) => String(text ?? '').normalize('NFD').replace(/[�
 const tagLine = (words) => [...new Set(words.map(hashtag).filter(Boolean))].map((t) => `#${t}`).join(' ');
 
 /**
- * The text of an Instagram post of a work (post.txt in its export folder), ready to paste: title, description
+ * The text of an Instagram post of a work (in README.md of its export folder), ready to paste: title, description
  * (not a DOPLNIT placeholder), "technique · size · year", the collection, "na prodej" for a work on sale, the address,
  * then the hashtags in Czech (technique, tags, the collection as one word, e.g. #plenersumava2026, `always.cs` of the
  * settings) and in English (their translations from

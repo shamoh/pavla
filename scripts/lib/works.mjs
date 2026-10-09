@@ -196,10 +196,10 @@ export function planPrune(existing, wanted) {
 }
 
 /**
- * Suffixes of export file names after "<slug>-<id>" (.jpg; -post is the text of an Instagram post, .txt). -clean
- * (the work on paper) and -wall (a mockup) are former Instagram exports, still recognised for cleanup.
+ * Suffixes of export file names after "<slug>-<id>" in the former flat layout (<year>/<key>…), still recognised
+ * for cleanup; -clean (the work on paper) and -wall (a mockup) are even older Instagram exports.
  */
-const EXPORT_SUFFIX = '(-clean|-wall|-caption-[a-z0-9-]+|-scene-[a-z0-9-]+|-mockup-[a-z0-9-]+|-post|-detail-([a-z0-9-]+))?\\.(?:jpg|txt)';
+const EXPORT_SUFFIX = '(-clean|-wall|-caption-[a-z0-9-]+|-scene-[a-z0-9-]+|-mockup-[a-z0-9-]+|-detail-([a-z0-9-]+))?\\.jpg';
 const ANY_EXPORT_RE = new RegExp(`^[a-z0-9]+(?:-[a-z0-9]+)*-${ID_PATTERN}${EXPORT_SUFFIX}$`);
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -221,14 +221,16 @@ export const exportFolder = (yamlPath, slug) => {
 /**
  * File name of an export inside the folder of its work, from its suffix (see expectedExports):
  * '' -> 'original.jpg' (Fler), '-mockup-komoda' -> 'mockup-komoda.jpg', '-caption-papir' -> 'caption-papir.jpg',
- * '-post' -> 'post.txt'.
  */
-export const exportFileName = (suffix) => (suffix === '' ? 'original.jpg' : suffix === '-post' ? 'post.txt' : `${suffix.slice(1)}.jpg`);
+export const exportFileName = (suffix) => (suffix === '' ? 'original.jpg' : `${suffix.slice(1)}.jpg`);
 
-/** Names of files the pipeline writes into the folder of a work, per platform (anything else there is left alone). */
+/**
+ * Names of files the pipeline writes into the folder of a work, per platform (anything else there is left alone);
+ * post.txt is a former Instagram export (its text is in README.md now), still recognised for cleanup.
+ */
 export const EXPORT_FILES = {
-  instagram: /^(?:(?:caption|scene|detail)-[a-z0-9-]+\.jpg|post\.txt)$/,
-  fler: /^(?:original|mockup-[a-z0-9-]+)\.jpg$/,
+  instagram: /^(?:(?:caption|scene|detail)-[a-z0-9-]+\.jpg|post\.txt|README\.md)$/,
+  fler: /^(?:(?:original|mockup-[a-z0-9-]+)\.jpg|README\.md)$/,
 };
 
 /**
@@ -263,14 +265,14 @@ export const wantsInstagram = (data) => data?.meta_instagram === true;
 /**
  * Export suffixes a work should have, per platform (file names: exportFileName; stale files: planFolderPrune).
  * Instagram: only works with `meta_instagram: true`: `instagramVariants` (captions and studio scenes, see
- * scripts/lib/instagram.mjs instagramSuffixes), the text of the post (-post.txt) and every detail photo, never the
+ * scripts/lib/instagram.mjs instagramSuffixes) and every detail photo (the text of the post is in README.md), never the
  * mockups of the site.
  * Fler: only works on sale, the original and every mockup. `mockupScenes` null = unknown (no web images yet).
  */
 export function expectedExports({ status, details, mockupScenes, instagram = false, instagramVariants = [] }) {
   const onSale = isOnSale(status);
   return {
-    instagram: instagram ? [...instagramVariants, '-post', ...details.map((d) => `-detail-${d}`)] : [],
+    instagram: instagram ? [...instagramVariants, ...details.map((d) => `-detail-${d}`)] : [],
     fler: !onSale ? [] : mockupScenes === null ? null : ['', ...mockupScenes.map((s) => `-mockup-${s}`)],
   };
 }

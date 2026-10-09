@@ -38,8 +38,8 @@ await fs.writeFile(path.join(instagramScenesDir, 'scenes.yaml'), YAML.stringify(
   edge: { roughCm: 0.2, roughFreq: 2.5, softCm: 0.09, light: 0.1, shade: 0.15, widthPx: 1 }, cropTop: 0.5, minFill: 0, maxZoom: 1,
   center: [100, 125], maxShiftCm: 0, minTiltDeg: 2, maxTiltDeg: 4, tiltSign: 1, maxExtraTiltDeg: 0, bounds: [0, 0, 200, 250],
 }]));
-/** Instagram exports of a work (suffixes, sorted): a caption on every palette, the post text, the scene (with a size) and `more`. */
-const insta = (sized, ...more) => ['caption-noc.jpg', 'caption-papir.jpg', 'caption-pergamen.jpg', 'post.txt', ...(sized ? ['scene-stul.jpg'] : []), ...more].sort();
+/** Instagram exports of a work (file names, sorted): README (with the text of the post), a caption on every palette, the scene (with a size) and `more`. */
+const insta = (sized, ...more) => ['README.md', 'caption-noc.jpg', 'caption-papir.jpg', 'caption-pergamen.jpg', ...(sized ? ['scene-stul.jpg'] : []), ...more].sort();
 /** The same as paths under export/instagram/<folder of the work>/ (its folder in tvorba/ + its slug). */
 const instaPaths = (folder, sized, ...more) => insta(sized, ...more).map((f) => `export/instagram/${folder}/${f}`);
 
@@ -141,7 +141,9 @@ test('a draft gets no outputs; turning a published work back into a draft remove
   await fs.writeFile(rano, (await fs.readFile(rano, 'utf8')).replace('meta_draft: false', 'meta_draft: true'));
   const again = await run(opts());
   assert.deepEqual(again.pruned.sort(), [
-    'content/tvorba/_index.yaml', 'content/tvorba/rano.yaml', 'export/fler/rano/original.jpg',
+    'content/tvorba/_index.yaml', 'content/tvorba/rano.yaml', 'export/fler/rano/original.jpg', 'export/fler/rano/README.md',
+    // the overviews go with the last work of their platform
+    'export/fler/README.md', 'export/instagram/README.md',
     ...instaPaths('rano', true), `public/tvorba/2026/rano-${id}/`,
   ].sort());
   assert.equal(await exists(path.join(siteDir, 'content/tvorba')), false, 'empty folders are removed too');
@@ -351,9 +353,9 @@ test('mockups: only works with mockups: true get them, whatever their status', a
     assert.ok(!(await fs.readdir(await workDir('2026', slug))).some((f) => f.startsWith('mockup-')), slug);
   }
   // Fler follows the status: works on sale get the original and their mockups, others nothing
-  assert.equal((await exportsOf('fler', '2026', 'volny')).length, 4);
-  assert.deepEqual(await exportsOf('fler', '2026', 'volny-bez'), ['original.jpg']);
-  assert.deepEqual(await exportsOf('fler', '2026', 'bez-pole'), ['original.jpg']);
+  assert.equal((await exportsOf('fler', '2026', 'volny')).length, 5);
+  assert.deepEqual(await exportsOf('fler', '2026', 'volny-bez'), ['README.md', 'original.jpg']);
+  assert.deepEqual(await exportsOf('fler', '2026', 'bez-pole'), ['README.md', 'original.jpg']);
   for (const slug of ['doma', 'prodany']) assert.deepEqual(await exportsOf('fler', '2026', slug), [], slug);
   // the public copy carries the flag, the page reads it
   const copy = YAML.parse(await fs.readFile(path.join(siteDir, 'content/tvorba/doma.yaml'), 'utf8'));
@@ -365,7 +367,7 @@ test('mockups: selling a work removes its Fler exports but keeps its mockups; mo
   await run(opts());
   const id = await idOf('2026', 'rano');
   assert.equal((await infoOf('2026', 'rano')).mockups.length, 3);
-  assert.equal((await exportsOf('fler', '2026', 'rano')).length, 4);
+  assert.equal((await exportsOf('fler', '2026', 'rano')).length, 5);
 
   await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: sold\nsize_cm: [40, 30]\nmockups: true\n`);
   assert.equal((await run(opts())).processed, 1);
@@ -607,7 +609,7 @@ test('exports: Fler gets the original and every mockup with the watermark, only 
   await addWork('2026', 'doma', 'title: Doma\ndate: 2026-06-14\nmeta_instagram: true\nstatus: not-for-sale\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
   const scenes = (await infoOf('2026', 'volny')).mockups.map((m) => `mockup-${m.scene}.jpg`);
-  assert.deepEqual(await exportsOf('fler', '2026', 'volny'), ['original.jpg', ...scenes].sort());
+  assert.deepEqual(await exportsOf('fler', '2026', 'volny'), ['README.md', 'original.jpg', ...scenes].sort());
   // the watermark changes the pixels of the bottom right corner against a plain resize of the same image
   const flerFile = path.join(contentDir, 'export/fler/volny/original.jpg');
   const { width, height } = await sharp(flerFile).metadata();
@@ -658,8 +660,8 @@ test('exports: renaming or deleting a work removes its old exports on both platf
   const oldId = await idOf('2025', 'stary');
   const flerBefore = await exportsOf('fler', '2026', 'rano');
   const stareFler = await exportsOf('fler', '2025', 'stary');
-  assert.equal(flerBefore.length, 4);
-  assert.equal(stareFler.length, 4);
+  assert.equal(flerBefore.length, 5);
+  assert.equal(stareFler.length, 5);
 
   // rename: same id, new slug (the detail folder moves with it)
   const dir = path.join(contentDir, 'tvorba');
@@ -678,11 +680,11 @@ test('exports: renaming or deleting a work removes its old exports on both platf
     ...instaPaths('stary', true),
   ].sort());
   // nothing of the old names is left, the renamed work has fresh exports
-  assert.deepEqual(await fs.readdir(path.join(contentDir, 'export/fler')), ['rano-u-rybnika'], 'fler: only the new folder');
+  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/fler'))).sort(), ['README.md', 'rano-u-rybnika'], 'fler: only the new folder');
   assert.ok(id && oldId);
-  assert.deepEqual(await fs.readdir(path.join(contentDir, 'export/instagram')), ['rano-u-rybnika'], 'instagram: only the new folder');
+  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/instagram'))).sort(), ['README.md', 'rano-u-rybnika'], 'instagram: only the new folder');
   assert.deepEqual(await exportsOf('instagram', '2026', 'rano-u-rybnika'), insta(true, 'detail-kvet.jpg'));
-  assert.equal((await exportsOf('fler', '2026', 'rano-u-rybnika')).length, 4);
+  assert.equal((await exportsOf('fler', '2026', 'rano-u-rybnika')).length, 5);
 });
 
 test('exports: only=<slug> never prunes exports, unknown files in export/ are left alone', async () => {
@@ -745,7 +747,7 @@ test('exports: stale Fler exports are removed even when the work is not regenera
   assert.equal(r.processed, 0);
   assert.deepEqual(r.pruned.sort(), stale.map((f) => path.relative(contentDir, f)).sort());
   for (const f of stale) assert.ok(!(await exists(f)), f);
-  assert.equal((await exportsOf('fler', '2026', 'volny')).length, 4);
+  assert.equal((await exportsOf('fler', '2026', 'volny')).length, 5);
 });
 
 test('collections: cover names a published work of the collection and reaches the public copy', async () => {
@@ -1367,10 +1369,10 @@ test('exports: the text of the Instagram post follows the description at once, m
   await addWork('2026', 'velky', 'title: Velký\ndate: 2026-06-14\nmeta_instagram: true\nsize_cm: [200, 150]\n');
   const r = await run(opts());
   const id = await idOf('2026', 'rano');
-  const post = path.join(contentDir, 'export/instagram/rano/post.txt');
+  const readme = path.join(contentDir, 'export/instagram/rano/README.md');
   assert.ok(id);
-  const text = await fs.readFile(post, 'utf8');
-  assert.match(text, /^Ráno\n/);
+  const text = await fs.readFile(readme, 'utf8');
+  assert.match(text, /```text\nRáno\n/);
   assert.match(text, /#akvarel #krajina/);
   assert.match(text, /#watercolor #landscape/);
   assert.equal(r.misfits.length, 1);
@@ -1379,12 +1381,12 @@ test('exports: the text of the Instagram post follows the description at once, m
   const yamlFile = path.join(contentDir, 'tvorba/rano.yaml');
   await fs.writeFile(yamlFile, (await fs.readFile(yamlFile, 'utf8')).replace(/^description:.*$/m, 'description: Mlha nad vodou.'));
   const again = await run(opts());
-  assert.match(await fs.readFile(post, 'utf8'), /^Ráno\n\nMlha nad vodou\.\n/);
+  assert.match(await fs.readFile(readme, 'utf8'), /```text\nRáno\n\nMlha nad vodou\.\n/);
   assert.equal(again.processed, 0);
   // switching Instagram off removes the text with the photos
   await fs.writeFile(yamlFile, (await fs.readFile(yamlFile, 'utf8')).replace('meta_instagram: true', 'meta_instagram: false'));
   await run(opts());
-  assert.equal(await exists(post), false);
+  assert.equal(await exists(readme), false);
 });
 
 test('exports: Instagram folders mirror tvorba/, the post names the collection', async () => {
@@ -1394,7 +1396,7 @@ test('exports: Instagram folders mirror tvorba/, the post names the collection',
   const dir = path.join(contentDir, 'export/instagram/2026-plener-sumava/rano');
   assert.deepEqual((await fs.readdir(dir)).sort(), insta(false));
   const title = YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/2026-plener-sumava/_index.yaml'), 'utf8')).title;
-  assert.match(await fs.readFile(path.join(dir, 'post.txt'), 'utf8'), new RegExp(`\\nKolekce: ${title}\\n`));
+  assert.match(await fs.readFile(path.join(dir, 'README.md'), 'utf8'), new RegExp(`\\nKolekce: ${title}\\n`));
   // moved out of the collection: the old folder goes, the new one is made
   await fs.rename(path.join(contentDir, 'tvorba/2026-plener-sumava/rano.yaml'), path.join(contentDir, 'tvorba/rano.yaml'));
   await fs.rename(path.join(contentDir, 'tvorba/2026-plener-sumava/rano.jpg'), path.join(contentDir, 'tvorba/rano.jpg'));
@@ -1402,4 +1404,33 @@ test('exports: Instagram folders mirror tvorba/, the post names the collection',
   assert.ok(again.pruned.includes('export/instagram/2026-plener-sumava/rano/caption-papir.jpg'));
   assert.equal(await exists(path.join(contentDir, 'export/instagram/2026-plener-sumava')), false, 'empty folders go');
   assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/instagram/rano'))).sort(), insta(false));
+});
+
+test('exports: README.md previews of the folders and overviews of both platforms', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n', { collection: '2026-plener' });
+  assert.equal((await run(opts())).ok, true);
+  const insta = await fs.readFile(path.join(contentDir, 'export/instagram/2026-plener/rano/README.md'), 'utf8');
+  for (const f of await fs.readdir(path.join(contentDir, 'export/instagram/2026-plener/rano'))) {
+    if (f.endsWith('.jpg')) assert.ok(insta.includes(`src="${f}"`), `instagram README shows ${f}`);
+  }
+  assert.match(insta, /## Text příspěvku\n\n.*\n\n```text\nRáno\n/);
+  assert.match(insta, /Na webu: <https:\/\/[^>]+\/tvorba\/2026\/rano-[a-z0-9]{5}\/>/);
+  const fler = await fs.readFile(path.join(contentDir, 'export/fler/2026-plener/rano/README.md'), 'utf8');
+  for (const f of await fs.readdir(path.join(contentDir, 'export/fler/2026-plener/rano'))) {
+    if (f.endsWith('.jpg')) assert.ok(fler.includes(`src="${f}"`), `fler README shows ${f}`);
+  }
+  assert.match(fler, /Cena: \*\*1\s000 Kč\*\*/);
+  for (const [sub, thumb] of [['instagram', 'caption-papir.jpg'], ['fler', 'original.jpg']]) {
+    const index = await fs.readFile(path.join(contentDir, 'export', sub, 'README.md'), 'utf8');
+    assert.ok(index.includes(`<img src="2026-plener/rano/${thumb}"`), sub);
+  }
+});
+
+test('exports: a former post.txt goes, the text of the post is in README.md', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\n');
+  await run(opts());
+  await fs.writeFile(path.join(contentDir, 'export/instagram/rano/post.txt'), 'Ráno\n');
+  const r = await run(opts());
+  assert.deepEqual(r.pruned, ['export/instagram/rano/post.txt']);
+  assert.deepEqual(await exportsOf('instagram', '2026', 'rano'), insta(false));
 });
