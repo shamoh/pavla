@@ -60,7 +60,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   na papíru každé palety s popiskem název / technika · rozměr · rok / adresa webu, písma z `fonts/` jako křivky přes
   `opentype.js`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru `mockups/instagram/scenes.yaml`: perspektiva z rohů
   prázdného listu, skutečné měřítko, stoly mimo rekvizity s opačným pootočením podle `id`, stojan na liště na ose;
-  jen se `size_cm`), `detail-<jméno>.jpg` a `README.md` (náhled pro GitHub s textem příspěvku s kolekcí a hashtagy česky a anglicky, slovník
+  jen se `size_cm`), `pano-<n>.jpg` (plynulý karusel: široké dílo přes celou výšku 2–3 snímků 4:5, počet ze `size_cm`
+  `panoramaSlides`, jen když je aspoň `panorama.minGain`× větší než na snímku s popiskem), `story.jpg` (příběh 9:16,
+  `storyLayout`: volné pruhy `images.instagram.story` a místo na nálepku s odkazem, nic se tam nekreslí), `detail-<jméno>.jpg` a `README.md` (náhled pro GitHub s textem příspěvku s kolekcí a hashtagy česky a anglicky, slovník
   `instagramPost` v `site.config.yaml`, kolekce i jako hashtag, píše se každým během; štítek bez překladu = doporučení
   `hashtagAdvice`); před tím ořez `images.instagram.insetPercent`; `scripts/lib/instagram.mjs`.
   Nevejde-li se dílo do volné části scény: snímek vznikne, souhrn běhu „Ke kontrole“ (`misfits`).
@@ -69,6 +71,13 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   podle atributů `instagram` / `fler`).
 - `instagram` (nepovinný, sdílený) = odkaz na příspěvek na Instagramu jako `fler` u Fleru (`isInstagramUrl`, jinak chyba):
   stránka díla ukáže „Obraz na Instagramu“ (událost `instagram_click`); oba odkazy jsou `sameAs` v JSON-LD díla. `meta_instagram` (bool) dál jen řídí výrobu fotek; jsou nezávislé.
+- Pinterest (`scripts/lib/pinterest.mjs`): každé dílo má `pin.jpg` (2:3, `renderCaption` s `images.pinterest` a `snug`: popisek hned pod dílem,
+  XMP) veřejně ve složce stránky díla a `pin` v `info.json`; `meta_pinterest: true` = `pin.feed` (web podle něj pozná dílo pro kanál, `meta_*` se nekopíruje);
+  kanál RSS `/pinterest.xml` (`src/pages/pinterest.xml.ts`, guid = `id`, odkazy s UTM `FEED_UTM`) čte Pinterest sám (firemní účet, ověření
+  `site.verification.pinterest`). Popis pinu končí klíčovými slovy česky · anglicky
+  (`pinKeywords`, vlastní slovník `pinterestKeywords.en` s obyčejnými slovy, chybějící překlad = `pinterestAdvice`). Profil `site.pinterest` v patičce, na Kontaktu a v `sameAs` autorky.
+  Každá stránka díla má odkaz „Uložit na Pinterest“ (`pinSaveUrl`, bez skriptu
+  Pinterestu, `workPinImage`: pin, jinak `og.jpg`, událost `pinterest_click`). `check:images` ověří obrázky kanálu.
   Fler jen díla na prodej, také ve složce díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` + `mockup-<scéna>.jpg`,
   vše s vodoznakem. Při přegenerování se složky díla mažou (`clearExports`), plný běh navíc porovná `export/`
   s `expectedExports` a smaže vše navíc (`planFolderPrune`, jen jména z `EXPORT_FILES`, neznámé soubory nechá,
@@ -122,7 +131,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `missing` (hodnota pro doplnění do existujícího souboru, musí znamenat totéž co chybějící atribut) a technický
   komentář (česky, typ, hodnoty, příklady). Pipeline z něj staví kostry a při každém běhu srovná všechny popisy
   (`scripts/lib/metadata-yaml.mjs`): doplní chybějící atributy s `DOPLNIT`, srovná pořadí a technické komentáře,
-  neznámé označí `NEZNÁMÝ`. Povinný atribut s konečnou výchozí hodnotou (`settled: true`: `meta_draft`, `tags`, `meta_instagram`,
+  neznámé označí `NEZNÁMÝ`. Povinný atribut s konečnou výchozí hodnotou (`settled: true`: `meta_draft`, `tags`, `meta_instagram`, `meta_pinterest`,
   `mockups`, `featured`) nikdy nemá `DOPLNIT`. Nepovinný atribut (`commented: true` + `example`: `support`, `details`,
   `caption`, `private_note`, `price`, `fler`, `instagram`, `cover`, `aspect`, `focus`) je v souboru zakomentovaný (`# price: 2500`) pod technickým komentářem s `NEPOVINNÉ.`, bez
   `DOPLNIT`; prázdná hodnota = zakomentovat. Nový atribut = záznam ve schématu (prefix určí skupinu), README obou rep
@@ -184,7 +193,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   + do `STATIC_PAGES` (mapa webu). `robots.txt` a 404 (`noindex`) generuje web; ověřovací kódy `site.verification`.
 - Návštěvnost: Google Analytics 4 (`analytics.googleMeasurementId` v `site.config.yaml`, `scripts/lib/analytics.mjs`,
   značka v `Base.astro`), jen produkční build skutečného webu, nikdy dev ani testovací data; URL i s parametry filtrů.
-  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `email_click`, `message_sent`); nový parametr události = zapsat do README
+  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `pinterest_click`, `email_click`, `message_sent`); nový parametr události = zapsat do README
   (tabulka událostí + seznam vlastních dimenzí k registraci v GA).
 - Zprávy od návštěvníků: Web3Forms (`messages.accessKey` v `site.config.yaml`, jedna adresa, předmět `[pavla-web] <typ>: …`),
   formulář na Kontaktu a panel „Napište mi“ na ostatních stránkách (`scripts/lib/messages.mjs`, `message-draft.mjs`,

@@ -5,8 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import {
-  captionFacts, converge, extendToLedge, fitText, hashtag, homography, insetWork, instagramPost, instagramSuffixes, untranslatedWords, lineY, loadFonts, loadInstagramScenes,
-  planPlacement, quadFits, renderCaption, renderScene, sceneGeometry, sceneWindow, siteHost, textPath, tiltDeg, workQuad,
+  captionFacts, captionLayout, converge, extendToLedge, fitText, hashtag, homography, insetWork, instagramPost, instagramSuffixes, untranslatedWords, lineY, loadFonts, loadInstagramScenes,
+  panoramaSlides, panoramaSuffixes, planPlacement, quadFits, renderCaption, renderPanorama, renderScene, renderStory, sceneGeometry, sceneWindow, siteHost,
+  storyLayout, textPath, tiltDeg, workQuad,
 } from './instagram.mjs';
 import { PALETTES } from './palettes.mjs';
 
@@ -283,4 +284,97 @@ test('untranslatedWords: technique and tags without an English hashtag, unique',
   assert.deepEqual(untranslatedWords({ technique: 'akvarel', tags: ['krajina', 'mlha', 'mlha', 'Plenér'] }, settings), ['mlha']);
   assert.deepEqual(untranslatedWords({ technique: 'akvarel', tags: ['krajina'] }, settings), []);
   assert.deepEqual(untranslatedWords({}, settings), []);
+});
+
+test('panoramaSlides: the fewest slides holding the work at full height, only when it is clearly bigger than the caption', () => {
+  assert.equal(panoramaSlides([40, 30], config), 2, '4:3 over 2 slides: 1.7 × bigger');
+  assert.equal(panoramaSlides([60, 30], config), 3);
+  assert.equal(panoramaSlides([80, 30], config), 3, 'never more than maxSlides (then it fills the width)');
+  assert.equal(panoramaSlides([30, 30], config), 0, 'a square work gains too little');
+  assert.equal(panoramaSlides([30, 40], config), 0, 'nor a portrait one');
+  assert.equal(panoramaSlides([40, 30], { ...config, panorama: { minGain: 1.8 } }), 0);
+  assert.equal(panoramaSlides([80, 30], { ...config, panorama: { maxSlides: 2 } }), 2);
+  assert.equal(panoramaSlides([40, 30], { ...config, panorama: { maxSlides: 1 } }), 0);
+  for (const s of [undefined, null, [40], [0, 30], 'x']) assert.equal(panoramaSlides(s, config), 0);
+  assert.deepEqual(panoramaSuffixes(3), ['-pano-1', '-pano-2', '-pano-3']);
+  assert.deepEqual(panoramaSuffixes(0), []);
+});
+
+test('renderPanorama: slides of the frame size; the work runs across their border', async () => {
+  const art = await sharp({ create: { width: 800, height: 300, channels: 3, background: '#c83c3c' } }).png().toBuffer();
+  const slides = await renderPanorama({ art, colors: PALETTES[0].colors, slides: 2, config });
+  assert.equal(slides.length, 2);
+  for (const [i, buf] of slides.entries()) {
+    const { data, info } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
+    assert.deepEqual([info.width, info.height], [1080, 1350]);
+    const px = (x, y) => [0, 1, 2].map((c) => data[(y * 1080 + x) * 3 + c]);
+    const edge = i === 0 ? px(1079, 675) : px(0, 675);
+    assert.ok(edge[0] > 150 && edge[1] < 110, `slide ${i + 1}: the work at the border`);
+    const paper = i === 0 ? px(5, 5) : px(1074, 5);
+    assert.ok(paper[0] > 200 && paper[1] > 200, `slide ${i + 1}: paper in the outer corner`);
+  }
+});
+
+test('storyLayout: the work and the caption between the free zones, room for the link sticker above the bottom one', () => {
+  const wide = storyLayout(4 / 3, config);
+  assert.deepEqual([wide.width, wide.height], [1080, 1920]);
+  assert.deepEqual(wide.art, { left: 27, top: 342, width: 1026, height: 770 });
+  assert.equal(wide.ruleY, 1152);
+  assert.deepEqual(wide.link, { top: 1360, height: 220 });
+  const tall = storyLayout(0.5, config);
+  assert.equal(tall.art.height, 954, 'a tall work is limited by the height');
+  assert.equal(tall.art.width, 477);
+  assert.ok(tall.art.top >= 250 && tall.ruleY + 116 <= tall.link.top, 'never in the free zone or the room for the sticker');
+  const own = storyLayout(1, { ...config, story: { safeTop: 300, linkSpace: 300 } });
+  assert.ok(own.art.top >= 300 && own.link.top === 1920 - 340 - 300);
+});
+
+test('renderStory: 9:16 on the paper, the work in the middle, the free zones empty', async () => {
+  const buf = await renderStory({
+    art: await artwork(), work: { title: 'Bobří hráz', technique: 'akvarel', size_cm: [40, 30] }, year: '2026', host: 'pavla.kramolis.cz',
+    colors: PALETTES[0].colors, fonts: await loadFonts(), config,
+  });
+  const { data, info } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
+  assert.deepEqual([info.width, info.height], [1080, 1920]);
+  const px = (x, y) => [0, 1, 2].map((c) => data[(y * 1080 + x) * 3 + c]);
+  const mid = px(540, 700);
+  assert.ok(mid[0] > 150 && mid[1] < 110, 'the work in the middle');
+  const paper = [1, 3, 5].map((i) => parseInt(PALETTES[0].colors.paper.slice(i, i + 2), 16));
+  for (const [x, y] of [[540, 100], [540, 1450], [540, 1800]]) px(x, y).forEach((v, c) => assert.ok(Math.abs(v - paper[c]) < 6, `paper at ${x},${y}`));
+});
+
+test('renderCaption: other sizes (the pin, 2:3) and XMP when given', async () => {
+  const buf = await renderCaption({
+    art: await artwork(), work: { title: 'Ráno' }, year: '2026', host: 'pavla.kramolis.cz', colors: PALETTES[0].colors, fonts: await loadFonts(),
+    config: { width: 1000, height: 1500, padding: 0.04, quality: 90 }, xmp: '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/></x:xmpmeta>',
+  });
+  const meta = await sharp(buf).metadata();
+  assert.deepEqual([meta.width, meta.height], [1000, 1500]);
+  assert.ok(meta.xmp?.length > 0);
+});
+
+test('captionLayout: the caption at the bottom edge, or snug right under the work with the pair centred', () => {
+  const pin = { W: 1000, H: 1500, side: 40 };
+  assert.deepEqual(captionLayout({ ...pin, artHeight: 307 }), { artTop: 528, ruleY: 1346 }, 'default: at the bottom');
+  assert.deepEqual(captionLayout({ ...pin, artHeight: 307, snug: true }), { artTop: 519, ruleY: 866 }, 'a wide work: no empty band');
+  assert.deepEqual(captionLayout({ ...pin, artHeight: 1282, snug: true }), { artTop: 40, ruleY: 1346 }, 'a tall work: as by default');
+});
+
+test('renderCaption snug: a wide work has its caption right under it, paper below', async () => {
+  const art = await sharp({ create: { width: 900, height: 300, channels: 3, background: '#c83c3c' } }).png().toBuffer();
+  const fonts = await loadFonts();
+  const rows = async (snug) => {
+    const buf = await renderCaption({
+      art, work: { title: 'Oblaka', technique: 'akvarel' }, year: '2019', host: 'pavla.kramolis.cz', colors: PALETTES[0].colors, fonts,
+      config: { width: 1000, height: 1500, padding: 0.04 }, snug,
+    });
+    const { data } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
+    // rows with dark ink (the caption) in the left part
+    const inked = [];
+    for (let y = 0; y < 1500; y++) for (let x = 80; x < 400; x++) if (data[(y * 1000 + x) * 3] < 120) { inked.push(y); break; }
+    return inked;
+  };
+  const bottom = await rows(false), snug = await rows(true);
+  assert.ok(Math.min(...bottom) > 1340, 'default: the caption at the bottom');
+  assert.ok(Math.max(...snug) < 1000, 'snug: the caption high up, under the work');
 });

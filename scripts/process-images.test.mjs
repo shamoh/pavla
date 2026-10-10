@@ -39,7 +39,10 @@ await fs.writeFile(path.join(instagramScenesDir, 'scenes.yaml'), YAML.stringify(
   center: [100, 125], maxShiftCm: 0, minTiltDeg: 2, maxTiltDeg: 4, tiltSign: 1, maxExtraTiltDeg: 0, bounds: [0, 0, 200, 250],
 }]));
 /** Instagram exports of a work (file names, sorted): README (with the text of the post), a caption on every palette, the scene (with a size) and `more`. */
-const insta = (sized, ...more) => ['README.md', 'caption-noc.jpg', 'caption-papir.jpg', 'caption-pergamen.jpg', ...(sized ? ['scene-stul.jpg'] : []), ...more].sort();
+// sized = size_cm [40, 30]: the scenes and a panorama over 2 slides; every work has a story
+const insta = (sized, ...more) => [
+  'README.md', 'caption-noc.jpg', 'caption-papir.jpg', 'caption-pergamen.jpg', 'story.jpg', ...(sized ? ['scene-stul.jpg', 'pano-1.jpg', 'pano-2.jpg'] : []), ...more,
+].sort();
 /** The same as paths under export/instagram/<folder of the work>/ (its folder in tvorba/ + its slug). */
 const instaPaths = (folder, sized, ...more) => insta(sized, ...more).map((f) => `export/instagram/${folder}/${f}`);
 
@@ -97,6 +100,30 @@ test('generates web images, metadata copy and exports under <year>/<slug>-<id>',
   for (const f of ['instagram/rano/caption-papir.jpg', 'instagram/rano/scene-stul.jpg', 'fler/rano/original.jpg', `fler/rano/mockup-${info.mockups[0].scene}.jpg`]) {
     assert.ok(await exists(path.join(contentDir, 'export', f)), f);
   }
+});
+
+test('pin: every work has one (2:3, with XMP) in its folder on the site; meta_pinterest only marks it for the feed', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_pinterest: true\nsize_cm: [40, 30]\n');
+  await addWork('2026', 'vecer', 'title: Večer\ndate: 2026-06-15\n');
+  await run(opts());
+  const dir = path.join(siteDir, 'public/tvorba/2026', `rano-${await idOf('2026', 'rano')}`);
+  const info = JSON.parse(await fs.readFile(path.join(dir, 'info.json'), 'utf8'));
+  const pin = await fs.readFile(path.join(dir, 'pin.jpg'));
+  const meta = await sharp(pin).metadata();
+  assert.deepEqual([meta.width, meta.height], [1000, 1500]);
+  assert.deepEqual(info.pin, { width: 1000, height: 1500, bytes: pin.length, feed: true });
+  assert.ok(meta.xmp?.toString().includes('Ráno'), 'authorship like the other images of the work');
+  assert.equal(await exists(path.join(contentDir, 'export/instagram/rano')), false, 'no Instagram exports without meta_instagram');
+  const other = JSON.parse(await fs.readFile(path.join(siteDir, 'public/tvorba/2026', `vecer-${await idOf('2026', 'vecer')}`, 'info.json'), 'utf8'));
+  assert.equal(other.pin.width, 1000, 'a pin without meta_pinterest too');
+  assert.equal(other.pin.feed, undefined, 'but not in the feed');
+
+  const yaml = path.join(contentDir, 'tvorba/rano.yaml');
+  await fs.writeFile(yaml, (await fs.readFile(yaml, 'utf8')).replace('meta_pinterest: true', 'meta_pinterest: false'));
+  const again = await run(opts());
+  assert.equal(again.processed, 1, 'the switch regenerates the work');
+  assert.ok(await exists(path.join(dir, 'pin.jpg')));
+  assert.equal(JSON.parse(await fs.readFile(path.join(dir, 'info.json'), 'utf8')).pin.feed, undefined);
 });
 
 test('second run skips unchanged works; --force regenerates', async () => {
@@ -599,7 +626,7 @@ test('exports: Instagram gets the original on paper and the detail photos in 4:5
   const { width: W, height: H } = config.images.instagram;
   for (const f of (await exportsOf('instagram', '2026', 'rano')).filter((x) => x.endsWith('.jpg'))) {
     const { width, height } = await sharp(path.join(contentDir, 'export/instagram/rano', f)).metadata();
-    assert.deepEqual([width, height], [W, H], f);
+    assert.deepEqual([width, height], f === 'story.jpg' ? [1080, 1920] : [W, H], f);
   }
 });
 
@@ -1080,7 +1107,7 @@ test('existing files get every supported attribute on every run, on a branch too
   const r = await run(opts({ prepareOnly: true }));
   assert.equal(r.ok, true, r.problems.join('\n'));
   assert.deepEqual(r.updated.map((u) => u.split(':')[0]).sort(), ['fotky/kontakt.yaml', 'tvorba/plener/_index.yaml', 'tvorba/plener/vecer.yaml', 'tvorba/rano.yaml']);
-  assert.match(r.updated.find((u) => u.startsWith('tvorba/rano.yaml')), /doplněno description, status, technique \(DOPLNIT\); doplněno meta_draft, meta_instagram, featured, mockups, tags \(výchozí hodnota\); neznámé mockup \(NEZNÁMÝ\)/);
+  assert.match(r.updated.find((u) => u.startsWith('tvorba/rano.yaml')), /doplněno description, status, technique \(DOPLNIT\); doplněno meta_draft, meta_instagram, meta_pinterest, featured, mockups, tags \(výchozí hodnota\); neznámé mockup \(NEZNÁMÝ\)/);
 
   const text = await fs.readFile(path.join(contentDir, 'tvorba/rano.yaml'), 'utf8');
   const data = YAML.parse(text);

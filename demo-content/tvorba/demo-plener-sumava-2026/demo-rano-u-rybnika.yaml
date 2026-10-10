@@ -16,9 +16,14 @@ meta_draft: false
 
 # testovací data: exporty pro Instagram (originál a detaily)
 # Fotky pro Instagram, možnosti:
-# - true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, detailní fotky)
+# - true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, panorama pro karusel, příběh, detailní fotky)
 # - false - žádné
 meta_instagram: true
+
+# Pin na Pinterest, možnosti:
+# - true - připravit (obrázek pinu na webu, Pinterest si ho sám vezme z kanálu /pinterest.xml)
+# - false - žádný
+meta_pinterest: true
 
 # Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
 # Generuje ho pipeline, NIKDY neměnit. Hodí se napsat tužkou na zadní stranu obrazu.

@@ -16,6 +16,20 @@ test('instagramReadme: every photo as a linked thumbnail and the text of the pos
   assert.ok(md.indexOf('## Text příspěvku') < md.indexOf('## S popiskem'), 'the text first');
 });
 
+test('instagramReadme: the panorama in order after the captions, the story with the link for the sticker', () => {
+  const md = instagramReadme({
+    work, year: '2026', post: 'x', pageUrl: 'https://pavla.kramolis.cz/tvorba/2026/bobri-hraz-jujn2/',
+    files: { captions: ['caption-papir.jpg'], scenes: ['scene-stojan.jpg'], panorama: ['pano-1.jpg', 'pano-2.jpg'], story: 'story.jpg', details: [] },
+  });
+  assert.ok(md.includes('## Panorama pro karusel') && md.includes('přes 2 navazující snímky'));
+  assert.ok(md.indexOf('## S popiskem') < md.indexOf('## Panorama') && md.indexOf('## Panorama') < md.indexOf('## Ve scénách'));
+  assert.ok(md.indexOf('pano-1.jpg') < md.indexOf('pano-2.jpg'));
+  assert.match(md, /## Příběh \(story\)\n\n.*nálepku „Odkaz“ s adresou <https:\/\/pavla\.kramolis\.cz\/tvorba\/2026\/bobri-hraz-jujn2\/>/);
+  assert.ok(md.includes('<img src="story.jpg"'));
+  const none = instagramReadme({ work, year: '2026', post: 'x', files: { captions: [], scenes: [], details: [] } });
+  assert.ok(!none.includes('## Panorama') && !none.includes('## Příběh'), 'only what the work has');
+});
+
 test('instagramReadme: a post with ``` gets a longer fence; a title with < is escaped', () => {
   const md = instagramReadme({ work: { title: 'A <b>' }, year: '2026', post: 'x ``` y', files: { captions: [], scenes: [], details: ['detail-a.jpg'] } });
   assert.ok(md.includes('````text\nx ``` y\n````'));

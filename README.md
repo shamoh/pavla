@@ -25,7 +25,8 @@ nikdy nejdou.
   _index.yaml                               úvodní stránka: text a úvodní obraz (kostru založí pipeline)
   _cover.jpg                                vlastní úvodní fotka úvodní stránky (nepovinné)
   export/instagram/[<kolekce>/]<slug>/      pro Instagram, složka na dílo (kopíruje tvorba/): s popiskem na 3 pozadích,
-                                            ve 3 scénách ateliéru, detaily a text příspěvku; jen díla s meta_instagram: true
+                                            ve 3 scénách ateliéru, panorama pro karusel (široká díla), příběh 9:16,
+                                            detaily a text příspěvku; jen díla s meta_instagram: true
   export/fler/[<kolekce>/]<slug>/           pro Fler, složka na dílo (kopíruje tvorba/): originál a mockupy s vodoznakem,
                                             jen díla na prodej
 
@@ -76,6 +77,7 @@ pavla/                                      (toto repo, veřejné)
 | `/tvorba/k3f9a/` | trvalý krátký odkaz, přesměruje na detail |
 | `/o-mne/`, `/kontakt/` | stránky s fotkami z `fotky/` obsahového repa |
 | `/sitemap.xml` | mapa webu: kanonická adresa každé stránky (bez krátkých odkazů a 404) |
+| `/pinterest.xml` | kanál RSS pro Pinterest: díla s `meta_pinterest: true` (viz *Pinterest*) |
 
 **ID díla** (např. `k3f9a`) vygeneruje pipeline při prvním zpracování a zapíše
 ho do yaml. Už se nemění: díky němu fungují staré odkazy i po přejmenování díla
@@ -455,7 +457,7 @@ ze sdílených:
 
 | Skupina | Kde platí | Do veřejné kopie (`content/`) |
 |---|---|---|
-| `meta_<název>` | jen obsahové repo: řídí zpracování (`meta_draft`, `meta_instagram`) | nikdy |
+| `meta_<název>` | jen obsahové repo: řídí zpracování (`meta_draft`, `meta_instagram`, `meta_pinterest`) | nikdy |
 | bez prefixu (sdílené) | obě repa, stejný význam | 1:1 (`publicKeys`) |
 | `private_<název>` | jen obsahové repo; vlastní `private_…` může autorka přidat kdykoli (bez `NEZNÁMÝ`, abecedně u ostatních `private_`) | nikdy |
 | `derived_<název>` | jen toto repo: odvodí pipeline (z jiných atributů, umístění souboru nebo průběhu zpracování); teď `derived_modified` u díla (viz *Mapa webu*) | v obsahovém repu = chyba |
@@ -474,6 +476,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `meta_corners` | rohy listu na fotce, podlaha vně nich bude průhledná; najde je pipeline, smí se upravit, `false` = neořezávat (viz *Ořez podlahy*) |
 | `meta_draft` | `true` = rozpracované: do tohoto repa se nedostane nic (popis, obrázky), ani exporty; do veřejné kopie se nekopíruje |
 | `meta_instagram` | `true` = exporty pro Instagram (výchozí `false`) |
+| `meta_pinterest` | `true` = pin pro Pinterest: `pin.jpg` na webu a položka kanálu `/pinterest.xml` (výchozí `false`, viz *Pinterest*) |
 | `id` | trvalý kód, doplní pipeline, NEMĚNIT |
 | `date` | den vzniku (`2026-06-14`): určuje řazení i rok díla (stránky roků, adresa, složky v `pavla`) |
 | `description` | veřejný popis na webu |
@@ -548,7 +551,7 @@ na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`)). V�
   - vlastní komentář nad atributem nechá, nad technickým,
   - neznámý atribut (např. překlep `mockup:`) nesmaže, dá ho na konec a označí komentářem `NEZNÁMÝ atribut…`;
     na web se nedostane,
-  - **atribut s konečnou výchozí hodnotou** (ve schématu `settled: true`: `meta_draft`, `tags`, `meta_instagram`, `mockups`,
+  - **atribut s konečnou výchozí hodnotou** (ve schématu `settled: true`: `meta_draft`, `tags`, `meta_instagram`, `meta_pinterest`, `mockups`,
     `featured`) nikdy nedostane `DOPLNIT` (ani v kostře, ani při doplnění), starý `DOPLNIT` u něj zmizí; souhrn běhu
     ho hlásí jako „doplněno … (výchozí hodnota)“,
   - **zakomentovaný nepovinný atribut** (ve schématu `commented: true` a ukázková hodnota `example`; teď `support`,
@@ -606,7 +609,8 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | `featured` (výběr autorky, 15 děl, v 8 ze 16 kolekcí a 3 bez kolekce) | Máky, Ráno u rybníka, Šumava v mlze, Nádraží, Rybník v zimě… (2026 a přelom roku), Pivoňky, Zimní sad, Kočka na okně, Jablka na stole (2025), Louka s kopretinami (2024), Vltava u Zbraslavi, Oblaka, Čáp u rybníka, Buky, Babička: úvodní stránka náhodně střídá 10 nejnovějších (po Louku s kopretinami, `FEATURED_PICK`), `/tvorba/?featured=1` ukáže všech 15; kolekce bez vybraných: Skicák, Tatry, Krkonoše, Z cest, U moře, Zátiší, Noční město, Město 2026 |
 | text o roce | `/tvorba/2026/` má text (`demo-content/roky/2026.yaml`), `/tvorba/2025/` ne (`description: ""`) |
 | tlačítko „Koupit na Fleru“ | Máky |
-| export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail, na výšku), Kytice z louky (+ 1 detail, není na prodej), Máky, Na podlaze (průhledný ořez podlahy), Lípa u kaple (20 × 15: scény se přiblíží), Zimní sad (50 × 35: na stoly se nevejde, v logu „does not fit the free part of the scene“); ostatní díla žádný |
+| export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail, na výšku), Kytice z louky (+ 1 detail, není na prodej), Máky, Na podlaze (průhledný ořez podlahy), Lípa u kaple (20 × 15: scény se přiblíží), Zimní sad (50 × 35: na stoly se nevejde, v logu „does not fit the free part of the scene“; panorama 2 snímky), Oblaka (60 × 20: panorama 3 snímky); ostatní díla žádný. Panorama: Na podlaze, Ráno u rybníka, Zimní sad (2 snímky), Oblaka (3); Máky, Kytice z louky (čtverec) a Pivoňky (na výšku) žádné. Příběh `story.jpg` má každé |
+| pin pro Pinterest | `pin.jpg` má každé zveřejněné dílo („Uložit na Pinterest“ ho nabídne); `meta_pinterest: true` u Ráno u rybníka, Pivoněk (na výšku) a Oblak (60 × 20: popisek hned pod obrazem) = `pin.feed` v `info.json` a 3 položky v `/pinterest.xml` |
 | `mockups: true`, na prodej | Ráno u rybníka (+ detaily), Zimní sad, Město v dešti, Náměstí v mlze, Kočka na okně, Rybník v zimě, Na podlaze |
 | `mockups: true`, ne na prodej | Kytice z louky (+ detail), Slunečnice, Šumava v mlze (prodáno) |
 | `mockups: false` | Pivoňky (na prodej, + detail), Bouřka nad polem, Modravské slatě (na prodej), Kvilda skica, Nádraží (prodáno), Máky (na prodej), Lípa u kaple, Jablka na stole (prodáno), Rozpracovaný obraz |
@@ -657,7 +661,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 - `id` je platné a unikátní, `size_cm` jsou dvě kladná čísla (u publikovaných děl),
 - dílo `available` nebo `reserved` má `price` (kladné číslo),
 - atribut s pevnými možnostmi (`options` ve schématu: `status` = `available` | `reserved` | `sold` | `gifted` | `not-for-sale`,
-  `meta_draft`, `meta_instagram`, `mockups`, `featured` = `true` | `false`) má jen jednu z nich, i u rozpracovaného díla
+  `meta_draft`, `meta_instagram`, `meta_pinterest`, `mockups`, `featured` = `true` | `false`) má jen jednu z nich, i u rozpracovaného díla
   (`optionProblems` v `scripts/lib/schema.mjs`; chybějící = výchozí); jinak chyba „status „availble“ není mezi
   možnostmi: available, reserved, sold, gifted, not-for-sale“,
 - `meta_corners` je `false`, nebo `photo` (rozměr fotky, musí sedět s fotkou) a rohy `tl`, `tr`, `br`, `bl` jako dvě celá
@@ -748,7 +752,7 @@ na GitHubu. Logika: `planFolderPrune` v `scripts/lib/works.mjs`.
 
 | Platforma | Kdy | Soubory |
 |---|---|---|
-| Instagram | jen dílo s `meta_instagram: true` | složka díla `export/instagram/[<kolekce>/]<slug>/` (stejná cesta jako popis v `tvorba/`, `exportFolder` v `scripts/lib/works.mjs`): `caption-<paleta>.jpg` (dílo s popiskem na papíru každé palety webu: `papir`, `pergamen`, `noc`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru: `stul-tmavy`, `stul-svetly`, `stojan`; jen dílo s `size_cm`), `detail-<jméno>.jpg` (každý detail), vše 4:5 (1080 × 1350), a `README.md` (náhled s textem příspěvku). **Nikdy mockupy webu.** |
+| Instagram | jen dílo s `meta_instagram: true` | složka díla `export/instagram/[<kolekce>/]<slug>/` (stejná cesta jako popis v `tvorba/`, `exportFolder` v `scripts/lib/works.mjs`): `caption-<paleta>.jpg` (dílo s popiskem na papíru každé palety webu: `papir`, `pergamen`, `noc`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru: `stul-tmavy`, `stul-svetly`, `stojan`; jen dílo s `size_cm`), `pano-<n>.jpg` (panorama pro karusel, jen široká díla), `detail-<jméno>.jpg` (každý detail), vše 4:5 (1080 × 1350), `story.jpg` (příběh 9:16) a `README.md` (náhled s textem příspěvku). **Nikdy mockupy webu.** |
 | Fler | jen `available` a `reserved` | složka díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` (originál), `mockup-<scéna>.jpg` (každý mockup), vše s vodoznakem, a `README.md` (náhled). |
 
 Průhledné okolí díla (podlaha vně rohů listu, viz *Ořez podlahy*) dostane v exportu barvu: pro Instagram
@@ -758,8 +762,8 @@ mockupy ukazují jen holý papír.
 ### Instagram: snímky s popiskem a scény ateliéru
 
 Kód: `scripts/lib/instagram.mjs`, nastavení `images.instagram` v `site.config.yaml`, scény
-`mockups/instagram/`, písma `fonts/`. Autorka si z nich vybere, co zveřejní (příspěvek s víc fotkami:
-nejdřív snímek s popiskem, pak scéna, pak detaily).
+`mockups/instagram/`, písma `fonts/`. Autorka si z nich vybere, co zveřejní (příspěvek s víc fotkami = karusel:
+nejdřív snímek s popiskem, pak panorama, scéna, detaily; README složky to tak řadí).
 
 - **Ořez:** dílo se pro Instagram nejdřív ořízne o `insetPercent` (výchozí 0,5 %) z každé strany, protože
   nedokonalé rohy listu (`meta_corners`) občas nechají u okraje proužek podlahy. Až budou rohy spolehlivé, stačí `0`.
@@ -785,6 +789,18 @@ nejdřív snímek s popiskem, pak scéna, pak detaily).
   - Všechna nastavení scén jsou s popisem v `mockups/instagram/scenes.yaml`. Nová scéna = dvojice fotek a záznam
     tam (rohy listu, rekvizity, volná plocha, světlo); test `instagram.test.mjs` hlídá, že obě fotky mají stejný
     rozměr a že se do stolů vejdou díla běžných velikostí.
+- **Panorama pro karusel** (`pano-1.jpg` … `pano-<N>.jpg`, `panoramaSlides`, `renderPanorama`): dílo přes celou
+  výšku N snímků 4:5 vedle sebe (okraj `padding`), rozřezané na hranách snímků, na papíru první palety, bez textu. Karusel
+  na Instagramu při listování stojí snímky těsně vedle sebe, takže dílo plynule ubíhá a je vidět mnohem větší než na
+  jednom snímku. N je nejmenší počet snímků (2 … `panorama.maxSlides`, výchozí 3), do kterých se dílo vejde na celou
+  výšku (jinak `maxSlides` a dílo vyplní šířku); panorama vznikne, jen když je dílo aspoň `panorama.minGain`× (výchozí
+  1,4) větší než na snímku s popiskem. Počítá se ze `size_cm` (bez něj žádné), takže čtvercová a výšková díla panorama
+  nemají, 4:3 dostane 2 snímky, 3:1 tři. Poměr stran celého karuselu určuje první snímek, proto i panorama je 4:5.
+- **Příběh** (`story.jpg`, 9:16 = 1080 × 1920, `storyLayout`, `renderStory`, nastavení `images.instagram.story`):
+  dílo na papíru první palety s popiskem (stejným jako snímek s popiskem) přímo pod ním, obojí svisle vystředěné mezi
+  volnými pruhy nahoře (`safeTop`, lišta s profilem) a dole (`safeBottom`, pole pro odpověď); nad spodním pruhem zůstane
+  volné místo `linkSpace` na nálepku s odkazem (nic se tam nekreslí, značka by zůstala vidět vedle nálepky). README
+  složky v sekci „Příběh“ uvede adresu stránky díla pro nálepku.
 - **Text příspěvku** (v `README.md` složky, `instagramPost` v `scripts/lib/instagram.mjs`): název, popis (ne `DOPLNIT`),
   „technika · rozměr · rok“, „Kolekce: <název kolekce>“ u díla v kolekci, u díla na prodej „Obraz je na prodej.“,
   adresa webu, pak řádek českých hashtagů
@@ -1164,7 +1180,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | web bez děl | `mkdir -p /tmp/prazdny/public && cp public/favicon.svg /tmp/prazdny/public/ && SITE_DATA_DIR=/tmp/prazdny npx astro build`: úvodní stránka ukáže „Obrazy tu brzy přibudou.“ a odkaz na Instagram (bez `site.instagram` jen první větu) |
 | mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla s `mockups: true` do testovacích dat nebo obsahového repa, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
 | stav a mockupy | v yaml díla s `mockups: true` změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, mockupy na detailu zůstanou (nadpis „Jak vypadá na zdi“), z `export/fler` zmizí; pak `mockups: false`: mockupy zmizí i z webu. Testovací data: Ráno u rybníka (na prodej) × Slunečnice, Šumava v mlze (ne) × Pivoňky (vypnuté) |
-| exporty | `ls .demo/content/export/*/*/`: Instagram jen díla s `meta_instagram: true` (Ráno u rybníka, Pivoňky, Kytice z louky, Máky, Na podlaze, Lípa u kaple, Zimní sad), každé ve své složce `export/instagram/[<kolekce>/]<slug>/` (`ls -R .demo/content/export/instagram`) s `caption-papir/-pergamen/-noc.jpg`, `scene-stul-tmavy/-stul-svetly/-stojan.jpg`, `README.md` (s textem příspěvku) a `detail-*.jpg`; Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export pro Instagram zmizí |
+| exporty | `ls .demo/content/export/*/*/`: Instagram jen díla s `meta_instagram: true` (Ráno u rybníka, Pivoňky, Kytice z louky, Máky, Na podlaze, Lípa u kaple, Zimní sad, Oblaka), každé ve své složce `export/instagram/[<kolekce>/]<slug>/` (`ls -R .demo/content/export/instagram`) s `caption-papir/-pergamen/-noc.jpg`, `scene-stul-tmavy/-stul-svetly/-stojan.jpg`, `story.jpg`, `pano-*.jpg` (jen široká díla, Oblaka 3 snímky), `README.md` (s textem příspěvku, pořadím karuselu a adresou pro nálepku příběhu) a `detail-*.jpg`; Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export pro Instagram zmizí |
 | Instagram: snímky s popiskem a scény | `open .demo/content/export/instagram/demo-plener-sumava-2026/demo-rano-u-rybnika/*`: tři snímky s popiskem (název, technika · rozměr · rok, adresa webu) na papíru palet, dílo na tmavém a světlém stole (pootočené na opačné strany, mimo rekvizity) a na stojanu (na liště, za paletkou); Lípa u kaple přiblížená, Zimní sad hlášený jako nevejde se (log; souhrn „Ke kontrole“ dostane plný běh obsahového repa); `cat …/README.md`: text příspěvku s popisem, „Kolekce: …“ u Ráno u rybníka, „Obraz je na prodej.“ u Máků, hashtagy česky a anglicky; štítek bez anglického překladu = „Doporučení“ v souhrnu |
 | náhledy exportů | `cat .demo/content/export/instagram/README.md .demo/content/export/fler/README.md`: přehledy s miniaturami; v každé složce díla `README.md` se všemi fotkami (u Instagramu i textem příspěvku, u Fleru s cenou); vykreslené je uvidíš na GitHubu obsahového repa nebo v náhledu Markdownu v editoru |
 | odkaz na Instagram | `/tvorba/2026/demo-rano-u-rybnika-pf7ru/`: pod stavem odkaz „Obraz na Instagramu“ (vymyšlený `instagram:` v testovacích datech); v `.demo/content/export/instagram/README.md` u něj „✓ na Instagramu“, u ostatních „○ zatím nezveřejněno“, skupiny podle kolekcí; `instagram: true` v popisu = chyba „instagram musí být odkaz…“ |
@@ -1295,6 +1311,47 @@ na kopii repa (skutečné výstupy v `content/` a `public/` by přepsal):
 `git clone . /tmp/zkusebni && cd /tmp/zkusebni && npm ci && node scripts/demo.mjs --content-only`, pak
 `CONTENT_DIR=$PWD/.demo/content npm run images -- --demo` a `node scripts/pull-request.mjs /tmp/popis.md`.
 
+## Pinterest
+
+Pin = obrázek s názvem, popisem a odkazem na stránku díla; lidé si piny ukládají na své nástěnky a dohledají je i za
+roky. Web je na Pinterest dává sám, přes kanál RSS (`scripts/lib/pinterest.mjs`):
+
+- **Pin má každé zveřejněné dílo** (pro „Uložit na Pinterest“); `meta_pinterest: true` (výchozí `false`, nezávislé na
+  Instagramu i stavu prodeje) jen určuje, co jde do kanálu, tedy co Pavla připne sama. Pin má průměrně asi 200 KB
+  (změřeno na skutečných obrazech), 100 děl ≈ 20 MB v repu.
+- **Obrázek pinu** `pin.jpg` (2:3, 1000 × 1500, nastavení `images.pinterest`, výchozí `PIN_DEFAULTS`): dílo s popiskem
+  na papíru první palety, stejný vzhled jako snímek s popiskem pro Instagram (`renderCaption`), ale popisek je hned pod
+  dílem a obojí je svisle vystředěné (`snug`, `captionLayout`), takže široké dílo nemá pod sebou prázdný pruh (vysoké
+  vypadá stejně jako na Instagramu); ořez `insetPercent`, s XMP autorství. Leží veřejně ve složce stránky díla (`public/tvorba/<rok>/<slug>-<id>/pin.jpg`), protože si ho Pinterest
+  stahuje; `info.json` díla má `pin: { width, height, bytes, feed }` (`feed: true` = dílo s `meta_pinterest`, jde do
+  kanálu; samotný `meta_pinterest` se do veřejné kopie nekopíruje). V otisku díla: `meta_pinterest`, `images.pinterest`,
+  adresa webu, název, technika, rozměr a rok.
+- **Kanál** `/pinterest.xml` (`src/pages/pinterest.xml.ts`, `pinterestFeed`): RSS 2.0, položka na každé dílo s `pin.feed`,
+  nejnovější první: `title` (nejvýš 100 znaků), `link` na stránku díla s UTM parametry
+  `?utm_source=pinterest&utm_medium=social&utm_campaign=rss` (`FEED_UTM`: Google Analytics tak návštěvu z pinu pozná
+  i z aplikace Pinterestu, která jinak neřekne, odkud návštěvník přišel; stránka má kanonickou adresu bez nich), `guid` = `id` díla (Pinterest stejné dílo
+  nepřipne dvakrát), `description` (popis díla, „technika · rozměr · rok“ a klíčová slova, nejvýš 500 znaků,
+  `pinDescription`; dlouhý popis se zkrátí, fakta a klíčová slova zůstanou),
+  `pubDate` podle `date`, obrázek v `enclosure` a `media:content`. Bez děl s pinem prázdný kanál.
+- **Klíčová slova** (`pinKeywords`): Pinterest hledá podle slov v názvu a popisu, ne podle hashtagů. Na konci popisu
+  pinu (v kanálu i u „Uložit na Pinterest“) jsou technika a štítky česky a pak jejich anglické překlady z vlastního
+  slovníku `pinterestKeywords.en` v `site.config.yaml` (obyčejná slova s mezerami, např. „plein air“, „still life“, na
+  rozdíl od hashtagů `instagramPost.en`), např. „akvarel, krajina, mlha · watercolor, landscape, fog“; slovo bez
+  překladu jen česky a u díla s `meta_pinterest: true` ho souhrn běhu ukáže v „Doporučení“ (`pinterestAdvice`).
+- **Profil:** `site.pinterest` (URL profilu) = odkaz „Pinterest“ v patičce a na Kontaktu (`rel="me"`) a `sameAs`
+  autorky v JSON-LD; prázdné = nic.
+- **Připojení (jednou, v Pinterestu):** firemní účet (zdarma), ověření webu (značka HTML: kód do `site.verification.pinterest` →
+  `<meta name="p:domain_verify">`, adresa webu `https://pavla.kramolis.cz`; ověřit až po nasazení), pak v nastavení „Hromadné vytváření pinů“ → automatické publikování z RSS: adresa
+  `https://<web>/pinterest.xml` a nástěnka. Pinterest kanál čte asi jednou denně a připne jen nové položky; úprava už
+  připnutého díla se nepřenese.
+- **„Uložit na Pinterest“** u každého díla (pod stavem, vedle „Obraz na Instagramu“): obyčejný odkaz na formulář
+  Pinterestu (`pinSaveUrl`) s adresou stránky, obrázkem (`pin.jpg`, dokud ho pipeline nevyrobí `og.jpg`, `workPinImage`) a popisem; žádný
+  skript Pinterestu, žádné cookies. Událost GA `pinterest_click`.
+- **Kontrola:** `npm run check:images` i týdenní kontrola přečtou `/pinterest.xml` a ověří, že každý obrázek kanálu
+  na webu existuje (chybějící se hlásí u „pinterest.xml“).
+- **Vyzkoušení:** `npm run demo:build`, pak `.demo/site/dist/pinterest.xml` (3 položky) a `pin.jpg` ve složce každého díla
+  (`ls .demo/site/public/tvorba/*/*/pin.jpg`).
+
 ## Vyhledávače (SEO)
 
 Co web dělá, aby mu vyhledávače rozuměly (`scripts/lib/seo.mjs`, `src/layouts/Base.astro`):
@@ -1322,7 +1379,8 @@ Co web dělá, aby mu vyhledávače rozuměly (`scripts/lib/seo.mjs`, `src/layou
   a odkazy na výběr a celou tvorbu; `noindex` a bez `canonical`. Krátké odkazy `/tvorba/<id>/` mají `noindex`
   a `canonical` na detail díla.
 - **Ověření webu u vyhledávačů** značkou `<meta>`: kódy do `site.config.yaml` → `site.verification`
-  (`google` = `google-site-verification`, `bing` = `msvalidate.01`, `seznam` = `seznam-wmt`; prázdné = žádná značka).
+  (`google` = `google-site-verification`, `bing` = `msvalidate.01`, `seznam` = `seznam-wmt`, `pinterest` = `p:domain_verify`
+  pro ověření webu firemním účtem Pinterestu; prázdné = žádná značka).
   Postup registrace u Googlu, Bingu a Seznamu je v obsahovém repu (návod pro správce).
 
 Vyzkoušení: `npm run build`, pak v `dist/` zdroj stránky (`<meta name="description">`, `application/ld+json`),
@@ -1356,6 +1414,7 @@ analytics:
   | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav, hledání) nebo na přehledu kolekcí rok či hledání; ne stránkování ani počet na stránku | aktivní filtry `tag` (víc štítků jako jedna hodnota spojená čárkou v abecedním pořadí, např. `krajina,voda`), `technique`, `year`, `collection`, `status`, `featured`, `q` (hledání, i na přehledu kolekcí; prázdné se neposílají) a `results` (kolik děl, na přehledu kolekcí kolik kolekcí odpovídá) |
   | `fler_click` | klik na „Koupit na Fleru“ u díla | `work_id`, `work_title` |
   | `instagram_click` | klik na „Obraz na Instagramu“ u díla (atribut `instagram`) | `work_id`, `work_title` |
+  | `pinterest_click` | klik na „Uložit na Pinterest“ u díla | `work_id`, `work_title` |
   | `email_click` | jen odkazy `mailto:`: klik na e-mailovou adresu na Kontaktu (kdo píše rovnou z pošty místo formuláře); bez formuláře zpráv i klik na „Napsat autorce“ u díla. Předmět e-mailu má stejný tvar jako odeslaná zpráva (`[pavla-web] Pozdrav nebo vzkaz`, u díla `[pavla-web] Dotaz na obraz: <název> (<id>)` / `Zájem o koupi: …`) | u díla `work_id`, `work_title`, na Kontaktu žádné |
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
   | `palette_change` | návštěvník v patičce přepne barvy webu (jen skutečná změna, ne opakovaný klik na tutéž) | `palette` (`papir`, `pergamen`, `noc`, `auto`) |
@@ -1372,7 +1431,8 @@ analytics:
 - Vyzkoušení událostí lokálně (bez Google tagu se nic neposílá, jen vypisuje): `npm run demo`, v DevTools →
   *Console* zapnout úroveň *Verbose*, změnit filtr v `/tvorba/` → `[analytics] gallery_filter {…}`; na detailu
   díla na prodej s odkazem na Fler (v testovacích datech Máky) klik na „Koupit na Fleru“ → `[analytics] fler_click`,
-  na detailu Ráno u rybníka klik na „Obraz na Instagramu“ → `[analytics] instagram_click`.
+  na detailu Ráno u rybníka klik na „Obraz na Instagramu“ → `[analytics] instagram_click`, na „Uložit na Pinterest“ →
+  `[analytics] pinterest_click`.
   Na nasazeném webu: GA → *Administrátor → DebugView* s Tag Assistantem, nebo *V reálném čase → Počet událostí*.
 - Kód: `scripts/lib/analytics.mjs` (kdy měřit, obsah značky, kontrola ID), `analyticsId` v `src/lib/site.ts`.
 - Vyzkoušení: `npm run build`, pak `grep -c googletagmanager dist/index.html` (1 = značka je tam);

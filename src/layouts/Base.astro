@@ -100,6 +100,7 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
       <span class="links">
         <PalettePicker />
         {site.instagram && <a href={`https://www.instagram.com/${site.instagram}/`} rel="me">Instagram</a>}
+        {site.pinterest && <a href={site.pinterest} rel="me">Pinterest</a>}
         {site.fler && <a href={site.fler}>Fler</a>}
         {withMessages && <a href={url(contactLink(messageContext))} data-message-open="">Napsat k této stránce</a>}
       </span>

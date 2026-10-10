@@ -68,7 +68,7 @@ test('checkSiteImages: stops after maxPages', async () => {
   const pages = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [i ? `/p${i}/` : '/', `<a href="/p${i + 1}/">dál</a>`]));
   const { fetchFn, asked } = fakeSite(pages, []);
   await checkSiteImages(`${ORIGIN}/`, fetchFn, { maxPages: 5 });
-  assert.ok(asked.filter((a) => a.startsWith('GET')).length <= 6);
+  assert.ok(asked.filter((a) => a.startsWith('GET') && !a.endsWith('.xml')).length <= 6, 'pages, besides the sitemap and the feed');
 });
 
 test('evaluateSiteImages: fine, missing images (listed up to the limit), broken pages, not checked', () => {
@@ -98,6 +98,17 @@ test('checkSiteImages: also pages only the sitemap lists (no link leads to them)
   assert.equal(r.sitemap, 2, 'other sites in the sitemap are ignored');
   assert.equal(r.pages, 2);
   assert.deepEqual(r.missing.map((m) => [m.image, m.page]), [[`${ORIGIN}/skryta.jpg`, `${ORIGIN}/tvorba/kolekce/skryta/`]]);
+});
+
+test('checkSiteImages: the pins of the feed for Pinterest are checked too (only those of the site)', async () => {
+  const { fetchFn } = fakeSite({
+    '/': '<img src="/a.jpg">',
+    '/pinterest.xml': `<rss><item><enclosure url="${ORIGIN}/tvorba/2026/rano-k3f9a/pin.jpg" length="1" type="image/jpeg"/></item>`
+      + `<item><enclosure url="${ORIGIN}/tvorba/2026/pryc-a1b2c/pin.jpg"/></item><item><enclosure url="https://jinde.test/p.jpg"/></item></rss>`,
+  }, ['/a.jpg', '/tvorba/2026/rano-k3f9a/pin.jpg']);
+  const r = await checkSiteImages(`${ORIGIN}/`, fetchFn);
+  assert.equal(r.images, 3);
+  assert.deepEqual(r.missing.map((m) => [m.image, m.page]), [[`${ORIGIN}/tvorba/2026/pryc-a1b2c/pin.jpg`, 'pinterest.xml']]);
 });
 
 test('checkSiteImages: a site without a sitemap is walked from its home page', async () => {

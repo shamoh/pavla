@@ -70,7 +70,7 @@ images:
   tvorba/demo-ptaci-2016/demo-vrabci.jpg: { size: [1600, 2200], palette: sediva, seed: 91 }
   tvorba/demo-nocni-mesto-2019/demo-most-v-noci.jpg: { size: [2400, 1700], palette: mesto, seed: 92 }
   tvorba/demo-nocni-mesto-2019/demo-kostel-za-soumraku.jpg: { size: [1700, 2400], palette: mesto, seed: 93 }
-  tvorba/demo-oblaka.jpg: { size: [2000, 2000], palette: voda, seed: 94 }
+  tvorba/demo-oblaka.jpg: { size: [2400, 800], palette: voda, seed: 94 }
   tvorba/demo-nocni-mesto-2019/demo-lampy.jpg: { size: [1600, 2200], palette: mesto, seed: 95 }
   tvorba/demo-reky-2021-2023/demo-vltava-u-zbraslavi.jpg: { size: [2400, 1700], palette: voda, seed: 96 }
   tvorba/demo-reky-2021-2023/demo-berounka-v-zime.jpg: { size: [2400, 1800], palette: zima, seed: 97 }

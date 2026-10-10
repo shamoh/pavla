@@ -9,11 +9,13 @@ site:
   email: pavla@kramolis.cz
   location: Roztoky                       # kde Pavla žije a maluje, zobrazí se v Kontaktu; prázdné = nic
   instagram: pavla.kramolisova
-  fler: ""                               # URL obchůdku na Fleru, až bude
+  fler: https://www.fler.cz/shop/pk76376   # URL obchůdku na Fleru (patička, Kontakt); prázdné = nic
+  pinterest: https://cz.pinterest.com/pavlakramolisova/   # URL profilu na Pinterestu (patička, Kontakt); prázdné = nic
   verification:                          # ověření webu u vyhledávačů značkou <meta> (jen když ověřuješ touto cestou,
     google: ""                           #   DNS záznam ji nepotřebuje): kód z Google Search Console,
     bing: ""                             #   z Bing Webmaster Tools (msvalidate.01)
-    seznam: "pRmNbOEUVpe5jyTrqNiBs8sNsD5d9jP9"   #   a ze Seznam Webmaster (seznam-wmt); prázdné = žádná značka
+    seznam: "pRmNbOEUVpe5jyTrqNiBs8sNsD5d9jP9"   #   ze Seznam Webmaster (seznam-wmt)
+    pinterest: "676735cc598a2480715a267ae46a16bf"   #   a z Pinterestu (p:domain_verify, ověření webu firemního účtu); prázdné = žádná značka
 
 analytics:
   # Google Analytics 4 (služba pavla.kramolis.cz), měří jen produkční build skutečného webu,
@@ -27,7 +29,7 @@ messages:
   accessKey: 667747d9-fb8d-4d52-9af7-d622adef05a0
 
 instagramPost:
-  # Text příspěvku na Instagram (export/instagram/<rok>/<slug>-<id>-post.txt, jen díla s meta_instagram: true):
+  # Text příspěvku na Instagram (README.md ve složce díla v export/instagram/, jen díla s meta_instagram: true):
   # název, popis, technika · rozměr · rok, „Obraz je na prodej.“ u díla na prodej, adresa webu a hashtagy.
   # Česky: technika a štítky díla (bez diakritiky a mezer) + always.cs; anglicky: jejich překlady z `en` + always.en.
   # Slovo bez překladu má jen český hashtag. Změna se projeví hned při dalším běhu (text se píše vždy znovu).
@@ -79,6 +81,56 @@ instagramPost:
     zima: winter
     zvířata: animals
 
+pinterestKeywords:
+  # Klíčová slova na konci popisu pinu (kanál /pinterest.xml a „Uložit na Pinterest“): technika a štítky díla česky,
+  # pak jejich anglické překlady odtud. Pinterest hledá podle slov, ne hashtagů: překlady jsou obyčejná slova s mezerami
+  # (na rozdíl od hashtagů v instagramPost.en). Slovo bez překladu je jen česky; u díla s meta_pinterest: true ho ukáže
+  # souhrn běhu v „Doporučení“.
+  en:
+    # techniky
+    akvarel: watercolor
+    akvarel a tuš: ink and watercolor
+    brush pen: brush pen
+    kresba tužkou: pencil drawing
+    kvaš: gouache
+    linoryt: linocut
+    pastel: pastel
+    tisk z výšky: relief print
+    # štítky
+    déšť: rain
+    grafika: printmaking
+    hory: mountains
+    jaro: spring
+    kostel: church
+    krajina: landscape
+    květina: flower
+    květiny: flowers
+    les: forest
+    léto: summer
+    loď: boat
+    louka: meadow
+    město: city
+    mlha: fog
+    most: bridge
+    nebe: sky
+    noc: night
+    ovoce: fruit
+    plenér: plein air
+    podzim: autumn
+    portrét: portrait
+    ptáci: birds
+    řeka: river
+    sníh: snow
+    strom: tree
+    světla: lights
+    ulice: street
+    vesnice: village
+    voda: water
+    západ slunce: sunset
+    zátiší: still life
+    zima: winter
+    zvířata: animals
+
 gallery:
   pageSizes: [12, 24, 48]                # počty děl na stránku, které si návštěvník může vybrat; první je výchozí
 
@@ -107,7 +159,22 @@ images:
     padding: 0.025                       # snímek s popiskem: okraj kolem obrazu (podíl šířky); mřížka profilu ořízne ~3 % z boku
     insetPercent: 0.5                    # obraz se pro Instagram ořízne o tolik % z každé strany (nedokonalé rohy listu
                                          #   nechávají proužek podlahy); 0 = neořezávat
+    panorama:                            # plynulý karusel (pano-<n>.jpg): široký obraz přes celou výšku několika snímků za sebou
+      maxSlides: 3                       #   nejvýš tolik snímků
+      minGain: 1.4                       #   jen když je obraz aspoň tolikrát větší než na snímku s popiskem (jinak žádné panorama)
+    story:                               # příběh 9:16 (story.jpg): obraz s popiskem, pod ním volné místo na nálepku s odkazem
+      width: 1080
+      height: 1920
+      safeTop: 250                       #   volné nahoře (lišta s profilem), px
+      safeBottom: 340                    #   volné dole (pole pro odpověď), px
+      linkSpace: 220                     #   volné místo na nálepku s odkazem nad spodním okrajem, px
     # scény ateliéru: mockups/instagram/scenes.yaml, písma popisku: fonts/
+  pinterest:                             # pin na Pinterest (pin.jpg na webu ve složce každého díla, „Uložit na Pinterest“;
+    width: 1000                          #   díla s meta_pinterest: true i v kanálu /pinterest.xml); obraz s popiskem, 2:3
+    height: 1500
+    quality: 90
+    padding: 0.04                        # okraj kolem obrazu (podíl šířky)
+    insetPercent: 0.5                    # ořez obrazu z každé strany v % (jako u Instagramu)
   fler:
     longEdge: 2000
     quality: 90

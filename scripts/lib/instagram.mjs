@@ -3,6 +3,9 @@
 //                                (title; technique · size · year; the address of the site)
 //   <key>-scene-<scene>.jpg      a styled studio photo: the work lying on a table or standing on an easel
 //                                (scenes in mockups/instagram/scenes.yaml, see the comments there)
+//   <key>-pano-<n>.jpg           the seamless panorama: a wide work over the full height of 2-3 slides of a carousel
+//   <key>-story.jpg              a story (9:16): the work with the caption and room for a link sticker
+// The caption export also makes the Pinterest pin (2:3, on the site, see scripts/lib/pinterest.mjs).
 // Detail photos (<key>-detail-<name>.jpg) are made by the pipeline itself.
 //
 // A scene is a generated photo twice, with the same framing: with a blank sheet of known size (its corners give the
@@ -15,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import opentype from 'opentype.js';
 import sharp from 'sharp';
 import YAML from 'yaml';
-import { formatSizeCm } from './works.mjs';
+import { captionFacts } from './works.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const INSTAGRAM_SCENES_DIR = path.join(siteRoot, 'mockups/instagram');
@@ -27,8 +30,7 @@ export const instagramSuffixes = (paletteIds, sceneNames) => [
   ...sceneNames.map((s) => `-scene-${s}`),
 ];
 
-/** "akvarel · 30 × 30 cm · 2026": the facts under the title of the caption (missing ones are left out). */
-export const captionFacts = (work, year) => [work.technique, formatSizeCm(work.size_cm), year].filter(Boolean).join(' · ');
+export { captionFacts };
 
 /** "https://pavla.kramolis.cz/" -> "pavla.kramolis.cz" (the address in the caption). */
 export const siteHost = (url) => {
@@ -326,31 +328,151 @@ export async function insetWork(buf, insetPercent = 0) {
 /**
  * The caption export: the work on the paper of a palette (margin `padding` of the width around it), under it a thin
  * rule, the title (serif italic) and "technique · size · year" on the left, the address of the site on the right.
+ * The caption sits at the bottom edge (Instagram: the same place on every post of the grid); `snug` puts it right
+ * under the work and centres both vertically instead, so a wide work leaves no empty band between them (the pin).
  */
-export async function renderCaption({ art, work, year, host, colors, fonts, config }) {
+export async function renderCaption({ art, work, year, host, colors, fonts, config, xmp, snug = false }) {
   const { width: W, height: H, padding = 0.025, quality = 90 } = config;
+  const side = Math.round(W * padding);
+  const areaH = H - CAPTION_HEIGHT - 24 - side;
+  const inner = await sharp(art).resize({ width: W - 2 * side, height: areaH, fit: 'inside' }).png().toBuffer();
+  const im = await sharp(inner).metadata();
+  const L = captionLayout({ W, H, side, artHeight: im.height, snug });
+  const out = sharp({ create: { width: W, height: H, channels: 3, background: colors.paper } })
+    .composite([
+      { input: inner, left: Math.round((W - im.width) / 2), top: L.artTop },
+      { input: Buffer.from(svgOf(W, H, captionSvg({ W, ruleY: L.ruleY, work, year, host, colors, fonts }))) },
+    ]);
+  // `xmp`: authorship of a picture published on the site (the Pinterest pin, scripts/lib/image-rights.mjs)
+  return (xmp ? out.withXmp(xmp) : out).jpeg({ quality, mozjpeg: true }).toBuffer();
+}
+
+/** Room the caption takes under its rule, descenders included (px). */
+const CAPTION_BELOW = 116;
+/** Gap between the work and the rule of a snug caption (px). */
+const SNUG_GAP = 40;
+
+/**
+ * Where the work (its top, px) and the rule of the caption lie on a caption export W × H with margin `side` for a
+ * work `artHeight` px tall (already fitted). Default: the caption at the bottom edge, the work centred above it.
+ * `snug`: the work with the caption right under it, the pair centred vertically (never higher than the margin and
+ * never lower than the default).
+ */
+export function captionLayout({ W, H, side, artHeight, snug = false }) {
+  const bottomRule = H - CAPTION_HEIGHT;
+  const areaH = bottomRule - 24 - side;
+  if (!snug) return { artTop: Math.round(side + (areaH - artHeight) / 2), ruleY: bottomRule };
+  const artTop = Math.max(side, Math.round((H - (artHeight + SNUG_GAP + CAPTION_BELOW)) / 2));
+  return { artTop, ruleY: Math.min(bottomRule, artTop + artHeight + SNUG_GAP) };
+}
+
+/** Height of the caption under the work, from its rule to the bottom edge (px). */
+export const CAPTION_HEIGHT = 154;
+
+const svgOf = (W, H, body) => `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">\n${body}\n</svg>`;
+
+/**
+ * The caption as SVG elements, its rule at `ruleY` (it takes CAPTION_HEIGHT - 58 px under the rule, plus descenders):
+ * a thin rule, the title (serif italic) and "technique · size · year" on the left, the address of the site on the right.
+ */
+function captionSvg({ W, ruleY, work, year, host, colors, fonts }) {
   const textSide = Math.round(W * 0.08);
-  const factsY = H - 58, titleY = factsY - 42, ruleY = titleY - 54;
+  const titleY = ruleY + 54, factsY = titleY + 42;
   const titleSize = 40, smallSize = 22;
   const hostPath = textPath(fonts.sans, host, 0, 0, smallSize, 1.5);
   const facts = fitText(fonts.sans, captionFacts(work, year), smallSize, W - 2 * textSide - hostPath.width - 40, 0.5);
   const title = fitText(fonts.serif, work.title ?? '', titleSize, W - 2 * textSide);
-  const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-<line x1="${textSide}" x2="${W - textSide}" y1="${ruleY}" y2="${ruleY}" stroke="${colors.line}" stroke-width="1.5"/>
+  return `<line x1="${textSide}" x2="${W - textSide}" y1="${ruleY}" y2="${ruleY}" stroke="${colors.line}" stroke-width="1.5"/>
 <path d="${textPath(fonts.serif, title, textSide, titleY, titleSize).d}" fill="${colors.ink}"/>
 <path d="${textPath(fonts.sans, facts, textSide, factsY, smallSize, 0.5).d}" fill="${colors.inkSoft}"/>
-<path d="${textPath(fonts.sans, host, W - textSide - hostPath.width, factsY, smallSize, 1.5).d}" fill="${colors.inkSoft}"/>
-</svg>`;
+<path d="${textPath(fonts.sans, host, W - textSide - hostPath.width, factsY, smallSize, 1.5).d}" fill="${colors.inkSoft}"/>`;
+}
+
+/** Width of the work on the caption export (px) when it has the aspect ratio `ratio` (width / height). */
+const captionArtWidth = (ratio, { width: W, height: H, padding = 0.025 }) => {
   const side = Math.round(W * padding);
-  const areaH = ruleY - 24 - side;
-  const inner = await sharp(art).resize({ width: W - 2 * side, height: areaH, fit: 'inside' }).png().toBuffer();
+  return Math.min(W - 2 * side, ratio * (H - CAPTION_HEIGHT - 24 - side));
+};
+
+/**
+ * Number of slides of the seamless panorama of a work (0 = none): the work over the full height of N slides side by
+ * side, so swiping the carousel runs along it. N is the fewest slides (2 … maxSlides) that hold the work at full
+ * height; a panorama is made only when it shows the work at least `minGain` × bigger than the caption export
+ * (square and portrait works gain too little). `sizeCm` [width, height], so it is known before rendering.
+ */
+export function panoramaSlides(sizeCm, config) {
+  const { panorama = {} } = config;
+  const { maxSlides = 3, minGain = 1.4 } = panorama;
+  if (!Array.isArray(sizeCm) || !(sizeCm[0] > 0) || !(sizeCm[1] > 0) || maxSlides < 2) return 0;
+  const ratio = sizeCm[0] / sizeCm[1];
+  const { width: W, height: H } = config;
+  const pad = Math.round(W * (config.padding ?? 0.025));
+  const fullWidth = ratio * (H - 2 * pad);
+  const n = Math.min(maxSlides, Math.max(2, Math.ceil((fullWidth + 2 * pad) / W)));
+  const shown = Math.min(fullWidth, n * W - 2 * pad);
+  return shown >= minGain * captionArtWidth(ratio, config) ? n : 0;
+}
+
+/** Export suffixes of a panorama of `n` slides: "-pano-1" … */
+export const panoramaSuffixes = (n) => Array.from({ length: n }, (_, i) => `-pano-${i + 1}`);
+
+/**
+ * The slides of the seamless panorama (JPEG buffers, each width × height of the config): the work as big as fits
+ * `slides` slides side by side (margin `padding` of the width), centred on the paper, cut at the slide borders.
+ */
+export async function renderPanorama({ art, colors, slides, config }) {
+  const { width: W, height: H, padding = 0.025, quality = 90 } = config;
+  const pad = Math.round(W * padding);
+  const inner = await sharp(art).resize({ width: slides * W - 2 * pad, height: H - 2 * pad, fit: 'inside' }).png().toBuffer();
   const im = await sharp(inner).metadata();
-  return sharp({ create: { width: W, height: H, channels: 3, background: colors.paper } })
+  const strip = await sharp({ create: { width: slides * W, height: H, channels: 3, background: colors.paper } })
+    .composite([{ input: inner, left: Math.round((slides * W - im.width) / 2), top: Math.round((H - im.height) / 2) }])
+    .png().toBuffer();
+  return Promise.all(Array.from({ length: slides }, (_, i) => sharp(strip)
+    .extract({ left: i * W, top: 0, width: W, height: H }).jpeg({ quality, mozjpeg: true }).toBuffer()));
+}
+
+/** Layout of a story (9:16): the free zones (Instagram's bars), the work, the caption and the room for a link sticker. */
+export const STORY_DEFAULTS = { width: 1080, height: 1920, safeTop: 250, safeBottom: 340, linkSpace: 220 };
+
+/**
+ * Where the parts of a story lie for a work of aspect ratio `ratio`: { art: { left, top, width, height }, ruleY,
+ * link: { top, height } }. Between the free zone at the top (`safeTop`) and the room for the link sticker above the
+ * free zone at the bottom: the work (margin `padding` of the width at the sides) with the caption right under it,
+ * centred vertically.
+ */
+export function storyLayout(ratio, config = {}) {
+  const { width: W, height: H, safeTop, safeBottom, linkSpace } = { ...STORY_DEFAULTS, ...config.story };
+  const side = Math.round(W * (config.padding ?? 0.025));
+  const gap = SNUG_GAP, captionBelow = CAPTION_BELOW;
+  const top = safeTop, bottom = H - safeBottom - linkSpace;
+  const maxH = bottom - top - gap - captionBelow;
+  let width = W - 2 * side, height = Math.round(width / ratio);
+  if (height > maxH) { height = maxH; width = Math.round(height * ratio); }
+  const artTop = Math.round(top + (maxH - height) / 2);
+  return {
+    width: W, height: H,
+    art: { left: Math.round((W - width) / 2), top: artTop, width, height },
+    ruleY: artTop + height + gap,
+    link: { top: bottom, height: linkSpace },
+  };
+}
+
+/**
+ * The story export (9:16, JPEG): the work on the paper of a palette with the caption under it and free room for the
+ * link sticker under the caption (nothing drawn there: a mark would stay visible beside the sticker).
+ */
+export async function renderStory({ art, work, year, host, colors, fonts, config }) {
+  const { width: aw, height: ah } = await sharp(art).metadata();
+  const L = storyLayout(aw / ah, config);
+  const inner = await sharp(art).resize({ width: L.art.width, height: L.art.height, fit: 'inside' }).png().toBuffer();
+  const im = await sharp(inner).metadata();
+  return sharp({ create: { width: L.width, height: L.height, channels: 3, background: colors.paper } })
     .composite([
-      { input: inner, left: Math.round((W - im.width) / 2), top: Math.round(side + (areaH - im.height) / 2) },
-      { input: Buffer.from(svg) },
+      { input: inner, left: Math.round((L.width - im.width) / 2), top: L.art.top + Math.round((L.art.height - im.height) / 2) },
+      { input: Buffer.from(svgOf(L.width, L.height, captionSvg({ W: L.width, ruleY: L.ruleY, work, year, host, colors, fonts }))) },
     ])
-    .jpeg({ quality, mozjpeg: true })
+    .jpeg({ quality: config.quality ?? 90, mozjpeg: true })
     .toBuffer();
 }
 

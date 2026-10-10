@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, workKey } from './works.mjs';
+import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, wantsPinterest, workKey } from './works.mjs';
 
 /** Deterministic "random" returning the given values in a loop. */
 const sequence = (...values) => {
@@ -302,6 +302,16 @@ test('planFolderPrune (Fler): a work no longer on sale goes, an unknown state ke
 test('planFolderPrune never takes a file of the other platform for its own', () => {
   assert.deepEqual(planFolderPrune(['rano/post.txt', 'rano/caption-papir.jpg'], new Map(), EXPORT_FILES.fler), []);
   assert.deepEqual(planFolderPrune(['rano/original.jpg'], new Map(), EXPORT_FILES.instagram), []);
+});
+
+test('EXPORT_FILES: the slides of the panorama and the story are Instagram exports', () => {
+  for (const f of ['pano-1.jpg', 'pano-3.jpg', 'story.jpg']) assert.ok(EXPORT_FILES.instagram.test(f), f);
+  assert.ok(!EXPORT_FILES.instagram.test('story-papir.jpg') && !EXPORT_FILES.fler.test('pano-1.jpg'));
+});
+
+test('wantsPinterest: only meta_pinterest: true', () => {
+  assert.equal(wantsPinterest({ meta_pinterest: true }), true);
+  for (const d of [{ meta_pinterest: false }, { meta_pinterest: 'true' }, {}, null]) assert.equal(wantsPinterest(d), false);
 });
 
 test('EXPORT_FILES: the README preview of a folder belongs to the pipeline on both platforms', () => {

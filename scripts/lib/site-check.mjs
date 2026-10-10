@@ -6,6 +6,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { sitemapUrls } from './sitemap.mjs';
+import { feedImages } from './pinterest.mjs';
 
 const IMAGE_RE = /\.(avif|webp|jpe?g|png|gif|svg)$/i;
 const ATTR_RE = /\b(src|srcset|href|content)="([^"]*)"/g;
@@ -55,7 +56,8 @@ export function pageReferences(html, pageUrl, origin) {
  * Walks the site from `siteUrl` (its home page and the pages of its sitemap.xml) and checks every image its pages
  * refer to. Returns { pages, images (counts), sitemap (pages listed in it, 0 without one), missing: [{ image, page }],
  * brokenPages: [{ page, status }], html: [{ path, html }] (every page read, for the checks of their texts) }.
- * `fetchFn(url, { method })` like fetch; images are asked for with HEAD, `concurrency` at a time. A page listed in the sitemap counts as linked from "sitemap.xml".
+ * `fetchFn(url, { method })` like fetch; images are asked for with HEAD, `concurrency` at a time. A page listed in the sitemap counts as linked from "sitemap.xml", an image
+ * of the feed for Pinterest (/pinterest.xml) from "pinterest.xml".
  */
 export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concurrency = 8 } = {}) {
   const origin = new URL(siteUrl).origin;
@@ -65,6 +67,11 @@ export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concu
   for (const p of listed) if (!queue.includes(p)) queue.push(p);
   const seen = new Set(queue);
   const imageFrom = new Map();
+  // the pins of the feed for Pinterest (scripts/lib/pinterest.mjs) are images of the site too
+  const feed = await fetchFn(new URL('/pinterest.xml', siteUrl).href, { method: 'GET' });
+  if (feed.ok) {
+    for (const i of feedImages(await feed.text())) if (new URL(i).origin === origin && !imageFrom.has(i)) imageFrom.set(i, 'pinterest.xml');
+  }
   const brokenPages = [];
   const html = [];
   while (queue.length && seen.size <= maxPages) {

@@ -2,9 +2,10 @@
 import Base from '../../../layouts/Base.astro';
 import Picture from '../../../components/Picture.astro';
 import Img from '../../../components/Img.astro';
-import { collectionUrl, detailCaption, getCollection, workShareImage, getWorks, messages, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
+import { collectionUrl, config, detailCaption, getCollection, workPinImage, workShareImage, getWorks, messages, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
 import { isOnSale, wantsMockups } from '../../../../scripts/lib/works.mjs';
 import { EVENTS } from '../../../../scripts/lib/analytics.mjs';
+import { pinDescription, pinSaveUrl } from '../../../../scripts/lib/pinterest.mjs';
 import { artworkLd, breadcrumbLd, graphLd, workPageDescription, workPageTitle } from '../../../../scripts/lib/seo.mjs';
 import { defaultType, mailtoLink, workContext } from '../../../../scripts/lib/messages.mjs';
 
@@ -49,6 +50,11 @@ const path = `/tvorba/${work.year}/${work.key}/`;
 const message = workContext({ ...work, onSale: isOnSale(work.status) }, path);
 // Without the form: an e-mail with the same subject as a message would have.
 const mail = site.email && mailtoLink(site.email, defaultType(message), message);
+// "Uložit na Pinterest": visitors save the work (its pin, or the share image) to their board, linking to this page
+const pinSave = pinSaveUrl({
+  url: new URL(path, site.url).href, media: new URL(workPinImage(work).src, site.url).href,
+  description: [work.title, pinDescription(work, work.year, config.pinterestKeywords?.en)].filter(Boolean).join(' – '),
+});
 const jsonLd = graphLd(
   artworkLd(work, site, { path, image: new URL(share.src, site.url).href }),
   breadcrumbLd(site, [
@@ -101,9 +107,10 @@ const jsonLd = graphLd(
           {!messages.mode && mail && <a class="btn ghost" href={mail} data-track={EVENTS.email} data-work-id={work.id} data-work-title={work.title}>Napsat autorce</a>}
         </div>
       )}
-      {work.instagram && (
-        <p class="elsewhere"><a href={work.instagram} rel="noopener" data-track={EVENTS.instagram} data-work-id={work.id} data-work-title={work.title}>Obraz na Instagramu</a></p>
-      )}
+      <p class="elsewhere">
+        {work.instagram && <a href={work.instagram} rel="noopener" data-track={EVENTS.instagram} data-work-id={work.id} data-work-title={work.title}>Obraz na Instagramu</a>}
+        <a href={pinSave} rel="noopener" data-track={EVENTS.pinterest} data-work-id={work.id} data-work-title={work.title}>Uložit na Pinterest</a>
+      </p>
       {mockups.length > 0 && (
         <section class="mockups" aria-label="Jak obraz vypadá v interiéru">
           <p class="eyebrow">{mockupsHeading}</p>
@@ -206,7 +213,7 @@ const jsonLd = graphLd(
   .status { display: flex; gap: 16px; align-items: center; margin: 24px 0 16px; }
   .price { font-family: var(--serif); font-size: 1.5rem; }
   .actions { display: flex; flex-wrap: wrap; gap: 12px; }
-  .elsewhere { margin: 16px 0 0; font-size: 0.92rem; }
+  .elsewhere { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 16px 0 0; font-size: 0.92rem; }
   .elsewhere a { color: var(--ink-soft); }
   .elsewhere a:hover { color: var(--accent); }
   .btn.ghost { border-color: var(--line); }

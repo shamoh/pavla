@@ -235,6 +235,19 @@ export function tagAdvice(works) {
 }
 
 /**
+ * Works in the feed for Pinterest (meta_pinterest: true) whose technique or tags have no English keyword in the
+ * description of the pin: ["<file>: …"]. `dictionary` = pinterestKeywords.en of site.config.yaml (scripts/lib/pinterest.mjs).
+ */
+export function pinterestAdvice(works, dictionary = {}) {
+  return works
+    .filter((w) => w.data?.meta_pinterest === true)
+    .map((w) => [w, untranslatedWords(w.data, { en: dictionary })])
+    .filter(([, words]) => words.length)
+    .map(([w, words]) => `${workPath(w)}: ${words.length === 1 ? 'štítek' : 'štítky'} ${words.map((x) => `„${x}“`).join(', ')} `
+      + `${words.length === 1 ? 'nemá' : 'nemají'} v popisu pinu pro Pinterest anglické klíčové slovo (překlad doplní Libor do nastavení webu, pinterestKeywords.en)`);
+}
+
+/**
  * Works with Instagram exports (meta_instagram: true) whose technique or tags have no English hashtag in the text of
  * the post: ["<file>: …"]. `settings` = instagramPost of site.config.yaml (see scripts/lib/instagram.mjs).
  */

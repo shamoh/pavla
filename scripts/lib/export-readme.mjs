@@ -41,7 +41,8 @@ const about = ({ collection, pageUrl }) => [
 ];
 
 /**
- * README of the Instagram folder of a work: { work, year, files: { captions, scenes, details } (file names),
+ * README of the Instagram folder of a work: { work, year, files: { captions, scenes, panorama, story, details } (file names;
+ * panorama and story optional),
  * post (the text of the post, instagramPost), collection (title), pageUrl (the work's page on the site) }.
  */
 export function instagramReadme({ work, year, files, post, collection = '', pageUrl = '' }) {
@@ -49,7 +50,7 @@ export function instagramReadme({ work, year, files, post, collection = '', page
   const parts = [
     `# Instagram: ${escMd(work.title)}`,
     '',
-    `${escMd(captionFacts(work, year))}. Fotky jsou 4:5 (1080 × 1350). Klikni na fotku pro plnou velikost a stažení.`,
+    `${escMd(captionFacts(work, year))}. Fotky příspěvku jsou 4:5 (1080 × 1350), příběh 9:16. Klikni na fotku pro plnou velikost a stažení.`,
     ...(info.length ? ['', info.join('  \n')] : []),
     '',
     '## Text příspěvku',
@@ -64,8 +65,21 @@ export function instagramReadme({ work, year, files, post, collection = '', page
     '',
     thumbs(files.captions),
   ];
+  if (files.panorama?.length) {
+    parts.push('', '## Panorama pro karusel', '',
+      `Obraz přes ${files.panorama.length} navazující snímky: při listování karuselem plynule ubíhá. Dej je hned za první fotku `
+      + 's popiskem, v tomto pořadí (pak scény a detaily). Všechny fotky příspěvku nahraj najednou jako jeden karusel.', '',
+      thumbs(files.panorama, Math.round(THUMB * 0.8)));
+  }
   if (files.scenes.length) parts.push('', '## Ve scénách ateliéru', '', thumbs(files.scenes));
   if (files.details.length) parts.push('', '## Detaily', '', thumbs(files.details));
+  if (files.story) {
+    parts.push('', '## Příběh (story)', '',
+      'Fotka 9:16 pro příběh. Pod popiskem je volné místo na nálepku s odkazem'
+      + (pageUrl ? `: vlož nálepku „Odkaz“ s adresou <${pageUrl}>.` : '.')
+      + ' Příběh zmizí po 24 hodinách, pokud ho neuložíš do Výběru (např. podle kolekce).', '',
+      thumbs([files.story], Math.round(THUMB * 0.8)));
+  }
   return `${parts.join('\n')}\n`;
 }
 
@@ -109,7 +123,7 @@ export const NO_COLLECTION = 'Mimo kolekce';
 export function exportIndex(platform, entries) {
   const p = PLATFORM[platform];
   const head = platform === 'instagram'
-    ? ['# Fotky pro Instagram', '', 'Obrazy s `meta_instagram: true`. Každý má svou složku (stejně jako v `tvorba/`): fotky s popiskem, ve scénách ateliéru, detaily a text příspěvku.']
+    ? ['# Fotky pro Instagram', '', 'Obrazy s `meta_instagram: true`. Každý má svou složku (stejně jako v `tvorba/`): fotky s popiskem, ve scénách ateliéru, panorama pro karusel (široké obrazy), příběh, detaily a text příspěvku.']
     : ['# Fotky pro Fler', '', 'Obrazy na prodej (`available`, `reserved`). Každý má svou složku (stejně jako v `tvorba/`): originál a mockupy s podpisem.'];
   if (!entries.length) return `${[...head, '', 'Zatím žádné.'].join('\n')}\n`;
   const done = entries.filter((e) => e.url).length;

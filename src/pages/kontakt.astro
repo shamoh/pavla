@@ -23,6 +23,7 @@ const jsonLd = graphLd(
       <ul class:list={['contact', { compact: messages.mode }]}>
         {site.email && <li><span class="eyebrow">E-mail</span><a href={mailtoLink(site.email, 'greeting', null)} data-track={EVENTS.email}>{site.email}</a></li>}
         {site.instagram && <li><span class="eyebrow">Instagram</span><a href={`https://www.instagram.com/${site.instagram}/`} rel="me">@{site.instagram}</a></li>}
+        {site.pinterest && <li><span class="eyebrow">Pinterest</span><a href={site.pinterest} rel="me">Pavla na Pinterestu</a></li>}
         {site.fler && <li><span class="eyebrow">Obchůdek</span><a href={site.fler}>Fler</a></li>}
         {site.location && <li><span class="eyebrow">Žiji a maluji</span><span class="value">{site.location}</span></li>}
       </ul>

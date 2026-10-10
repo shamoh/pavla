@@ -10,6 +10,9 @@
 //                                                                        from the bare sheet when the master shows surroundings
 //   public/tvorba/<year>/<slug>-<id>/detail-<name>-<width>.*              detail photos of the work (commit)
 //   public/tvorba/<year>/<slug>-<id>/og.jpg                               share image (og:image): the whole work on paper, 3:2 (commit)
+//   public/tvorba/<year>/<slug>-<id>/pin.jpg                              Pinterest pin: the work with the caption, 2:3, every work
+//                                                                        ("Uložit na Pinterest"); with `meta_pinterest: true`
+//                                                                        also in the feed /pinterest.xml (commit)
 //   public/fotky/<name>/<width>.{avif,webp,jpg}, info.json                 other photos of the site (commit)
 //   public/<page>/_cover/, public/<page>/og.jpg                            own cover photo and share image of the chosen cover of a
 //                                                                        collection (tvorba/kolekce/<slug>), year (tvorba/<year>) or
@@ -18,6 +21,8 @@
 //   <contentDir>/export/instagram/[<collection>/]<slug>/      Instagram:
 //     caption-<palette>.jpg   the work on the paper of a palette of the site with a caption, 4:5 (scripts/lib/instagram.mjs)
 //     scene-<scene>.jpg       the work in a studio scene, 4:5 (mockups/instagram/scenes.yaml)
+//     pano-<n>.jpg            the slides of the seamless panorama of a wide work, 4:5 (panoramaSlides)
+//     story.jpg               a story, 9:16: the work with the caption and room for a link sticker
 //     detail-<name>.jpg       a detail photo cropped to 4:5
 //     README.md               preview on GitHub: the photos and the text of the post (scripts/lib/export-readme.mjs)
 //   (Instagram exports only for works with `meta_instagram: true`; otherwise they are removed)
@@ -62,16 +67,20 @@ import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
 import { rightsXmp } from './lib/image-rights.mjs';
 import { exportIndex, flerReadme, instagramReadme, publishedUrl } from './lib/export-readme.mjs';
-import { captionFacts, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, renderCaption, renderScene, siteHost } from './lib/instagram.mjs';
+import {
+  captionFacts, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides, panoramaSuffixes, renderCaption,
+  renderPanorama, renderScene, renderStory, siteHost,
+} from './lib/instagram.mjs';
+import { PIN_DEFAULTS, PIN_FILE } from './lib/pinterest.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
 import { cutOut, prepareCorners, trimTransparent, writePreviews } from './lib/corners.mjs';
 import { EDGE_DEFAULTS, cutsSheet, edgeLook, innerRegion } from './lib/edges.mjs';
 import { PALETTES } from './lib/palettes.mjs';
 import { formatSummary } from './lib/summary.mjs';
-import { hashtagAdvice, pageAdvice, tagAdvice, tagStats, techniqueAdvice, workAdvice } from './lib/advice.mjs';
+import { hashtagAdvice, pageAdvice, pinterestAdvice, tagAdvice, tagStats, techniqueAdvice, workAdvice } from './lib/advice.mjs';
 import {
-  EXPORT_FILES, PUBLIC_WORK_FIELDS, expectedExports, exportFileName, exportFolder, exportPattern, isOnSale, wantsInstagram, wantsMockups,
+  EXPORT_FILES, PUBLIC_WORK_FIELDS, expectedExports, exportFileName, exportFolder, exportPattern, isOnSale, wantsInstagram, wantsMockups, wantsPinterest,
   planFolderPrune, publicFields, validSize, validateWorks, workKey,
 } from './lib/works.mjs';
 
@@ -173,7 +182,7 @@ const dominantColor = async (buf) => {
 };
 
 /** Writes the web images and info.json; returns the rendered mockups ({ scene, buf }) for the exports. */
-async function web(dir, m, img, { work, picked, details, fingerprint, xmp }) {
+async function web(dir, m, img, { work, picked, details, fingerprint, xmp, pin, feed }) {
   // The folder only holds generated files, so start clean (drops mockups of scenes no longer picked).
   await fs.rm(dir, { recursive: true, force: true });
   await fs.mkdir(dir, { recursive: true });
@@ -195,10 +204,16 @@ async function web(dir, m, img, { work, picked, details, fingerprint, xmp }) {
     detailSets.push({ name: d.name, width: dm.width, height: dm.height, widths: dw, dominant: await dominantColor(dm.buf) });
   }
   const og = await shareImage(path.join(dir, 'og.jpg'), m, img, xmp);
+  // the pin for Pinterest (rendered by the caller): its size and bytes go into the feed; `feed` = in the feed
+  // /pinterest.xml (meta_pinterest; the flag itself never reaches the site)
+  if (pin) await fs.writeFile(path.join(dir, PIN_FILE), pin);
+  const pinInfo = pin
+    ? { ...(await sharp(pin).metadata().then(({ width, height }) => ({ width, height }))), bytes: pin.length, ...(feed ? { feed: true } : {}) }
+    : undefined;
   // Dimensions and placeholder colour, read by the site.
   const info = {
     width: m.width, height: m.height, widths, dominant: await dominantColor(m.buf), ...(m.transparent ? { transparent: true } : {}),
-    mockups, details: detailSets, og, fingerprint,
+    mockups, details: detailSets, og, ...(pinInfo ? { pin: pinInfo } : {}), fingerprint,
   };
   await fs.writeFile(path.join(dir, 'info.json'), JSON.stringify(info, null, 2));
   return rendered;
@@ -384,7 +399,7 @@ export async function run({
   updated.forEach((p) => log(`~ metadata brought in line with the schema: ${p}`));
   pending.forEach((p) => log(`! published, still marked DOPLNIT: ${p}`));
   const tags = tagStats(works);
-  const advice = [...workAdvice(works, { siteTitle: config.site?.title ?? '' }), ...techniqueAdvice(works), ...tagAdvice(works), ...hashtagAdvice(works, config.instagramPost), ...pageAdvice({
+  const advice = [...workAdvice(works, { siteTitle: config.site?.title ?? '' }), ...techniqueAdvice(works), ...tagAdvice(works), ...hashtagAdvice(works, config.instagramPost), ...pinterestAdvice(works, config.pinterestKeywords?.en), ...pageAdvice({
     collections: collections.collections, years: years.years, home: home.home, uncollected: uncollected.uncollected, photos: photos.photos,
   })];
   advice.forEach((p) => log(`? advice: ${p}`));
@@ -428,6 +443,8 @@ export async function run({
   const captionPalettes = PALETTES.map((p) => p.id);
   const instagramVariants = instagramSuffixes(captionPalettes, instagramScenes.scenes.map((s) => s.name));
   const instagramSettings = JSON.stringify({ ...img.instagram, host: siteHost(config.site?.url) });
+  // the pin for Pinterest (every work): images.pinterest over the defaults
+  const pinConfig = { ...PIN_DEFAULTS, ...img.pinterest };
   let fonts = null;
 
   const publicDir = path.join(siteDir, 'public');
@@ -479,11 +496,12 @@ export async function run({
       return false;
     }
     // Outputs depend on the master, the size (mockup scale), the scenes, whether the work is on sale
-    // (Fler exports), `mockups`, `meta_instagram`, the corners of the sheet (and how its edge fades, edgeLook: not the
+    // (Fler exports), `mockups`, `meta_instagram`, `meta_pinterest`, the corners of the sheet (and how its edge fades, edgeLook: not the
     // settings of detection and previews) and the detail photos; not on price or description.
     const master = await fs.readFile(w.masterPath);
     const onSale = isOnSale(w.data.status);
     const instagram = wantsInstagram(w.data);
+    const pinterest = wantsPinterest(w.data);
     const mockupsOn = wantsMockups(w.data);
     const details = await Promise.all(w.details.map(async (d) => ({ name: d.name, buf: await fs.readFile(d.path) })));
     // Instagram exports also show the title, technique, size and date (caption) and depend on the scenes and settings.
@@ -492,13 +510,15 @@ export async function run({
       ? [instagramScenes.text, instagramSettings, JSON.stringify([w.data.title, w.data.technique, w.data.size_cm, w.year])]
       : [];
     const folderInputs = instagram || onSale ? [exportFolder(w.yamlPath, w.slug)] : [];
+    // the pin (every work) shows the caption too, in its own size
+    const pinInputs = [JSON.stringify(['snug', { feed: pinterest }, pinConfig, siteHost(config.site?.url), w.data.title, w.data.technique, w.data.size_cm, w.year])];
     // Fler exports carry the signature: its settings and look (a change makes them again)
     const flerInputs = onSale ? [JSON.stringify([img.fler, WATERMARK_LOOK])] : [];
     // Creator, title, copyright and page of the work in the XMP of its web images (a new title makes them again)
     const xmp = rightsXmp({ author: config.site?.author, title: w.data.title, year: w.year, pageUrl: workPageUrl(w.year, key) });
     const fingerprint = sha1(
       String(PIPELINE_VERSION), master, JSON.stringify(w.data.size_cm ?? null), scenesText, String(onSale), String(instagram), String(mockupsOn),
-      ...instagramInputs, ...folderInputs, ...flerInputs, xmp,
+      String(pinterest), ...instagramInputs, ...folderInputs, ...flerInputs, ...pinInputs, xmp,
       JSON.stringify(w.data.meta_corners ?? null), JSON.stringify(cutsSheet(w.data.meta_corners) ? edgeLook(edges) : null),
       ...details.flatMap((d) => [d.name, d.buf]),
     );
@@ -510,7 +530,14 @@ export async function run({
     // Mockups only when the author asks for them (mockups: true), whether or not the work is for sale.
     const picked = mockupsOn ? pickScenes(w.data.size_cm, w.id, scenes) : [];
     if (mockupsOn && !picked.length) log(`  ! no mockup scene is big enough for ${rel} (see mockups/scenes.yaml maxCm)`);
-    const mockups = await web(webDir, m, img, { work: w.data, picked, details, fingerprint, xmp });
+    // Pinterest: the work with the caption right under it on the paper of the first palette, 2:3, on the site; every
+    // work has it ("Uložit na Pinterest" of its page), with meta_pinterest it is also in the feed /pinterest.xml
+    fonts ??= await loadFonts(fontsDir);
+    const pin = await renderCaption({
+      art: await insetWork(m.buf, pinConfig.insetPercent ?? 0), work: w.data, year: w.year, host: siteHost(config.site?.url),
+      colors: PALETTES[0].colors, fonts, config: pinConfig, xmp, snug: true,
+    });
+    const mockups = await web(webDir, m, img, { work: w.data, picked, details, fingerprint, xmp, pin, feed: pinterest });
 
     // Exports. Instagram: only when asked for (meta_instagram: true): the work with a caption on the paper of every
     // palette, the work in every studio scene and the detail photos; never the mockups of the site.
@@ -539,6 +566,14 @@ export async function run({
           await fs.writeFile(path.join(insta, exportFileName(`-scene-${scene.name}`)), buf);
         }
       }
+      // the seamless panorama of a wide work (slides of one carousel) and the story, on the paper of the first palette
+      const slides = panoramaSlides(w.data.size_cm, img.instagram);
+      if (slides) {
+        const bufs = await renderPanorama({ art, colors: PALETTES[0].colors, slides, config: img.instagram });
+        for (const [i, buf] of bufs.entries()) await fs.writeFile(path.join(insta, exportFileName(panoramaSuffixes(slides)[i])), buf);
+      }
+      const story = await renderStory({ art, work: w.data, year: w.year, host, colors: PALETTES[0].colors, fonts, config: img.instagram });
+      await fs.writeFile(path.join(insta, exportFileName('-story')), story);
       for (const d of details) await instagramDetail(path.join(insta, exportFileName(`-detail-${d.name}`)), d.buf, img);
     }
     if (onSale) {
@@ -572,6 +607,8 @@ export async function run({
       const files = {
         captions: captionPalettes.map((p) => exportFileName(`-caption-${p}`)),
         scenes: validSize(w.data.size_cm) ? instagramScenes.scenes.map((sc) => exportFileName(`-scene-${sc.name}`)) : [],
+        panorama: panoramaSuffixes(panoramaSlides(w.data.size_cm, img.instagram)).map(exportFileName),
+        story: exportFileName('-story'),
         details: w.details.map((d) => exportFileName(`-detail-${d.name}`)),
       };
       await writeIfChanged(path.join(exportRoot, 'instagram', folder, README), instagramReadme({ work: w.data, year: w.year, files, post: text, ...about }));
@@ -592,7 +629,10 @@ export async function run({
     for (const w of published) {
       const info = await readJson(path.join(publicDir, workImageDir(w.year, workKey(w.slug, w.id)), 'info.json'));
       const mockupScenes = info ? (info.mockups ?? []).map((m) => m.scene) : null;
-      const variants = validSize(w.data.size_cm) ? instagramVariants : instagramVariants.filter((v) => !v.startsWith('-scene-'));
+      const variants = [
+        ...(validSize(w.data.size_cm) ? instagramVariants : instagramVariants.filter((v) => !v.startsWith('-scene-'))),
+        ...panoramaSuffixes(panoramaSlides(w.data.size_cm, img.instagram)), '-story',
+      ];
       const e = expectedExports({ status: w.data.status, details: w.details.map((d) => d.name), mockupScenes, instagram: wantsInstagram(w.data), instagramVariants: variants });
       const folder = exportFolder(w.yamlPath, w.slug);
       for (const sub of ['instagram', 'fler']) {

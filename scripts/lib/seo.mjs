@@ -97,7 +97,7 @@ export function personLd(site, { image } = {}) {
     knowsAbout: ['akvarel', 'kresba', 'skicování', 'plenér'],
     ...(site.location && { homeLocation: { '@type': 'Place', name: site.location, address: { '@type': 'PostalAddress', addressLocality: site.location, addressCountry: 'CZ' } } }),
     ...(image && { image }),
-    sameAs: [site.instagram && `https://www.instagram.com/${site.instagram}/`, site.fler].filter(Boolean),
+    sameAs: [site.instagram && `https://www.instagram.com/${site.instagram}/`, site.pinterest, site.fler].filter(Boolean),
   };
 }
 
@@ -233,7 +233,7 @@ export const jsonLdText = (data) => JSON.stringify(data).replace(/</g, '\\u003c'
 
 /** Meta tags proving the site belongs to us, from site.verification of site.config.yaml (empty = none). */
 export function verificationMeta(verification = {}) {
-  const names = { google: 'google-site-verification', bing: 'msvalidate.01', seznam: 'seznam-wmt' };
+  const names = { google: 'google-site-verification', bing: 'msvalidate.01', seznam: 'seznam-wmt', pinterest: 'p:domain_verify' };
   return Object.entries(names).filter(([key]) => verification?.[key]).map(([key, name]) => ({ name, content: String(verification[key]) }));
 }
 

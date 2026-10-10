@@ -74,6 +74,7 @@ test('personLd and websiteLd: one author node, her profiles elsewhere, the site 
   const person = personLd(site, { image: 'https://web.test/p.jpg' });
   assert.equal(person['@id'], 'https://web.test/#autorka');
   assert.deepEqual(person.sameAs, ['https://www.instagram.com/pavla.k/'], 'an empty Fler address is left out');
+  assert.deepEqual(personLd({ ...site, pinterest: 'https://cz.pinterest.com/pavla/' }).sameAs, ['https://www.instagram.com/pavla.k/', 'https://cz.pinterest.com/pavla/']);
   assert.equal(person.image, 'https://web.test/p.jpg');
   assert.equal(personLd(site).image, undefined);
   assert.equal(person.homeLocation, undefined, 'no place without site.location');
@@ -111,6 +112,7 @@ test('verificationMeta and robotsTxt', () => {
     { name: 'google-site-verification', content: 'g1' }, { name: 'seznam-wmt', content: 's1' },
   ]);
   assert.deepEqual(verificationMeta(undefined), []);
+  assert.deepEqual(verificationMeta({ pinterest: 'p1' }), [{ name: 'p:domain_verify', content: 'p1' }]);
   assert.equal(robotsTxt({ url: 'https://web.test/' }), 'User-agent: *\nAllow: /\n\nSitemap: https://web.test/sitemap.xml\n');
 });
 

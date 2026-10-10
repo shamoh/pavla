@@ -187,6 +187,9 @@ export const validSize = (s) => Array.isArray(s) && s.length === 2 && s.every((n
 /** Size of a work as Czech text with a decimal comma, e.g. "29,5 × 29,5 cm" from [29.5, 29.5]; '' without a valid size. */
 export const formatSizeCm = (s) => (validSize(s) ? `${s.map((n) => String(n).replace('.', ',')).join(' × ')} cm` : '');
 
+/** "akvarel · 30 × 30 cm · 2026": the facts under the title of a caption or pin (missing ones are left out). */
+export const captionFacts = (work, year) => [work.technique, formatSizeCm(work.size_cm), year].filter(Boolean).join(' · ');
+
 const formatDate = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d));
 
 /**
@@ -232,7 +235,7 @@ export const exportFileName = (suffix) => (suffix === '' ? 'original.jpg' : `${s
  * post.txt is a former Instagram export (its text is in README.md now), still recognised for cleanup.
  */
 export const EXPORT_FILES = {
-  instagram: /^(?:(?:caption|scene|detail)-[a-z0-9-]+\.jpg|post\.txt|README\.md)$/,
+  instagram: /^(?:(?:caption|scene|detail|pano)-[a-z0-9-]+\.jpg|story\.jpg|post\.txt|README\.md)$/,
   fler: /^(?:(?:original|mockup-[a-z0-9-]+)\.jpg|README\.md)$/,
 };
 
@@ -268,10 +271,13 @@ export const isInstagramUrl = (v) => typeof v === 'string' && /^https:\/\/(?:www
 /** True when the author asked for Instagram exports of a work (`meta_instagram: true`). */
 export const wantsInstagram = (data) => data?.meta_instagram === true;
 
+/** True when the author asked for a pin on Pinterest (`meta_pinterest: true`): pin.jpg on the site and the feed. */
+export const wantsPinterest = (data) => data?.meta_pinterest === true;
+
 /**
  * Export suffixes a work should have, per platform (file names: exportFileName; stale files: planFolderPrune).
- * Instagram: only works with `meta_instagram: true`: `instagramVariants` (captions and studio scenes, see
- * scripts/lib/instagram.mjs instagramSuffixes) and every detail photo (the text of the post is in README.md), never the
+ * Instagram: only works with `meta_instagram: true`: `instagramVariants` (captions, studio scenes, the slides of the
+ * panorama and the story, see scripts/lib/instagram.mjs) and every detail photo (the text of the post is in README.md), never the
  * mockups of the site.
  * Fler: only works on sale, the original and every mockup. `mockupScenes` null = unknown (no web images yet).
  */

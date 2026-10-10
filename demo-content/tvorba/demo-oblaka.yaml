@@ -3,7 +3,7 @@
 # [px vodorovně, px svisle] od toho rohu fotky směrem dovnitř, např. tl: [40, 25]. false = nic neořezávat.
 # Po výměně fotky za jinou velikost atribut smaž, pipeline rohy najde znovu.
 meta_corners:
-  photo: [2000, 2000]
+  photo: [2400, 800]
   tl: [0, 0]
   tr: [0, 0]
   br: [0, 0]
@@ -15,9 +15,14 @@ meta_corners:
 meta_draft: false
 
 # Fotky pro Instagram, možnosti:
-# - true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, detailní fotky)
+# - true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, panorama pro karusel, příběh, detailní fotky)
 # - false - žádné
-meta_instagram: false
+meta_instagram: true
+
+# Pin na Pinterest, možnosti:
+# - true - připravit (obrázek pinu na webu, Pinterest si ho sám vezme z kanálu /pinterest.xml)
+# - false - žádný
+meta_pinterest: true
 
 # Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
 # Generuje ho pipeline, NIKDY neměnit. Hodí se napsat tužkou na zadní stranu obrazu.
@@ -62,7 +67,7 @@ price: 1500
 # - [21, 30] - Canson Montval A4
 # - [41, 30] - Canson XL A3
 # - [43, 31] - Chamoix A3
-size_cm: [30, 30]
+size_cm: [60, 20]
 
 # Stav obrazu, možnosti:
 # - available - k prodeji (s cenou price)

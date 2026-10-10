@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  COLLECTION_TITLE_CHARS, TAG_ROWS, TECHNIQUE_CHARS, endsSentence, endsWithFullStop, hashtagAdvice, pageAdvice, sameTag, startsLowercase, tagAdvice, tagKey, tagRows, tagStats, techniqueAdvice, workAdvice, workTitleChars,
+  COLLECTION_TITLE_CHARS, TAG_ROWS, TECHNIQUE_CHARS, endsSentence, endsWithFullStop, hashtagAdvice, pageAdvice, pinterestAdvice, sameTag, startsLowercase, tagAdvice, tagKey, tagRows, tagStats, techniqueAdvice, workAdvice, workTitleChars,
 } from './advice.mjs';
 
 const good = {
@@ -211,4 +211,17 @@ test('hashtagAdvice: only works with Instagram exports, every word without an En
     'tvorba/b.yaml: štítky „kvaš“, „mlha“ nemají v textu příspěvku pro Instagram anglický hashtag (překlad doplní Libor do nastavení webu, instagramPost.en)',
   ]);
   assert.deepEqual(hashtagAdvice(works, { en: { akvarel: 'a', krajina: 'b', kvaš: 'c', mlha: 'd' } }), []);
+});
+
+test('pinterestAdvice: only works in the feed for Pinterest, every word without an English keyword', () => {
+  const dictionary = { akvarel: 'watercolor', plenér: 'plein air' };
+  const works = [
+    { yamlPath: 'tvorba/a.yaml', data: { meta_pinterest: true, technique: 'akvarel', tags: ['plenér', 'mlha'] } },
+    { yamlPath: 'tvorba/b.yaml', data: { meta_pinterest: false, meta_instagram: true, technique: 'kvaš' } },
+    { yamlPath: 'tvorba/c.yaml', data: { meta_pinterest: true, technique: 'akvarel' } },
+  ];
+  assert.deepEqual(pinterestAdvice(works, dictionary), [
+    'tvorba/a.yaml: štítek „mlha“ nemá v popisu pinu pro Pinterest anglické klíčové slovo (překlad doplní Libor do nastavení webu, pinterestKeywords.en)',
+  ]);
+  assert.deepEqual(pinterestAdvice(works, { ...dictionary, mlha: 'fog' }), []);
 });

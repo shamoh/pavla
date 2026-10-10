@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
+import { PIN_FILE } from '../../scripts/lib/pinterest.mjs';
 import { coverCandidates, dateYear, detailKey, formatSizeCm, isValidId, workKey } from '../../scripts/lib/works.mjs';
 import { photoFocus } from '../../scripts/lib/photos.mjs';
 import { readCopies } from '../../scripts/lib/site-content.mjs';
@@ -23,10 +24,12 @@ export const config = YAML.parse(fs.readFileSync(path.join(root, 'site.config.ya
 export const site = config.site as {
   url: string; title: string; tagline: string; author: string;
   email: string; instagram: string; fler: string;
+  /** Address of the author's profile on Pinterest (footer, contact page); empty = none. */
+  pinterest?: string;
   /** Where the author lives and paints, shown on the contact page; empty = nothing. */
   location?: string;
   /** Codes proving to search engines that the site is ours (meta tags, scripts/lib/seo.mjs verificationMeta). */
-  verification?: { google?: string; bing?: string; seznam?: string };
+  verification?: { google?: string; bing?: string; seznam?: string; pinterest?: string };
 };
 
 export type Status = 'available' | 'reserved' | 'sold' | 'gifted' | 'not-for-sale';
@@ -84,7 +87,11 @@ export interface Work {
   /** The day (YYYY-MM-DD) its public attributes or images last changed (derived_modified of the public copy). */
   modified?: string;
   /** og: share image og.jpg in the work's folder (the whole work on paper, 3:2). */
-  image: ImageSet & { mockups?: Mockup[]; details?: Detail[]; og?: { width: number; height: number } };
+  /**
+   * pin: pin.jpg in the work's folder (the work with a caption, 2:3, every work); `feed` = in the feed /pinterest.xml
+   * (meta_pinterest), scripts/lib/pinterest.mjs.
+   */
+  image: ImageSet & { mockups?: Mockup[]; details?: Detail[]; og?: { width: number; height: number }; pin?: { width: number; height: number; bytes: number; feed?: boolean } };
 }
 
 export interface Collection {
@@ -322,6 +329,15 @@ export function workShareImage(w: Work): ShareImage {
   if (w.image.og) return { src: `${workImagePath(w)}/og.jpg`, ...w.image.og };
   const width = [...w.image.widths].filter((x) => x <= 1600).pop() ?? w.image.widths[0];
   return { src: `${workImagePath(w)}/${width}.jpg`, width, height: Math.round((w.image.height * width) / w.image.width) };
+}
+
+/**
+ * Picture of a work for Pinterest: its pin (pin.jpg, the work with the caption, 2:3; every work has one once the
+ * pipeline made it), otherwise its share image. Used by the feed /pinterest.xml and "Uložit na Pinterest".
+ */
+export function workPinImage(w: Work): ShareImage {
+  if (w.image.pin) return { src: `${workImagePath(w)}/${PIN_FILE}`, width: w.image.pin.width, height: w.image.pin.height };
+  return workShareImage(w);
 }
 
 /** Share image (og:image) of a collection: its chosen cover cropped to 3:2, otherwise its (random) cover work. */

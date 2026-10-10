@@ -351,10 +351,14 @@ export const WORK_SCHEMA = {
       options: [true, false],
       doc: [
         'Fotky pro Instagram, možnosti:',
-        '- true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, detailní fotky)',
+        '- true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, panorama pro karusel, příběh, detailní fotky)',
         '- false - žádné',
       ],
       previous: [[
+        'Fotky pro Instagram, možnosti:',
+        '- true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, detailní fotky)',
+        '- false - žádné',
+      ], [
         'Fotky pro Instagram, možnosti:',
         '- true - připravit (export/instagram: originál a detailní fotky)',
         '- false - žádné',
@@ -363,6 +367,17 @@ export const WORK_SCHEMA = {
         '- true – připravit (export/instagram: originál a detailní fotky)',
         '- false – žádné',
       ], 'true = připravit fotky pro Instagram (export/instagram: originál a detailní fotky); false = žádné.'],
+      value: false,
+    },
+    {
+      key: 'meta_pinterest',
+      settled: true,
+      options: [true, false],
+      doc: [
+        'Pin na Pinterest, možnosti:',
+        '- true - připravit (obrázek pinu na webu, Pinterest si ho sám vezme z kanálu /pinterest.xml)',
+        '- false - žádný',
+      ],
       value: false,
     },
     {
