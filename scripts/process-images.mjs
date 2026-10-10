@@ -60,7 +60,8 @@ import { placeholderProblems, prepareContent } from './lib/content.mjs';
 import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
-import { exportIndex, flerReadme, instagramReadme } from './lib/export-readme.mjs';
+import { rightsXmp } from './lib/image-rights.mjs';
+import { exportIndex, flerReadme, instagramReadme, publishedUrl } from './lib/export-readme.mjs';
 import { captionFacts, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, renderCaption, renderScene, siteHost } from './lib/instagram.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
@@ -150,12 +151,14 @@ function mockupSource(m) {
 const FALLBACK_PAPER = PALETTES[0].colors.paper;
 
 /** Writes <prefix><width>.{avif,webp,jpg} for every width that does not upscale; returns the widths. */
-async function responsive(buf, srcWidth, dir, prefix, widths, quality) {
+async function responsive(buf, srcWidth, dir, prefix, widths, quality, xmp) {
   // Never upscale: a smaller source additionally gets a variant at its full width.
   const fit = widths.filter((w) => w <= srcWidth);
   const unique = fit.length === widths.length ? fit : [...fit, srcWidth];
   for (const w of unique) {
-    const base = sharp(buf).resize({ width: w, withoutEnlargement: true });
+    // `xmp`: creator, copyright and page of the work (scripts/lib/image-rights.mjs), only on the author's works
+    const resized = sharp(buf).resize({ width: w, withoutEnlargement: true });
+    const base = xmp ? resized.withXmp(xmp) : resized;
     // AVIF and WebP keep a transparent surroundings; JPEG cannot, it gets the paper of the site behind it
     await base.clone().avif({ quality: quality - 22, effort: 5 }).toFile(path.join(dir, `${prefix}${w}.avif`));
     await base.clone().webp({ quality }).toFile(path.join(dir, `${prefix}${w}.webp`));
@@ -170,11 +173,11 @@ const dominantColor = async (buf) => {
 };
 
 /** Writes the web images and info.json; returns the rendered mockups ({ scene, buf }) for the exports. */
-async function web(dir, m, img, { work, picked, details, fingerprint }) {
+async function web(dir, m, img, { work, picked, details, fingerprint, xmp }) {
   // The folder only holds generated files, so start clean (drops mockups of scenes no longer picked).
   await fs.rm(dir, { recursive: true, force: true });
   await fs.mkdir(dir, { recursive: true });
-  const widths = await responsive(m.buf, m.width, dir, '', img.web.widths, img.web.quality);
+  const widths = await responsive(m.buf, m.width, dir, '', img.web.widths, img.web.quality, xmp);
   const mockups = [];
   const rendered = [];
   const framed = picked.length ? await mockupSource(m) : null;
@@ -182,16 +185,16 @@ async function web(dir, m, img, { work, picked, details, fingerprint }) {
     const buf = await renderMockup(framed, work.size_cm, scene);
     rendered.push({ scene: scene.name, buf });
     const { width, height } = await sharp(buf).metadata();
-    const mw = await responsive(buf, width, dir, `mockup-${scene.name}-`, img.mockups.widths, img.web.quality);
+    const mw = await responsive(buf, width, dir, `mockup-${scene.name}-`, img.mockups.widths, img.web.quality, xmp);
     mockups.push({ scene: scene.name, label: scene.label, width, height, widths: mw, dominant: await dominantColor(buf) });
   }
   const detailSets = [];
   for (const d of details) {
     const dm = await loadMaster(d.buf);
-    const dw = await responsive(dm.buf, dm.width, dir, `detail-${d.name}-`, img.details.widths, img.web.quality);
+    const dw = await responsive(dm.buf, dm.width, dir, `detail-${d.name}-`, img.details.widths, img.web.quality, xmp);
     detailSets.push({ name: d.name, width: dm.width, height: dm.height, widths: dw, dominant: await dominantColor(dm.buf) });
   }
-  const og = await shareImage(path.join(dir, 'og.jpg'), m, img);
+  const og = await shareImage(path.join(dir, 'og.jpg'), m, img, xmp);
   // Dimensions and placeholder colour, read by the site.
   const info = {
     width: m.width, height: m.height, widths, dominant: await dominantColor(m.buf), ...(m.transparent ? { transparent: true } : {}),
@@ -206,18 +209,16 @@ async function web(dir, m, img, { work, picked, details, fingerprint }) {
  * in the 3:2 frame social networks show without cropping. Returns { width, height }.
  */
 /** The whole image centred on the paper background in the share image size (images.og), as a JPEG buffer. */
-async function wholeOnPaper(m, img) {
+async function wholeOnPaper(m, img, xmp) {
   const { width: W, height: H, background, padding, quality } = img.og;
   const pad = Math.round(H * padding);
   const inner = await sharp(m.buf).resize({ width: W - 2 * pad, height: H - 2 * pad, fit: 'inside', withoutEnlargement: true }).toBuffer();
-  return sharp({ create: { width: W, height: H, channels: 3, background } })
-    .composite([{ input: inner, gravity: 'center' }])
-    .jpeg({ quality, mozjpeg: true })
-    .toBuffer();
+  const out = sharp({ create: { width: W, height: H, channels: 3, background } }).composite([{ input: inner, gravity: 'center' }]);
+  return (xmp ? out.withXmp(xmp) : out).jpeg({ quality, mozjpeg: true }).toBuffer();
 }
 
-async function shareImage(file, m, img) {
-  await fs.writeFile(file, await wholeOnPaper(m, img));
+async function shareImage(file, m, img, xmp) {
+  await fs.writeFile(file, await wholeOnPaper(m, img, xmp));
   return { width: img.og.width, height: img.og.height };
 }
 
@@ -466,6 +467,9 @@ export async function run({
     await writeIfChanged(path.join(siteDir, rel), SYNC_HEADER + YAML.stringify({ ...fields, [MODIFIED]: modified }));
   };
 
+  /** Address of the page of a work on the site (its folder in public/ is its address). */
+  const workPageUrl = (year, key) => `${String(config.site?.url ?? '').replace(/\/+$/, '')}/${workImageDir(year, key)}/`;
+
   /** Web images and exports of a work; true when they were (re)generated in this run. */
   const workImages = async (w, key, rel) => {
     const webDir = path.join(publicDir, workImageDir(w.year, key));
@@ -490,9 +494,11 @@ export async function run({
     const folderInputs = instagram || onSale ? [exportFolder(w.yamlPath, w.slug)] : [];
     // Fler exports carry the signature: its settings and look (a change makes them again)
     const flerInputs = onSale ? [JSON.stringify([img.fler, WATERMARK_LOOK])] : [];
+    // Creator, title, copyright and page of the work in the XMP of its web images (a new title makes them again)
+    const xmp = rightsXmp({ author: config.site?.author, title: w.data.title, year: w.year, pageUrl: workPageUrl(w.year, key) });
     const fingerprint = sha1(
       String(PIPELINE_VERSION), master, JSON.stringify(w.data.size_cm ?? null), scenesText, String(onSale), String(instagram), String(mockupsOn),
-      ...instagramInputs, ...folderInputs, ...flerInputs,
+      ...instagramInputs, ...folderInputs, ...flerInputs, xmp,
       JSON.stringify(w.data.meta_corners ?? null), JSON.stringify(cutsSheet(w.data.meta_corners) ? edgeLook(edges) : null),
       ...details.flatMap((d) => [d.name, d.buf]),
     );
@@ -504,7 +510,7 @@ export async function run({
     // Mockups only when the author asks for them (mockups: true), whether or not the work is for sale.
     const picked = mockupsOn ? pickScenes(w.data.size_cm, w.id, scenes) : [];
     if (mockupsOn && !picked.length) log(`  ! no mockup scene is big enough for ${rel} (see mockups/scenes.yaml maxCm)`);
-    const mockups = await web(webDir, m, img, { work: w.data, picked, details, fingerprint });
+    const mockups = await web(webDir, m, img, { work: w.data, picked, details, fingerprint, xmp });
 
     // Exports. Instagram: only when asked for (meta_instagram: true): the work with a caption on the paper of every
     // palette, the work in every studio scene and the detail photos; never the mockups of the site.
@@ -557,7 +563,7 @@ export async function run({
     // The text of an Instagram post and the README.md previews of the export folders: cheap, so written by every run
     // (they follow the description, tags and price at once).
     const folder = exportFolder(w.yamlPath, w.slug);
-    const about = { collection: collectionTitles.get(w.collection) ?? '', pageUrl: `${String(config.site?.url ?? '').replace(/\/+$/, '')}/${workImageDir(w.year, key)}/` };
+    const about = { collection: collectionTitles.get(w.collection) ?? '', pageUrl: workPageUrl(w.year, key) };
     if (wantsInstagram(w.data)) {
       const text = instagramPost({
         work: w.data, year: w.year, host: siteHost(config.site?.url), onSale: isOnSale(w.data.status), settings: config.instagramPost,
@@ -599,12 +605,14 @@ export async function run({
     const overview = { instagram: [], fler: [] };
     for (const w of published) {
       const folder = exportFolder(w.yamlPath, w.slug);
-      const collection = collectionTitles.get(w.collection);
-      const facts = [captionFacts(w.data, w.year), collection].filter(Boolean).join(' · ');
-      if (wantsInstagram(w.data)) overview.instagram.push({ title: w.data.title, folder, thumb: exportFileName('-caption-papir'), note: facts });
+      const collection = collectionTitles.get(w.collection) ?? '';
+      const facts = captionFacts(w.data, w.year);
+      if (wantsInstagram(w.data)) {
+        overview.instagram.push({ title: w.data.title, folder, thumb: exportFileName('-caption-papir'), note: facts, collection, url: publishedUrl(w.data, 'instagram') });
+      }
       if (isOnSale(w.data.status)) {
         const price = typeof w.data.price === 'number' ? `${w.data.price.toLocaleString('cs-CZ')} Kč` : '';
-        overview.fler.push({ title: w.data.title, folder, thumb: exportFileName(''), note: [facts, price].filter(Boolean).join(' · ') });
+        overview.fler.push({ title: w.data.title, folder, thumb: exportFileName(''), note: [facts, price].filter(Boolean).join(' · '), collection, url: publishedUrl(w.data, 'fler') });
       }
     }
     for (const sub of ['instagram', 'fler']) {

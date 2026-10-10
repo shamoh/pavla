@@ -40,6 +40,9 @@ featured: false
 # NEPOVINNÉ. Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
 # fler: https://www.fler.cz/zbozi/…
 
+# NEPOVINNÉ. Odkaz na příspěvek s obrazem na Instagramu (https://www.instagram.com/p/…), až ho zveřejníš. Web ho ukáže u obrazu.
+# instagram: https://www.instagram.com/p/…
+
 # Mockupy (obraz v rámu v interiéru), možnosti:
 # - true - na webu, u obrazu na prodej i pro Fler
 # - false - žádné

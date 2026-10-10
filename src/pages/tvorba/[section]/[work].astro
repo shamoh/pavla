@@ -101,6 +101,9 @@ const jsonLd = graphLd(
           {!messages.mode && mail && <a class="btn ghost" href={mail} data-track={EVENTS.email} data-work-id={work.id} data-work-title={work.title}>Napsat autorce</a>}
         </div>
       )}
+      {work.instagram && (
+        <p class="elsewhere"><a href={work.instagram} rel="noopener" data-track={EVENTS.instagram} data-work-id={work.id} data-work-title={work.title}>Obraz na Instagramu</a></p>
+      )}
       {mockups.length > 0 && (
         <section class="mockups" aria-label="Jak obraz vypadá v interiéru">
           <p class="eyebrow">{mockupsHeading}</p>
@@ -203,6 +206,9 @@ const jsonLd = graphLd(
   .status { display: flex; gap: 16px; align-items: center; margin: 24px 0 16px; }
   .price { font-family: var(--serif); font-size: 1.5rem; }
   .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .elsewhere { margin: 16px 0 0; font-size: 0.92rem; }
+  .elsewhere a { color: var(--ink-soft); }
+  .elsewhere a:hover { color: var(--accent); }
   .btn.ghost { border-color: var(--line); }
   button.btn { background: transparent; color: var(--ink); font: inherit; font-size: 0.92rem; cursor: pointer; }
   button.btn:hover { background: var(--ink); color: var(--paper); }

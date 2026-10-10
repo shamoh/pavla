@@ -276,9 +276,9 @@ test('own private_ attributes: kept among the private_ ones alphabetically, with
 });
 
 test('a former name or a derived_ attribute is a problem; the file stays as it is', () => {
-  const old = 'title: A\ndraft: true\ninstagram: false\n';
+  const old = 'title: A\ndraft: true\n';
   const r = normalizeMetadata(old, WORK_SCHEMA);
-  assert.equal(r.problem, 'draft: přejmenováno na meta_draft, přejmenuj ho; instagram: přejmenováno na meta_instagram, přejmenuj ho');
+  assert.equal(r.problem, 'draft: přejmenováno na meta_draft, přejmenuj ho');
   assert.equal(r.text, old);
   assert.equal(r.changed, false);
   assert.match(normalizeMetadata('title: A\nderived_collection: x\n', WORK_SCHEMA).problem, /^derived_collection: údaje derived_ vyrábí automatika pro web/);

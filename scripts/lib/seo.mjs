@@ -3,6 +3,7 @@
 // Pure functions, used by the pages (src/pages) through src/layouts/Base.astro; texts are Czech.
 // A work on sale tells only that it is available, never its price (the price stays on the page itself).
 
+import { copyrightNotice } from './image-rights.mjs';
 import { formatSizeCm } from './works.mjs';
 
 const SCHEMA = 'https://schema.org';
@@ -139,10 +140,31 @@ export function tagKeywords(items, max = 20) {
 const AVAILABILITY = { available: `${SCHEMA}/InStock`, reserved: `${SCHEMA}/LimitedAvailability` };
 
 /**
+ * The picture of a work as schema.org ImageObject: its address, the author as creator, the credit line and the
+ * copyright notice (the same as in the XMP of the file, scripts/lib/image-rights.mjs). Never a licence.
+ */
+export function imageObjectLd(image, work, site) {
+  const year = work.year ?? (work.date ? new Date(work.date).getFullYear() : '');
+  return {
+    '@type': 'ImageObject',
+    contentUrl: image,
+    url: image,
+    creator: { '@id': authorId(site) },
+    creditText: site.author,
+    copyrightNotice: copyrightNotice(site.author, year),
+  };
+}
+
+/** Other pages about the same work (its post on Instagram, its listing on Fler): web addresses only. */
+const elsewhere = (work) => [work.instagram, work.fler].filter((u) => typeof u === 'string' && /^https?:\/\/\S+$/.test(u.trim())).map((u) => u.trim());
+
+/**
  * A work as schema.org VisualArtwork. `work`: { title, key, year, date, technique, support, size_cm, status,
- * description, tags }, `path`: its page, `image`: absolute address of its picture.
+ * description, tags, instagram, fler }, `path`: its page, `image`: absolute address of its picture. Its post on
+ * Instagram and its listing on Fler are `sameAs` (the same artwork elsewhere).
  */
 export function artworkLd(work, site, { path, image }) {
+  const sameAs = elsewhere(work);
   const [width, height] = Array.isArray(work.size_cm) ? work.size_cm : [];
   const cm = (value) => ({ '@type': 'QuantitativeValue', value, unitCode: 'CMT', unitText: 'cm' });
   const availability = AVAILABILITY[work.status];
@@ -153,7 +175,7 @@ export function artworkLd(work, site, { path, image }) {
     url: absolute(site, path),
     name: work.title,
     description: workDescription(work, site),
-    ...(image && { image }),
+    ...(image && { image: imageObjectLd(image, work, site) }),
     ...(form && { artform: form }),
     ...(work.technique && { artMedium: work.technique }),
     ...(work.support && { artworkSurface: work.support }),
@@ -163,6 +185,7 @@ export function artworkLd(work, site, { path, image }) {
     inLanguage: 'cs',
     creator: { '@id': authorId(site) },
     isPartOf: { '@id': siteId(site) },
+    ...(sameAs.length && { sameAs }),
     ...(availability && { offers: { '@type': 'Offer', availability, url: absolute(site, path) } }),
   };
 }

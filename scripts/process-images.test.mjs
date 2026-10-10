@@ -1117,18 +1117,18 @@ test('existing files get every supported attribute on every run, on a branch too
   assert.equal(copy.mockup, undefined);
 });
 
-test('attributes: a former name (draft, instagram) stops the run and the file is left alone, nothing is written', async () => {
-  const old = 'id: k3f9a\ntitle: Ráno\ndate: 2026-06-14\ndraft: true\ninstagram: true\n';
+test('attributes: a former name (draft) stops the run and the file is left alone, nothing is written', async () => {
+  const old = 'id: k3f9a\ntitle: Ráno\ndate: 2026-06-14\ndraft: true\n';
   await addWork('2026', 'rano', old);
   for (const prepareOnly of [true, false]) {
     const r = await run(opts({ prepareOnly }));
     assert.equal(r.ok, false);
-    assert.deepEqual(r.problems, ['tvorba/rano.yaml: draft: přejmenováno na meta_draft, přejmenuj ho; instagram: přejmenováno na meta_instagram, přejmenuj ho']);
+    assert.deepEqual(r.problems, ['tvorba/rano.yaml: draft: přejmenováno na meta_draft, přejmenuj ho']);
     assert.equal(await fs.readFile(path.join(contentDir, 'tvorba/rano.yaml'), 'utf8'), old, 'never migrated silently');
     assert.equal(await exists(path.join(siteDir, 'content')), false, 'a draft under its old name never reaches the site');
   }
   // renamed by hand: fine, still a draft
-  await fs.writeFile(path.join(contentDir, 'tvorba/rano.yaml'), old.replace('draft:', 'meta_draft:').replace('instagram:', 'meta_instagram:'));
+  await fs.writeFile(path.join(contentDir, 'tvorba/rano.yaml'), old.replace('draft:', 'meta_draft:'));
   const r = await run(opts());
   assert.equal(r.ok, true, r.problems.join('\n'));
   assert.equal(await exists(path.join(siteDir, 'content/tvorba/rano.yaml')), false);
@@ -1433,4 +1433,54 @@ test('exports: a former post.txt goes, the text of the post is in README.md', as
   const r = await run(opts());
   assert.deepEqual(r.pruned, ['export/instagram/rano/post.txt']);
   assert.deepEqual(await exportsOf('instagram', '2026', 'rano'), insta(false));
+});
+
+test('attributes: instagram is a link to the post; a leftover instagram: true (the former meta_instagram) is an error', async () => {
+  await addWork('2026', 'rano', 'id: k3f9a\ntitle: Ráno\ndate: 2026-06-14\ninstagram: true\n');
+  let r = await run(opts());
+  assert.equal(r.ok, false);
+  assert.match(r.problems.join('\n'), /tvorba\/rano\.yaml: instagram musí být odkaz na příspěvek na Instagramu/);
+  await setYaml('2026', 'rano', 'id: k3f9a\ntitle: Ráno\ndate: 2026-06-14\ninstagram: https://www.instagram.com/p/AbC123/\n');
+  r = await run(opts());
+  assert.equal(r.ok, true, r.problems.join('\n'));
+  // public: the site shows the link on the page of the work
+  assert.equal(YAML.parse(await fs.readFile(path.join(siteDir, 'content/tvorba/rano.yaml'), 'utf8')).instagram, 'https://www.instagram.com/p/AbC123/');
+});
+
+test('exports: the READMEs say where a work is published, the overviews group the works by collection', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\ninstagram: https://www.instagram.com/p/AbC123/\nstatus: available\nprice: 1000\n', { collection: '2026-plener' });
+  await addWork('2026', 'vecer', 'title: Večer\ndate: 2026-06-14\nmeta_instagram: true\n');
+  assert.equal((await run(opts())).ok, true);
+  assert.ok((await fs.readFile(path.join(contentDir, 'export/instagram/2026-plener/rano/README.md'), 'utf8')).includes('Na Instagramu: <https://www.instagram.com/p/AbC123/>'));
+  assert.match(await fs.readFile(path.join(contentDir, 'export/instagram/vecer/README.md'), 'utf8'), /Na Instagramu: zatím nezveřejněno/);
+  assert.match(await fs.readFile(path.join(contentDir, 'export/fler/2026-plener/rano/README.md'), 'utf8'), /Na Fleru: zatím nepřidáno/);
+  const index = await fs.readFile(path.join(contentDir, 'export/instagram/README.md'), 'utf8');
+  const title = YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/2026-plener/_index.yaml'), 'utf8')).title;
+  assert.match(index, /Celkem 2, z toho na Instagramu 1, zatím nezveřejněno 1\./);
+  assert.ok(index.indexOf(`## ${title}`) < index.indexOf('## Mimo kolekce'), 'collections first, the rest last');
+  assert.ok(index.indexOf('rano/') < index.indexOf('## Mimo kolekce') && index.indexOf('vecer/') > index.indexOf('## Mimo kolekce'));
+});
+
+test('web images of a work carry creator, copyright and its page (XMP), a new title makes them again; other photos not', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n');
+  await addDetail('2026', 'rano', 'kvet.jpg');
+  await fs.mkdir(path.join(contentDir, 'fotky'), { recursive: true });
+  await sharp({ create: { width: 64, height: 48, channels: 3, background: '#cc8866' } }).jpeg().toFile(path.join(contentDir, 'fotky/portret.jpg'));
+  assert.equal((await run(opts())).ok, true);
+  const dir = await workDir('2026', 'rano');
+  const id = await idOf('2026', 'rano');
+  const files = (await fs.readdir(dir)).filter((f) => /\.(jpg|webp|avif)$/.test(f));
+  assert.ok(files.some((f) => f.startsWith('detail-')) && files.includes('og.jpg'));
+  for (const f of files) {
+    const xmp = String((await sharp(path.join(dir, f)).metadata()).xmp ?? '');
+    assert.ok(xmp.includes('<rdf:li>Pavla Kramolišová</rdf:li>'), `${f}: creator`);
+    assert.ok(xmp.includes('© 2026 Pavla Kramolišová'), `${f}: copyright`);
+    assert.ok(xmp.includes(`/tvorba/2026/rano-${id}/</xmpRights:WebStatement>`), `${f}: page`);
+  }
+  for (const f of (await fs.readdir(path.join(siteDir, 'public/fotky/portret'))).filter((x) => x.endsWith('.jpg'))) {
+    assert.equal((await sharp(path.join(siteDir, 'public/fotky/portret', f)).metadata()).xmp, undefined, 'a photo of the site is not a work of the author');
+  }
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno u vody\ndate: 2026-06-14\n`);
+  assert.equal((await run(opts())).processed, 1, 'a new title rewrites the XMP');
+  assert.ok(String((await sharp(path.join(dir, '40.jpg')).metadata()).xmp).includes('Ráno u vody'));
 });

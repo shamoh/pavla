@@ -71,6 +71,8 @@ export interface Work {
   status: Status;
   price?: number;
   fler?: string;
+  /** Link to the post with the work on Instagram (once published there). */
+  instagram?: string;
   featured?: boolean;
   /** Mockups (the work in a frame on a wall) shown on the page, independent of the status. */
   mockups?: boolean;

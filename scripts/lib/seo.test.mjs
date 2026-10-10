@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  artform, artworkLd, authorId, breadcrumbLd, collectionPageLd, graphLd, jsonLdText, personLd, robotsTxt, summarize,
+  artform, artworkLd, authorId, imageObjectLd, breadcrumbLd, collectionPageLd, graphLd, jsonLdText, personLd, robotsTxt, summarize,
   tagKeywords, verificationMeta, websiteLd, workDescription, workPageDescription, workPageTitle,
 } from './seo.mjs';
 
@@ -146,4 +146,23 @@ test('workPageDescription: the own description, with technique, size and year wh
   const d = workPageDescription({ ...k2, description: long }, [{ ...k1, description: long }, { ...k2, description: long }], site);
   assert.ok(d.length <= 160, String(d.length));
   assert.match(d, /… Akvarel, 27,5 × 40 cm, 2026\.$/);
+});
+
+test('artworkLd: the post on Instagram and the listing on Fler are sameAs, only web addresses', () => {
+  const ld = artworkLd({ ...work, instagram: 'https://www.instagram.com/p/AbC/', fler: 'https://www.fler.cz/zbozi/x' }, site, { path: '/x/' });
+  assert.deepEqual(ld.sameAs, ['https://www.instagram.com/p/AbC/', 'https://www.fler.cz/zbozi/x']);
+  assert.deepEqual(artworkLd({ ...work, instagram: 'https://www.instagram.com/p/AbC/', fler: '' }, site, { path: '/x/' }).sameAs, ['https://www.instagram.com/p/AbC/']);
+  assert.equal('sameAs' in artworkLd({ ...work, instagram: true }, site, { path: '/x/' }), false, 'nothing that is not an address');
+  assert.equal('sameAs' in artworkLd(work, site, { path: '/x/' }), false);
+});
+
+test('artworkLd: the picture is an ImageObject with the author as creator, credit and copyright notice', () => {
+  const ld = artworkLd(work, site, { path: '/tvorba/2026/ovce-v39nd/', image: 'https://web.test/og.jpg' });
+  assert.deepEqual(ld.image, {
+    '@type': 'ImageObject', contentUrl: 'https://web.test/og.jpg', url: 'https://web.test/og.jpg',
+    creator: { '@id': authorId(site) }, creditText: 'Pavla Kramolišová', copyrightNotice: '© 2026 Pavla Kramolišová',
+  });
+  assert.ok(!('license' in ld.image) && !('acquireLicensePage' in ld.image), 'the author sells originals, never licences');
+  assert.equal(imageObjectLd('https://web.test/a.jpg', { date: '2025-03-01' }, site).copyrightNotice, '© 2025 Pavla Kramolišová');
+  assert.equal('image' in artworkLd(work, site, { path: '/x/' }), false);
 });

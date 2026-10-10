@@ -43,6 +43,7 @@ export function gtagConfigScript(id) {
 export const EVENTS = {
   filter: 'gallery_filter', // tag (picked tags joined by a comma), technique, year, collection, status, featured, q (only the active ones), results
   fler: 'fler_click', // work_id, work_title
+  instagram: 'instagram_click', // "Obraz na Instagramu" of a work: work_id, work_title
   email: 'email_click', // the address on the contact page; "Napsat autorce" of a work (work_id, work_title) without messages
   message: 'message_sent', // message_type, work_id and work_title (a message about a work)
   palette: 'palette_change', // palette: the chosen colours (papir, pergamen, noc, auto)

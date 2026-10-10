@@ -35,10 +35,18 @@ test('flerReadme: facts, status and price, description to copy, original and moc
   assert.ok(plain.includes('Stav: **rezervováno**') && !plain.includes('## Popis') && !plain.includes('## Mockupy'));
 });
 
-test('exportIndex: a row per work with a thumbnail linking to its folder', () => {
-  const md = exportIndex('instagram', [{ title: 'Bobří hráz', folder: '2026-plener-sumava/bobri-hraz', thumb: 'caption-papir.jpg', note: 'akvarel' }]);
+test('exportIndex: a row per work with a thumbnail linking to its folder, grouped by collection, with its state', () => {
+  const md = exportIndex('instagram', [
+    { title: 'Bobří hráz', folder: '2026-plener-sumava/bobri-hraz', thumb: 'caption-papir.jpg', note: 'akvarel', collection: 'Plenér Šumava 2026', url: 'https://www.instagram.com/p/x/' },
+    { title: 'Malý princ', folder: 'maly-princ', thumb: 'caption-papir.jpg', note: 'akvarel', collection: '', url: '' },
+    { title: 'Jez', folder: '2026-plener-steken/jez', thumb: 'caption-papir.jpg', note: 'akvarel', collection: 'Plenér Štěkeň jaro 2026', url: '' },
+  ]);
   assert.match(md, /^# Fotky pro Instagram/);
-  assert.ok(md.includes('Celkem 1.'));
+  assert.ok(md.includes('Celkem 3, z toho na Instagramu 1, zatím nezveřejněno 2.'));
+  const at = (h) => md.indexOf(h);
+  // Czech order: Štěkeň (t) before Šumava (u); the works without a collection last
+  assert.ok(at('## Plenér Štěkeň jaro 2026') < at('## Plenér Šumava 2026') && at('## Plenér Šumava 2026') < at('## Mimo kolekce'), 'alphabetical, no collection last');
+  assert.ok(md.includes('✓ <a href="https://www.instagram.com/p/x/">na Instagramu</a>') && md.includes('○ zatím nezveřejněno'));
   assert.ok(md.includes('<a href="2026-plener-sumava/bobri-hraz/"><img src="2026-plener-sumava/bobri-hraz/caption-papir.jpg" width="120"'));
   assert.match(exportIndex('fler', []), /^# Fotky pro Fler[\s\S]*Zatím žádné\.\n$/);
 });
@@ -52,4 +60,13 @@ test('the READMEs of a work name its collection and link its page on the site', 
     assert.ok(md.includes('Kolekce: Plenér Šumava 2026  \nNa webu: <https://pavla.kramolis.cz/tvorba/2026/bobri-hraz-jujn2/>'));
   }
   assert.ok(!instagramReadme({ work, year: '2026', post: 'x', files: { captions: [], scenes: [], details: [] } }).includes('Na webu'));
+});
+
+test('the READMEs of a work say whether it is on Instagram and on Fler yet', () => {
+  const insta = (extra) => instagramReadme({ work: { ...work, ...extra }, year: '2026', post: 'x', files: { captions: [], scenes: [], details: [] } });
+  assert.ok(insta({ instagram: 'https://www.instagram.com/p/x/' }).includes('Na Instagramu: <https://www.instagram.com/p/x/>'));
+  assert.ok(insta({}).includes('Na Instagramu: zatím nezveřejněno (odkaz doplň do popisu obrazu jako `instagram:`)'));
+  const fler = (extra) => flerReadme({ work: { ...work, status: 'available', price: 900, ...extra }, year: '2026', files: { original: ['original.jpg'], mockups: [] } });
+  assert.ok(fler({ fler: 'https://www.fler.cz/zbozi/x' }).includes('Na Fleru: <https://www.fler.cz/zbozi/x>'));
+  assert.ok(fler({ fler: '' }).includes('Na Fleru: zatím nepřidáno (odkaz doplň do popisu obrazu jako `fler:`)'));
 });

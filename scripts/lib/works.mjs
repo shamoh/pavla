@@ -110,6 +110,9 @@ export function validateWorks(works) {
       problems.push(`${where}: stav „${w.data.status}“ potřebuje cenu (price: <Kč>)`);
     }
     problems.push(...validateDetailCaptions(w, where));
+    if (w.data?.instagram !== undefined && w.data.instagram !== null && w.data.instagram !== '' && !isInstagramUrl(w.data.instagram)) {
+      problems.push(`${where}: instagram musí být odkaz na příspěvek na Instagramu (https://www.instagram.com/p/…), ne „${w.data.instagram}“`);
+    }
     if (!w.data?.meta_draft) problems.push(...todoProblems(where, w.data, PUBLIC_WORK_FIELDS, ' (nebo nech meta_draft: true)'));
     problems.push(...optionProblems(where, w.data, WORK_SCHEMA));
     if (w.data?.collection !== undefined && w.data.collection !== null && w.data.collection !== '') {
@@ -258,6 +261,9 @@ export function planFolderPrune(files, wanted, names) {
 
 /** True when the author asked for mockups of a work (`mockups: true`), independent of whether it is for sale. */
 export const wantsMockups = (data) => data?.mockups === true;
+
+/** A link to a post on Instagram (the `instagram` attribute of a work). */
+export const isInstagramUrl = (v) => typeof v === 'string' && /^https:\/\/(?:www\.)?instagram\.com\/\S+$/.test(v.trim());
 
 /** True when the author asked for Instagram exports of a work (`meta_instagram: true`). */
 export const wantsInstagram = (data) => data?.meta_instagram === true;

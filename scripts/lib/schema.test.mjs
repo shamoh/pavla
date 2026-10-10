@@ -29,15 +29,15 @@ test('every schema is in file order and has only meta_, shared and private_ attr
     assert.ok(keys.every((k) => attributeGroup(k) !== 'derived'), `${s.name}: derived_ belong to the site repository only`);
   }
   assert.deepEqual(fieldKeys(WORK_SCHEMA), [
-    'meta_corners', 'meta_draft', 'meta_instagram', 'id', 'date', 'description', 'details', 'featured', 'fler', 'mockups', 'price',
+    'meta_corners', 'meta_draft', 'meta_instagram', 'id', 'date', 'description', 'details', 'featured', 'fler', 'instagram', 'mockups', 'price',
     'size_cm', 'status', 'support', 'tags', 'technique', 'title', 'private_note',
   ]);
 });
 
 test('publicKeys: the shared attributes, never meta_ or private_ ones', () => {
   assert.deepEqual(publicKeys(WORK_SCHEMA), [
-    'id', 'date', 'description', 'details', 'featured', 'fler', 'mockups', 'price', 'size_cm', 'status', 'support', 'tags',
-    'technique', 'title',
+    'id', 'date', 'description', 'details', 'featured', 'fler', 'instagram', 'mockups', 'price', 'size_cm', 'status', 'support',
+    'tags', 'technique', 'title',
   ]);
   assert.deepEqual(publicKeys(COLLECTION_SCHEMA), ['aspect', 'cover', 'description', 'focus', 'title']);
   assert.deepEqual(publicKeys(YEAR_SCHEMA), ['aspect', 'cover', 'description', 'focus']);

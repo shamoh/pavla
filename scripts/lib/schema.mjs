@@ -170,7 +170,9 @@ export const WORK_SCHEMA = {
     `Zkontroluj a doplň hodnoty označené ${TODO}, pak slovo ${TODO} smaž. Dokud je meta_draft: true, obraz se na webu nezobrazí.`,
   ],
   // former names of attributes: a file still using one is an error (rename it), never migrated silently
-  renamed: { draft: 'meta_draft', instagram: 'meta_instagram' },
+  // (`instagram` was the former name of meta_instagram; it is a link to the post now, and a leftover `instagram: true`
+  // is reported by the check of that link)
+  renamed: { draft: 'meta_draft' },
   fields: ordered([
     {
       key: 'id',
@@ -334,6 +336,13 @@ export const WORK_SCHEMA = {
       commented: true,
       example: 'https://www.fler.cz/zbozi/…',
       doc: 'Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.',
+      value: '',
+    },
+    {
+      key: 'instagram',
+      commented: true,
+      example: 'https://www.instagram.com/p/…',
+      doc: 'Odkaz na příspěvek s obrazem na Instagramu (https://www.instagram.com/p/…), až ho zveřejníš. Web ho ukáže u obrazu.',
       value: '',
     },
     {

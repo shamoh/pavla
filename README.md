@@ -461,9 +461,10 @@ ze sdílených:
 | `derived_<název>` | jen toto repo: odvodí pipeline (z jiných atributů, umístění souboru nebo průběhu zpracování); teď `derived_modified` u díla (viz *Mapa webu*) | v obsahovém repu = chyba |
 
 Seznam veřejných atributů se neudržuje ručně: jsou to sdílené atributy schématu (`PUBLIC_WORK_FIELDS` atd. =
-`publicKeys(<schéma>)`). Přejmenovaný atribut (`renamed` ve schématu, teď `draft` → `meta_draft`, `instagram` →
-`meta_instagram`) pipeline nepřevádí: soubor se starým jménem ohlásí chybou „přejmenováno na …, přejmenuj ho“, nic v něm
-nezmění a nic nezveřejní.
+`publicKeys(<schéma>)`). Přejmenovaný atribut (`renamed` ve schématu, teď `draft` → `meta_draft`) pipeline nepřevádí:
+soubor se starým jménem ohlásí chybou „přejmenováno na …, přejmenuj ho“, nic v něm nezmění a nic nezveřejní.
+(`instagram` byl dřív název `meta_instagram`; dnes je to odkaz na příspěvek, zapomenuté `instagram: true` ohlásí kontrola
+odkazu „instagram musí být odkaz na příspěvek na Instagramu“.)
 
 Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné znění komentářů, výchozí hodnoty:
 `WORK_SCHEMA` v `scripts/lib/schema.mjs`):
@@ -478,7 +479,8 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `description` | veřejný popis na webu |
 | `details` | popisky detailních fotek (viz *Detailní fotky*) |
 | `featured` | `true` = ve **výběru autorky**: přepínač „Doporučené“ v galerii; z 10 nejnovějších vybraných (`FEATURED_PICK`) se náhodně střídá obraz nahoře na úvodní stránce, na stránce roku a úvod kolekce bez `cover`; nejnovější z nich je náhled pro sdílení (úvod, rok, kolekce) |
-| `fler` | odkaz na Fler, tlačítko „Koupit na Fleru“ |
+| `fler` | odkaz na Fler, tlačítko „Koupit na Fleru“; v náhledu exportů `export/fler/` = „✓ na Fleru“ |
+| `instagram` | odkaz na příspěvek s obrazem na Instagramu (`https://www.instagram.com/…`, jiná hodnota = chyba, `isInstagramUrl`); stránka obrazu ukáže odkaz „Obraz na Instagramu“, náhled exportů `export/instagram/` = „✓ na Instagramu“. Nezávislé na `meta_instagram` (ten řídí jen výrobu fotek) |
 | `mockups` | `true` = mockupy, nezávisle na prodeji (výchozí `false`) |
 | `price` | Kč, povinná u `available` a `reserved` |
 | `size_cm` | `[šířka, výška]` v cm (desetinné číslo s tečkou, např. `[29.5, 40]`); drží měřítko mockupu na stěně. Na webu a v popisech pro vyhledávače s desetinnou čárkou („29,5 × 40 cm“, `formatSizeCm`), ve strukturovaných datech jako číslo |
@@ -550,7 +552,7 @@ na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`)). V�
     `featured`) nikdy nedostane `DOPLNIT` (ani v kostře, ani při doplnění), starý `DOPLNIT` u něj zmizí; souhrn běhu
     ho hlásí jako „doplněno … (výchozí hodnota)“,
   - **zakomentovaný nepovinný atribut** (ve schématu `commented: true` a ukázková hodnota `example`; teď `support`,
-    `details`, `price`, `fler` a `private_note` díla, `cover`, `aspect`, `focus` a `private_note` kolekce, roku
+    `details`, `price`, `fler`, `instagram` a `private_note` díla, `cover`, `aspect`, `focus` a `private_note` kolekce, roku
     a úvodu, `caption` fotky): když chybí nebo je prázdný, vloží ho jako řádek
     komentáře `# aspect: "3:2"` pod jeho technický komentář začínající `NEPOVINNÉ.` (`OPTIONAL` v
     `scripts/lib/schema.mjs`), nikdy s `DOPLNIT` a nehlásí ho jako doplněný. Do veřejné kopie se nedostane. Zapne se smazáním `# `; prázdná
@@ -810,11 +812,25 @@ v `site.config.yaml`.
 Každá složka díla v `export/instagram/` i `export/fler/` má `README.md`, který GitHub vykreslí pod seznamem souborů:
 u Instagramu nahoře text příspěvku v bloku s tlačítkem pro kopírování (jiný soubor s ním není; GitHub neumí vložit
 obsah jiného souboru, ani v AsciiDocu), u Fleru údaje pro inzerát: technika · rozměr · rok, podklad, stav, cena a popis;
-u obou kolekce a odkaz na stránku díla na webu (`site.url` + `/tvorba/<rok>/<slug>-<id>/`), pak náhledy všech fotek
-(klik = plná velikost). Dřívější `post.txt` úklid smaže. `export/instagram/README.md` a `export/fler/README.md` jsou
+u obou stav zveřejnění podle atributu `instagram` / `fler` („Na Instagramu: <odkaz>“ nebo „zatím nezveřejněno“,
+„Na Fleru: <odkaz>“ nebo „zatím nepřidáno“), kolekce a odkaz na stránku díla na webu (`site.url` +
+`/tvorba/<rok>/<slug>-<id>/`), pak náhledy všech fotek (klik = plná velikost). Dřívější `post.txt` úklid smaže. `export/instagram/README.md` a `export/fler/README.md` (seskupené pod nadpisy kolekcí podle abecedy, díla bez kolekce
+na konci pod „Mimo kolekce“, u každého díla ✓/○ stav zveřejnění a nahoře počty) jsou
 přehledy všech děl platformy s miniaturou a odkazem do složky (jen když platforma nějaké dílo má). Kód
 `scripts/lib/export-readme.mjs`; složky děl se píšou každým během (hned následují popis, cenu i štítky), přehledy
 plným během. Úklid je bere jako vlastní soubory pipeline (`EXPORT_FILES`).
+
+## Autorství v obrázcích (XMP)
+
+Webové obrázky každého díla (originál ve všech šířkách, detaily, mockupy, ve formátech JPEG, WebP i AVIF, a jeho
+`og.jpg`) nesou metadata XMP: autorka (`dc:creator` = `site.author`), název díla (`dc:title`), copyright
+„© <rok díla> <autorka>“ (`dc:rights`), kredit (`photoshop:Credit`), příznak chráněného díla (`xmpRights:Marked`) a odkaz
+na stránku díla (`xmpRights:WebStatement`). Google Obrázky z nich umí ukázat autora a kredit a stažený obrázek je nese
+dál. Nikdy licenci (autorka prodává originály, ne práva k obrázkům). Ostatní fotky webu (portrét, ateliér, vlastní
+úvodní fotky) XMP nedostanou, nemusí být dílem autorky. Kód `scripts/lib/image-rights.mjs` (`rightsXmp`,
+`copyrightNotice`); stejný text copyrightu a kredit má `ImageObject` obrázku ve strukturovaných datech stránky díla.
+XMP je v otisku díla: změna názvu, roku, adresy webu nebo jména autorky obrázky díla vyrobí znovu (jinak se jen
+zachovají). Ostatní metadata fotek (EXIF, GPS) pipeline dál zahazuje.
 
 ## Obrázky pro sdílení (náhled odkazu)
 
@@ -1151,6 +1167,8 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | exporty | `ls .demo/content/export/*/*/`: Instagram jen díla s `meta_instagram: true` (Ráno u rybníka, Pivoňky, Kytice z louky, Máky, Na podlaze, Lípa u kaple, Zimní sad), každé ve své složce `export/instagram/[<kolekce>/]<slug>/` (`ls -R .demo/content/export/instagram`) s `caption-papir/-pergamen/-noc.jpg`, `scene-stul-tmavy/-stul-svetly/-stojan.jpg`, `README.md` (s textem příspěvku) a `detail-*.jpg`; Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export pro Instagram zmizí |
 | Instagram: snímky s popiskem a scény | `open .demo/content/export/instagram/demo-plener-sumava-2026/demo-rano-u-rybnika/*`: tři snímky s popiskem (název, technika · rozměr · rok, adresa webu) na papíru palet, dílo na tmavém a světlém stole (pootočené na opačné strany, mimo rekvizity) a na stojanu (na liště, za paletkou); Lípa u kaple přiblížená, Zimní sad hlášený jako nevejde se (log; souhrn „Ke kontrole“ dostane plný běh obsahového repa); `cat …/README.md`: text příspěvku s popisem, „Kolekce: …“ u Ráno u rybníka, „Obraz je na prodej.“ u Máků, hashtagy česky a anglicky; štítek bez anglického překladu = „Doporučení“ v souhrnu |
 | náhledy exportů | `cat .demo/content/export/instagram/README.md .demo/content/export/fler/README.md`: přehledy s miniaturami; v každé složce díla `README.md` se všemi fotkami (u Instagramu i textem příspěvku, u Fleru s cenou); vykreslené je uvidíš na GitHubu obsahového repa nebo v náhledu Markdownu v editoru |
+| odkaz na Instagram | `/tvorba/2026/demo-rano-u-rybnika-pf7ru/`: pod stavem odkaz „Obraz na Instagramu“ (vymyšlený `instagram:` v testovacích datech); v `.demo/content/export/instagram/README.md` u něj „✓ na Instagramu“, u ostatních „○ zatím nezveřejněno“, skupiny podle kolekcí; `instagram: true` v popisu = chyba „instagram musí být odkaz…“ |
+| autorství v obrázcích | `node --input-type=module -e "import s from 'sharp';console.log(String((await s('.demo/site/public/tvorba/2026/demo-rano-u-rybnika-pf7ru/480.avif').metadata()).xmp))"`: autorka, „© 2026 …“, odkaz na stránku; v JSON-LD stránky díla `"image":{"@type":"ImageObject",…,"copyrightNotice":"© 2026 …"}`; fotka `public/fotky/…` XMP nemá |
 | vodoznak pro Fler | `open .demo/content/export/fler/*/*/mockup-*.jpg`: světlý podpis se stínem čitelný i na tmavém pozadí mockupu |
 | cena | zakomentuj nebo smaž `price` u díla `available` (`demo-maky.yaml`): `npm run images` skončí chybou „stav „available“ potřebuje cenu“ |
 | úklid exportů | přejmenuj dílo (yaml, fotku i složku detailů), `npm run images`: v logu `- removed export/…` se starým názvem, v `export/` zůstanou jen soubory s novým názvem; totéž po smazání díla. Nebo nakopíruj do složky díla v `export/fler/` cizí soubor `mockup-xyz.jpg`: další běh ho smaže, i když nic nepřegeneruje; vlastní soubor jiného jména (`poznamka.txt`) nechá. |
@@ -1163,7 +1181,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | obrázek pro sdílení kolekce | po `npm run images` otevři `public/tvorba/kolekce/*/og.jpg` (1200 × 800, stejný výřez jako na stránce, jen u vlastní fotky, detailu a `cover` s ořezem; ořez 2:1 Ze zahrady leží na papíře); změň `focus` nebo `aspect` kolekce Ze zahrady, `npm run images`, v logu `→ og kolekce/…` a výřez se posune. Na stránce kolekce je v `<meta property="og:image">`. |
 | starý název atributu | v `demo-content/tvorba/demo-maky.yaml` přepiš `meta_draft:` na `draft:`, `npm run demo:prepare`: chyba „draft: přejmenováno na meta_draft, přejmenuj ho“, soubor se nezmění (pak vrať) |
 | `derived_` v obsahu | do `demo-content/tvorba/demo-maky.yaml` přidej `derived_x: 1`, `npm run demo:prepare`: chyba „derived_ attributes are made by the pipeline…“ (pak smaž) |
-| vyhledávače | po `npm run demo:build`: `.demo/site/dist/robots.txt`, `.demo/site/dist/sitemap.xml` (s `lastmod`), ve zdroji stránek `<meta name="description">` a `application/ld+json` (dílo `VisualArtwork` s `keywords` a `artform`, výpisy `CollectionPage` s `keywords`, úvod `WebSite` + `Person`); 404 má `noindex` |
+| vyhledávače | po `npm run demo:build`: `.demo/site/dist/robots.txt`, `.demo/site/dist/sitemap.xml` (s `lastmod`), ve zdroji stránek `<meta name="description">` a `application/ld+json` (dílo `VisualArtwork` s `keywords` a `artform`, u Ráno u rybníka a Máků `sameAs` s odkazem na Instagram / Fler, výpisy `CollectionPage` s `keywords`, úvod `WebSite` + `Person`); 404 má `noindex` |
 | chybějící obrázek | smaž v `.demo/site/dist/tvorba/*/*/` jeden obrázek, `SITE_DATA_DIR=.demo/site npm run check:images`: vypíše ho se stránkou a skončí kódem 1 |
 | chyby v popisu | např. `date: 14. 6. 2026`, `collection: plener` v popisu díla, podsložka v kolekci bez díla, dvě složky se stejnou adresou, popisek v `details:` k neexistující fotce, zveřejňované dílo, kolekce, rok, úvod nebo fotka s textem začínajícím `DOPLNIT`, `cover` s dílem z jiné kolekce nebo `focus: [120, 50]`: `npm run images` skončí chybou a nic nezapíše |
 
@@ -1293,7 +1311,8 @@ Co web dělá, aby mu vyhledávače rozuměly (`scripts/lib/seo.mjs`, `src/layou
   úvod = web (`WebSite`) a autorka (`Person` s portrétem, odkazy na Instagram a Fler a místem `homeLocation` ze `site.location`), O mně = `ProfilePage`,
   Kontakt = `ContactPage`, dílo = `VisualArtwork` (název, popis, obrázek, technika, podklad, rozměry v cm, datum,
   autorka, klíčová slova `keywords` = štítky díla, druh díla `artform` podle techniky: `malba` / `kresba` / `grafika`,
-  neznámá technika žádný, `artform` v `scripts/lib/seo.mjs`), Tvorba, rok, kolekce a Kolekce = `CollectionPage` se seznamem děl
+  neznámá technika žádný, `artform` v `scripts/lib/seo.mjs`, a `sameAs` = odkazy `instagram` a `fler` díla, tedy tentýž
+  obraz jinde; obrázek jako `ImageObject` s `creator`, `creditText` a `copyrightNotice`, bez licence, `imageObjectLd`), Tvorba, rok, kolekce a Kolekce = `CollectionPage` se seznamem děl
   a klíčovými slovy ze štítků jeho děl (nejčastější první, nejvýš 20, `tagKeywords`); všude drobečková navigace
   (`BreadcrumbList`). **Obraz na prodej uvádí jen dostupnost (`available` = InStock, `reserved` =
   LimitedAvailability), nikdy cenu** (rozhodnutí 2026-10; cena zůstává jen na stránce).
@@ -1336,6 +1355,7 @@ analytics:
   |---|---|---|
   | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav, hledání) nebo na přehledu kolekcí rok či hledání; ne stránkování ani počet na stránku | aktivní filtry `tag` (víc štítků jako jedna hodnota spojená čárkou v abecedním pořadí, např. `krajina,voda`), `technique`, `year`, `collection`, `status`, `featured`, `q` (hledání, i na přehledu kolekcí; prázdné se neposílají) a `results` (kolik děl, na přehledu kolekcí kolik kolekcí odpovídá) |
   | `fler_click` | klik na „Koupit na Fleru“ u díla | `work_id`, `work_title` |
+  | `instagram_click` | klik na „Obraz na Instagramu“ u díla (atribut `instagram`) | `work_id`, `work_title` |
   | `email_click` | jen odkazy `mailto:`: klik na e-mailovou adresu na Kontaktu (kdo píše rovnou z pošty místo formuláře); bez formuláře zpráv i klik na „Napsat autorce“ u díla. Předmět e-mailu má stejný tvar jako odeslaná zpráva (`[pavla-web] Pozdrav nebo vzkaz`, u díla `[pavla-web] Dotaz na obraz: <název> (<id>)` / `Zájem o koupi: …`) | u díla `work_id`, `work_title`, na Kontaktu žádné |
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
   | `palette_change` | návštěvník v patičce přepne barvy webu (jen skutečná změna, ne opakovaný klik na tutéž) | `palette` (`papir`, `pergamen`, `noc`, `auto`) |
@@ -1351,7 +1371,8 @@ analytics:
   Událost × Technika).
 - Vyzkoušení událostí lokálně (bez Google tagu se nic neposílá, jen vypisuje): `npm run demo`, v DevTools →
   *Console* zapnout úroveň *Verbose*, změnit filtr v `/tvorba/` → `[analytics] gallery_filter {…}`; na detailu
-  díla na prodej s odkazem na Fler (v testovacích datech Máky) klik na „Koupit na Fleru“ → `[analytics] fler_click`.
+  díla na prodej s odkazem na Fler (v testovacích datech Máky) klik na „Koupit na Fleru“ → `[analytics] fler_click`,
+  na detailu Ráno u rybníka klik na „Obraz na Instagramu“ → `[analytics] instagram_click`.
   Na nasazeném webu: GA → *Administrátor → DebugView* s Tag Assistantem, nebo *V reálném čase → Počet událostí*.
 - Kód: `scripts/lib/analytics.mjs` (kdy měřit, obsah značky, kontrola ID), `analyticsId` v `src/lib/site.ts`.
 - Vyzkoušení: `npm run build`, pak `grep -c googletagmanager dist/index.html` (1 = značka je tam);
