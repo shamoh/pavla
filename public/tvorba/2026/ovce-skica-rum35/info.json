@@ -15,5 +15,10 @@
     "width": 1200,
     "height": 800
   },
-  "fingerprint": "131bc143e6b768c3"
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 84778
+  },
+  "fingerprint": "da5b237b297335bf"
 }
