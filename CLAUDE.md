@@ -63,7 +63,10 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   jen se `size_cm`), `pano-<n>.jpg` (plynulý karusel: široké dílo přes celou výšku 2–3 snímků 4:5, počet ze `size_cm`
   `panoramaSlides`, jen když je aspoň `panorama.minGain`× větší než na snímku s popiskem), `story.jpg` (příběh 9:16,
   `storyLayout`: volné pruhy `images.instagram.story` a místo na nálepku s odkazem, nic se tam nekreslí; adresa
-  pro nálepku v README s UTM `STORY_UTM`; přehled má u každé kolekce „Příběh kolekce“: snímky podle data, odkazy a odkaz na kolekci), `detail-<jméno>.jpg` a `README.md` (náhled pro GitHub s textem příspěvku s kolekcí a hashtagy česky a anglicky, slovník
+  pro nálepku v README s UTM `STORY_UTM`; přehled má u každé kolekce „Příběh kolekce“: snímky podle data, odkazy a odkaz na kolekci),
+  `grid-<pořadí>-<řádek>_<sloupec>.jpg` + `grid-preview.jpg` (mřížka na profilu `meta_instagram_grid: 3|6|9|12`, jen s `meta_instagram`, `GRID_LAYOUTS`/`instagramGrid`:
+  dlaždice 3:4 z jednoho plátna s vynechanou mezerou profilu `images.instagram.grid.gapPx`, popisek uvnitř krajních dlaždic, `gridPosts` = pořadí
+  zveřejnění pozpátku s texty; málo zaplněná mřížka = „Ke kontrole“), `detail-<jméno>.jpg` a `README.md` (náhled pro GitHub s textem příspěvku s kolekcí a hashtagy česky a anglicky, slovník
   `instagramPost` v `site.config.yaml`, kolekce i jako hashtag, píše se každým během; štítek bez překladu = doporučení
   `hashtagAdvice`); před tím ořez `images.instagram.insetPercent`; `scripts/lib/instagram.mjs`.
   Nevejde-li se dílo do volné části scény: snímek vznikne, souhrn běhu „Ke kontrole“ (`misfits`).
@@ -134,7 +137,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (`scripts/lib/metadata-yaml.mjs`): doplní chybějící atributy s `DOPLNIT`, srovná pořadí a technické komentáře,
   neznámé označí `NEZNÁMÝ`. Povinný atribut s konečnou výchozí hodnotou (`settled: true`: `meta_draft`, `tags`, `meta_instagram`, `meta_pinterest`,
   `mockups`, `featured`) nikdy nemá `DOPLNIT`. Nepovinný atribut (`commented: true` + `example`: `support`, `details`,
-  `caption`, `private_note`, `price`, `fler`, `instagram`, `cover`, `aspect`, `focus`) je v souboru zakomentovaný (`# price: 2500`) pod technickým komentářem s `NEPOVINNÉ.`, bez
+  `caption`, `private_note`, `price`, `fler`, `instagram`, `meta_instagram_grid`, `cover`, `aspect`, `focus`) je v souboru zakomentovaný (`# price: 2500`) pod technickým komentářem s `NEPOVINNÉ.`, bez
   `DOPLNIT`; prázdná hodnota = zakomentovat. Nový atribut = záznam ve schématu (prefix určí skupinu), README obou rep
   a testovací data; změna znění komentáře = staré znění do `previous`. Atribut s pevnými možnostmi (výčet, `true`/`false`):
   komentář „<co>, možnosti:“ a pod ním každá možnost na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`); povolené hodnoty v `options`

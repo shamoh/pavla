@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, wantsPinterest, workKey } from './works.mjs';
+import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, wantsPinterest, workKey, instagramGrid } from './works.mjs';
 
 /** Deterministic "random" returning the given values in a loop. */
 const sequence = (...values) => {
@@ -317,4 +317,12 @@ test('wantsPinterest: only meta_pinterest: true', () => {
 test('EXPORT_FILES: the README preview of a folder belongs to the pipeline on both platforms', () => {
   assert.ok(EXPORT_FILES.instagram.test('README.md') && EXPORT_FILES.fler.test('README.md'));
   assert.ok(!EXPORT_FILES.fler.test('readme.md') && !EXPORT_FILES.fler.test('poznamka.md'));
+});
+
+test('instagramGrid: the tiles of the profile grid, only with meta_instagram: true and a known layout', () => {
+  assert.equal(instagramGrid({ meta_instagram: true, meta_instagram_grid: 9 }), 9);
+  assert.equal(instagramGrid({ meta_instagram: false, meta_instagram_grid: 9 }), 0);
+  for (const v of [false, 4, '9', undefined]) assert.equal(instagramGrid({ meta_instagram: true, meta_instagram_grid: v }), 0, String(v));
+  assert.ok(EXPORT_FILES.instagram.test('grid-09-1_1.jpg') && EXPORT_FILES.instagram.test('grid-preview.jpg'));
+  assert.ok(!EXPORT_FILES.instagram.test('grid-x.jpg'));
 });

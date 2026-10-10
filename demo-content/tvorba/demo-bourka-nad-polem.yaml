@@ -21,6 +21,13 @@ meta_draft: false
 # - false - žádné
 meta_instagram: false
 
+# NEPOVINNÉ. Mřížka na profilu Instagramu (obraz rozřezaný na dlaždice, jen spolu s meta_instagram: true), možnosti:
+# - 3 - 3 × 1 dlaždice (hodně široký obraz)
+# - 6 - 3 × 2 dlaždice (obraz na šířku)
+# - 9 - 3 × 3 dlaždice (obraz na výšku)
+# - 12 - 3 × 4 dlaždice (hodně vysoký obraz)
+# meta_instagram_grid: 9
+
 # Pin na Pinterest, možnosti:
 # - true - připravit (obrázek pinu na webu, Pinterest si ho sám vezme z kanálu /pinterest.xml)
 # - false - žádný

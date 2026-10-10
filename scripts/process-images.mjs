@@ -23,6 +23,8 @@
 //     scene-<scene>.jpg       the work in a studio scene, 4:5 (mockups/instagram/scenes.yaml)
 //     pano-<n>.jpg            the slides of the seamless panorama of a wide work, 4:5 (panoramaSlides)
 //     story.jpg               a story, 9:16: the work with the caption and room for a link sticker
+//     grid-<order>-<row>_<col>.jpg, grid-preview.jpg  the profile grid (meta_instagram_grid): tiles 3:4 (order of
+//                             publishing, position on the grid) and a preview
 //     detail-<name>.jpg       a detail photo cropped to 4:5
 //     README.md               preview on GitHub: the photos and the text of the post (scripts/lib/export-readme.mjs)
 //   (Instagram exports only for works with `meta_instagram: true`; otherwise they are removed)
@@ -68,8 +70,8 @@ import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
 import { rightsXmp } from './lib/image-rights.mjs';
 import { STORY_UTM, exportIndex, flerReadme, instagramReadme, publishedUrl } from './lib/export-readme.mjs';
 import {
-  captionFacts, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides, panoramaSuffixes, renderCaption,
-  renderPanorama, renderScene, renderStory, siteHost,
+  GRID_DEFAULTS, captionFacts, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
+  panoramaSuffixes, renderCaption, renderGrid, renderPanorama, renderScene, renderStory, siteHost,
 } from './lib/instagram.mjs';
 import { PIN_DEFAULTS, PIN_FILE, withParams } from './lib/pinterest.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
@@ -80,7 +82,7 @@ import { PALETTES } from './lib/palettes.mjs';
 import { formatSummary } from './lib/summary.mjs';
 import { hashtagAdvice, pageAdvice, pinterestAdvice, tagAdvice, tagStats, techniqueAdvice, workAdvice } from './lib/advice.mjs';
 import {
-  EXPORT_FILES, PUBLIC_WORK_FIELDS, expectedExports, exportFileName, exportFolder, exportPattern, isOnSale, wantsInstagram, wantsMockups, wantsPinterest,
+  EXPORT_FILES, PUBLIC_WORK_FIELDS, expectedExports, exportFileName, exportFolder, exportPattern, instagramGrid, isOnSale, wantsInstagram, wantsMockups, wantsPinterest,
   planFolderPrune, publicFields, validSize, validateWorks, workKey,
 } from './lib/works.mjs';
 
@@ -508,7 +510,7 @@ export async function run({
     // Instagram exports also show the title, technique, size and date (caption) and depend on the scenes and settings.
     // Exports live in a folder mirroring tvorba/: a work moved to another collection gets them made again there.
     const instagramInputs = instagram
-      ? [instagramScenes.text, instagramSettings, JSON.stringify([w.data.title, w.data.technique, w.data.size_cm, w.year])]
+      ? [instagramScenes.text, instagramSettings, JSON.stringify([w.data.title, w.data.technique, w.data.size_cm, w.year, instagramGrid(w.data)])]
       : [];
     const folderInputs = instagram || onSale ? [exportFolder(w.yamlPath, w.slug)] : [];
     // the pin (every work) shows the caption too, in its own size
@@ -574,6 +576,19 @@ export async function run({
         for (const [i, buf] of bufs.entries()) await fs.writeFile(path.join(insta, exportFileName(panoramaSuffixes(slides)[i])), buf);
       }
       const story = await renderStory({ art, work: w.data, year: w.year, host, colors: PALETTES[0].colors, fonts, config: img.instagram });
+      // the profile grid (meta_instagram_grid): the work cut into tiles 3:4 that join up on the profile, and a preview
+      const tiles = instagramGrid(w.data);
+      if (tiles) {
+        const grid = await renderGrid({ art, work: w.data, year: w.year, host, colors: PALETTES[0].colors, fonts, tiles, config: img.instagram });
+        for (const [i, buf] of grid.tiles.entries()) await fs.writeFile(path.join(insta, exportFileName(gridSuffixes(tiles)[i])), buf);
+        await fs.writeFile(path.join(insta, exportFileName('-grid-preview')), grid.preview);
+        const minFill = img.instagram.grid?.minFill ?? GRID_DEFAULTS.minFill;
+        if (grid.layout.fill < minFill) {
+          log(`  ! ${rel}: the work covers only ${Math.round(grid.layout.fill * 100)} % of its grid of ${tiles}`);
+          misfits.push(`${w.yamlPath}: obraz zabere v mřížce ${tiles} dlaždic jen ${Math.round(grid.layout.fill * 100)} % plochy `
+            + '(zbytek je prázdný papír); zvol jinou mřížku (meta_instagram_grid) nebo false');
+        }
+      }
       await fs.writeFile(path.join(insta, exportFileName('-story')), story);
       for (const d of details) await instagramDetail(path.join(insta, exportFileName(`-detail-${d.name}`)), d.buf, img);
     }
@@ -610,6 +625,10 @@ export async function run({
         scenes: validSize(w.data.size_cm) ? instagramScenes.scenes.map((sc) => exportFileName(`-scene-${sc.name}`)) : [],
         panorama: panoramaSuffixes(panoramaSlides(w.data.size_cm, img.instagram)).map(exportFileName),
         story: exportFileName('-story'),
+        grid: instagramGrid(w.data)
+          ? { tiles: gridSuffixes(instagramGrid(w.data)).slice(0, -1).map(exportFileName), preview: exportFileName('-grid-preview'),
+            posts: gridPosts({ work: w.data, tiles: instagramGrid(w.data), post: text, handle: config.site?.instagram }) }
+          : null,
         details: w.details.map((d) => exportFileName(`-detail-${d.name}`)),
       };
       await writeIfChanged(path.join(exportRoot, 'instagram', folder, README), instagramReadme({ work: w.data, year: w.year, files, post: text, ...about }));
@@ -632,7 +651,7 @@ export async function run({
       const mockupScenes = info ? (info.mockups ?? []).map((m) => m.scene) : null;
       const variants = [
         ...(validSize(w.data.size_cm) ? instagramVariants : instagramVariants.filter((v) => !v.startsWith('-scene-'))),
-        ...panoramaSuffixes(panoramaSlides(w.data.size_cm, img.instagram)), '-story',
+        ...panoramaSuffixes(panoramaSlides(w.data.size_cm, img.instagram)), '-story', ...gridSuffixes(instagramGrid(w.data)),
       ];
       const e = expectedExports({ status: w.data.status, details: w.details.map((d) => d.name), mockupScenes, instagram: wantsInstagram(w.data), instagramVariants: variants });
       const folder = exportFolder(w.yamlPath, w.slug);

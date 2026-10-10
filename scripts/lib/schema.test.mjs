@@ -29,7 +29,7 @@ test('every schema is in file order and has only meta_, shared and private_ attr
     assert.ok(keys.every((k) => attributeGroup(k) !== 'derived'), `${s.name}: derived_ belong to the site repository only`);
   }
   assert.deepEqual(fieldKeys(WORK_SCHEMA), [
-    'meta_corners', 'meta_draft', 'meta_instagram', 'meta_pinterest', 'id', 'date', 'description', 'details', 'featured', 'fler', 'instagram', 'mockups', 'price',
+    'meta_corners', 'meta_draft', 'meta_instagram', 'meta_instagram_grid', 'meta_pinterest', 'id', 'date', 'description', 'details', 'featured', 'fler', 'instagram', 'mockups', 'price',
     'size_cm', 'status', 'support', 'tags', 'technique', 'title', 'private_note',
   ]);
 });
@@ -50,13 +50,14 @@ test('renamed attributes of a work point to existing ones', () => {
 
 test('an attribute with options lists exactly them in its technical comment, one per line', () => {
   const withOptions = SCHEMAS.flatMap((s) => s.fields).filter((f) => f.options);
-  assert.deepEqual(withOptions.map((f) => f.key), ['meta_draft', 'meta_instagram', 'meta_pinterest', 'featured', 'mockups', 'status'].filter((k) => withOptions.some((f) => f.key === k)));
+  assert.deepEqual(withOptions.map((f) => f.key), ['meta_draft', 'meta_instagram', 'meta_instagram_grid', 'meta_pinterest', 'featured', 'mockups', 'status'].filter((k) => withOptions.some((f) => f.key === k)));
   for (const f of withOptions) {
     const lines = docLines(f);
     assert.match(lines[0], /, možnosti:$/, f.key);
     const listed = lines.filter((l) => l.startsWith('- ')).map((l) => l.slice(2).split(' - ')[0]);
     assert.deepEqual(listed, f.options.map(String), f.key);
-    assert.ok(f.options.includes(f.value), `${f.key}: the skeleton value is one of the options`);
+    // an optional one is commented out in a skeleton (no value), its example is one of the options
+    assert.ok(f.commented ? f.options.map(String).includes(String(f.example)) : f.options.includes(f.value), `${f.key}: the skeleton value is one of the options`);
   }
 });
 

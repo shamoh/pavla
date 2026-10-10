@@ -168,6 +168,10 @@ images:
       safeTop: 250                       #   volné nahoře (lišta s profilem), px
       safeBottom: 340                    #   volné dole (pole pro odpověď), px
       linkSpace: 220                     #   volné místo na nálepku s odkazem nad spodním okrajem, px
+    grid:                                # mřížka na profilu (grid-<pořadí>-<řádek>_<sloupec>.jpg, jen s meta_instagram_grid): dlaždice 3:4
+      gapPx: 8                           #   mezera mezi dlaždicemi na profilu v px dlaždice (≈ 1 bod na telefonu); v obraze
+                                         #   se vynechá, aby na sebe dlaždice navazovaly
+      minFill: 0.55                      #   zabere-li obraz méně z mřížky, souhrn běhu to ukáže v „Ke kontrole“
     # scény ateliéru: mockups/instagram/scenes.yaml, písma popisku: fonts/
   pinterest:                             # pin na Pinterest (pin.jpg na webu ve složce každého díla, „Uložit na Pinterest“;
     width: 1000                          #   díla s meta_pinterest: true i v kanálu /pinterest.xml); obraz s popiskem, 2:3

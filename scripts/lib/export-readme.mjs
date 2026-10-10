@@ -48,8 +48,8 @@ const about = ({ collection, pageUrl }) => [
 ];
 
 /**
- * README of the Instagram folder of a work: { work, year, files: { captions, scenes, panorama, story, details } (file names;
- * panorama and story optional),
+ * README of the Instagram folder of a work: { work, year, files: { captions, scenes, panorama, story, grid, details } (file
+ * names; panorama, story and grid optional, grid see gridSection),
  * post (the text of the post, instagramPost), collection (title), pageUrl (the work's page on the site) }.
  */
 export function instagramReadme({ work, year, files, post, collection = '', pageUrl = '' }) {
@@ -80,6 +80,7 @@ export function instagramReadme({ work, year, files, post, collection = '', page
   }
   if (files.scenes.length) parts.push('', '## Ve scénách ateliéru', '', thumbs(files.scenes));
   if (files.details.length) parts.push('', '## Detaily', '', thumbs(files.details));
+  if (files.grid) parts.push(...gridSection(files.grid));
   if (files.story) {
     parts.push('', '## Příběh (story)', '',
       'Fotka 9:16 pro příběh. Pod popiskem je volné místo na nálepku s odkazem'
@@ -90,6 +91,28 @@ export function instagramReadme({ work, year, files, post, collection = '', page
       '', thumbs([files.story], Math.round(THUMB * 0.8)));
   }
   return `${parts.join('\n')}\n`;
+}
+
+/**
+ * The profile grid in the README of a work: the preview, the tiles as they lie (3 in a row) and the order of
+ * publishing with the text of every post ready to copy. `grid`: { tiles (file names in reading order), preview,
+ * posts (gridPosts: in the order of publishing) }.
+ */
+function gridSection({ tiles, preview, posts }) {
+  const rows = [];
+  for (let i = 0; i < tiles.length; i += 3) rows.push(thumbs(tiles.slice(i, i + 3), 120));
+  return [
+    '', `## Mřížka na profilu (${tiles.length} dlaždic)`, '',
+    `Obraz rozřezaný na ${tiles.length} příspěvků 3:4, které na profilu dají dohromady jednu fotku (mezery mřížky jsou`
+      + ' v obraze vynechané, takže na sebe dlaždice navazují). Takhle bude vypadat na profilu:', '',
+    `<a href="${preview}"><img src="${preview}" width="360" alt="náhled mřížky"></a>`, '',
+    'Dlaždice, jak leží na profilu:', '',
+    rows.join('\n<br>\n'), '',
+    '**Zveřejňuj pozpátku**, od pravé dolní dlaždice: nejnovější příspěvek je na profilu vlevo nahoře. Všechny za sebou,'
+      + ' nic mezi ně, a celkový počet příspěvků na profilu drž v násobcích tří (jinak se mřížka posune). Připnuté'
+      + ' příspěvky mřížku posouvají taky.',
+    ...posts.flatMap((p, i) => ['', `${i + 1}. \`${p.file}\``, '', fence(p.text)]),
+  ];
 }
 
 const STATUS = { available: 'na prodej', reserved: 'rezervováno' };

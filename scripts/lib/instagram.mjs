@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import opentype from 'opentype.js';
 import sharp from 'sharp';
 import YAML from 'yaml';
-import { captionFacts } from './works.mjs';
+import { GRID_LAYOUTS, captionFacts } from './works.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const INSTAGRAM_SCENES_DIR = path.join(siteRoot, 'mockups/instagram');
@@ -375,17 +375,19 @@ const svgOf = (W, H, body) => `<svg width="${W}" height="${H}" xmlns="http://www
  * The caption as SVG elements, its rule at `ruleY` (it takes CAPTION_HEIGHT - 58 px under the rule, plus descenders):
  * a thin rule, the title (serif italic) and "technique · size · year" on the left, the address of the site on the right.
  */
-function captionSvg({ W, ruleY, work, year, host, colors, fonts }) {
-  const textSide = Math.round(W * 0.08);
-  const titleY = ruleY + 54, factsY = titleY + 42;
-  const titleSize = 40, smallSize = 22;
-  const hostPath = textPath(fonts.sans, host, 0, 0, smallSize, 1.5);
-  const facts = fitText(fonts.sans, captionFacts(work, year), smallSize, W - 2 * textSide - hostPath.width - 40, 0.5);
-  const title = fitText(fonts.serif, work.title ?? '', titleSize, W - 2 * textSide);
-  return `<line x1="${textSide}" x2="${W - textSide}" y1="${ruleY}" y2="${ruleY}" stroke="${colors.line}" stroke-width="1.5"/>
-<path d="${textPath(fonts.serif, title, textSide, titleY, titleSize).d}" fill="${colors.ink}"/>
-<path d="${textPath(fonts.sans, facts, textSide, factsY, smallSize, 0.5).d}" fill="${colors.inkSoft}"/>
-<path d="${textPath(fonts.sans, host, W - textSide - hostPath.width, factsY, smallSize, 1.5).d}" fill="${colors.inkSoft}"/>`;
+function captionSvg({ W, ruleY, work, year, host, colors, fonts, scale = 1, left, right, textMax }) {
+  // left / right: where the rule and the texts start and end (default 8 % of the width from each side); textMax: the
+  // widest the title and the facts may be (the grid keeps them inside its first tile, the address inside the last)
+  const x0 = left ?? Math.round(W * 0.08), x1 = right ?? W - x0;
+  const titleY = ruleY + 54 * scale, factsY = titleY + 42 * scale;
+  const titleSize = 40 * scale, smallSize = 22 * scale, track = 1.5 * scale, trackSmall = 0.5 * scale;
+  const hostPath = textPath(fonts.sans, host, 0, 0, smallSize, track);
+  const facts = fitText(fonts.sans, captionFacts(work, year), smallSize, textMax ?? x1 - x0 - hostPath.width - 40 * scale, trackSmall);
+  const title = fitText(fonts.serif, work.title ?? '', titleSize, textMax ?? x1 - x0);
+  return `<line x1="${x0}" x2="${x1}" y1="${ruleY}" y2="${ruleY}" stroke="${colors.line}" stroke-width="${1.5 * scale}"/>
+<path d="${textPath(fonts.serif, title, x0, titleY, titleSize).d}" fill="${colors.ink}"/>
+<path d="${textPath(fonts.sans, facts, x0, factsY, smallSize, trackSmall).d}" fill="${colors.inkSoft}"/>
+<path d="${textPath(fonts.sans, host, x1 - hostPath.width, factsY, smallSize, track).d}" fill="${colors.inkSoft}"/>`;
 }
 
 /** Width of the work on the caption export (px) when it has the aspect ratio `ratio` (width / height). */
@@ -645,4 +647,99 @@ export function untranslatedWords(work, settings = {}) {
   const en = settings.en ?? {};
   const words = [work?.technique, ...(Array.isArray(work?.tags) ? work.tags : [])].filter((w) => typeof w === 'string' && w.trim());
   return [...new Set(words.filter((w) => !en[w] && !en[w.toLowerCase()]))];
+}
+
+// ---------------------------------------------------------------- profile grid (meta_instagram_grid)
+
+/** The profile grid: tiles 3:4 (as the grid of a profile shows them), the gap between them (px at the tile width), quality. */
+export const GRID_DEFAULTS = { gapPx: 8, minFill: 0.55, previewWidth: 1080, previewGap: '#000000' };
+
+/**
+ * The geometry of a profile grid of `tiles` (3, 6, 9, 12) for a work of aspect ratio `ratio` (width / height): the whole
+ * picture is laid out on one canvas as the profile shows it, tiles side by side with the gap of the grid between them
+ * (`gapPx`): a strip under a gap is never on any tile, so the tiles join up on the profile as one photo under a lattice.
+ * Returns { cols, rows, tileW, tileH, gap, W, H, tiles: [{ left, top }] (reading order), art: { left, top, width,
+ * height }, ruleY, scale (of the caption against a single 1080 photo), fill (the part of the canvas the work covers) }.
+ * The caption lies under the work, its title and facts inside the first tile of the bottom row, the address inside its
+ * last tile (never across a gap).
+ */
+export function gridLayout(tiles, ratio, config = {}) {
+  const [cols, rows] = GRID_LAYOUTS[tiles];
+  const tileW = config.width ?? 1080, tileH = Math.round(tileW * 4 / 3);
+  const gap = Math.round(config.grid?.gapPx ?? GRID_DEFAULTS.gapPx);
+  const W = cols * tileW + (cols - 1) * gap, H = rows * tileH + (rows - 1) * gap;
+  const scale = cols * tileW / 1080 / 1.25;
+  const pad = Math.round(W * (config.padding ?? 0.025));
+  const captionH = Math.round(CAPTION_HEIGHT * scale);
+  const areaW = W - 2 * pad, areaH = H - captionH - Math.round(24 * scale) - pad;
+  let width = areaW, height = Math.round(width / ratio);
+  if (height > areaH) { height = areaH; width = Math.round(height * ratio); }
+  const art = { left: Math.round((W - width) / 2), top: Math.round(pad + (areaH - height) / 2), width, height };
+  const list = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) list.push({ left: c * (tileW + gap), top: r * (tileH + gap) });
+  return { cols, rows, tileW, tileH, gap, W, H, tiles: list, art, ruleY: H - captionH, scale, fill: (width * height) / (W * H) };
+}
+
+/**
+ * Name of a tile of a grid of `tiles` (export suffix): "-grid-<order of publishing>-<row>_<column>", e.g. "-grid-09-1_1"
+ * for the top left tile of 9, published last; `index` in reading order. The order has two digits, so the files sort in
+ * the order of publishing.
+ */
+export const gridTile = (tiles, index) => {
+  const [cols] = GRID_LAYOUTS[tiles];
+  return `-grid-${String(tiles - index).padStart(2, '0')}-${Math.floor(index / cols) + 1}_${(index % cols) + 1}`;
+};
+
+/** Export suffixes of the tiles of a grid of `tiles` in reading order (gridTile), and the preview "-grid-preview". */
+export const gridSuffixes = (tiles) => (tiles ? [...Array.from({ length: tiles }, (_, i) => gridTile(tiles, i)), '-grid-preview'] : []);
+
+/**
+ * The profile grid of a work: { tiles: [JPEG] (reading order), preview: JPEG (the grid as the profile shows it, the gaps
+ * in `previewGap`), layout }. The work on the paper of a palette with the caption under it, cut into tiles 3:4.
+ */
+export async function renderGrid({ art, work, year, host, colors, fonts, tiles, config }) {
+  const g = { ...GRID_DEFAULTS, ...config.grid };
+  const { width: aw, height: ah } = await sharp(art).metadata();
+  const L = gridLayout(tiles, aw / ah, config);
+  const inner = await sharp(art).resize({ width: L.art.width, height: L.art.height, fit: 'inside' }).png().toBuffer();
+  const im = await sharp(inner).metadata();
+  const svg = captionSvg({
+    W: L.W, ruleY: L.ruleY, work, year, host, colors, fonts, scale: L.scale,
+    left: L.art.left, right: L.art.left + L.art.width,
+    // the title and the facts within the first column, the address within the last one
+    textMax: L.tileW - L.art.left - Math.round(30 * L.scale),
+  });
+  const canvas = await sharp({ create: { width: L.W, height: L.H, channels: 3, background: colors.paper } })
+    .composite([
+      { input: inner, left: L.art.left + Math.round((L.art.width - im.width) / 2), top: L.art.top + Math.round((L.art.height - im.height) / 2) },
+      { input: Buffer.from(svgOf(L.W, L.H, svg)) },
+    ])
+    .png().toBuffer();
+  const quality = config.quality ?? 90;
+  const out = await Promise.all(L.tiles.map((t) => sharp(canvas)
+    .extract({ left: t.left, top: t.top, width: L.tileW, height: L.tileH }).jpeg({ quality, mozjpeg: true }).toBuffer()));
+  // the preview: the canvas with the gaps painted as the profile shows them
+  const gaps = [];
+  for (let c = 1; c < L.cols; c++) gaps.push(`<rect x="${c * L.tileW + (c - 1) * L.gap}" y="0" width="${L.gap}" height="${L.H}"/>`);
+  for (let r = 1; r < L.rows; r++) gaps.push(`<rect x="0" y="${r * L.tileH + (r - 1) * L.gap}" width="${L.W}" height="${L.gap}"/>`);
+  const latticed = await sharp(canvas)
+    .composite([{ input: Buffer.from(svgOf(L.W, L.H, `<g fill="${g.previewGap}">${gaps.join('')}</g>`)) }]).png().toBuffer();
+  const preview = await sharp(latticed).resize({ width: g.previewWidth }).jpeg({ quality: 85, mozjpeg: true }).toBuffer();
+  return { tiles: out, preview, layout: L };
+}
+
+/**
+ * The texts of the posts of a grid in the order of publishing: the last tile (bottom right) first, the first tile (top
+ * left) last, as the newest post of a profile is its top left one. [{ file (export file name), text }]: every tile its
+ * title with "díl k/n" and the hashtags of the post; the last one published (top left) the whole text of the post.
+ */
+export function gridPosts({ work, tiles, post, handle = '' }) {
+  const tags = String(post ?? '').trimEnd().split('\n').filter((l) => l.startsWith('#'));
+  const where = handle ? `na profilu @${handle}` : 'na profilu';
+  return Array.from({ length: tiles }, (_, i) => {
+    const k = i + 1;
+    const file = `${gridTile(tiles, tiles - k).slice(1)}.jpg`;
+    if (k === tiles) return { file, text: `${String(post ?? '').trimEnd()}\n` };
+    return { file, text: `${work.title ?? ''} · díl ${k}/${tiles}\n\nCelý obraz se skládá z ${tiles} dílů ${where}.\n\n${tags.join('\n')}\n`.replace(/\n{3,}$/, '\n') };
+  });
 }

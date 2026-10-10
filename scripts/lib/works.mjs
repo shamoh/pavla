@@ -235,7 +235,7 @@ export const exportFileName = (suffix) => (suffix === '' ? 'original.jpg' : `${s
  * post.txt is a former Instagram export (its text is in README.md now), still recognised for cleanup.
  */
 export const EXPORT_FILES = {
-  instagram: /^(?:(?:caption|scene|detail|pano)-[a-z0-9-]+\.jpg|story\.jpg|post\.txt|README\.md)$/,
+  instagram: /^(?:(?:caption|scene|detail|pano)-[a-z0-9-]+\.jpg|grid-(?:\d+-\d+_\d+|preview)\.jpg|story\.jpg|post\.txt|README\.md)$/,
   fler: /^(?:(?:original|mockup-[a-z0-9-]+)\.jpg|README\.md)$/,
 };
 
@@ -270,6 +270,12 @@ export const isInstagramUrl = (v) => typeof v === 'string' && /^https:\/\/(?:www
 
 /** True when the author asked for Instagram exports of a work (`meta_instagram: true`). */
 export const wantsInstagram = (data) => data?.meta_instagram === true;
+
+/** Layouts of the Instagram profile grid by number of tiles: [columns, rows] (meta_instagram_grid). */
+export const GRID_LAYOUTS = { 3: [3, 1], 6: [3, 2], 9: [3, 3], 12: [3, 4] };
+
+/** Tiles of the profile grid a work asked for (meta_instagram_grid, only with meta_instagram: true), 0 = none. */
+export const instagramGrid = (data) => (wantsInstagram(data) && Number.isInteger(data?.meta_instagram_grid) && GRID_LAYOUTS[data.meta_instagram_grid] ? data.meta_instagram_grid : 0);
 
 /** True when the author asked for a pin on Pinterest (`meta_pinterest: true`): pin.jpg on the site and the feed. */
 export const wantsPinterest = (data) => data?.meta_pinterest === true;

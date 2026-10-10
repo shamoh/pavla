@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import {
-  captionFacts, captionLayout, converge, extendToLedge, fitText, hashtag, homography, insetWork, instagramPost, instagramSuffixes, untranslatedWords, lineY, loadFonts, loadInstagramScenes,
+  captionFacts, captionLayout, converge, gridLayout, gridPosts, gridSuffixes, renderGrid, extendToLedge, fitText, hashtag, homography, insetWork, instagramPost, instagramSuffixes, untranslatedWords, lineY, loadFonts, loadInstagramScenes,
   panoramaSlides, panoramaSuffixes, planPlacement, quadFits, renderCaption, renderPanorama, renderScene, renderStory, sceneGeometry, sceneWindow, siteHost,
   storyLayout, textPath, tiltDeg, workQuad,
 } from './instagram.mjs';
@@ -377,4 +377,57 @@ test('renderCaption snug: a wide work has its caption right under it, paper belo
   const bottom = await rows(false), snug = await rows(true);
   assert.ok(Math.min(...bottom) > 1340, 'default: the caption at the bottom');
   assert.ok(Math.max(...snug) < 1000, 'snug: the caption high up, under the work');
+});
+
+test('gridLayout: tiles 3:4 side by side with the gap of the profile between them, the work above the caption', () => {
+  const L = gridLayout(9, 30 / 42, { width: 1080, padding: 0.025 });
+  assert.deepEqual([L.cols, L.rows, L.tileW, L.tileH, L.gap], [3, 3, 1080, 1440, 8]);
+  assert.deepEqual([L.W, L.H], [3 * 1080 + 2 * 8, 3 * 1440 + 2 * 8]);
+  assert.deepEqual(L.tiles.slice(0, 4), [{ left: 0, top: 0 }, { left: 1088, top: 0 }, { left: 2176, top: 0 }, { left: 0, top: 1448 }], 'the gap is left out');
+  assert.ok(L.art.top + L.art.height < L.ruleY && L.ruleY < L.H, 'the caption under the work');
+  assert.ok(L.fill > 0.7 && L.fill < 0.8);
+  assert.ok(Math.abs(L.art.width / L.art.height - 30 / 42) < 0.01);
+  assert.deepEqual([gridLayout(3, 3, {}).rows, gridLayout(6, 1.4, {}).rows, gridLayout(12, 0.5, {}).rows], [1, 2, 4]);
+  assert.equal(gridLayout(9, 1, { grid: { gapPx: 0 } }).W, 3240, 'no gap');
+  assert.ok(gridLayout(9, 3, {}).fill < 0.4, 'a wide work in a portrait grid: mostly empty paper');
+});
+
+test('gridSuffixes: the tiles in reading order and the preview', () => {
+  assert.deepEqual(gridSuffixes(3), ['-grid-03-1_1', '-grid-02-1_2', '-grid-01-1_3', '-grid-preview']);
+  const nine = gridSuffixes(9);
+  assert.deepEqual([nine[0], nine[2], nine[3], nine[8]], ['-grid-09-1_1', '-grid-07-1_3', '-grid-06-2_1', '-grid-01-3_3'], 'order-row_column');
+  assert.equal(gridSuffixes(12)[11], '-grid-01-4_3');
+  assert.deepEqual(gridSuffixes(0), []);
+});
+
+test('gridPosts: published from the last tile to the first; the last one (top left) carries the whole text', () => {
+  const posts = gridPosts({ work: { title: 'Tetřevská slať' }, tiles: 3, post: 'Tetřevská slať\n\nPopis.\n\n#akvarel #krajina\n#watercolor\n', handle: 'pavla' });
+  assert.deepEqual(posts.map((p) => p.file), ['grid-01-1_3.jpg', 'grid-02-1_2.jpg', 'grid-03-1_1.jpg']);
+  assert.equal(posts[0].text, 'Tetřevská slať · díl 1/3\n\nCelý obraz se skládá z 3 dílů na profilu @pavla.\n\n#akvarel #krajina\n#watercolor\n');
+  assert.equal(posts[2].text, 'Tetřevská slať\n\nPopis.\n\n#akvarel #krajina\n#watercolor\n');
+  assert.ok(gridPosts({ work: { title: 'A' }, tiles: 3, post: 'A\n' })[0].text.includes('na profilu.'), 'without a handle');
+});
+
+test('renderGrid: tiles 3:4 that join up across the gap, a preview with the gaps', async () => {
+  // a horizontal gradient: the colour at a column depends only on x, so the seams can be checked
+  const w = 600, h = 840, raw = Buffer.alloc(w * h * 3);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = (y * w + x) * 3; raw[i] = Math.round(x / w * 255); raw[i + 1] = 80; raw[i + 2] = 80; }
+  const art = await sharp(raw, { raw: { width: w, height: h, channels: 3 } }).png().toBuffer();
+  const config = { width: 1080, padding: 0.025, quality: 95, grid: { gapPx: 40 } };
+  const { tiles, preview, layout } = await renderGrid({
+    art, work: { title: 'Slať', technique: 'akvarel', size_cm: [30, 42] }, year: '2026', host: 'pavla.kramolis.cz',
+    colors: PALETTES[0].colors, fonts: await loadFonts(), tiles: 9, config,
+  });
+  assert.equal(tiles.length, 9);
+  for (const t of tiles) { const m = await sharp(t).metadata(); assert.deepEqual([m.width, m.height], [1080, 1440]); }
+  const row = async (buf, x) => (await sharp(buf).extract({ left: x, top: 700, width: 1, height: 1 }).raw().toBuffer())[0];
+  // across the seam of tiles 4 and 5 (middle row) the red jumps by about the width of the gap, as the profile shows it
+  const step = (await row(tiles[4], 0)) - (await row(tiles[3], 1079));
+  const perPx = 255 / layout.art.width;
+  assert.ok(Math.abs(step - 41 * perPx) < 3, `the gap is skipped (${step})`);
+  const pm = await sharp(preview).metadata();
+  assert.equal(pm.width, 1080);
+  const gx = Math.round((1080 + 20) * 1080 / layout.W);
+  const g = await sharp(preview).extract({ left: gx, top: 300, width: 1, height: 1 }).raw().toBuffer();
+  assert.ok(g[0] < 30 && g[1] < 30, 'the gap in the preview is dark');
 });
