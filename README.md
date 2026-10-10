@@ -808,7 +808,13 @@ nejdřív snímek s popiskem, pak panorama, scéna, detaily; README složky to t
   dílo na papíru první palety s popiskem (stejným jako snímek s popiskem) přímo pod ním, obojí svisle vystředěné mezi
   volnými pruhy nahoře (`safeTop`, lišta s profilem) a dole (`safeBottom`, pole pro odpověď); nad spodním pruhem zůstane
   volné místo `linkSpace` na nálepku s odkazem (nic se tam nekreslí, značka by zůstala vidět vedle nálepky). README
-  složky v sekci „Příběh“ uvede adresu stránky díla pro nálepku.
+  složky v sekci „Příběh“ uvede adresu stránky díla pro nálepku v bloku ke zkopírování, s UTM
+  `?utm_source=instagram&utm_medium=social&utm_campaign=story` (`STORY_UTM` v `scripts/lib/export-readme.mjs`: aplikace
+  Instagramu neříká, odkud návštěvník přišel, takže by se v GA jinak tvářil jako přímá návštěva).
+- **Příběh kolekce** (přehled `export/instagram/README.md`, `collectionStory` v `scripts/lib/export-readme.mjs`): pod
+  tabulkou každé kolekce příběhy jejích děl jako sled snímků (podle `date`, Instagram je přehraje jeden po druhém), ke
+  každému odkaz pro nálepku v bloku ke zkopírování a nakonec odkaz na stránku kolekce (obojí s `STORY_UTM`), na poslední
+  snímek nebo do profilu. Díla bez kolekce ho nemají.
 - **Text příspěvku** (v `README.md` složky, `instagramPost` v `scripts/lib/instagram.mjs`): název, popis (ne `DOPLNIT`),
   „technika · rozměr · rok“, „Kolekce: <název kolekce>“ u díla v kolekci, u díla na prodej „Obraz je na prodej.“,
   adresa webu, pak řádek českých hashtagů

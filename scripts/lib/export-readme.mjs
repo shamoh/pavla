@@ -4,6 +4,13 @@
 //   export/<platform>/[<collection>/]<slug>/README.md    one work: all its photos (and the text of the post)
 
 import { captionFacts } from './instagram.mjs';
+import { withParams } from './pinterest.mjs';
+
+/**
+ * UTM parameters of the link in an Instagram story (the link sticker): Google Analytics files the visit under
+ * instagram / story even though the app of Instagram sends no referrer. The page itself is the same.
+ */
+export const STORY_UTM = { utm_source: 'instagram', utm_medium: 'social', utm_campaign: 'story' };
 
 /** Width of the thumbnails in px (GitHub keeps the width attribute of an <img>). */
 export const THUMB = 260;
@@ -76,9 +83,11 @@ export function instagramReadme({ work, year, files, post, collection = '', page
   if (files.story) {
     parts.push('', '## Příběh (story)', '',
       'Fotka 9:16 pro příběh. Pod popiskem je volné místo na nálepku s odkazem'
-      + (pageUrl ? `: vlož nálepku „Odkaz“ s adresou <${pageUrl}>.` : '.')
-      + ' Příběh zmizí po 24 hodinách, pokud ho neuložíš do Výběru (např. podle kolekce).', '',
-      thumbs([files.story], Math.round(THUMB * 0.8)));
+      + (pageUrl ? ': vlož nálepku „Odkaz“ s adresou níže (tlačítkem vpravo nahoře ji zkopíruješ; značky na konci řeknou '
+        + 'Google Analytics, že návštěva přišla z příběhu).' : '.')
+      + ' Příběh zmizí po 24 hodinách, pokud ho neuložíš do Výběru (např. podle kolekce).',
+      ...(pageUrl ? ['', fence(withParams(pageUrl, STORY_UTM))] : []),
+      '', thumbs([files.story], Math.round(THUMB * 0.8)));
   }
   return `${parts.join('\n')}\n`;
 }
@@ -112,6 +121,24 @@ export function flerReadme({ work, year, files, collection = '', pageUrl = '' })
   return `${parts.join('\n')}\n`;
 }
 
+/**
+ * "Příběh kolekce" of an overview: the stories of the works of a collection one after another (Instagram plays the
+ * frames of a story in a row; every frame gets the sticker with the link to its work) and the link of the collection.
+ */
+function collectionStory(entries) {
+  const frames = entries.filter((e) => e.story).sort((a, b) => String(a.date ?? '').localeCompare(String(b.date ?? '')));
+  if (!frames.length) return [];
+  const url = frames.find((e) => e.collectionUrl)?.collectionUrl;
+  return [
+    '', '### Příběh kolekce', '',
+    `Ochutnávka kolekce: přidej do příběhu ${frames.length === 1 ? 'tento snímek' : 'tyto snímky v tomhle pořadí'}, na každý nálepku „Odkaz“ `
+      + 's adresou jeho obrazu (níže, tlačítkem vpravo nahoře ji zkopíruješ). Instagram je přehraje jeden po druhém.', '',
+    frames.map((e) => `<a href="${e.folder}/${e.story}"><img src="${e.folder}/${e.story}" width="110" alt="${escMd(e.title)}"></a>`).join('\n'),
+    ...frames.flatMap((e, i) => ['', `${i + 1}. ${escMd(e.title)}`, '', ...(e.storyUrl ? [fence(e.storyUrl)] : [])]),
+    ...(url ? ['', 'Odkaz na celou kolekci (na poslední snímek nebo do profilu):', '', fence(url)] : []),
+  ];
+}
+
 /** Heading of the works without a collection in an overview. */
 export const NO_COLLECTION = 'Mimo kolekce';
 
@@ -119,6 +146,9 @@ export const NO_COLLECTION = 'Mimo kolekce';
  * Overview README of a platform: `entries` [{ title, folder (relative to the platform folder), thumb (file name in
  * it), note, collection (title, '' = none), url (where it is published, '' = not yet) }], grouped under a heading per
  * collection (alphabetically, the works without one last), in the given order within a group.
+ * Instagram: a collection whose works have a story (`story`: its file name, `storyUrl`: the link of its sticker, `date`)
+ * also gets "Příběh kolekce": the stories in the order of their dates and the links ready to copy, and the link of the
+ * collection itself (`collectionUrl`, with the UTM of stories) for the last frame or the profile.
  */
 export function exportIndex(platform, entries) {
   const p = PLATFORM[platform];
@@ -143,6 +173,7 @@ export function exportIndex(platform, entries) {
         + `<td><a href="${e.folder}/"><b>${escMd(e.title)}</b></a><br>${escMd(e.note ?? '')}<br>${state}</td></tr>`);
     }
     lines.push('</table>');
+    if (platform === 'instagram' && key) lines.push(...collectionStory(groups.get(key)));
   }
   return `${lines.join('\n')}\n`;
 }

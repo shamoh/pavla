@@ -24,7 +24,9 @@ test('instagramReadme: the panorama in order after the captions, the story with 
   assert.ok(md.includes('## Panorama pro karusel') && md.includes('přes 2 navazující snímky'));
   assert.ok(md.indexOf('## S popiskem') < md.indexOf('## Panorama') && md.indexOf('## Panorama') < md.indexOf('## Ve scénách'));
   assert.ok(md.indexOf('pano-1.jpg') < md.indexOf('pano-2.jpg'));
-  assert.match(md, /## Příběh \(story\)\n\n.*nálepku „Odkaz“ s adresou <https:\/\/pavla\.kramolis\.cz\/tvorba\/2026\/bobri-hraz-jujn2\/>/);
+  assert.match(md, /## Příběh \(story\)\n\n.*nálepku „Odkaz“ s adresou níže/);
+  assert.ok(md.includes('```text\nhttps://pavla.kramolis.cz/tvorba/2026/bobri-hraz-jujn2/?utm_source=instagram&utm_medium=social&utm_campaign=story\n```'),
+    'the link of the sticker with UTM, ready to copy');
   assert.ok(md.includes('<img src="story.jpg"'));
   const none = instagramReadme({ work, year: '2026', post: 'x', files: { captions: [], scenes: [], details: [] } });
   assert.ok(!none.includes('## Panorama') && !none.includes('## Příběh'), 'only what the work has');
@@ -83,4 +85,24 @@ test('the READMEs of a work say whether it is on Instagram and on Fler yet', () 
   const fler = (extra) => flerReadme({ work: { ...work, status: 'available', price: 900, ...extra }, year: '2026', files: { original: ['original.jpg'], mockups: [] } });
   assert.ok(fler({ fler: 'https://www.fler.cz/zbozi/x' }).includes('Na Fleru: <https://www.fler.cz/zbozi/x>'));
   assert.ok(fler({ fler: '' }).includes('Na Fleru: zatím nepřidáno (odkaz doplň do popisu obrazu jako `fler:`)'));
+});
+
+test('exportIndex (Instagram): the story of a collection: frames by date, the link of every frame and of the collection', () => {
+  const u = (p) => `https://pavla.kramolis.cz/${p}?utm_source=instagram&utm_medium=social&utm_campaign=story`;
+  const e = (title, folder, date, collection = 'Plenér Šumava 2026') => ({
+    title, folder, thumb: 'caption-papir.jpg', note: '', collection, url: '', story: 'story.jpg', date,
+    storyUrl: u(`tvorba/2026/${folder.split('/').pop()}/`), collectionUrl: collection ? u('tvorba/kolekce/2026-plener-sumava/') : '',
+  });
+  const md = exportIndex('instagram', [
+    e('Nad Modravou', '2026-plener-sumava/nad-modravou', '2026-07-24'),
+    e('Bobří hráz', '2026-plener-sumava/bobri-hraz', '2026-07-22'),
+    e('Malý princ', 'maly-princ', '2021-01-01', ''),
+  ]);
+  const story = md.slice(md.indexOf('### Příběh kolekce'));
+  assert.equal((md.match(/### Příběh kolekce/g) ?? []).length, 1, 'only for a collection');
+  assert.ok(story.indexOf('bobri-hraz/story.jpg') < story.indexOf('nad-modravou/story.jpg'), 'frames by date');
+  assert.ok(story.includes('1. Bobří hráz\n\n```text\n' + u('tvorba/2026/bobri-hraz/') + '\n```'));
+  assert.ok(story.includes('2. Nad Modravou'));
+  assert.ok(story.includes('Odkaz na celou kolekci') && story.includes(u('tvorba/kolekce/2026-plener-sumava/')));
+  assert.ok(!exportIndex('fler', [{ ...e('A', 'k/a', '2026-01-01') }]).includes('Příběh kolekce'), 'not on Fler');
 });

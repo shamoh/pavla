@@ -66,12 +66,12 @@ import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
 import { rightsXmp } from './lib/image-rights.mjs';
-import { exportIndex, flerReadme, instagramReadme, publishedUrl } from './lib/export-readme.mjs';
+import { STORY_UTM, exportIndex, flerReadme, instagramReadme, publishedUrl } from './lib/export-readme.mjs';
 import {
   captionFacts, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides, panoramaSuffixes, renderCaption,
   renderPanorama, renderScene, renderStory, siteHost,
 } from './lib/instagram.mjs';
-import { PIN_DEFAULTS, PIN_FILE } from './lib/pinterest.mjs';
+import { PIN_DEFAULTS, PIN_FILE, withParams } from './lib/pinterest.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
 import { cutOut, prepareCorners, trimTransparent, writePreviews } from './lib/corners.mjs';
@@ -485,7 +485,8 @@ export async function run({
   };
 
   /** Address of the page of a work on the site (its folder in public/ is its address). */
-  const workPageUrl = (year, key) => `${String(config.site?.url ?? '').replace(/\/+$/, '')}/${workImageDir(year, key)}/`;
+  const siteUrl = String(config.site?.url ?? '').replace(/\/+$/, '');
+  const workPageUrl = (year, key) => `${siteUrl}/${workImageDir(year, key)}/`;
 
   /** Web images and exports of a work; true when they were (re)generated in this run. */
   const workImages = async (w, key, rel) => {
@@ -648,7 +649,12 @@ export async function run({
       const collection = collectionTitles.get(w.collection) ?? '';
       const facts = captionFacts(w.data, w.year);
       if (wantsInstagram(w.data)) {
-        overview.instagram.push({ title: w.data.title, folder, thumb: exportFileName('-caption-papir'), note: facts, collection, url: publishedUrl(w.data, 'instagram') });
+        overview.instagram.push({
+          title: w.data.title, folder, thumb: exportFileName('-caption-papir'), note: facts, collection, url: publishedUrl(w.data, 'instagram'),
+          // the story of the collection: its frames and links (with the UTM of stories)
+          story: exportFileName('-story'), date: String(w.data.date ?? ''), storyUrl: withParams(workPageUrl(w.year, workKey(w.slug, w.id)), STORY_UTM),
+          collectionUrl: w.collection ? withParams(`${siteUrl}/${collectionPageDir(w.collection)}/`, STORY_UTM) : '',
+        });
       }
       if (isOnSale(w.data.status)) {
         const price = typeof w.data.price === 'number' ? `${w.data.price.toLocaleString('cs-CZ')} Kč` : '';

@@ -62,7 +62,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   prázdného listu, skutečné měřítko, stoly mimo rekvizity s opačným pootočením podle `id`, stojan na liště na ose;
   jen se `size_cm`), `pano-<n>.jpg` (plynulý karusel: široké dílo přes celou výšku 2–3 snímků 4:5, počet ze `size_cm`
   `panoramaSlides`, jen když je aspoň `panorama.minGain`× větší než na snímku s popiskem), `story.jpg` (příběh 9:16,
-  `storyLayout`: volné pruhy `images.instagram.story` a místo na nálepku s odkazem, nic se tam nekreslí), `detail-<jméno>.jpg` a `README.md` (náhled pro GitHub s textem příspěvku s kolekcí a hashtagy česky a anglicky, slovník
+  `storyLayout`: volné pruhy `images.instagram.story` a místo na nálepku s odkazem, nic se tam nekreslí; adresa
+  pro nálepku v README s UTM `STORY_UTM`; přehled má u každé kolekce „Příběh kolekce“: snímky podle data, odkazy a odkaz na kolekci), `detail-<jméno>.jpg` a `README.md` (náhled pro GitHub s textem příspěvku s kolekcí a hashtagy česky a anglicky, slovník
   `instagramPost` v `site.config.yaml`, kolekce i jako hashtag, píše se každým během; štítek bez překladu = doporučení
   `hashtagAdvice`); před tím ořez `images.instagram.insetPercent`; `scripts/lib/instagram.mjs`.
   Nevejde-li se dílo do volné části scény: snímek vznikne, souhrn běhu „Ke kontrole“ (`misfits`).
