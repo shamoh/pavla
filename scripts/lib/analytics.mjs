@@ -39,12 +39,16 @@ export function gtagConfigScript(id) {
   ].join('\n');
 }
 
+/** Methods of the `share` event besides the links of the services: the share sheet of a phone, copying the link. */
+export const SHARE_NATIVE = 'native';
+export const SHARE_COPY = 'copy';
+
 /** Names of the own events; their parameters must be registered as custom dimensions in GA (see README). */
 export const EVENTS = {
   filter: 'gallery_filter', // tag (picked tags joined by a comma), technique, year, collection, status, featured, q (only the active ones), results
   fler: 'fler_click', // work_id, work_title
   instagram: 'instagram_click', // "Obraz na Instagramu" of a work: work_id, work_title
-  pinterest: 'pinterest_click', // "Uložit na Pinterest" of a work: work_id, work_title
+  share: 'share', // "Sdílet" of a work (GA's recommended event): method (pinterest, facebook, whatsapp, native, copy), work_id, work_title
   email: 'email_click', // the address on the contact page; "Napsat autorce" of a work (work_id, work_title) without messages
   message: 'message_sent', // message_type, work_id and work_title (a message about a work)
   palette: 'palette_change', // palette: the chosen colours (papir, pergamen, noc, auto)
@@ -65,7 +69,7 @@ export function filterEventParams(state, results) {
 }
 
 /**
- * The event of a clicked element marked with data-track="<event>" (and data-work-id, data-work-title),
+ * The event of a clicked element marked with data-track="<event>" (and data-work-id, data-work-title, data-method),
  * or null when it is not one of our events.
  */
 export function trackedClick(dataset) {
@@ -74,6 +78,7 @@ export function trackedClick(dataset) {
   const params = {};
   if (dataset.workId) params.work_id = dataset.workId;
   if (dataset.workTitle) params.work_title = dataset.workTitle;
+  if (dataset.method) params.method = dataset.method;
   return { name, params };
 }
 

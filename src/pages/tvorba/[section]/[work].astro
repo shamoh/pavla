@@ -5,7 +5,8 @@ import Img from '../../../components/Img.astro';
 import { collectionUrl, config, detailCaption, getCollection, workPinImage, workShareImage, getWorks, messages, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
 import { isOnSale, wantsMockups } from '../../../../scripts/lib/works.mjs';
 import { EVENTS } from '../../../../scripts/lib/analytics.mjs';
-import { pinDescription, pinSaveUrl } from '../../../../scripts/lib/pinterest.mjs';
+import { pinDescription } from '../../../../scripts/lib/pinterest.mjs';
+import { shareLinks } from '../../../../scripts/lib/share.mjs';
 import { artworkLd, breadcrumbLd, graphLd, workPageDescription, workPageTitle } from '../../../../scripts/lib/seo.mjs';
 import { defaultType, mailtoLink, workContext } from '../../../../scripts/lib/messages.mjs';
 
@@ -50,11 +51,21 @@ const path = `/tvorba/${work.year}/${work.key}/`;
 const message = workContext({ ...work, onSale: isOnSale(work.status) }, path);
 // Without the form: an e-mail with the same subject as a message would have.
 const mail = site.email && mailtoLink(site.email, defaultType(message), message);
-// "Uložit na Pinterest": visitors save the work (its pin, or the share image) to their board, linking to this page
-const pinSave = pinSaveUrl({
-  url: new URL(path, site.url).href, media: new URL(workPinImage(work).src, site.url).href,
+// "Sdílet": links to share the work (Pinterest saves its pin, or the share image, with a link to this page)
+const pageUrl = new URL(path, site.url).href;
+const shares = shareLinks({
+  url: pageUrl, media: new URL(workPinImage(work).src, site.url).href, title: work.title,
   description: [work.title, pinDescription(work, work.year, config.pinterestKeywords?.en)].filter(Boolean).join(' – '),
 });
+// Small line icons of the services (own drawings in the colour of the text, nothing loaded from them)
+const ICONS: Record<string, string> = {
+  pinterest: '<circle cx="12" cy="12" r="9.5"/><path d="M10.2 19.6l1.9-8.1M10.9 13.6c.4 1 1.3 1.5 2.4 1.5 2.1 0 3.4-2 3.4-4.4 0-2.5-2-4.3-4.6-4.3-3 0-4.8 2.1-4.8 4.4 0 .9.3 1.7.9 2.2"/>',
+  facebook: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M15.5 8.5h-1.7c-1 0-1.8.8-1.8 1.8V21M9.8 13h5"/>',
+  whatsapp: '<path d="M4.5 19.5l1.2-3.6A8.2 8.2 0 1 1 8.4 18.6z"/><path d="M9.3 9.2c.3 2 2.2 4.2 4.6 4.9l1-1"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l2.8-2.8a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-2.8 2.8a4 4 0 0 0 5.7 5.7l1-1"/>',
+  instagram: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r=".6" fill="currentColor"/>',
+};
+const icon = (name: string) => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
 const jsonLd = graphLd(
   artworkLd(work, site, { path, image: new URL(share.src, site.url).href }),
   breadcrumbLd(site, [
@@ -71,19 +82,53 @@ const jsonLd = graphLd(
     <a class="zoom" href={views[0].src} data-view="0" title="Zvětšit">
       <Picture work={work} sizes="(max-width: 900px) 100vw, 64vw" eager />
     </a>
+    {(work.description || work.tags.length > 0) && (
+      <div class="story">
+        {work.description && <p class="desc">{work.description}</p>}
+        {work.tags.length > 0 && (
+          <p class="tags">{work.tags.map((t) => <a href={url(`/tvorba/?tag=${encodeURIComponent(t)}`)}>#{t}</a>)}</p>
+        )}
+      </div>
+    )}
     <div class="info">
-      <h1>{work.title}</h1>
-      <dl>
-        <dt>Technika</dt><dd>{work.technique}</dd>
-        {work.support && <><dt>Podklad</dt><dd>{work.support}</dd></>}
-        {work.size_cm && <><dt>Rozměr</dt><dd>{formatSize(work.size_cm)}</dd></>}
-        <dt>Vzniklo</dt><dd>{date}</dd>
-        {collection && <><dt>Kolekce</dt><dd><a href={collectionUrl(collection.slug)} data-return data-return-focus={work.id}>{collection.title}</a></dd></>}
-      </dl>
-      {work.description && <p class="desc">{work.description}</p>}
-      {work.tags.length > 0 && (
-        <p class="tags">{work.tags.map((t) => <a href={url(`/tvorba/?tag=${encodeURIComponent(t)}`)}>#{t}</a>)}</p>
+      <div class="head">
+        <h1>{work.title}</h1>
+        <dl>
+          <dt>Technika</dt><dd>{work.technique}</dd>
+          {work.support && <><dt>Podklad</dt><dd>{work.support}</dd></>}
+          {work.size_cm && <><dt>Rozměr</dt><dd>{formatSize(work.size_cm)}</dd></>}
+          <dt>Vzniklo</dt><dd>{date}</dd>
+          {collection && <><dt>Kolekce</dt><dd><a href={collectionUrl(collection.slug)} data-return data-return-focus={work.id}>{collection.title}</a></dd></>}
+        </dl>
+      </div>
+      {work.status !== 'not-for-sale' && (
+        <div class="buy">
+          <span class:list={['badge', { available: work.status === 'available' }]}>{statusLabel[work.status]}</span>
+          {work.status === 'available' && work.price && <span class="price">{formatPrice(work.price)}</span>}
+          {work.status === 'available' && (
+            <span class="actions">
+              {work.fler && <a class="btn small" href={work.fler} data-track={EVENTS.fler} data-work-id={work.id} data-work-title={work.title}>Koupit na Fleru</a>}
+              {messages.mode && <button type="button" class="btn small ghost" data-message-open={defaultType(message)} title="Zeptat se na obraz">Zeptat se</button>}
+              {!messages.mode && mail && <a class="btn small ghost" href={mail} data-track={EVENTS.email} data-work-id={work.id} data-work-title={work.title} title="Napsat autorce o obraze">Napsat</a>}
+            </span>
+          )}
+        </div>
       )}
+      <div class="share">
+        <span class="eyebrow">Sdílet</span>
+        {shares.map((l) => (
+          <a class="icon" href={l.href} rel="noopener" target="_blank" title={l.label} aria-label={l.label}
+            data-track={EVENTS.share} data-method={l.method} data-work-id={work.id} data-work-title={work.title} set:html={icon(l.method)} />
+        ))}
+        <button type="button" class="icon" data-share-link data-url={pageUrl} data-title={work.title} title="Zkopírovat odkaz" aria-label="Zkopírovat odkaz"
+          data-track={EVENTS.share} data-method="copy" data-work-id={work.id} data-work-title={work.title} set:html={icon('link')} />
+        <span class="muted copied" data-share-status role="status"></span>
+        {work.instagram && (
+          <a class="elsewhere" href={work.instagram} rel="noopener" title="Obraz na Instagramu" data-track={EVENTS.instagram} data-work-id={work.id} data-work-title={work.title}>
+            <Fragment set:html={icon('instagram')} />Na Instagramu
+          </a>
+        )}
+      </div>
       {details.length > 0 && (
         <section class="details" aria-label="Detaily obrazu">
           {details.map((d, i) => (
@@ -94,23 +139,6 @@ const jsonLd = graphLd(
           ))}
         </section>
       )}
-      {work.status !== 'not-for-sale' && (
-        <div class="status">
-          <span class:list={['badge', { available: work.status === 'available' }]}>{statusLabel[work.status]}</span>
-          {work.status === 'available' && work.price && <span class="price">{formatPrice(work.price)}</span>}
-        </div>
-      )}
-      {work.status === 'available' && (
-        <div class="actions">
-          {work.fler && <a class="btn" href={work.fler} data-track={EVENTS.fler} data-work-id={work.id} data-work-title={work.title}>Koupit na Fleru</a>}
-          {messages.mode && <button type="button" class="btn ghost" data-message-open={defaultType(message)}>Zeptat se na obraz</button>}
-          {!messages.mode && mail && <a class="btn ghost" href={mail} data-track={EVENTS.email} data-work-id={work.id} data-work-title={work.title}>Napsat autorce</a>}
-        </div>
-      )}
-      <p class="elsewhere">
-        {work.instagram && <a href={work.instagram} rel="noopener" data-track={EVENTS.instagram} data-work-id={work.id} data-work-title={work.title}>Obraz na Instagramu</a>}
-        <a href={pinSave} rel="noopener" data-track={EVENTS.pinterest} data-work-id={work.id} data-work-title={work.title}>Uložit na Pinterest</a>
-      </p>
       {mockups.length > 0 && (
         <section class="mockups" aria-label="Jak obraz vypadá v interiéru">
           <p class="eyebrow">{mockupsHeading}</p>
@@ -144,6 +172,10 @@ const jsonLd = graphLd(
     {next && <a href={workUrl(next)}>{next.title} →</a>}
   </nav>
 </Base>
+<script>
+  import { applyShareButtons } from '../../../lib/share-button';
+  applyShareButtons();
+</script>
 <script>
   // Viewer: a dialog (not fullscreen) that steps through the work and its mockups.
   // Without JavaScript the links simply open the largest image.
@@ -196,7 +228,15 @@ const jsonLd = graphLd(
 <style>
   .back { margin: -12px 0 24px; font-size: 0.9rem; }
   .back a { text-decoration: none; color: var(--ink-soft); }
-  .work { display: grid; grid-template-columns: 1.8fr 1fr; gap: clamp(24px, 5vw, 64px); align-items: start; }
+  /* The picture with its story (description, tags) under it on the left, everything else on the right; a narrow
+     screen puts them one under another: picture, title and facts, story, price, sharing, details, mockups. */
+  .work {
+    display: grid; grid-template-columns: 1.8fr 1fr; grid-template-rows: auto 1fr;
+    column-gap: clamp(24px, 5vw, 64px); row-gap: 8px; align-items: start;
+  }
+  .zoom { grid-column: 1; grid-row: 1; }
+  .story { grid-column: 1; grid-row: 2; max-width: 68ch; }
+  .info { grid-column: 2; grid-row: 1 / span 2; }
   .zoom { display: block; cursor: zoom-in; }
   .zoom :global(picture) { box-shadow: var(--shadow-deep); }
   .zoom :global(picture.cutout) { box-shadow: none; filter: var(--drop-deep); }
@@ -210,16 +250,26 @@ const jsonLd = graphLd(
   .details .thumb { display: block; aspect-ratio: 1; overflow: hidden; }
   .details :global(picture), .details :global(img) { width: 100%; height: 100%; }
   .details :global(img) { object-fit: cover; }
-  .status { display: flex; gap: 16px; align-items: center; margin: 24px 0 16px; }
-  .price { font-family: var(--serif); font-size: 1.5rem; }
-  .actions { display: flex; flex-wrap: wrap; gap: 12px; }
-  .elsewhere { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 16px 0 0; font-size: 0.92rem; }
-  .elsewhere a { color: var(--ink-soft); }
-  .elsewhere a:hover { color: var(--accent); }
+  .buy { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 22px 0 0; }
+  .price { font-family: var(--serif); font-size: 1.5rem; line-height: 1; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-left: auto; }
+  .btn.small { padding: 7px 16px; }
   .btn.ghost { border-color: var(--line); }
   button.btn { background: transparent; color: var(--ink); font: inherit; font-size: 0.92rem; cursor: pointer; }
   button.btn:hover { background: var(--ink); color: var(--paper); }
-  .tags { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.9rem; margin: 16px 0 0; }
+  .share { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 20px 0 0; font-size: 0.88rem; }
+  .share .eyebrow { margin-right: 4px; }
+  .share .icon {
+    display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0;
+    border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--ink-soft); cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .share .icon:hover { color: var(--accent); border-color: var(--accent); }
+  .share .copied:empty { display: none; }
+  .share .elsewhere { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--ink-soft); text-decoration: none; }
+  .share .elsewhere:hover { color: var(--accent); }
+  .story .desc { margin: 18px 0 0; }
+  .tags { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.9rem; margin: 12px 0 0; }
   .tags a { color: var(--accent); text-decoration: none; }
   .mockups { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line); }
   .mockup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -239,5 +289,12 @@ const jsonLd = graphLd(
   .viewer .close { right: 16px; top: 16px; font-size: 2rem; }
   .pager { display: flex; justify-content: space-between; gap: 16px; margin-top: 72px; padding-top: 24px; border-top: 1px solid var(--line); font-family: var(--serif); font-size: 1.2rem; }
   .pager a { text-decoration: none; }
-  @media (max-width: 900px) { .work { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) {
+    .work { grid-template-columns: 1fr; grid-template-rows: none; }
+    .info { display: contents; }
+    .zoom, .story, .info > * { grid-column: 1; grid-row: auto; }
+    .zoom { order: 1; } .head { order: 2; } .story { order: 3; } .buy { order: 4; } .share { order: 5; } .details { order: 6; } .mockups { order: 7; }
+    .head h1 { margin-top: 16px; }
+    .story .desc { margin-top: 0; }
+  }
 </style>

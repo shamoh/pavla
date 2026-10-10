@@ -70,14 +70,14 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   seskupený podle kolekcí (`scripts/lib/export-readme.mjs`; Instagram i s textem příspěvku, Fler s cenou; stav zveřejnění
   podle atributů `instagram` / `fler`).
 - `instagram` (nepovinný, sdílený) = odkaz na příspěvek na Instagramu jako `fler` u Fleru (`isInstagramUrl`, jinak chyba):
-  stránka díla ukáže „Obraz na Instagramu“ (událost `instagram_click`); oba odkazy jsou `sameAs` v JSON-LD díla. `meta_instagram` (bool) dál jen řídí výrobu fotek; jsou nezávislé.
+  stránka díla ukáže „Na Instagramu“ s bublinou „Obraz na Instagramu“ (událost `instagram_click`); oba odkazy jsou `sameAs` v JSON-LD díla. `meta_instagram` (bool) dál jen řídí výrobu fotek; jsou nezávislé.
 - Pinterest (`scripts/lib/pinterest.mjs`): každé dílo má `pin.jpg` (2:3, `renderCaption` s `images.pinterest` a `snug`: popisek hned pod dílem,
   XMP) veřejně ve složce stránky díla a `pin` v `info.json`; `meta_pinterest: true` = `pin.feed` (web podle něj pozná dílo pro kanál, `meta_*` se nekopíruje);
   kanál RSS `/pinterest.xml` (`src/pages/pinterest.xml.ts`, guid = `id`, odkazy s UTM `FEED_UTM`) čte Pinterest sám (firemní účet, ověření
   `site.verification.pinterest`). Popis pinu končí klíčovými slovy česky · anglicky
   (`pinKeywords`, vlastní slovník `pinterestKeywords.en` s obyčejnými slovy, chybějící překlad = `pinterestAdvice`). Profil `site.pinterest` v patičce, na Kontaktu a v `sameAs` autorky.
-  Každá stránka díla má odkaz „Uložit na Pinterest“ (`pinSaveUrl`, bez skriptu
-  Pinterestu, `workPinImage`: pin, jinak `og.jpg`, událost `pinterest_click`). `check:images` ověří obrázky kanálu.
+  Stránka díla má řádek „Sdílet“ s ikonami (`shareLinks` v `scripts/lib/share.mjs`: Pinterest s pinem `pinSaveUrl`/`workPinImage`,
+  Facebook, WhatsApp; tlačítko odkazu `src/lib/share-button.ts` = sdílení telefonu nebo zkopírování), bez skriptů a cookies služeb, událost GA `share` s `method`. `check:images` ověří obrázky kanálu.
   Fler jen díla na prodej, také ve složce díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` + `mockup-<scéna>.jpg`,
   vše s vodoznakem. Při přegenerování se složky díla mažou (`clearExports`), plný běh navíc porovná `export/`
   s `expectedExports` a smaže vše navíc (`planFolderPrune`, jen jména z `EXPORT_FILES`, neznámé soubory nechá,
@@ -193,7 +193,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   + do `STATIC_PAGES` (mapa webu). `robots.txt` a 404 (`noindex`) generuje web; ověřovací kódy `site.verification`.
 - Návštěvnost: Google Analytics 4 (`analytics.googleMeasurementId` v `site.config.yaml`, `scripts/lib/analytics.mjs`,
   značka v `Base.astro`), jen produkční build skutečného webu, nikdy dev ani testovací data; URL i s parametry filtrů.
-  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `pinterest_click`, `email_click`, `message_sent`); nový parametr události = zapsat do README
+  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `share`, `email_click`, `message_sent`); nový parametr události = zapsat do README
   (tabulka událostí + seznam vlastních dimenzí k registraci v GA).
 - Zprávy od návštěvníků: Web3Forms (`messages.accessKey` v `site.config.yaml`, jedna adresa, předmět `[pavla-web] <typ>: …`),
   formulář na Kontaktu a panel „Napište mi“ na ostatních stránkách (`scripts/lib/messages.mjs`, `message-draft.mjs`,

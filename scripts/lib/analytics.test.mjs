@@ -52,8 +52,8 @@ test('trackedClick: the buttons of a work with its id and title, nothing for oth
   assert.deepEqual(trackedClick({ track: EVENTS.email, workId: 'k4ts5' }), { name: 'email_click', params: { work_id: 'k4ts5' } });
   assert.deepEqual(trackedClick({ track: EVENTS.instagram, workId: 'jujn2', workTitle: 'Bobří hráz' }),
     { name: 'instagram_click', params: { work_id: 'jujn2', work_title: 'Bobří hráz' } });
-  assert.deepEqual(trackedClick({ track: EVENTS.pinterest, workId: 'jujn2', workTitle: 'Bobří hráz' }),
-    { name: 'pinterest_click', params: { work_id: 'jujn2', work_title: 'Bobří hráz' } });
+  assert.deepEqual(trackedClick({ track: EVENTS.share, method: 'pinterest', workId: 'jujn2', workTitle: 'Bobří hráz' }),
+    { name: 'share', params: { work_id: 'jujn2', work_title: 'Bobří hráz', method: 'pinterest' } });
   assert.equal(trackedClick({ track: 'something_else' }), null);
   assert.equal(trackedClick({}), null);
   assert.equal(trackedClick(undefined), null);
