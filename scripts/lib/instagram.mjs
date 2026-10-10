@@ -651,6 +651,9 @@ export function untranslatedWords(work, settings = {}) {
 
 // ---------------------------------------------------------------- profile grid (meta_instagram_grid)
 
+/** Bump when the look of the grid changes: works with a grid are made again (part of their fingerprint). */
+export const GRID_VERSION = 2;
+
 /** The profile grid: tiles 3:4 (as the grid of a profile shows them), the gap between them (px at the tile width), quality. */
 export const GRID_DEFAULTS = { gapPx: 8, minFill: 0.55, previewWidth: 1080, previewGap: '#000000' };
 
@@ -668,7 +671,8 @@ export function gridLayout(tiles, ratio, config = {}) {
   const tileW = config.width ?? 1080, tileH = Math.round(tileW * 4 / 3);
   const gap = Math.round(config.grid?.gapPx ?? GRID_DEFAULTS.gapPx);
   const W = cols * tileW + (cols - 1) * gap, H = rows * tileH + (rows - 1) * gap;
-  const scale = cols * tileW / 1080 / 1.25;
+  // the caption grows with the shorter side of the grid: a single row (2 × 1, 3 × 1) would give it too much of its height
+  const scale = Math.min(W, H) / 1080 / 1.25;
   const pad = Math.round(W * (config.padding ?? 0.025));
   const captionH = Math.round(CAPTION_HEIGHT * scale);
   const areaW = W - 2 * pad, areaH = H - captionH - Math.round(24 * scale) - pad;

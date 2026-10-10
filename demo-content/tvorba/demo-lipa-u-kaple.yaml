@@ -17,6 +17,7 @@ meta_draft: false
 meta_instagram: true
 
 # NEPOVINNÉ. Mřížka na profilu Instagramu (obraz rozřezaný na dlaždice, jen spolu s meta_instagram: true), možnosti:
+# - 2 - 2 × 1 dlaždice (dvojice vedle sebe, obraz na šířku)
 # - 3 - 3 × 1 dlaždice (hodně široký obraz)
 # - 6 - 3 × 2 dlaždice (obraz na šířku)
 # - 9 - 3 × 3 dlaždice (obraz na výšku)

@@ -321,6 +321,7 @@ test('EXPORT_FILES: the README preview of a folder belongs to the pipeline on bo
 
 test('instagramGrid: the tiles of the profile grid, only with meta_instagram: true and a known layout', () => {
   assert.equal(instagramGrid({ meta_instagram: true, meta_instagram_grid: 9 }), 9);
+  assert.equal(instagramGrid({ meta_instagram: true, meta_instagram_grid: 2 }), 2);
   assert.equal(instagramGrid({ meta_instagram: false, meta_instagram_grid: 9 }), 0);
   for (const v of [false, 4, '9', undefined]) assert.equal(instagramGrid({ meta_instagram: true, meta_instagram_grid: v }), 0, String(v));
   assert.ok(EXPORT_FILES.instagram.test('grid-09-1_1.jpg') && EXPORT_FILES.instagram.test('grid-preview.jpg'));

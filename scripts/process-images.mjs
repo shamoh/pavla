@@ -70,7 +70,7 @@ import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
 import { rightsXmp } from './lib/image-rights.mjs';
 import { STORY_UTM, exportIndex, flerReadme, instagramReadme, publishedUrl } from './lib/export-readme.mjs';
 import {
-  GRID_DEFAULTS, captionFacts, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
+  GRID_DEFAULTS, GRID_VERSION, captionFacts, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
   panoramaSuffixes, renderCaption, renderGrid, renderPanorama, renderScene, renderStory, siteHost,
 } from './lib/instagram.mjs';
 import { PIN_DEFAULTS, PIN_FILE, withParams } from './lib/pinterest.mjs';
@@ -510,7 +510,7 @@ export async function run({
     // Instagram exports also show the title, technique, size and date (caption) and depend on the scenes and settings.
     // Exports live in a folder mirroring tvorba/: a work moved to another collection gets them made again there.
     const instagramInputs = instagram
-      ? [instagramScenes.text, instagramSettings, JSON.stringify([w.data.title, w.data.technique, w.data.size_cm, w.year, instagramGrid(w.data)])]
+      ? [instagramScenes.text, instagramSettings, JSON.stringify([w.data.title, w.data.technique, w.data.size_cm, w.year, instagramGrid(w.data) ? [instagramGrid(w.data), GRID_VERSION] : 0])]
       : [];
     const folderInputs = instagram || onSale ? [exportFolder(w.yamlPath, w.slug)] : [];
     // the pin (every work) shows the caption too, in its own size

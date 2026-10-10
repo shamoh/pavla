@@ -388,6 +388,9 @@ test('gridLayout: tiles 3:4 side by side with the gap of the profile between the
   assert.ok(L.fill > 0.7 && L.fill < 0.8);
   assert.ok(Math.abs(L.art.width / L.art.height - 30 / 42) < 0.01);
   assert.deepEqual([gridLayout(3, 3, {}).rows, gridLayout(6, 1.4, {}).rows, gridLayout(12, 0.5, {}).rows], [1, 2, 4]);
+  const pair = gridLayout(2, 4 / 3, { width: 1080 });
+  assert.deepEqual([pair.cols, pair.rows, pair.W, pair.H], [2, 1, 2 * 1080 + 8, 1440], 'a pair side by side');
+  assert.ok(pair.fill > 0.6);
   assert.equal(gridLayout(9, 1, { grid: { gapPx: 0 } }).W, 3240, 'no gap');
   assert.ok(gridLayout(9, 3, {}).fill < 0.4, 'a wide work in a portrait grid: mostly empty paper');
 });
@@ -397,6 +400,7 @@ test('gridSuffixes: the tiles in reading order and the preview', () => {
   const nine = gridSuffixes(9);
   assert.deepEqual([nine[0], nine[2], nine[3], nine[8]], ['-grid-09-1_1', '-grid-07-1_3', '-grid-06-2_1', '-grid-01-3_3'], 'order-row_column');
   assert.equal(gridSuffixes(12)[11], '-grid-01-4_3');
+  assert.deepEqual(gridSuffixes(2), ['-grid-02-1_1', '-grid-01-1_2', '-grid-preview']);
   assert.deepEqual(gridSuffixes(0), []);
 });
 

@@ -64,7 +64,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `panoramaSlides`, jen když je aspoň `panorama.minGain`× větší než na snímku s popiskem), `story.jpg` (příběh 9:16,
   `storyLayout`: volné pruhy `images.instagram.story` a místo na nálepku s odkazem, nic se tam nekreslí; adresa
   pro nálepku v README s UTM `STORY_UTM`; přehled má u každé kolekce „Příběh kolekce“: snímky podle data, odkazy a odkaz na kolekci),
-  `grid-<pořadí>-<řádek>_<sloupec>.jpg` + `grid-preview.jpg` (mřížka na profilu `meta_instagram_grid: 3|6|9|12`, jen s `meta_instagram`, `GRID_LAYOUTS`/`instagramGrid`:
+  `grid-<pořadí>-<řádek>_<sloupec>.jpg` + `grid-preview.jpg` (mřížka na profilu `meta_instagram_grid: 2|3|6|9|12`, jen pro aplikaci se 3 sloupci (web má 4), `GRID_VERSION` v otisku, jen s `meta_instagram`, `GRID_LAYOUTS`/`instagramGrid`:
   dlaždice 3:4 z jednoho plátna s vynechanou mezerou profilu `images.instagram.grid.gapPx`, popisek uvnitř krajních dlaždic, `gridPosts` = pořadí
   zveřejnění pozpátku s texty; málo zaplněná mřížka = „Ke kontrole“), `detail-<jméno>.jpg` a `README.md` (náhled pro GitHub s textem příspěvku s kolekcí a hashtagy česky a anglicky, slovník
   `instagramPost` v `site.config.yaml`, kolekce i jako hashtag, píše se každým během; štítek bez překladu = doporučení

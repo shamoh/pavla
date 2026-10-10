@@ -272,7 +272,7 @@ export const isInstagramUrl = (v) => typeof v === 'string' && /^https:\/\/(?:www
 export const wantsInstagram = (data) => data?.meta_instagram === true;
 
 /** Layouts of the Instagram profile grid by number of tiles: [columns, rows] (meta_instagram_grid). */
-export const GRID_LAYOUTS = { 3: [3, 1], 6: [3, 2], 9: [3, 3], 12: [3, 4] };
+export const GRID_LAYOUTS = { 2: [2, 1], 3: [3, 1], 6: [3, 2], 9: [3, 3], 12: [3, 4] };
 
 /** Tiles of the profile grid a work asked for (meta_instagram_grid, only with meta_instagram: true), 0 = none. */
 export const instagramGrid = (data) => (wantsInstagram(data) && Number.isInteger(data?.meta_instagram_grid) && GRID_LAYOUTS[data.meta_instagram_grid] ? data.meta_instagram_grid : 0);
