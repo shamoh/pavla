@@ -225,7 +225,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (`var(--paper)`, `var(--shadow-deep)`…), nikdy barva natvrdo; i prvky formulářů (zaškrtávátko v `Base.astro`
   `appearance: none` z palety, nativní jen ve `forced-colors`); nová paleta = záznam v `PALETTES` (test hlídá kontrast);
   každé `var(--…)` musí být definované (paleta nebo `--název:` / `setProperty`), hlídá `css-vars.test.mjs`.
-- Vodoznak pro Fler: jen jméno, nikdy URL ani @handle (pravidla Fleru); světlé písmo webu se stínem (`scripts/lib/watermark.mjs`,
+- Vodoznak pro Fler: text `images.fler.watermark` (jméno a místo), nikdy URL ani @handle (pravidla Fleru); světlé písmo webu se stínem (`scripts/lib/watermark.mjs`,
   `WATERMARK_LOOK` je v otisku díla na prodej).
 - Mockupy musí držet reálné měřítko podle `size_cm`.
 - Před commitem: `npm test`, `npm run build` a `npm run demo:build` musí projít; `npm run check:images` (a pro testovací

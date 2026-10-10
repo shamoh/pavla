@@ -799,7 +799,7 @@ nejdřív snímek s popiskem, pak scéna, pak detaily).
   exportu); ostatní díla se nepřegenerují. Změna písem
   v `fonts/` otisk nemění (přegenerovat: `npm run images -- --force` nebo `-- <slug>`).
 
-Vodoznak je jen jméno autorky (`images.fler.watermark`), nikdy odkaz ani @handle
+Vodoznak je text `images.fler.watermark` (teď jméno autorky a místo, „Pavla Kramolišová, Roztoky“), nikdy odkaz ani @handle
 (pravidla Fleru), vpravo dole, kurzívou písma webu (`fonts/`, jako křivky): světlé, mírně ztučnělé písmo
 (`watermarkOpacity`) s měkkým tmavým stínem (`watermarkShadow`), takže je čitelné na světlém papíře i na tmavém
 nebo pestrém pozadí mockupu. Tvar podpisu (velikost, odsazení, tloušťka, šířka a rozmazání stínu) je
@@ -1703,6 +1703,6 @@ Kód: `scripts/lib/straighten.mjs` (hledání listu, homografie, převzorkován�
 
 ## Poznámky
 
-- Vodoznak na Fleru nese jen jméno autorky, žádný odkaz ven. Fler odkazy mimo platformu nepovoluje.
+- Vodoznak na Fleru nese jméno autorky a místo (`images.fler.watermark`), žádný odkaz ven. Fler odkazy mimo platformu nepovoluje.
 - Mockupy jsou v reálném měřítku (kalibrace v `mockups/scenes.yaml`), ať si zákazník udělá správnou představu o velikosti.
 - Provoz: GitHub Pages zdarma, platí se jen doména.
