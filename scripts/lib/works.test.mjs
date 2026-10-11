@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, wantsPinterest, workKey, instagramGrid } from './works.mjs';
+import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, wantsPinterest, workKey, instagramGrid, parseGrid } from './works.mjs';
 
 /** Deterministic "random" returning the given values in a loop. */
 const sequence = (...values) => {
@@ -319,11 +319,21 @@ test('EXPORT_FILES: the README preview of a folder belongs to the pipeline on bo
   assert.ok(!EXPORT_FILES.fler.test('readme.md') && !EXPORT_FILES.fler.test('poznamka.md'));
 });
 
-test('instagramGrid: the tiles of the profile grid, only with meta_instagram: true and a known layout', () => {
-  assert.equal(instagramGrid({ meta_instagram: true, meta_instagram_grid: 9 }), 9);
-  assert.equal(instagramGrid({ meta_instagram: true, meta_instagram_grid: 2 }), 2);
-  assert.equal(instagramGrid({ meta_instagram: false, meta_instagram_grid: 9 }), 0);
-  for (const v of [false, 4, '9', undefined]) assert.equal(instagramGrid({ meta_instagram: true, meta_instagram_grid: v }), 0, String(v));
+test('parseGrid and instagramGrid: columns x rows from 1x1 to 5x5, only with meta_instagram: true', () => {
+  assert.deepEqual(parseGrid('3x3'), { cols: 3, rows: 3 });
+  assert.deepEqual(parseGrid(' 2 × 1 '), { cols: 2, rows: 1 });
+  assert.deepEqual(parseGrid('1X2'), { cols: 1, rows: 2 });
+  assert.deepEqual(parseGrid('5x5'), { cols: 5, rows: 5 });
+  for (const v of ['6x1', '0x3', '3', 9, '3x', 'x3', '3x3x3', null, true]) assert.equal(parseGrid(v), null, String(v));
+  assert.deepEqual(instagramGrid({ meta_instagram: true, meta_instagram_grid: '3x4' }), { cols: 3, rows: 4 });
+  assert.equal(instagramGrid({ meta_instagram: false, meta_instagram_grid: '3x3' }), null);
   assert.ok(EXPORT_FILES.instagram.test('grid-09-1_1.jpg') && EXPORT_FILES.instagram.test('grid-preview.jpg'));
   assert.ok(!EXPORT_FILES.instagram.test('grid-x.jpg'));
 });
+
+test('validateWorks: meta_instagram_grid must be columns x rows', () => {
+  assert.deepEqual(validateWorks([work({ data: { meta_instagram_grid: '3x3' } })]), []);
+  assert.deepEqual(validateWorks([work({ data: { meta_instagram_grid: 9 } })]).filter((p) => p.includes('meta_instagram_grid')).length, 1);
+  assert.match(validateWorks([work({ data: { meta_instagram_grid: '7x1' } })]).join('\n'), /meta_instagram_grid „7x1“ musí být sloupce x řádky, např\. 3x3/);
+});
+

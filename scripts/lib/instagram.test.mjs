@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import {
-  captionFacts, captionLayout, converge, gridLayout, gridPosts, gridSuffixes, renderGrid, extendToLedge, fitText, hashtag, homography, insetWork, instagramPost, instagramSuffixes, untranslatedWords, lineY, loadFonts, loadInstagramScenes,
+  captionFacts, captionLayout, converge, detailLayout, detailSuffixes, gridLayout, gridPosts, gridSuffixes, renderGrid, extendToLedge, fitText, hashtag, homography, insetWork, instagramPost, instagramSuffixes, untranslatedWords, lineY, loadFonts, loadInstagramScenes,
   panoramaSlides, panoramaSuffixes, planPlacement, quadFits, renderCaption, renderPanorama, renderScene, renderStory, sceneGeometry, sceneWindow, siteHost,
   storyLayout, textPath, tiltDeg, workQuad,
 } from './instagram.mjs';
@@ -380,36 +380,36 @@ test('renderCaption snug: a wide work has its caption right under it, paper belo
 });
 
 test('gridLayout: tiles 3:4 side by side with the gap of the profile between them, the work above the caption', () => {
-  const L = gridLayout(9, 30 / 42, { width: 1080, padding: 0.025 });
+  const L = gridLayout({ cols: 3, rows: 3 }, 30 / 42, { width: 1080, padding: 0.025 });
   assert.deepEqual([L.cols, L.rows, L.tileW, L.tileH, L.gap], [3, 3, 1080, 1440, 8]);
   assert.deepEqual([L.W, L.H], [3 * 1080 + 2 * 8, 3 * 1440 + 2 * 8]);
   assert.deepEqual(L.tiles.slice(0, 4), [{ left: 0, top: 0 }, { left: 1088, top: 0 }, { left: 2176, top: 0 }, { left: 0, top: 1448 }], 'the gap is left out');
   assert.ok(L.art.top + L.art.height < L.ruleY && L.ruleY < L.H, 'the caption under the work');
   assert.ok(L.fill > 0.7 && L.fill < 0.8);
   assert.ok(Math.abs(L.art.width / L.art.height - 30 / 42) < 0.01);
-  assert.deepEqual([gridLayout(3, 3, {}).rows, gridLayout(6, 1.4, {}).rows, gridLayout(12, 0.5, {}).rows], [1, 2, 4]);
-  const pair = gridLayout(2, 4 / 3, { width: 1080 });
+  assert.deepEqual([gridLayout({ cols: 3, rows: 1 }, 3, {}).rows, gridLayout({ cols: 3, rows: 2 }, 1.4, {}).rows, gridLayout({ cols: 3, rows: 4 }, 0.5, {}).rows], [1, 2, 4]);
+  const pair = gridLayout({ cols: 2, rows: 1 }, 4 / 3, { width: 1080 });
   assert.deepEqual([pair.cols, pair.rows, pair.W, pair.H], [2, 1, 2 * 1080 + 8, 1440], 'a pair side by side');
   assert.ok(pair.fill > 0.6);
-  assert.equal(gridLayout(9, 1, { grid: { gapPx: 0 } }).W, 3240, 'no gap');
-  assert.ok(gridLayout(9, 3, {}).fill < 0.4, 'a wide work in a portrait grid: mostly empty paper');
+  assert.equal(gridLayout({ cols: 3, rows: 3 }, 1, { grid: { gapPx: 0 } }).W, 3240, 'no gap');
+  assert.ok(gridLayout({ cols: 3, rows: 3 }, 3, {}).fill < 0.4, 'a wide work in a portrait grid: mostly empty paper');
 });
 
 test('gridSuffixes: the tiles in reading order and the preview', () => {
-  assert.deepEqual(gridSuffixes(3), ['-grid-03-1_1', '-grid-02-1_2', '-grid-01-1_3', '-grid-preview']);
-  const nine = gridSuffixes(9);
+  assert.deepEqual(gridSuffixes({ cols: 3, rows: 1 }), ['-grid-03-1_1', '-grid-02-1_2', '-grid-01-1_3', '-grid-preview']);
+  const nine = gridSuffixes({ cols: 3, rows: 3 });
   assert.deepEqual([nine[0], nine[2], nine[3], nine[8]], ['-grid-09-1_1', '-grid-07-1_3', '-grid-06-2_1', '-grid-01-3_3'], 'order-row_column');
-  assert.equal(gridSuffixes(12)[11], '-grid-01-4_3');
-  assert.deepEqual(gridSuffixes(2), ['-grid-02-1_1', '-grid-01-1_2', '-grid-preview']);
-  assert.deepEqual(gridSuffixes(0), []);
+  assert.equal(gridSuffixes({ cols: 3, rows: 4 })[11], '-grid-01-4_3');
+  assert.deepEqual(gridSuffixes({ cols: 2, rows: 1 }), ['-grid-02-1_1', '-grid-01-1_2', '-grid-preview']);
+  assert.deepEqual(gridSuffixes(null), []);
 });
 
 test('gridPosts: published from the last tile to the first; the last one (top left) carries the whole text', () => {
-  const posts = gridPosts({ work: { title: 'Tetřevská slať' }, tiles: 3, post: 'Tetřevská slať\n\nPopis.\n\n#akvarel #krajina\n#watercolor\n', handle: 'pavla' });
+  const posts = gridPosts({ work: { title: 'Tetřevská slať' }, grid: { cols: 3, rows: 1 }, post: 'Tetřevská slať\n\nPopis.\n\n#akvarel #krajina\n#watercolor\n', handle: 'pavla' });
   assert.deepEqual(posts.map((p) => p.file), ['grid-01-1_3.jpg', 'grid-02-1_2.jpg', 'grid-03-1_1.jpg']);
   assert.equal(posts[0].text, 'Tetřevská slať · díl 1/3\n\nCelý obraz se skládá z 3 dílů na profilu @pavla.\n\n#akvarel #krajina\n#watercolor\n');
   assert.equal(posts[2].text, 'Tetřevská slať\n\nPopis.\n\n#akvarel #krajina\n#watercolor\n');
-  assert.ok(gridPosts({ work: { title: 'A' }, tiles: 3, post: 'A\n' })[0].text.includes('na profilu.'), 'without a handle');
+  assert.ok(gridPosts({ work: { title: 'A' }, grid: { cols: 3, rows: 1 }, post: 'A\n' })[0].text.includes('na profilu.'), 'without a handle');
 });
 
 test('renderGrid: tiles 3:4 that join up across the gap, a preview with the gaps', async () => {
@@ -420,7 +420,7 @@ test('renderGrid: tiles 3:4 that join up across the gap, a preview with the gaps
   const config = { width: 1080, padding: 0.025, quality: 95, grid: { gapPx: 40 } };
   const { tiles, preview, layout } = await renderGrid({
     art, work: { title: 'Slať', technique: 'akvarel', size_cm: [30, 42] }, year: '2026', host: 'pavla.kramolis.cz',
-    colors: PALETTES[0].colors, fonts: await loadFonts(), tiles: 9, config,
+    colors: PALETTES[0].colors, fonts: await loadFonts(), grid: { cols: 3, rows: 3 }, config,
   });
   assert.equal(tiles.length, 9);
   for (const t of tiles) { const m = await sharp(t).metadata(); assert.deepEqual([m.width, m.height], [1080, 1440]); }
@@ -434,4 +434,31 @@ test('renderGrid: tiles 3:4 that join up across the gap, a preview with the gaps
   const gx = Math.round((1080 + 20) * 1080 / layout.W);
   const g = await sharp(preview).extract({ left: gx, top: 300, width: 1, height: 1 }).raw().toBuffer();
   assert.ok(g[0] < 30 && g[1] < 30, 'the gap in the preview is dark');
+});
+
+test('detailLayout: a detail close to 4:5 fills the frame, a long strip lies whole on paper', () => {
+  assert.equal(detailLayout(0.8, 0.8), 'crop');
+  assert.equal(detailLayout(1, 0.8), 'crop', 'a square keeps 80 %');
+  assert.equal(detailLayout(4 / 3, 0.8), 'whole', '4:3 would lose 40 %');
+  assert.equal(detailLayout(1861 / 625, 0.8), 'whole', 'the matrix of a linocut');
+  assert.equal(detailLayout(4 / 3, 0.8, 0.5), 'crop', 'own threshold');
+});
+
+test('sceneWindow: a small narrow strip comes closer until it covers minArea of the frame, at most maxAreaZoom', () => {
+  const strip = [[480, 700], [560, 700], [560, 716], [480, 716]];
+  const byWidth = sceneWindow(1024, 1536, strip, { minFill: 0.45, maxZoom: 1.8 });
+  assert.equal(byWidth.zoom, 1.8);
+  const byArea = sceneWindow(1024, 1536, strip, { minFill: 0.45, maxZoom: 1.8, minArea: 0.08, maxAreaZoom: 3 });
+  assert.equal(byArea.zoom, 3, 'capped');
+  const big = [[100, 300], [900, 300], [900, 900], [100, 900]];
+  assert.equal(sceneWindow(1024, 1536, big, { minFill: 0.45, maxZoom: 1.8, minArea: 0.08, maxAreaZoom: 3 }).zoom, 1, 'a big work stays as it is');
+});
+
+test('detailSuffixes: a long narrow detail becomes a panorama, any other one photo', () => {
+  const cfg = { width: 1080, height: 1350, padding: 0.025 };
+  assert.deepEqual(detailSuffixes('kvet', 1, cfg), ['-detail-kvet']);
+  assert.deepEqual(detailSuffixes('matrice', 1861 / 625, cfg), ['-detail-matrice-pano-1', '-detail-matrice-pano-2', '-detail-matrice-pano-3']);
+  assert.deepEqual(detailSuffixes('pole', 4 / 3, cfg), ['-detail-pole-pano-1', '-detail-pole-pano-2'], 'whole and wide enough');
+  assert.deepEqual(detailSuffixes('vez', 0.5, cfg), ['-detail-vez'], 'tall: whole on paper');
+  assert.deepEqual(detailSuffixes('x', 0, cfg), ['-detail-x'], 'unknown size');
 });

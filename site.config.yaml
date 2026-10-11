@@ -157,6 +157,8 @@ images:
     height: 1350                         # 4:5, nejvíc místa ve feedu
     quality: 92
     padding: 0.025                       # snímek s popiskem: okraj kolem obrazu (podíl šířky); mřížka profilu ořízne ~3 % z boku
+    detailCropKeep: 0.75                 # detailní fotka vyplní snímek 4:5 výřezem, jen když z ní zůstane aspoň tolik;
+                                         #   jinak (např. dlouhý úzký pruh) leží celá na papíru
     insetPercent: 0.5                    # obraz se pro Instagram ořízne o tolik % z každé strany (nedokonalé rohy listu
                                          #   nechávají proužek podlahy); 0 = neořezávat
     panorama:                            # plynulý karusel (pano-<n>.jpg): široký obraz přes celou výšku několika snímků za sebou

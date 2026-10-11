@@ -127,17 +127,17 @@ test('pin: every work has one (2:3, with XMP) in its folder on the site; meta_pi
 });
 
 test('meta_instagram_grid: the tiles and a preview of the profile grid, with the order of publishing in README.md; commented out removes them', async () => {
-  await addWork('2026', 'slat', 'title: Slať\ndate: 2026-06-14\nmeta_instagram: true\nmeta_instagram_grid: 3\nsize_cm: [60, 20]\n');
+  await addWork('2026', 'slat', 'title: Slať\ndate: 2026-06-14\nmeta_instagram: true\nmeta_instagram_grid: 3x1\nsize_cm: [60, 20]\n');
   await run(opts());
   const files = await exportsOf('instagram', '2026', 'slat');
   for (const f of ['grid-03-1_1.jpg', 'grid-02-1_2.jpg', 'grid-01-1_3.jpg', 'grid-preview.jpg']) assert.ok(files.includes(f), f);
   const tile = await sharp(path.join(contentDir, 'export/instagram/slat/grid-02-1_2.jpg')).metadata();
   assert.deepEqual([tile.width, tile.height], [config.images.instagram.width, Math.round(config.images.instagram.width * 4 / 3)]);
   const md = await fs.readFile(path.join(contentDir, 'export/instagram/slat/README.md'), 'utf8');
-  assert.ok(md.includes('## Mřížka na profilu (3 dlaždic)') && md.indexOf('1. `grid-01-1_3.jpg`') < md.indexOf('3. `grid-03-1_1.jpg`'));
+  assert.ok(md.includes('## Mřížka na profilu (3 × 1)') && md.indexOf('1. `grid-01-1_3.jpg`') < md.indexOf('3. `grid-03-1_1.jpg`'));
 
   const yaml = path.join(contentDir, 'tvorba/slat.yaml');
-  await fs.writeFile(yaml, (await fs.readFile(yaml, 'utf8')).replace('meta_instagram_grid: 3', '# meta_instagram_grid: 9'));
+  await fs.writeFile(yaml, (await fs.readFile(yaml, 'utf8')).replace('meta_instagram_grid: 3x1', '# meta_instagram_grid: 3x3'));
   await run(opts());
   assert.ok(!(await exportsOf('instagram', '2026', 'slat')).some((f) => f.startsWith('grid-')), 'the grid is gone');
 });

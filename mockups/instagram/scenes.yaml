@@ -19,6 +19,8 @@
 #                 light / shade o kolik světlejší / tmavší je hrana ke světlu / od světla, widthPx šířka té hrany
 #   cropTop       ořez na 4:5: kolik z přebývající výšky odříznout nahoře (0 = vše dole, 1 = vše nahoře)
 #   minFill       malé dílo: snímek se přiblíží, dokud dílo nezabírá aspoň tuto část šířky (nejvýš maxZoom ×)
+#   minArea       malé úzké dílo (proužek): snímek se přiblíží, dokud dílo nezakryje aspoň tuto část plochy snímku
+#                 (nejvýš maxAreaZoom ×; pozadí změkne jako při malé hloubce ostrosti)
 #
 # Jen pro stůl (mode: lie):
 #   center        kam ideálně položit střed díla (bod fotky ve volné části stolu)
@@ -50,6 +52,8 @@
   cropTop: 0.4
   minFill: 0.45
   maxZoom: 1.8
+  minArea: 0.08
+  maxAreaZoom: 3
   center: [470, 760]
   maxShiftCm: 1.5
   minTiltDeg: 2
@@ -82,6 +86,8 @@
   cropTop: 0.5
   minFill: 0.45
   maxZoom: 1.8
+  minArea: 0.08
+  maxAreaZoom: 3
   center: [470, 840]
   maxShiftCm: 1.5
   minTiltDeg: 2
@@ -112,6 +118,8 @@
   cropTop: 0.5
   minFill: 0.45
   maxZoom: 1.8
+  minArea: 0.08
+  maxAreaZoom: 3
   ledge: [[192, 866], [760, 982]]
   sinkPx: 6
   axis: [650, 653]

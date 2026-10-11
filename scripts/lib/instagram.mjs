@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import opentype from 'opentype.js';
 import sharp from 'sharp';
 import YAML from 'yaml';
-import { GRID_LAYOUTS, captionFacts } from './works.mjs';
+import { captionFacts } from './works.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const INSTAGRAM_SCENES_DIR = path.join(siteRoot, 'mockups/instagram');
@@ -236,13 +236,19 @@ export function planPlacement(scene, geo, sizeCm, id) {
  * The 4:5 window of a scene image (W × H): as large as it fits, `cropTop` of the spare height cut at the top; a small
  * work (narrower than `minFill` of the window) zooms in around itself, at most `maxZoom` times.
  */
-export function sceneWindow(W, H, quad, { cropTop = 0.5, minFill = 0, maxZoom = 1 } = {}) {
+export function sceneWindow(W, H, quad, { cropTop = 0.5, minFill = 0, maxZoom = 1, minArea = 0, maxAreaZoom = maxZoom } = {}) {
   let w = W, h = Math.round(W * 5 / 4);
   if (h > H) { h = H; w = Math.round(H * 4 / 5); }
   let left = Math.round((W - w) / 2), top = Math.round((H - h) * cropTop);
   const xs = quad.map((p) => p[0]), ys = quad.map((p) => p[1]);
   const span = Math.max(...xs) - Math.min(...xs);
-  const zoom = Math.min(maxZoom, Math.max(1, (minFill * w) / span));
+  // a small work: closer until it spans minFill of the width (at most maxZoom); a small and narrow one (a strip) also
+  // until it covers minArea of the frame (at most maxAreaZoom: the background gets softer, like a shallow depth of field)
+  const byWidth = Math.min(maxZoom, (minFill * w) / span);
+  // the area of the work itself (shoelace), not of its bounding box: a tilted strip covers far less than its box
+  const area = Math.abs(quad.reduce((sum, [x, y], i) => { const [nx, ny] = quad[(i + 1) % quad.length]; return sum + x * ny - nx * y; }, 0)) / 2;
+  const byArea = Math.min(maxAreaZoom, Math.sqrt((minArea * w * h) / Math.max(1, area)));
+  const zoom = Math.max(1, byWidth, byArea);
   if (zoom > 1) {
     const mx = (Math.min(...xs) + Math.max(...xs)) / 2, my = (Math.min(...ys) + Math.max(...ys)) / 2;
     w = Math.round(w / zoom); h = Math.round(h / zoom);
@@ -651,6 +657,24 @@ export function untranslatedWords(work, settings = {}) {
 
 // ---------------------------------------------------------------- profile grid (meta_instagram_grid)
 
+/**
+ * How a detail photo of aspect ratio `ratio` goes into a frame of `frame` (width / height): 'crop' fills it (centre
+ * crop) when that keeps at least `keep` of the photo, otherwise 'whole' (the photo whole on paper).
+ */
+export const detailLayout = (ratio, frame, keep = 0.75) => (Math.min(ratio, frame) / Math.max(ratio, frame) >= keep ? 'crop' : 'whole');
+
+/**
+ * Export suffixes of a detail photo `name` of aspect ratio `ratio` (unknown = its single photo): a detail far from 4:5
+ * (detailLayout 'whole') that is wide enough for a panorama (panoramaSlides) becomes the slides "-detail-<name>-pano-1" …
+ * of a seamless panorama like the work's own; any other one photo "-detail-<name>".
+ */
+export function detailSuffixes(name, ratio, config) {
+  const one = [`-detail-${name}`];
+  if (!(ratio > 0) || detailLayout(ratio, config.width / config.height, config.detailCropKeep) === 'crop') return one;
+  const n = panoramaSlides([ratio, 1], config);
+  return n ? Array.from({ length: n }, (_, i) => `-detail-${name}-pano-${i + 1}`) : one;
+}
+
 /** Bump when the look of the grid changes: works with a grid are made again (part of their fingerprint). */
 export const GRID_VERSION = 2;
 
@@ -658,7 +682,7 @@ export const GRID_VERSION = 2;
 export const GRID_DEFAULTS = { gapPx: 8, minFill: 0.55, previewWidth: 1080, previewGap: '#000000' };
 
 /**
- * The geometry of a profile grid of `tiles` (3, 6, 9, 12) for a work of aspect ratio `ratio` (width / height): the whole
+ * The geometry of a profile grid `grid` ({ cols, rows }, parseGrid) for a work of aspect ratio `ratio` (width / height): the whole
  * picture is laid out on one canvas as the profile shows it, tiles side by side with the gap of the grid between them
  * (`gapPx`): a strip under a gap is never on any tile, so the tiles join up on the profile as one photo under a lattice.
  * Returns { cols, rows, tileW, tileH, gap, W, H, tiles: [{ left, top }] (reading order), art: { left, top, width,
@@ -666,8 +690,8 @@ export const GRID_DEFAULTS = { gapPx: 8, minFill: 0.55, previewWidth: 1080, prev
  * The caption lies under the work, its title and facts inside the first tile of the bottom row, the address inside its
  * last tile (never across a gap).
  */
-export function gridLayout(tiles, ratio, config = {}) {
-  const [cols, rows] = GRID_LAYOUTS[tiles];
+export function gridLayout(grid, ratio, config = {}) {
+  const { cols, rows } = grid;
   const tileW = config.width ?? 1080, tileH = Math.round(tileW * 4 / 3);
   const gap = Math.round(config.grid?.gapPx ?? GRID_DEFAULTS.gapPx);
   const W = cols * tileW + (cols - 1) * gap, H = rows * tileH + (rows - 1) * gap;
@@ -685,26 +709,24 @@ export function gridLayout(tiles, ratio, config = {}) {
 }
 
 /**
- * Name of a tile of a grid of `tiles` (export suffix): "-grid-<order of publishing>-<row>_<column>", e.g. "-grid-09-1_1"
- * for the top left tile of 9, published last; `index` in reading order. The order has two digits, so the files sort in
- * the order of publishing.
+ * Name of a tile of `grid` ({ cols, rows }) as an export suffix: "-grid-<order of publishing>-<row>_<column>", e.g.
+ * "-grid-09-1_1" for the top left tile of 3x3, published last; `index` in reading order. The order has two digits, so
+ * the files sort in the order of publishing.
  */
-export const gridTile = (tiles, index) => {
-  const [cols] = GRID_LAYOUTS[tiles];
-  return `-grid-${String(tiles - index).padStart(2, '0')}-${Math.floor(index / cols) + 1}_${(index % cols) + 1}`;
-};
+export const gridTile = ({ cols, rows }, index) =>
+  `-grid-${String(cols * rows - index).padStart(2, '0')}-${Math.floor(index / cols) + 1}_${(index % cols) + 1}`;
 
-/** Export suffixes of the tiles of a grid of `tiles` in reading order (gridTile), and the preview "-grid-preview". */
-export const gridSuffixes = (tiles) => (tiles ? [...Array.from({ length: tiles }, (_, i) => gridTile(tiles, i)), '-grid-preview'] : []);
+/** Export suffixes of the tiles of `grid` in reading order (gridTile) and the preview "-grid-preview"; none without one. */
+export const gridSuffixes = (grid) => (grid ? [...Array.from({ length: grid.cols * grid.rows }, (_, i) => gridTile(grid, i)), '-grid-preview'] : []);
 
 /**
  * The profile grid of a work: { tiles: [JPEG] (reading order), preview: JPEG (the grid as the profile shows it, the gaps
  * in `previewGap`), layout }. The work on the paper of a palette with the caption under it, cut into tiles 3:4.
  */
-export async function renderGrid({ art, work, year, host, colors, fonts, tiles, config }) {
+export async function renderGrid({ art, work, year, host, colors, fonts, grid, config }) {
   const g = { ...GRID_DEFAULTS, ...config.grid };
   const { width: aw, height: ah } = await sharp(art).metadata();
-  const L = gridLayout(tiles, aw / ah, config);
+  const L = gridLayout(grid, aw / ah, config);
   const inner = await sharp(art).resize({ width: L.art.width, height: L.art.height, fit: 'inside' }).png().toBuffer();
   const im = await sharp(inner).metadata();
   const svg = captionSvg({
@@ -737,12 +759,13 @@ export async function renderGrid({ art, work, year, host, colors, fonts, tiles, 
  * left) last, as the newest post of a profile is its top left one. [{ file (export file name), text }]: every tile its
  * title with "díl k/n" and the hashtags of the post; the last one published (top left) the whole text of the post.
  */
-export function gridPosts({ work, tiles, post, handle = '' }) {
+export function gridPosts({ work, grid, post, handle = '' }) {
+  const tiles = grid.cols * grid.rows;
   const tags = String(post ?? '').trimEnd().split('\n').filter((l) => l.startsWith('#'));
   const where = handle ? `na profilu @${handle}` : 'na profilu';
   return Array.from({ length: tiles }, (_, i) => {
     const k = i + 1;
-    const file = `${gridTile(tiles, tiles - k).slice(1)}.jpg`;
+    const file = `${gridTile(grid, tiles - k).slice(1)}.jpg`;
     if (k === tiles) return { file, text: `${String(post ?? '').trimEnd()}\n` };
     return { file, text: `${work.title ?? ''} · díl ${k}/${tiles}\n\nCelý obraz se skládá z ${tiles} dílů ${where}.\n\n${tags.join('\n')}\n`.replace(/\n{3,}$/, '\n') };
   });

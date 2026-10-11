@@ -112,10 +112,10 @@ test('instagramReadme: the grid with its preview, the tiles in rows of three and
     work, year: '2026', post: 'x', files: {
       captions: [], scenes: [], details: [],
       grid: { tiles: ['grid-06-1_1.jpg', 'grid-05-1_2.jpg', 'grid-04-1_3.jpg', 'grid-03-2_1.jpg', 'grid-02-2_2.jpg', 'grid-01-2_3.jpg'], preview: 'grid-preview.jpg',
-        posts: [{ file: 'grid-01-2_3.jpg', text: 'díl 1/6\n' }, { file: 'grid-06-1_1.jpg', text: 'celý text\n' }] },
+        cols: 3, posts: [{ file: 'grid-01-2_3.jpg', text: 'díl 1/6\n' }, { file: 'grid-06-1_1.jpg', text: 'celý text\n' }] },
     },
   });
-  assert.ok(md.includes('## Mřížka na profilu (6 dlaždic)') && md.includes('<img src="grid-preview.jpg" width="360"'));
+  assert.ok(md.includes('## Mřížka na profilu (3 × 2)') && md.includes('<img src="grid-preview.jpg" width="360"'));
   assert.ok(md.includes('grid-04-1_3.jpg" width="120" alt="grid-04-1_3.jpg"></a>\n<br>\n<a href="grid-03-2_1.jpg"'), 'rows of three');
   assert.ok(md.includes('**Zveřejňuj pozpátku**'));
   assert.ok(md.indexOf('1. `grid-01-2_3.jpg`') < md.indexOf('2. `grid-06-1_1.jpg`') && md.includes('```text\ncelý text\n```'));

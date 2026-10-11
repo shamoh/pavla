@@ -372,17 +372,19 @@ export const WORK_SCHEMA = {
     {
       key: 'meta_instagram_grid',
       commented: true,
-      example: '9',
-      options: [2, 3, 6, 9, 12],
+      example: '3x3',
       doc: [
+        'Mřížka na profilu Instagramu (obraz rozřezaný na dlaždice), sloupce x řádky, např. 3x3, 2x1, 3x1, 1x2, 3x4',
+        '(od 1x1 do 5x5; jen spolu s meta_instagram: true a jen pro aplikaci v telefonu, web na počítači má 4 sloupce).',
+      ],
+      previous: [[
         'Mřížka na profilu Instagramu (obraz rozřezaný na dlaždice, jen spolu s meta_instagram: true), možnosti:',
         '- 2 - 2 × 1 dlaždice (dvojice vedle sebe, obraz na šířku)',
         '- 3 - 3 × 1 dlaždice (hodně široký obraz)',
         '- 6 - 3 × 2 dlaždice (obraz na šířku)',
         '- 9 - 3 × 3 dlaždice (obraz na výšku)',
         '- 12 - 3 × 4 dlaždice (hodně vysoký obraz)',
-      ],
-      previous: [[
+      ], [
         'Mřížka na profilu Instagramu (obraz rozřezaný na dlaždice, jen spolu s meta_instagram: true), možnosti:',
         '- 3 - 3 × 1 dlaždice (hodně široký obraz)',
         '- 6 - 3 × 2 dlaždice (obraz na šířku)',

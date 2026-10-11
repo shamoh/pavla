@@ -113,6 +113,10 @@ export function validateWorks(works) {
     if (w.data?.instagram !== undefined && w.data.instagram !== null && w.data.instagram !== '' && !isInstagramUrl(w.data.instagram)) {
       problems.push(`${where}: instagram musí být odkaz na příspěvek na Instagramu (https://www.instagram.com/p/…), ne „${w.data.instagram}“`);
     }
+    const grid = w.data?.meta_instagram_grid;
+    if (grid !== undefined && grid !== null && grid !== '' && !parseGrid(grid)) {
+      problems.push(`${where}: meta_instagram_grid „${grid}“ musí být sloupce x řádky, např. 3x3 nebo 2x1 (od 1x1 do ${GRID_MAX}x${GRID_MAX})`);
+    }
     if (!w.data?.meta_draft) problems.push(...todoProblems(where, w.data, PUBLIC_WORK_FIELDS, ' (nebo nech meta_draft: true)'));
     problems.push(...optionProblems(where, w.data, WORK_SCHEMA));
     if (w.data?.collection !== undefined && w.data.collection !== null && w.data.collection !== '') {
@@ -271,11 +275,22 @@ export const isInstagramUrl = (v) => typeof v === 'string' && /^https:\/\/(?:www
 /** True when the author asked for Instagram exports of a work (`meta_instagram: true`). */
 export const wantsInstagram = (data) => data?.meta_instagram === true;
 
-/** Layouts of the Instagram profile grid by number of tiles: [columns, rows] (meta_instagram_grid). */
-export const GRID_LAYOUTS = { 2: [2, 1], 3: [3, 1], 6: [3, 2], 9: [3, 3], 12: [3, 4] };
+/** Largest number of columns and of rows of the Instagram profile grid (meta_instagram_grid). */
+export const GRID_MAX = 5;
 
-/** Tiles of the profile grid a work asked for (meta_instagram_grid, only with meta_instagram: true), 0 = none. */
-export const instagramGrid = (data) => (wantsInstagram(data) && Number.isInteger(data?.meta_instagram_grid) && GRID_LAYOUTS[data.meta_instagram_grid] ? data.meta_instagram_grid : 0);
+/**
+ * A profile grid written as "<columns>x<rows>" ("3x3", "2x1"; also × or X, spaces around are fine), 1 … GRID_MAX
+ * each: { cols, rows }, or null for anything else.
+ */
+export function parseGrid(v) {
+  const m = typeof v === 'string' ? v.trim().match(/^(\d+)\s*[x×X]\s*(\d+)$/) : null;
+  if (!m) return null;
+  const cols = Number(m[1]), rows = Number(m[2]);
+  return cols >= 1 && rows >= 1 && cols <= GRID_MAX && rows <= GRID_MAX ? { cols, rows } : null;
+}
+
+/** The profile grid a work asked for (meta_instagram_grid, only with meta_instagram: true): { cols, rows } or null. */
+export const instagramGrid = (data) => (wantsInstagram(data) ? parseGrid(data?.meta_instagram_grid) : null);
 
 /** True when the author asked for a pin on Pinterest (`meta_pinterest: true`): pin.jpg on the site and the feed. */
 export const wantsPinterest = (data) => data?.meta_pinterest === true;

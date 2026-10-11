@@ -484,7 +484,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `meta_corners` | rohy listu na fotce, podlaha vně nich bude průhledná; najde je pipeline, smí se upravit, `false` = neořezávat (viz *Ořez podlahy*) |
 | `meta_draft` | `true` = rozpracované: do tohoto repa se nedostane nic (popis, obrázky), ani exporty; do veřejné kopie se nekopíruje |
 | `meta_instagram` | `true` = exporty pro Instagram (výchozí `false`) |
-| `meta_instagram_grid` | nepovinné (v kostře zakomentované `# meta_instagram_grid: 9`): mřížka na profilu Instagramu, `2` / `3` / `6` / `9` / `12` dlaždic (2 × 1, 3 × 1 … 3 × 4), bez hodnoty žádná; jen s `meta_instagram: true` (viz *Exporty*, Mřížka na profilu) |
+| `meta_instagram_grid` | nepovinné (v kostře zakomentované `# meta_instagram_grid: 3x3`): mřížka na profilu Instagramu jako `<sloupce>x<řádky>`, od `1x1` do `5x5` (`parseGrid`, např. `3x3`, `2x1`, `3x1`, `1x2`, `3x4`; i `×` nebo `X`), jiná hodnota = chyba; bez hodnoty žádná; jen s `meta_instagram: true`, jen pro aplikaci (viz *Exporty*, Mřížka na profilu) |
 | `meta_pinterest` | `true` = pin pro Pinterest: `pin.jpg` na webu a položka kanálu `/pinterest.xml` (výchozí `false`, viz *Pinterest*) |
 | `id` | trvalý kód, doplní pipeline, NEMĚNIT |
 | `date` | den vzniku (`2026-06-14`): určuje řazení i rok díla (stránky roků, adresa, složky v `pavla`) |
@@ -618,7 +618,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | `featured` (výběr autorky, 15 děl, v 8 ze 16 kolekcí a 3 bez kolekce) | Máky, Ráno u rybníka, Šumava v mlze, Nádraží, Rybník v zimě… (2026 a přelom roku), Pivoňky, Zimní sad, Kočka na okně, Jablka na stole (2025), Louka s kopretinami (2024), Vltava u Zbraslavi, Oblaka, Čáp u rybníka, Buky, Babička: úvodní stránka náhodně střídá 10 nejnovějších (po Louku s kopretinami, `FEATURED_PICK`), `/tvorba/?featured=1` ukáže všech 15; kolekce bez vybraných: Skicák, Tatry, Krkonoše, Z cest, U moře, Zátiší, Noční město, Město 2026 |
 | text o roce | `/tvorba/2026/` má text (`demo-content/roky/2026.yaml`), `/tvorba/2025/` ne (`description: ""`) |
 | tlačítko „Koupit na Fleru“ | Máky |
-| export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail, na výšku), Kytice z louky (+ 1 detail, není na prodej), Máky, Na podlaze (průhledný ořez podlahy), Lípa u kaple (20 × 15: scény se přiblíží), Zimní sad (50 × 35: na stoly se nevejde, v logu „does not fit the free part of the scene“; panorama 2 snímky), Oblaka (60 × 20: panorama 3 snímky, mřížka 3); ostatní díla žádný. Mřížka na profilu: Pivoňky (`meta_instagram_grid: 9`, 3 × 3), Oblaka (`3`, 3 × 1) a Ráno u rybníka (`2`, dvojice). Panorama: Na podlaze, Ráno u rybníka, Zimní sad (2 snímky), Oblaka (3); Máky, Kytice z louky (čtverec) a Pivoňky (na výšku) žádné. Příběh `story.jpg` má každé |
+| export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail, na výšku), Kytice z louky (+ 1 detail, není na prodej), Máky, Na podlaze (průhledný ořez podlahy), Lípa u kaple (20 × 15: scény se přiblíží), Zimní sad (50 × 35: na stoly se nevejde, v logu „does not fit the free part of the scene“; panorama 2 snímky), Oblaka (60 × 20: panorama 3 snímky, mřížka 3); ostatní díla žádný. Mřížka na profilu: Pivoňky (`meta_instagram_grid: 3x3`), Oblaka (`3x1`) a Ráno u rybníka (`2x1`, dvojice). Panorama: Na podlaze, Ráno u rybníka, Zimní sad (2 snímky), Oblaka (3); Máky, Kytice z louky (čtverec) a Pivoňky (na výšku) žádné. Příběh `story.jpg` má každé |
 | pin pro Pinterest | `pin.jpg` má každé zveřejněné dílo („Uložit na Pinterest“ ho nabídne); `meta_pinterest: true` u Ráno u rybníka, Pivoněk (na výšku) a Oblak (60 × 20: popisek hned pod obrazem) = `pin.feed` v `info.json` a 3 položky v `/pinterest.xml` |
 | `mockups: true`, na prodej | Ráno u rybníka (+ detaily), Zimní sad, Město v dešti, Náměstí v mlze, Kočka na okně, Rybník v zimě, Na podlaze |
 | `mockups: true`, ne na prodej | Kytice z louky (+ detail), Slunečnice, Šumava v mlze (prodáno) |
@@ -761,7 +761,7 @@ na GitHubu. Logika: `planFolderPrune` v `scripts/lib/works.mjs`.
 
 | Platforma | Kdy | Soubory |
 |---|---|---|
-| Instagram | jen dílo s `meta_instagram: true` | složka díla `export/instagram/[<kolekce>/]<slug>/` (stejná cesta jako popis v `tvorba/`, `exportFolder` v `scripts/lib/works.mjs`): `caption-<paleta>.jpg` (dílo s popiskem na papíru každé palety webu: `papir`, `pergamen`, `noc`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru: `stul-tmavy`, `stul-svetly`, `stojan`; jen dílo s `size_cm`), `pano-<n>.jpg` (panorama pro karusel, jen široká díla), `detail-<jméno>.jpg` (každý detail), vše 4:5 (1080 × 1350), `story.jpg` (příběh 9:16), `grid-<n>.jpg` + `grid-preview.jpg` (mřížka na profilu, jen s `meta_instagram_grid`) a `README.md` (náhled s textem příspěvku). **Nikdy mockupy webu.** |
+| Instagram | jen dílo s `meta_instagram: true` | složka díla `export/instagram/[<kolekce>/]<slug>/` (stejná cesta jako popis v `tvorba/`, `exportFolder` v `scripts/lib/works.mjs`): `caption-<paleta>.jpg` (dílo s popiskem na papíru každé palety webu: `papir`, `pergamen`, `noc`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru: `stul-tmavy`, `stul-svetly`, `stojan`; jen dílo s `size_cm`), `pano-<n>.jpg` (panorama pro karusel, jen široká díla), `detail-<jméno>.jpg` (každý detail; dlouhý úzký jako panorama `detail-<jméno>-pano-<n>.jpg`), vše 4:5 (1080 × 1350), `story.jpg` (příběh 9:16), `grid-<n>.jpg` + `grid-preview.jpg` (mřížka na profilu, jen s `meta_instagram_grid`) a `README.md` (náhled s textem příspěvku). **Nikdy mockupy webu.** |
 | Fler | jen `available` a `reserved` | složka díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` (originál), `mockup-<scéna>.jpg` (každý mockup), vše s vodoznakem, a `README.md` (náhled). |
 
 Průhledné okolí díla (podlaha vně rohů listu, viz *Ořez podlahy*) dostane v exportu barvu: pro Instagram
@@ -787,7 +787,8 @@ nejdřív snímek s popiskem, pak panorama, scéna, detaily; README složky to t
   Z rohů listu se spočítá rovina stolu nebo stojanu, dílo se do ní položí ve skutečném měřítku (`size_cm`),
   převezme světlo a barvu listu (papír díla se nejdřív vyváží na neutrální bílou), dostane mírně roztřepený okraj
   se světlou hranou ke světlu a tmavší od něj a jemný stín. Generátory kreslí list moc „zepředu“, proto se
-  vzdálenější hrana díla ještě zkrátí (`convergence`). Malé dílo se přiblíží (`minFill`, `maxZoom`).
+  vzdálenější hrana díla ještě zkrátí (`convergence`). Malé dílo se přiblíží (`minFill`, `maxZoom`), malé úzké (proužek, např. linoryt 16,5 × 4 cm) navíc, dokud nezakryje
+  `minArea` plochy snímku (skutečná plocha natočeného díla, nejvýš `maxAreaZoom`, výchozí 3×; pozadí změkne).
   - **Stůl** (`mode: lie`): dílo leží nahodile pootočené (velikost pootočení podle `id` díla, směr podle scény:
     na tmavém stole opačně než na světlém) kolem `center`. Když by zakrylo rekvizitu (`props`) nebo vyčnívalo
     ze stolu (`bounds`), najde se nejbližší místo, kam se vejde, a teprve pak větší či menší pootočení na stejnou stranu.
@@ -816,8 +817,12 @@ nejdřív snímek s popiskem, pak panorama, scéna, detaily; README složky to t
   tabulkou každé kolekce příběhy jejích děl jako sled snímků (podle `date`, Instagram je přehraje jeden po druhém), ke
   každému odkaz pro nálepku v bloku ke zkopírování a nakonec odkaz na stránku kolekce (obojí s `STORY_UTM`), na poslední
   snímek nebo do profilu. Díla bez kolekce ho nemají.
-- **Mřížka na profilu** (`meta_instagram_grid: 2 | 3 | 6 | 9 | 12`, `gridLayout`, `renderGrid`, `gridPosts`; nastavení
-  `images.instagram.grid`): obraz rozřezaný na 2 × 1 (dvojice vedle sebe) / 3 × 1 / 3 × 2 / 3 × 3 / 3 × 4 dlaždice 3:4 (1080 × 1440, jak je ukazuje
+- **Detailní fotky** (`detail-<jméno>.jpg`): detail blízký 4:5 vyplní snímek výřezem; jiný tvar (výřez by nechal méně
+  než `detailCropKeep`, výchozí 75 %, `detailLayout`) leží celý na papíru první palety, a je-li dost široký na panorama
+  (`panoramaSlides` podle jeho poměru stran), dostane vlastní plynulé panorama `detail-<jméno>-pano-1.jpg` … (`detailSuffixes`),
+  např. matrice linorytu 3 snímky; úklid exportů zná jejich počet z rozměrů detailu v `info.json`.
+- **Mřížka na profilu** (`meta_instagram_grid: <sloupce>x<řádky>`, 1x1 až 5x5 `GRID_MAX`, `parseGrid`, `gridLayout`, `renderGrid`, `gridPosts`; nastavení
+  `images.instagram.grid`): obraz rozřezaný na dlaždice 3:4 (např. `2x1` dvojice vedle sebe, `3x1`, `3x2`, `3x3`, `3x4`) (1080 × 1440, jak je ukazuje
   mřížka profilu), `grid-<pořadí zveřejnění>-<řádek>_<sloupec>.jpg` (`gridTile`, např. `grid-09-1_1.jpg` = vlevo nahoře,
   zveřejnit jako 9.; `grid-01-3_3.jpg` = vpravo dole, zveřejnit první; seřazené podle jména jdou v pořadí zveřejnění). Celek se kreslí na jedno plátno, kde mezi
   dlaždicemi leží mezera mřížky profilu (`gapPx`, výchozí 8 px ≈ 1 bod na telefonu): pruh pod mezerou není na žádné

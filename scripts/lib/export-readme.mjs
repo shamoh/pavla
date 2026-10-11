@@ -94,15 +94,15 @@ export function instagramReadme({ work, year, files, post, collection = '', page
 }
 
 /**
- * The profile grid in the README of a work: the preview, the tiles as they lie (3 in a row) and the order of
+ * The profile grid in the README of a work: the preview, the tiles as they lie (`cols` in a row) and the order of
  * publishing with the text of every post ready to copy. `grid`: { tiles (file names in reading order), preview,
- * posts (gridPosts: in the order of publishing) }.
+ * posts (gridPosts: in the order of publishing), cols }.
  */
-function gridSection({ tiles, preview, posts }) {
+function gridSection({ tiles, preview, posts, cols = 3 }) {
   const rows = [];
-  for (let i = 0; i < tiles.length; i += 3) rows.push(thumbs(tiles.slice(i, i + 3), 120));
+  for (let i = 0; i < tiles.length; i += cols) rows.push(thumbs(tiles.slice(i, i + cols), 120));
   return [
-    '', `## Mřížka na profilu (${tiles.length} dlaždic)`, '',
+    '', `## Mřížka na profilu (${cols} × ${tiles.length / cols})`, '',
     `Obraz rozřezaný na ${tiles.length} příspěvků 3:4, které na profilu dají dohromady jednu fotku (mezery mřížky jsou`
       + ' v obraze vynechané, takže na sebe dlaždice navazují). Takhle bude vypadat na profilu:', '',
     `<a href="${preview}"><img src="${preview}" width="360" alt="náhled mřížky"></a>`, '',

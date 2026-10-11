@@ -70,7 +70,7 @@ import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
 import { rightsXmp } from './lib/image-rights.mjs';
 import { STORY_UTM, exportIndex, flerReadme, instagramReadme, publishedUrl } from './lib/export-readme.mjs';
 import {
-  GRID_DEFAULTS, GRID_VERSION, captionFacts, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
+  GRID_DEFAULTS, GRID_VERSION, captionFacts, detailLayout, detailSuffixes, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
   panoramaSuffixes, renderCaption, renderGrid, renderPanorama, renderScene, renderStory, siteHost,
 } from './lib/instagram.mjs';
 import { PIN_DEFAULTS, PIN_FILE, withParams } from './lib/pinterest.mjs';
@@ -239,10 +239,21 @@ async function shareImage(file, m, img, xmp) {
   return { width: img.og.width, height: img.og.height };
 }
 
-// A detail photo is a close-up, so it fills the whole 4:5 frame (centre crop) instead of sitting on paper.
+// A detail photo is a close-up, so it fills the whole 4:5 frame (centre crop) instead of sitting on paper; one whose
+// shape is far from 4:5 (the crop would keep less than detailCropKeep of it, e.g. a long narrow strip) lies whole on the
+// paper of the first palette instead (detailLayout).
 async function instagramDetail(file, buf, img) {
-  const { width: W, height: H } = img.instagram;
-  await sharp(buf).rotate().toColorspace('srgb').resize(W, H, { fit: 'cover' }).jpeg({ quality: 92, mozjpeg: true }).toFile(file);
+  const { width: W, height: H, padding = 0.025, detailCropKeep } = img.instagram;
+  const src = sharp(buf).rotate().toColorspace('srgb');
+  const { width, height } = await src.clone().metadata().then(async (m) => (m.orientation >= 5 ? { width: m.height, height: m.width } : m));
+  if (detailLayout(width / height, W / H, detailCropKeep) === 'crop') {
+    await src.resize(W, H, { fit: 'cover' }).jpeg({ quality: 92, mozjpeg: true }).toFile(file);
+    return;
+  }
+  const pad = Math.round(W * padding);
+  const inner = await src.resize({ width: W - 2 * pad, height: H - 2 * pad, fit: 'inside' }).toBuffer();
+  await sharp({ create: { width: W, height: H, channels: 3, background: PALETTES[0].colors.paper } })
+    .composite([{ input: inner, gravity: 'center' }]).jpeg({ quality: 92, mozjpeg: true }).toFile(file);
 }
 
 /** Resizes `buf` (the original or a mockup) for Fler and signs it with the author's name (scripts/lib/watermark.mjs). */
@@ -486,6 +497,12 @@ export async function run({
     await writeIfChanged(path.join(siteDir, rel), SYNC_HEADER + YAML.stringify({ ...fields, [MODIFIED]: modified }));
   };
 
+  /** Instagram export suffixes of the detail photos of a work (detailSuffixes), from their sizes in its info.json. */
+  const instagramDetailSuffixes = (w, info) => w.details.flatMap((d) => {
+    const set = (info?.details ?? []).find((x) => x.name === d.name);
+    return detailSuffixes(d.name, set ? set.width / set.height : 0, img.instagram);
+  });
+
   /** Address of the page of a work on the site (its folder in public/ is its address). */
   const siteUrl = String(config.site?.url ?? '').replace(/\/+$/, '');
   const workPageUrl = (year, key) => `${siteUrl}/${workImageDir(year, key)}/`;
@@ -577,20 +594,29 @@ export async function run({
       }
       const story = await renderStory({ art, work: w.data, year: w.year, host, colors: PALETTES[0].colors, fonts, config: img.instagram });
       // the profile grid (meta_instagram_grid): the work cut into tiles 3:4 that join up on the profile, and a preview
-      const tiles = instagramGrid(w.data);
-      if (tiles) {
-        const grid = await renderGrid({ art, work: w.data, year: w.year, host, colors: PALETTES[0].colors, fonts, tiles, config: img.instagram });
-        for (const [i, buf] of grid.tiles.entries()) await fs.writeFile(path.join(insta, exportFileName(gridSuffixes(tiles)[i])), buf);
+      const gridSpec = instagramGrid(w.data);
+      if (gridSpec) {
+        const grid = await renderGrid({ art, work: w.data, year: w.year, host, colors: PALETTES[0].colors, fonts, grid: gridSpec, config: img.instagram });
+        for (const [i, buf] of grid.tiles.entries()) await fs.writeFile(path.join(insta, exportFileName(gridSuffixes(gridSpec)[i])), buf);
         await fs.writeFile(path.join(insta, exportFileName('-grid-preview')), grid.preview);
+        const tiles = `${gridSpec.cols}x${gridSpec.rows}`;
         const minFill = img.instagram.grid?.minFill ?? GRID_DEFAULTS.minFill;
         if (grid.layout.fill < minFill) {
-          log(`  ! ${rel}: the work covers only ${Math.round(grid.layout.fill * 100)} % of its grid of ${tiles}`);
-          misfits.push(`${w.yamlPath}: obraz zabere v mřížce ${tiles} dlaždic jen ${Math.round(grid.layout.fill * 100)} % plochy `
+          log(`  ! ${rel}: the work covers only ${Math.round(grid.layout.fill * 100)} % of its grid ${tiles}`);
+          misfits.push(`${w.yamlPath}: obraz zabere v mřížce ${tiles} jen ${Math.round(grid.layout.fill * 100)} % plochy `
             + '(zbytek je prázdný papír); zvol jinou mřížku (meta_instagram_grid) nebo false');
         }
       }
       await fs.writeFile(path.join(insta, exportFileName('-story')), story);
-      for (const d of details) await instagramDetail(path.join(insta, exportFileName(`-detail-${d.name}`)), d.buf, img);
+      for (const d of details) {
+        // a long narrow detail (e.g. the matrix of a linocut) becomes a panorama of its own, like the work
+        const dbuf = await sharp(d.buf).rotate().toColorspace('srgb').png().toBuffer();
+        const { width: dw, height: dh } = await sharp(dbuf).metadata();
+        const names = detailSuffixes(d.name, dw / dh, img.instagram);
+        if (names.length === 1) { await instagramDetail(path.join(insta, exportFileName(names[0])), d.buf, img); continue; }
+        const bufs = await renderPanorama({ art: dbuf, colors: PALETTES[0].colors, slides: names.length, config: img.instagram });
+        for (const [i, buf] of bufs.entries()) await fs.writeFile(path.join(insta, exportFileName(names[i])), buf);
+      }
     }
     if (onSale) {
       const flerDir = path.join(exportRoot, 'fler', folder);
@@ -626,10 +652,10 @@ export async function run({
         panorama: panoramaSuffixes(panoramaSlides(w.data.size_cm, img.instagram)).map(exportFileName),
         story: exportFileName('-story'),
         grid: instagramGrid(w.data)
-          ? { tiles: gridSuffixes(instagramGrid(w.data)).slice(0, -1).map(exportFileName), preview: exportFileName('-grid-preview'),
-            posts: gridPosts({ work: w.data, tiles: instagramGrid(w.data), post: text, handle: config.site?.instagram }) }
+          ? { tiles: gridSuffixes(instagramGrid(w.data)).slice(0, -1).map(exportFileName), preview: exportFileName('-grid-preview'), cols: instagramGrid(w.data).cols,
+            posts: gridPosts({ work: w.data, grid: instagramGrid(w.data), post: text, handle: config.site?.instagram }) }
           : null,
-        details: w.details.map((d) => exportFileName(`-detail-${d.name}`)),
+        details: instagramDetailSuffixes(w, await readJson(path.join(publicDir, workImageDir(w.year, key), 'info.json'))).map(exportFileName),
       };
       await writeIfChanged(path.join(exportRoot, 'instagram', folder, README), instagramReadme({ work: w.data, year: w.year, files, post: text, ...about }));
     }
@@ -653,7 +679,8 @@ export async function run({
         ...(validSize(w.data.size_cm) ? instagramVariants : instagramVariants.filter((v) => !v.startsWith('-scene-'))),
         ...panoramaSuffixes(panoramaSlides(w.data.size_cm, img.instagram)), '-story', ...gridSuffixes(instagramGrid(w.data)),
       ];
-      const e = expectedExports({ status: w.data.status, details: w.details.map((d) => d.name), mockupScenes, instagram: wantsInstagram(w.data), instagramVariants: variants });
+      variants.push(...instagramDetailSuffixes(w, info));
+      const e = expectedExports({ status: w.data.status, details: [], mockupScenes, instagram: wantsInstagram(w.data), instagramVariants: variants });
       const folder = exportFolder(w.yamlPath, w.slug);
       for (const sub of ['instagram', 'fler']) {
         if (e[sub] === null) wanted[sub].set(folder, null);
