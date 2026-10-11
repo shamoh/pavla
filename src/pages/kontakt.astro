@@ -7,6 +7,13 @@ import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
 import { EVENTS } from '../../scripts/lib/analytics.mjs';
 import { mailtoLink } from '../../scripts/lib/messages.mjs';
 
+// Where to find me: e-mail, profiles and the shop (the ones set in site.config.yaml), in this order.
+const links = [
+  site.email && { label: 'E-mail', href: mailtoLink(site.email, 'greeting', null), text: site.email, track: EVENTS.email },
+  site.instagram && { label: 'Instagram', href: `https://www.instagram.com/${site.instagram}/`, text: `@${site.instagram}`, rel: 'me' },
+  site.pinterest && { label: 'Pinterest', href: site.pinterest, text: 'Pavla na Pinterestu', rel: 'me' },
+  site.fler && { label: 'Obchůdek', href: site.fler, text: 'Fler' },
+].filter(Boolean) as { label: string; href: string; text: string; rel?: string; track?: string }[];
 const description = 'Zaujal vás obraz, nebo jen chcete pozdravit? Napište mi – a když se vám některý obraz zalíbí, domluvíme se. Žiji a maluji v Roztokách.';
 // For search engines: the contact page of the author.
 const jsonLd = graphLd(
@@ -20,17 +27,25 @@ const jsonLd = graphLd(
       <h1>Kontakt</h1>
       <p>Zaujal vás obraz nebo jen chcete pozdravit?</p>
       {messages.mode && <MessageForm variant="inline" />}
-      <ul class:list={['contact', { compact: messages.mode }]}>
-        {site.email && <li><span class="eyebrow">E-mail</span><a href={mailtoLink(site.email, 'greeting', null)} data-track={EVENTS.email}>{site.email}</a></li>}
-        {site.instagram && <li><span class="eyebrow">Instagram</span><a href={`https://www.instagram.com/${site.instagram}/`} rel="me">@{site.instagram}</a></li>}
-        {site.pinterest && <li><span class="eyebrow">Pinterest</span><a href={site.pinterest} rel="me">Pavla na Pinterestu</a></li>}
-        {site.fler && <li><span class="eyebrow">Obchůdek</span><a href={site.fler}>Fler</a></li>}
-        {site.location && <li><span class="eyebrow">Žiji a maluji</span><span class="value">{site.location}</span></li>}
-      </ul>
+      {!messages.mode && (
+        <ul class="contact">
+          {links.map((l) => <li><span class="eyebrow">{l.label}</span><a href={l.href} rel={l.rel} data-track={l.track}>{l.text}</a></li>)}
+          {site.location && <li><span class="eyebrow">Žiji a maluji</span><span class="value">{site.location}</span></li>}
+        </ul>
+      )}
     </div>
     <!-- Landscape 3:2 crop around the photo's focus (a 3:2 photo stays whole), so it does not tower over the short text next to it;
          its white paper edge melts into the paper of the page. -->
     <Photo name="kontakt" sizes="(max-width: 800px) 100vw, 40vw" class="contact-photo" aspect="3 / 2" blendEdge={10} />
+    <!-- Under the form and the photo, across the whole width: where to find me on the left, where I live on the right -->
+    {messages.mode && (
+      <div class="contact-row">
+        <ul class="contact compact">
+          {links.map((l) => <li><span class="eyebrow">{l.label}</span><a href={l.href} rel={l.rel} data-track={l.track}>{l.text}</a></li>)}
+        </ul>
+        {site.location && <p class="where"><span class="eyebrow">Žiji a maluji</span><span class="value">{site.location}</span></p>}
+      </div>
+    )}
   </div>
 </Base>
 <style>
@@ -40,8 +55,15 @@ const jsonLd = graphLd(
   .contact { list-style: none; padding: 0; margin: 40px 0 0; display: grid; gap: 28px; }
   .contact li { display: flex; flex-direction: column; gap: 4px; }
   .contact-page :global(.msg-form) { margin-top: 32px; max-width: 34rem; }
-  /* Under the form the addresses are one quiet line, so they do not outshout it. */
-  .contact.compact { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 14px 32px; }
-  .contact.compact a, .contact.compact .value { font-size: 1.25rem; }
-  .contact a, .contact .value { font-family: var(--serif); font-size: 1.7rem; text-decoration: none; }
+  /* Under the form and the photo the addresses are one quiet row across the page, so they do not outshout the form;
+     where I live (a different kind of fact) sits apart on the right. */
+  .contact-row {
+    grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 14px 32px;
+    padding-top: 24px; border-top: 1px solid var(--line);
+  }
+  .contact.compact { margin: 0; display: flex; flex-wrap: wrap; gap: 14px 40px; }
+  .where { margin: 0; display: flex; flex-direction: column; gap: 4px; text-align: right; }
+  @media (max-width: 800px) { .where { text-align: left; } }
+  .contact a, .contact .value, .where .value { font-family: var(--serif); font-size: 1.7rem; text-decoration: none; }
+  .contact.compact a, .contact-row .value { font-size: 1.25rem; }
 </style>
