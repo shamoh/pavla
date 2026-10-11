@@ -1374,8 +1374,9 @@ roky. Web je na Pinterest dává sám, přes kanál RSS (`scripts/lib/pinterest.
   slovníku `pinterestKeywords.en` v `site.config.yaml` (obyčejná slova s mezerami, např. „plein air“, „still life“, na
   rozdíl od hashtagů `instagramPost.en`), např. „akvarel, krajina, mlha · watercolor, landscape, fog“; slovo bez
   překladu jen česky a u díla s `meta_pinterest: true` ho souhrn běhu ukáže v „Doporučení“ (`pinterestAdvice`).
-- **Profil:** `site.pinterest` (URL profilu) = odkaz „Pinterest“ v patičce a na Kontaktu (`rel="me"`) a `sameAs`
-  autorky v JSON-LD; prázdné = nic.
+- **Profil:** `site.pinterest` (URL profilu) = `sameAs` autorky v JSON-LD a odkaz „Pinterest“ v patičce a na Kontaktu
+  (`rel="me"`), který vede na záložku vytvořených pinů `<profil>/_created/` (`pinterestProfileLink`; tu adresu má každý
+  profil na Pinterestu); prázdné = nic.
 - **Připojení (jednou, v Pinterestu):** firemní účet (zdarma), ověření webu (značka HTML: kód do `site.verification.pinterest` →
   `<meta name="p:domain_verify">`, adresa webu `https://pavla.kramolis.cz`; ověřit až po nasazení), pak v nastavení „Hromadné vytváření pinů“ → automatické publikování z RSS: adresa
   `https://<web>/pinterest.xml` a nástěnka. Pinterest kanál čte asi jednou denně a připne jen nové položky; úprava už

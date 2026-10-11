@@ -6,6 +6,13 @@
 
 import { captionFacts } from './works.mjs';
 
+/**
+ * The link to a Pinterest profile shown on the site (footer, contact page): its tab of the pins the author made
+ * ("…/<account>/_created/", the address every profile has), not the boards she saved others' pins to.
+ * `profile`: the address of the profile (site.pinterest).
+ */
+export const pinterestProfileLink = (profile) => `${String(profile).replace(/\/+$/, '')}/_created/`;
+
 /** The pin image in the folder of a work's page (public/tvorba/<year>/<slug>-<id>/). */
 export const PIN_FILE = 'pin.jpg';
 

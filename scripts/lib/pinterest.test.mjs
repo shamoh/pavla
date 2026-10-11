@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FEED_UTM, PIN_DESCRIPTION_CHARS, clip, withParams, feedImages, pinDescription, pinKeywords, pinSaveUrl, pinterestFeed } from './pinterest.mjs';
+import { FEED_UTM, PIN_DESCRIPTION_CHARS, clip, pinterestProfileLink, withParams, feedImages, pinDescription, pinKeywords, pinSaveUrl, pinterestFeed } from './pinterest.mjs';
 
 test('clip: whitespace collapsed, cut after a whole word with "…"', () => {
   assert.equal(clip('  Ráno   u\nrybníka ', 100), 'Ráno u rybníka');
@@ -68,4 +68,9 @@ test('withParams: UTM parameters of the feed added to the address of a page', ()
   assert.ok(pinterestFeed({ title: 't', link: 'l', description: 'd' }, [{
     id: 'a', title: 'A', link: withParams('https://example.test/a/', FEED_UTM), description: '', image: { url: 'https://example.test/a/pin.jpg' },
   }]).includes('<link>https://example.test/a/?utm_source=pinterest&amp;utm_medium=social&amp;utm_campaign=rss</link>'), 'escaped in the XML');
+});
+
+test('pinterestProfileLink: the tab of the pins made by the author', () => {
+  assert.equal(pinterestProfileLink('https://cz.pinterest.com/pavla/'), 'https://cz.pinterest.com/pavla/_created/');
+  assert.equal(pinterestProfileLink('https://cz.pinterest.com/pavla'), 'https://cz.pinterest.com/pavla/_created/');
 });

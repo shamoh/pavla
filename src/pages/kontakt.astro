@@ -6,12 +6,13 @@ import { messages, site } from '../lib/site';
 import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
 import { EVENTS } from '../../scripts/lib/analytics.mjs';
 import { mailtoLink } from '../../scripts/lib/messages.mjs';
+import { pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
 
 // Where to find me: e-mail, profiles and the shop (the ones set in site.config.yaml), in this order.
 const links = [
   site.email && { label: 'E-mail', href: mailtoLink(site.email, 'greeting', null), text: site.email, track: EVENTS.email },
   site.instagram && { label: 'Instagram', href: `https://www.instagram.com/${site.instagram}/`, text: `@${site.instagram}`, rel: 'me' },
-  site.pinterest && { label: 'Pinterest', href: site.pinterest, text: 'Pavla na Pinterestu', rel: 'me' },
+  site.pinterest && { label: 'Pinterest', href: pinterestProfileLink(site.pinterest), text: 'Pavla na Pinterestu', rel: 'me' },
   site.fler && { label: 'Obchůdek', href: site.fler, text: 'Fler' },
 ].filter(Boolean) as { label: string; href: string; text: string; rel?: string; track?: string }[];
 const description = 'Zaujal vás obraz, nebo jen chcete pozdravit? Napište mi – a když se vám některý obraz zalíbí, domluvíme se. Žiji a maluji v Roztokách.';

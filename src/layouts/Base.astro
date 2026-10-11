@@ -3,6 +3,7 @@ import MessagePanel from '../components/MessagePanel.astro';
 import { analyticsId, messages, site, url, version, type ShareImage } from '../lib/site';
 import { gtagConfigScript, gtagSrc } from '../../scripts/lib/analytics.mjs';
 import { jsonLdText, summarize, verificationMeta } from '../../scripts/lib/seo.mjs';
+import { pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
 import { contactLink, pageContext } from '../../scripts/lib/messages.mjs';
 import { PALETTES, paletteCss, paletteScript } from '../../scripts/lib/palettes.mjs';
 import PalettePicker from '../components/PalettePicker.astro';
@@ -100,7 +101,7 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
       <span class="links">
         <PalettePicker />
         {site.instagram && <a href={`https://www.instagram.com/${site.instagram}/`} rel="me">Instagram</a>}
-        {site.pinterest && <a href={site.pinterest} rel="me">Pinterest</a>}
+        {site.pinterest && <a href={pinterestProfileLink(site.pinterest)} rel="me">Pinterest</a>}
         {site.fler && <a href={site.fler}>Fler</a>}
         {withMessages && <a href={url(contactLink(messageContext))} data-message-open="">Napsat k této stránce</a>}
       </span>
