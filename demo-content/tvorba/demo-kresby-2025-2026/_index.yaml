@@ -7,9 +7,10 @@
 # Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.
 # cover: k3f9a
 
-# Pár vět o kolekci: kde a kdy obrazy vznikly. Víc řádků pod sebou, odsazených dvěma mezerami.
-description: |
-  Kolekce přes dva roky (i přes přelom roku). Bez cover i bez vlastní fotky: úvodní obraz se náhodně střídá mezi obrazy z výběru autorky (všechny čtyři obrazy kolekce).
+# Pár vět o kolekci: kde a kdy obrazy vznikly. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.
+description: >
+  Kolekce přes dva roky (i přes přelom roku). Bez cover i bez vlastní fotky: úvodní obraz se náhodně střídá mezi obrazy z výběru autorky
+  (všechny čtyři obrazy kolekce).
 
 # NEPOVINNÉ. Při ořezu vybraného obrazu zůstane vidět [zleva %, shora %], např. [50, 50] = střed, [80, 30] = vpravo nahoře.
 # Jen s aspect = střed. Náhodný obraz se neořezává.

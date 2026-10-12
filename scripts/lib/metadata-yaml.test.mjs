@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import YAML from 'yaml';
-import { normalizeMetadata, schemaKeysIn, skeleton, todoKeys } from './metadata-yaml.mjs';
-import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, UNKNOWN_DOC, WORK_SCHEMA, YEAR_SCHEMA, fieldKeys } from './schema.mjs';
+import { TEXT_WIDTH, normalizeMetadata, schemaKeysIn, skeleton, todoKeys } from './metadata-yaml.mjs';
+import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, UNCOLLECTED_SCHEMA, UNKNOWN_DOC, WORK_SCHEMA, YEAR_SCHEMA, fieldKeys } from './schema.mjs';
 
 // A small schema keeps the expected texts readable.
 const schema = {
@@ -310,4 +310,39 @@ test('commented-out attribute: copies of its comment above it go (current, older
   const older = normalizeMetadata('title: A\n\n# NEPOVINNÉ. Ořez.\n# NEPOVINNÉ. Ořez.\n# Ořez, starý text.\n# crop: "3:2"\n\nnote: ""\n', withOff);
   assert.match(older.text, /\ntitle: A\n\n# NEPOVINNÉ\. Ořez\.\n# crop: "3:2"\n\n# Poznámka/);
   assert.equal(normalizeMetadata(older.text, withOff).changed, false);
+});
+
+// A text longer than TEXT_WIDTH: words of different lengths, one double space.
+const LONG = `${'Ráno nad rybníkem, mlha se drží nad hladinou a slunce '.repeat(4)}prosvítá  mezi olšemi.`;
+
+test('a long one-paragraph text of a block attribute becomes a folded block: the same text, lines up to TEXT_WIDTH', () => {
+  for (const written of [JSON.stringify(LONG), `|\n  ${LONG}`]) {
+    const r = norm(`id: k3f9a\ndraft: false\ntitle: ${LONG}\nsize: [1, 2]\ntext: ${written}\n`);
+    assert.equal(r.problem, null);
+    assert.match(r.text, /\ntext: >-?\n {2}Ráno/);
+    const block = r.text.slice(r.text.indexOf('text: >'));
+    assert.ok(block.split('\n').length > 2, 'broken into more lines');
+    assert.ok(block.split('\n').every((l) => l.length <= TEXT_WIDTH));
+    assert.equal(YAML.parse(r.text).text.trimEnd(), LONG, 'the text stays');
+    assert.equal(norm(r.text).changed, false, 'and stays so on the next run');
+    assert.match(r.text, new RegExp(`\\ntitle: ${LONG.slice(0, 20)}.*\\n`), 'not a block attribute: left on its line');
+  }
+});
+
+test('a short text, an empty one and a text of more lines keep their form', () => {
+  const text = `id: k3f9a\ndraft: false\ntitle: A\nsize: [1, 2]\ntext: |\n  První řádek.\n  ${LONG}\n`;
+  assert.match(norm(text).text, new RegExp(`\\ntext: \\|\\n {2}První řádek\\.\\n {2}${LONG.slice(0, 20)}`));
+  assert.match(norm('id: k3f9a\ndraft: false\ntitle: A\nsize: [1, 2]\ntext: Krátký.\n').text, /\ntext: Krátký\.\n/);
+  const empty = { header: [], fields: [{ key: 'text', block: true, doc: 'Popis.', value: '' }] };
+  assert.equal(skeleton(empty), '# DOPLNIT Popis.\ntext: ""\n', 'an empty skeleton value on the line of its key');
+});
+
+test('the real schemas: a long description of a work, collection, year, home and "Mimo kolekce" is folded', () => {
+  const long = 'Slovo a ještě jedno slovo, '.repeat(8).trim();
+  for (const schema of [WORK_SCHEMA, COLLECTION_SCHEMA, YEAR_SCHEMA, HOME_SCHEMA, UNCOLLECTED_SCHEMA]) {
+    const r = normalizeMetadata(`description: ${JSON.stringify(long)}\n`, schema);
+    assert.equal(r.problem, null, schema.name);
+    assert.match(r.text, /\ndescription: >-\n {2}Slovo/, schema.name);
+    assert.equal(YAML.parse(r.text).description, long, schema.name);
+  }
 });

@@ -560,6 +560,10 @@ na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`)). V�
   - atributy seřadí podle schématu, mezi nimi prázdný řádek,
   - nad každý atribut dá jeho technický komentář v aktuálním znění, ve všech souborech stejný
     (starší znění z `previous` pozná a nahradí; jeho kopie hned nad ním, např. po běhu se starším schématem, smaže),
+  - dlouhý text o jednom odstavci u textových atributů (`block: true` ve schématu: `description` díla, kolekce, roku, úvodu a „Mimo kolekce“)
+    delší než `TEXT_WIDTH` (140 znaků) převede na zalomený blok `description: >` s řádky do 140 znaků (`foldLines`);
+    text se tím nezmění, jen se líp čte a upravuje. Krátký text zůstane na řádku s atributem, víc řádků jako `|`,
+    prázdná hodnota kostry je `""` (popis kolekce v kostře je prázdný, žádný vzorový text),
   - `DOPLNIT` nechá, dokud ho člověk nesmaže (znamená „hodnotu zkontrolovat“), sám ho nikdy neodstraní,
   - vlastní komentář nad atributem nechá, nad technickým,
   - neznámý atribut (např. překlep `mockup:`) nesmaže, dá ho na konec a označí komentářem `NEZNÁMÝ atribut…`;
@@ -656,6 +660,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | lišta filtrů při posunu nahoru, panel „Upravit“ (na úzké obrazovce zespodu) | `/tvorba/` (58 děl, stránka je dost dlouhá); úzká obrazovka: DevTools → režim zařízení |
 | počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (8 děl, Kolekce jen Kresby…, Skicák (po 2), Plenér Šumava, Portréty, Ptáci, Tatry (po 1), bez „žádná“), + kolekce Kresby, pastely a kvaš (2 díla; přepínač Doporučené zmizí, oba obrazy jsou vybrané); štítek „krajina“: Technika jen akvarel (23), kresba tužkou, kvaš, linoryt |
 | výběr více štítků („a zároveň“): čipy se zapínají a vypínají, aktivní zůstanou jen ty, které výběr zúží, ostatní zašednou | `/tvorba/`: „krajina“ (28 děl, 17 aktivních čipů), + „voda“ (9 děl, aktivní hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, aktivní jaro a léto), „Vše“ zruší |
+| dlouhý popis o jednom odstavci zalomený do `description: >` (`foldLines`, text se nemění) | `demo-content/tvorba/demo-kresby-2025-2026/_index.yaml`: popis delší než 140 znaků v bloku `>` se dvěma řádky; další běh ho nemění |
 | hledání v názvech, popisech a `id` děl | `/tvorba/`: pole vpravo od „Tvorba“, „most noc“ → Most v noci (`?q=most+noc`, v liště čip „„most noc“ ×“), „df9aa“ → Most v noci podle `id`, Enter otevře jeho stránku; `/tvorba/kolekce/demo-plener-sumava-2026/`: pole pod textem kolekce, „mlha“ → Ráno u rybníka (slovo jen v popisu), Šumava v mlze ne (jiný tvar) |
 | combobox Kolekce | `/tvorba/`: klik do „Kolekce“, napiš „plener“ → vše, žádná, Plenér Krkonoše 2006, Plenér Šumava 2026 (podle abecedy), ↓ a Enter vybere Krkonoše (`?collection=demo-plener-krkonose-2006`), Esc zavře seznam a vrátí vybranou; „xyz“ nechá jen vše a žádná |
 | přehled kolekcí: pořadí, stránkování, hledání | `/tvorba/kolekce/`: 16 kolekcí + „Mimo kolekce“ = 2 stránky po 12 (Město 2026 první, „Mimo kolekce“ poslední na 2. stránce), „Na stránku“ 24 = vše na jedné (paměť `pavla.collections.perPage`, galerie se nezmění); hledání „plener“ → Plenér Šumava 2026 a Plenér Krkonoše 2006, „strbskym“ → Tatry 2000 (slovo jen v popisu), „mimo“ → „Hledání neodpovídá žádná kolekce.“ |

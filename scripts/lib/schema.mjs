@@ -494,9 +494,10 @@ export const COLLECTION_SCHEMA = {
     {
       key: 'description',
       block: true,
-      doc: 'Pár vět o kolekci: kde a kdy obrazy vznikly. Víc řádků pod sebou, odsazených dvěma mezerami.',
-      value: 'Pár vět o kolekci: kde a kdy obrazy vznikly.\n',
+      doc: 'Pár vět o kolekci: kde a kdy obrazy vznikly. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.',
+      value: '',
       missing: null,
+      previous: ['Pár vět o kolekci: kde a kdy obrazy vznikly. Víc řádků pod sebou, odsazených dvěma mezerami.'],
     },
     coverField('z kolekce', '_cover.jpg', [
       'Úvodní obraz: id díla z kolekce (např. k3f9a) nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer.',
@@ -550,11 +551,16 @@ export const YEAR_SCHEMA = {
   fields: ordered([
     {
       key: 'description',
+      block: true,
       doc: [
         'Pár vět o roce za sebe (jaký byl, co se v tvorbě dělo); zobrazí se nahoře na stránce roku /tvorba/<rok>/.',
-        'Víc řádků: napiš description: | a pod to text odsazený dvěma mezerami. Prázdné "" = bez textu.',
+        'Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí. Prázdné "" = bez textu.',
       ],
       value: '',
+      previous: [[
+        'Pár vět o roce za sebe (jaký byl, co se v tvorbě dělo); zobrazí se nahoře na stránce roku /tvorba/<rok>/.',
+        'Víc řádků: napiš description: | a pod to text odsazený dvěma mezerami. Prázdné "" = bez textu.',
+      ]],
     },
     coverField('z toho roku', '<rok>.jpg vedle tohoto souboru'),
     aspectField,
@@ -582,13 +588,18 @@ export const UNCOLLECTED_SCHEMA = {
     coverField('mimo kolekce', '_cover.jpg vedle tohoto souboru'),
     {
       key: 'description',
+      block: true,
       commented: true,
       example: 'Obrazy, které nepatří do žádné kolekce: samostatné listy, dárky a skici.',
       doc: [
-        'Pár vět pod „Mimo kolekce“ na přehledu kolekcí. Víc řádků: napiš description: | a pod to text odsazený',
-        `dvěma mezerami. Prázdné = „${UNCOLLECTED_TEXT}“`,
+        'Pár vět pod „Mimo kolekce“ na přehledu kolekcí. Stačí v uvozovkách na jeden řádek, dlouhý text automatika',
+        `zalomí. Prázdné = „${UNCOLLECTED_TEXT}“`,
       ],
       value: '',
+      previous: [[
+        'Pár vět pod „Mimo kolekce“ na přehledu kolekcí. Víc řádků: napiš description: | a pod to text odsazený',
+        `dvěma mezerami. Prázdné = „${UNCOLLECTED_TEXT}“`,
+      ]],
     },
     aspectField,
     focusField(),

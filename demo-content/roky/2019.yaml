@@ -11,7 +11,7 @@
 # cover: k3f9a
 
 # DOPLNIT Pár vět o roce za sebe (jaký byl, co se v tvorbě dělo); zobrazí se nahoře na stránce roku /tvorba/<rok>/.
-# Víc řádků: napiš description: | a pod to text odsazený dvěma mezerami. Prázdné "" = bez textu.
+# Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí. Prázdné "" = bez textu.
 description: ""
 
 # NEPOVINNÉ. Při ořezu vybraného obrazu zůstane vidět [zleva %, shora %], např. [50, 50] = střed, [80, 30] = vpravo nahoře.

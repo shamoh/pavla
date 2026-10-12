@@ -8,7 +8,7 @@
 # cover: k3f9a
 
 # Pár vět o roce za sebe (jaký byl, co se v tvorbě dělo); zobrazí se nahoře na stránce roku /tvorba/<rok>/.
-# Víc řádků: napiš description: | a pod to text odsazený dvěma mezerami. Prázdné "" = bez textu.
+# Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí. Prázdné "" = bez textu.
 description: ""
 
 # UKÁZKA: vlastní úvodní fotka roku (roky/2025.jpg, široké panorama); jen focus = ořez na čtverec 1:1

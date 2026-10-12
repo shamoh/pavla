@@ -10,8 +10,8 @@ aspect: "3:2"
 # Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.
 cover: pt9zy
 
-# NEPOVINNÉ. Pár vět pod „Mimo kolekce“ na přehledu kolekcí. Víc řádků: napiš description: | a pod to text odsazený
-# dvěma mezerami. Prázdné = „Obrazy, které nepatří do žádné kolekce.“
+# NEPOVINNÉ. Pár vět pod „Mimo kolekce“ na přehledu kolekcí. Stačí v uvozovkách na jeden řádek, dlouhý text automatika
+# zalomí. Prázdné = „Obrazy, které nepatří do žádné kolekce.“
 description: |
   Samostatné listy, které se nikam nehodily: dárky, pokusy a obrázky z jednoho odpoledne.
 

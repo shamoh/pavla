@@ -144,6 +144,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   a testovací data; změna znění komentáře = staré znění do `previous`. Atribut s pevnými možnostmi (výčet, `true`/`false`):
   komentář „<co>, možnosti:“ a pod ním každá možnost na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`); povolené hodnoty v `options`
   pole (test hlídá shodu s komentářem), jiná hodnota = chyba (`optionProblems`), i u rozpracovaného díla. `DOPLNIT` nikdy neodstraňovat za lidi.
+  Dlouhý text o jednom odstavci (`block: true`, nad `TEXT_WIDTH`) pipeline zalomí do bloku `>` (`foldLines`, hodnota se nemění);
+  kostra nemá vzorové texty v hodnotách (popis kolekce `""`).
 - Testovacích děl (`pavla/demo-content/`) musí být vždy víc, než je nejmenší počet na stránku (aspoň 15 při 12).
 - Autorství v obrázcích: webové obrázky díla (originál, detaily, mockupy ve všech formátech a `og.jpg`) nesou XMP
   (autorka, název, © rok, kredit, odkaz na stránku díla; `scripts/lib/image-rights.mjs`, v otisku díla), JSON-LD obrázku

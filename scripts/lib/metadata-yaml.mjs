@@ -14,7 +14,9 @@
 //     "# key: <example>" under its technical comment starting with "NEPOVINNÉ.", never marked DOPLNIT; removing "# " switches it on. An empty
 //     value of such an attribute means the same as its absence, so it is commented out again,
 //   - the comment at the top of the file stays there, separated by an empty line,
-//   - values never change (the result is checked), nor does the way they are written (| blocks, [a, b], quotes).
+//   - values never change (the result is checked), nor does the way they are written (| blocks, [a, b], quotes),
+//     except a long one-paragraph text of a `block` attribute (description): longer than TEXT_WIDTH, it becomes a
+//     folded block ">" with lines up to TEXT_WIDTH (the same text, only easier to read and edit).
 // Files written before technical comments existed are converted: comments at the end of a line become the author's
 // own comment above the attribute, unless they come from the old templates (LEGACY_COMMENTS).
 
@@ -23,6 +25,46 @@ import YAML from 'yaml';
 import { LEGACY_COMMENTS, TODO, UNKNOWN_DOC, attributeGroup, compareKeys, docLines } from './schema.mjs';
 
 const STRINGIFY = { lineWidth: 0, nullStr: '', flowCollectionPadding: false };
+
+/** A one-paragraph text of a `block` attribute longer than this becomes a folded block with lines up to this width. */
+export const TEXT_WIDTH = 140;
+
+/** The text of a scalar that should be a folded block: one paragraph (at most a trailing newline), longer than TEXT_WIDTH. */
+const isLongParagraph = (value) => typeof value === 'string' && !value.replace(/\n$/, '').includes('\n') && value.length > TEXT_WIDTH;
+
+/** A long one-paragraph text of a `block` attribute as a folded block (written by foldLines). */
+function foldLong(node) {
+  if (YAML.isScalar(node) && isLongParagraph(node.value) && node.type !== 'BLOCK_FOLDED') node.type = 'BLOCK_FOLDED';
+}
+
+/**
+ * Breaks the long lines of the folded blocks ("key: >", "key: >-") of a top-level attribute at single spaces, to at
+ * most TEXT_WIDTH characters (the yaml library writes them as one line with lineWidth 0). A line break between two
+ * lines of a folded block reads as one space, so the text stays the same; a line starting with a space (more
+ * indented) would not, so a break never leaves a space at the start of a line, and such lines are left as they are.
+ */
+export function foldLines(text) {
+  const lines = text.split('\n');
+  const out = [];
+  let folded = false;
+  for (const line of lines) {
+    if (/^[^\s#][^:]*: >[-+]?$/.test(line)) { folded = true; out.push(line); continue; }
+    if (folded && line !== '' && !line.startsWith('  ')) folded = false;
+    if (!folded || line.length <= TEXT_WIDTH || /^ {3}/.test(line)) { out.push(line); continue; }
+    let rest = line.slice(2);
+    while (rest.length > TEXT_WIDTH - 2) {
+      let at = -1;
+      for (let i = Math.min(rest.length - 2, TEXT_WIDTH - 2); i > 0; i -= 1) {
+        if (rest[i] === ' ' && rest[i - 1] !== ' ' && rest[i + 1] !== ' ') { at = i; break; }
+      }
+      if (at === -1) break;
+      out.push(`  ${rest.slice(0, at)}`);
+      rest = rest.slice(at + 1);
+    }
+    out.push(`  ${rest}`);
+  }
+  return out.join('\n');
+}
 
 /** A syntax error of the yaml library as a Czech problem for the people who write the files. */
 export function yamlProblem(error) {
@@ -128,7 +170,9 @@ function newValueNode(doc, field, value) {
   if (Array.isArray(value)) node.flow = true;
   // a map of lists (meta_corners): every list on its own line, [a, b]
   if (YAML.isMap(node)) for (const pair of node.items) if (YAML.isSeq(pair.value)) pair.value.flow = true;
-  if (field.block && typeof value === 'string') node.type = 'BLOCK_LITERAL';
+  // a block attribute: a text of more lines as "|", a long one as ">", a short one (or "") on the line of its key
+  if (field.block && isLongParagraph(value)) node.type = 'BLOCK_FOLDED';
+  else if (field.block && typeof value === 'string' && value.includes('\n')) node.type = 'BLOCK_LITERAL';
   return node;
 }
 
@@ -191,6 +235,7 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
       .flatMap(toLines).filter((l) => l.trim());
     own = withoutLegacy([...own, ...trailing]);
     pair.key.comment = undefined;
+    if (field?.block) foldLong(pair.value);
     if (pair.value) {
       pair.value.comment = undefined;
       if (YAML.isCollection(pair.value)) pair.value.commentBefore = undefined;
@@ -263,8 +308,8 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
   out.contents.items = items;
   if (!top.length && header) top = header;
   // the file's comment on top, then an empty line
-  const result = ((top.length ? `${top.map((l) => (l ? `# ${l}` : '#')).join('\n')}\n\n` : '') + out.toString(STRINGIFY))
-    .replace(new RegExp(`^${COMMENTED}(\\S+):.*$`, 'gm'), (_, key) => `# ${key}: ${known.get(key).example}`);
+  const result = foldLines(((top.length ? `${top.map((l) => (l ? `# ${l}` : '#')).join('\n')}\n\n` : '') + out.toString(STRINGIFY))
+    .replace(new RegExp(`^${COMMENTED}(\\S+):.*$`, 'gm'), (_, key) => `# ${key}: ${known.get(key).example}`));
 
   // safety: the values must be exactly the same (plus the added attributes, minus emptied commented-out ones)
   const after = YAML.parse(result) ?? {};
