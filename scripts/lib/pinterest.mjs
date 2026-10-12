@@ -60,11 +60,12 @@ export function pinKeywords(work, dictionary = {}) {
 }
 
 /**
- * The description of a pin: the description of the work, "technique · size · year" and the keywords (pinKeywords);
- * a long description is shortened, so the facts and the keywords always fit the limit of Pinterest.
+ * The description of a pin: the description of the work, "technique · size · year · id" (the id as in the Instagram
+ * post text: the gallery search finds the work by it) and the keywords (pinKeywords); a long description is shortened, so the facts and the keywords always fit the limit of Pinterest.
  */
 export const pinDescription = (work, year, dictionary = {}) => {
-  const tail = [captionFacts(work ?? {}, year), pinKeywords(work, dictionary)].filter(Boolean).join('. ');
+  const facts = [captionFacts(work ?? {}, year), work?.id].filter(Boolean).join(' · ');
+  const tail = [facts, pinKeywords(work, dictionary)].filter(Boolean).join('. ');
   const own = typeof work?.description === 'string' && !/^\s*DOPLNIT/.test(work.description) ? work.description.trim() : '';
   const room = PIN_DESCRIPTION_CHARS - tail.length - 1;
   const head = own && room > 20 ? clip(own, room) : '';

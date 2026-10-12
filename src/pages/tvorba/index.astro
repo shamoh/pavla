@@ -14,7 +14,7 @@ const jsonLd = graphLd(
 <Base title="Tvorba" description={description} jsonLd={jsonLd}>
   <div class="page-head">
     <h1>Tvorba</h1>
-    <SearchField id="works-search" label="Hledat v názvech a popisech obrazů" placeholder="Hledat v názvech a popisech…" />
+    <SearchField id="works-search" hint="Enter otevře obraz" label="Hledat v názvech a popisech obrazů" placeholder="Hledat v názvech a popisech…" />
   </div>
   <WorkGallery works={getWorks()} />
 </Base>

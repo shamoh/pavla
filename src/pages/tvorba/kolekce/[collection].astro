@@ -29,7 +29,7 @@ const jsonLd = graphLd(
       <p class="eyebrow">Kolekce</p>
       <h1>{title}</h1>
       {description && <p class="desc">{description}</p>}
-      <SearchField id="works-search" label={`Hledat v názvech a popisech obrazů kolekce ${title}`} placeholder="Hledat v názvech a popisech…" />
+      <SearchField id="works-search" hint="Enter otevře obraz" label={`Hledat v názvech a popisech obrazů kolekce ${title}`} placeholder="Hledat v názvech a popisech…" />
     </div>
     <Cover cover={collection.cover} sizes="(max-width: 900px) 100vw, 55vw" eager />
   </header>

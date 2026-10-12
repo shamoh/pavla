@@ -122,7 +122,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   import { rememberListing, revealReturned } from '../lib/page-return';
   import { fitYearRow } from '../lib/year-row';
   import { pagerTarget, renderPager } from '../lib/pager';
-  import { normalizeQuery } from '../../scripts/lib/search.mjs';
+  import { exactId, normalizeQuery } from '../../scripts/lib/search.mjs';
   import { selectCombobox } from '../lib/combobox';
   import { BAR_START, activeFilters, scrollBar, withoutFilter, worksCount } from '../../scripts/lib/filter-bar.mjs';
 
@@ -143,6 +143,12 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   const works = cards.map(workOf);
   // The search in titles and descriptions next to the heading (SearchField.astro, on every page with a gallery).
   const searchInput = document.getElementById('works-search') as HTMLInputElement | null;
+  // "Enter otevře obraz" under the field: shown exactly when Enter would open a work (the same exactId).
+  const searchHint = document.getElementById('works-search-hint');
+  const cardIds = cards.map((c) => c.dataset.id!);
+  const syncSearchHint = () => {
+    if (searchHint) searchHint.hidden = !(searchInput && document.activeElement === searchInput && exactId(searchInput.value, cardIds));
+  };
   const countEl = document.getElementById('count')!;
   const emptyEl = document.getElementById('empty')!;
   const grid = document.getElementById('grid')!;
@@ -378,6 +384,19 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     state.q = normalizeQuery(searchInput.value);
     state.page = pageAfterFilterChange(state.page);
     apply();
+    syncSearchHint();
+  });
+  searchInput?.addEventListener('focus', syncSearchHint);
+  searchInput?.addEventListener('blur', syncSearchHint);
+  // Enter on the exact id of a shown work (from the Instagram post or the pin) opens its page; the gallery stays in
+  // the history with the query (?q=<id>), so Back returns to it. Never while typing, never for a part of an id.
+  searchInput?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.isComposing) return;
+    const id = exactId(searchInput.value, cardIds);
+    const card = id ? (cards.find((c) => c.dataset.id === id) as HTMLAnchorElement | undefined) : undefined;
+    if (!card) return;
+    e.preventDefault();
+    location.assign(card.href);
   });
   searchInput?.addEventListener('change', () => trackFilter(cards.filter((_, i) => matchesFilters(works[i], state)).length));
   // Picking a page size (under the grid) starts again on page 1 with paging on, from the top of the works.

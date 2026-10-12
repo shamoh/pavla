@@ -304,10 +304,10 @@ nic nezmění. Veřejná kopie je `content/_index.yaml` (web `getHome`); bez ní
 ### Hledání
 
 Hledání (`scripts/lib/search.mjs`, pole `src/components/SearchField.astro`) je vždy, na každém výpisu:
-v každé galerii (`/tvorba/`, stránka roku, stránka kolekce) v **názvech a popisech** děl (pole `#works-search`: na
+v každé galerii (`/tvorba/`, stránka roku, stránka kolekce) v **názvech, popisech a `id`** děl (pole `#works-search`: na
 `/tvorba/` vpravo od nadpisu, u roku a kolekce v úvodu pod nadpisem a textem), na přehledu kolekcí v **názvech
 a popisech** kolekcí (`#collections-search` vpravo od „Kolekce“); na telefonu pod nadpisem. Text každého díla
-i kolekce (`searchText`: název a popis bez diakritiky, malými písmeny) se připraví už při stavbě do karty
+i kolekce (`searchText`: název a popis, u díla i `id` z textu příspěvku na Instagramu, bez diakritiky, malými písmeny) se připraví už při stavbě do karty
 (`data-search`), psaní ho nepřepočítává.
 
 - Pravidla (`matchesQuery`): každé slovo dotazu musí být **částí** názvu nebo popisu (podřetězec, nikdy regulární výraz),
@@ -316,6 +316,10 @@ i kolekce (`searchText`: název a popis bez diakritiky, malými písmeny) se př
 - Filtruje se už při psaní, zpět na 1. stránku, bez skoku na výsledky. Dotaz je v adrese jako `?q=` (mezery srovnané,
   nejvýš `SEARCH_MAX` = 80 znaků), odkaz jde poslat dál; v galerii se kombinuje se všemi filtry (počty u výběrů
   i štítky ho započítají) a v liště filtrů je jako čip „„ranní mlha“ ×“.
+- Přesně `id` díla z galerie (jediné slovo, celé, bez ohledu na velikost písmen; `exactId`) + Enter otevře stránku díla;
+  galerie s `?q=<id>` zůstane v historii (Zpět). Právě tehdy (stejné `exactId`, jen s kurzorem v poli) se pod polem ukáže
+  nápověda „Enter otevře obraz“ (`hint` v `SearchField.astro`, mimo tok stránky, nic neposune). Při psaní ani u části `id` nebo `id` mezi jinými slovy se nic neotevře,
+  odkaz s `?q=<id>` jen vyfiltruje.
 - Statistika: událost `gallery_filter` s parametrem `q` až po dopsání (Enter, opuštění pole), ne po každém písmenu.
 - „Mimo kolekce“ při hledání na přehledu kolekcí chybí (hledá se v kolekcích, ta to není); rok sleduje dál.
 
@@ -555,7 +559,7 @@ na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`)). V�
   - chybějící atribut doplní (hodnota `missing`) a jeho komentář označí `DOPLNIT`,
   - atributy seřadí podle schématu, mezi nimi prázdný řádek,
   - nad každý atribut dá jeho technický komentář v aktuálním znění, ve všech souborech stejný
-    (starší znění z `previous` pozná a nahradí),
+    (starší znění z `previous` pozná a nahradí; jeho kopie hned nad ním, např. po běhu se starším schématem, smaže),
   - `DOPLNIT` nechá, dokud ho člověk nesmaže (znamená „hodnotu zkontrolovat“), sám ho nikdy neodstraní,
   - vlastní komentář nad atributem nechá, nad technickým,
   - neznámý atribut (např. překlep `mockup:`) nesmaže, dá ho na konec a označí komentářem `NEZNÁMÝ atribut…`;
@@ -652,7 +656,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | lišta filtrů při posunu nahoru, panel „Upravit“ (na úzké obrazovce zespodu) | `/tvorba/` (58 děl, stránka je dost dlouhá); úzká obrazovka: DevTools → režim zařízení |
 | počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (8 děl, Kolekce jen Kresby…, Skicák (po 2), Plenér Šumava, Portréty, Ptáci, Tatry (po 1), bez „žádná“), + kolekce Kresby, pastely a kvaš (2 díla; přepínač Doporučené zmizí, oba obrazy jsou vybrané); štítek „krajina“: Technika jen akvarel (23), kresba tužkou, kvaš, linoryt |
 | výběr více štítků („a zároveň“): čipy se zapínají a vypínají, aktivní zůstanou jen ty, které výběr zúží, ostatní zašednou | `/tvorba/`: „krajina“ (28 děl, 17 aktivních čipů), + „voda“ (9 děl, aktivní hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, aktivní jaro a léto), „Vše“ zruší |
-| hledání v názvech a popisech děl | `/tvorba/`: pole vpravo od „Tvorba“, „most noc“ → Most v noci (`?q=most+noc`, v liště čip „„most noc“ ×“); `/tvorba/kolekce/demo-plener-sumava-2026/`: pole pod textem kolekce, „mlha“ → Ráno u rybníka (slovo jen v popisu), Šumava v mlze ne (jiný tvar) |
+| hledání v názvech, popisech a `id` děl | `/tvorba/`: pole vpravo od „Tvorba“, „most noc“ → Most v noci (`?q=most+noc`, v liště čip „„most noc“ ×“), „df9aa“ → Most v noci podle `id`, Enter otevře jeho stránku; `/tvorba/kolekce/demo-plener-sumava-2026/`: pole pod textem kolekce, „mlha“ → Ráno u rybníka (slovo jen v popisu), Šumava v mlze ne (jiný tvar) |
 | combobox Kolekce | `/tvorba/`: klik do „Kolekce“, napiš „plener“ → vše, žádná, Plenér Krkonoše 2006, Plenér Šumava 2026 (podle abecedy), ↓ a Enter vybere Krkonoše (`?collection=demo-plener-krkonose-2006`), Esc zavře seznam a vrátí vybranou; „xyz“ nechá jen vše a žádná |
 | přehled kolekcí: pořadí, stránkování, hledání | `/tvorba/kolekce/`: 16 kolekcí + „Mimo kolekce“ = 2 stránky po 12 (Město 2026 první, „Mimo kolekce“ poslední na 2. stránce), „Na stránku“ 24 = vše na jedné (paměť `pavla.collections.perPage`, galerie se nezmění); hledání „plener“ → Plenér Šumava 2026 a Plenér Krkonoše 2006, „strbskym“ → Tatry 2000 (slovo jen v popisu), „mimo“ → „Hledání neodpovídá žádná kolekce.“ |
 | zašedlé filtry místo schovaných | `/tvorba/2000/`: Kolekce zašedlá s „Tatry 2000 (3)“, „Doporučené (0)“ a čip „#krajina“ zašedlé, Technika a Stav aktivní; `/tvorba/2007/` (jedno dílo) vše zašedlé |
@@ -839,7 +843,7 @@ nejdřív snímek s popiskem, pak panorama, scéna, detaily; README složky to t
   změna vzhledu mřížky = zvýšit `GRID_VERSION` (je v otisku děl s mřížkou).
 - **Text příspěvku** (v `README.md` složky, `instagramPost` v `scripts/lib/instagram.mjs`): název, popis (ne `DOPLNIT`),
   „technika · rozměr · rok“, „Kolekce: <název kolekce>“ u díla v kolekci, u díla na prodej „Obraz je na prodej.“,
-  adresa webu, pak řádek českých hashtagů
+  adresa webu s `id` díla (`pavla.kramolis.cz · jujn2`: podle něj obraz najde hledání v galerii), pak řádek českých hashtagů
   (technika a štítky díla bez diakritiky a mezer, kolekce jako jedno slovo, např. `#plenersumava2026`,
   + `instagramPost.always.cs`) a řádek anglických (jejich překlady
   z `instagramPost.en` + `instagramPost.always.en`; slovo bez překladu má jen český). Slovník je v `site.config.yaml`
@@ -1217,7 +1221,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla s `mockups: true` do testovacích dat nebo obsahového repa, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
 | stav a mockupy | v yaml díla s `mockups: true` změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, mockupy na detailu zůstanou (nadpis „Jak vypadá na zdi“), z `export/fler` zmizí; pak `mockups: false`: mockupy zmizí i z webu. Testovací data: Ráno u rybníka (na prodej) × Slunečnice, Šumava v mlze (ne) × Pivoňky (vypnuté) |
 | exporty | `ls .demo/content/export/*/*/`: Instagram jen díla s `meta_instagram: true` (Ráno u rybníka, Pivoňky, Kytice z louky, Máky, Na podlaze, Lípa u kaple, Zimní sad, Oblaka), každé ve své složce `export/instagram/[<kolekce>/]<slug>/` (`ls -R .demo/content/export/instagram`) s `caption-papir/-pergamen/-noc.jpg`, `scene-stul-tmavy/-stul-svetly/-stojan.jpg`, `story.jpg`, `pano-*.jpg` (jen široká díla, Oblaka 3 snímky), `grid-*.jpg` + `grid-preview.jpg` (Pivoňky 9, Oblaka 3, Ráno u rybníka 2), `README.md` (s textem příspěvku, pořadím karuselu a adresou pro nálepku příběhu) a `detail-*.jpg`; Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export pro Instagram zmizí |
-| Instagram: snímky s popiskem a scény | `open .demo/content/export/instagram/demo-plener-sumava-2026/demo-rano-u-rybnika/*`: tři snímky s popiskem (název, technika · rozměr · rok, adresa webu) na papíru palet, dílo na tmavém a světlém stole (pootočené na opačné strany, mimo rekvizity) a na stojanu (na liště, za paletkou); Lípa u kaple přiblížená, Zimní sad hlášený jako nevejde se (log; souhrn „Ke kontrole“ dostane plný běh obsahového repa); `cat …/README.md`: text příspěvku s popisem, „Kolekce: …“ u Ráno u rybníka, „Obraz je na prodej.“ u Máků, hashtagy česky a anglicky; štítek bez anglického překladu = „Doporučení“ v souhrnu |
+| Instagram: snímky s popiskem a scény | `open .demo/content/export/instagram/demo-plener-sumava-2026/demo-rano-u-rybnika/*`: tři snímky s popiskem (název, technika · rozměr · rok, adresa webu) na papíru palet, dílo na tmavém a světlém stole (pootočené na opačné strany, mimo rekvizity) a na stojanu (na liště, za paletkou); Lípa u kaple přiblížená, Zimní sad hlášený jako nevejde se (log; souhrn „Ke kontrole“ dostane plný běh obsahového repa); `cat …/README.md`: text příspěvku s popisem, adresa webu s `id` díla, „Kolekce: …“ u Ráno u rybníka, „Obraz je na prodej.“ u Máků, hashtagy česky a anglicky; štítek bez anglického překladu = „Doporučení“ v souhrnu |
 | náhledy exportů | `cat .demo/content/export/instagram/README.md .demo/content/export/fler/README.md`: přehledy s miniaturami; v každé složce díla `README.md` se všemi fotkami (u Instagramu i textem příspěvku, u Fleru s cenou); vykreslené je uvidíš na GitHubu obsahového repa nebo v náhledu Markdownu v editoru |
 | odkaz na Instagram | `/tvorba/2026/demo-rano-u-rybnika-pf7ru/`: v řádku „Sdílet“ odkaz „Na Instagramu“ (vymyšlený `instagram:` v testovacích datech); v `.demo/content/export/instagram/README.md` u něj „✓ na Instagramu“, u ostatních „○ zatím nezveřejněno“, skupiny podle kolekcí; `instagram: true` v popisu = chyba „instagram musí být odkaz…“ |
 | autorství v obrázcích | `node --input-type=module -e "import s from 'sharp';console.log(String((await s('.demo/site/public/tvorba/2026/demo-rano-u-rybnika-pf7ru/480.avif').metadata()).xmp))"`: autorka, „© 2026 …“, odkaz na stránku; v JSON-LD stránky díla `"image":{"@type":"ImageObject",…,"copyrightNotice":"© 2026 …"}`; fotka `public/fotky/…` XMP nemá |
@@ -1366,7 +1370,7 @@ roky. Web je na Pinterest dává sám, přes kanál RSS (`scripts/lib/pinterest.
   nejnovější první: `title` (nejvýš 100 znaků), `link` na stránku díla s UTM parametry
   `?utm_source=pinterest&utm_medium=social&utm_campaign=rss` (`FEED_UTM`: Google Analytics tak návštěvu z pinu pozná
   i z aplikace Pinterestu, která jinak neřekne, odkud návštěvník přišel; stránka má kanonickou adresu bez nich), `guid` = `id` díla (Pinterest stejné dílo
-  nepřipne dvakrát), `description` (popis díla, „technika · rozměr · rok“ a klíčová slova, nejvýš 500 znaků,
+  nepřipne dvakrát), `description` (popis díla, „technika · rozměr · rok · id“ (podle `id` obraz najde hledání v galerii) a klíčová slova, nejvýš 500 znaků,
   `pinDescription`; dlouhý popis se zkrátí, fakta a klíčová slova zůstanou),
   `pubDate` podle `date`, obrázek v `enclosure` a `media:content`. Bez děl s pinem prázdný kanál.
 - **Klíčová slova** (`pinKeywords`): Pinterest hledá podle slov v názvu a popisu, ne podle hashtagů. Na konci popisu

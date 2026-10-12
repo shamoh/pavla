@@ -51,6 +51,15 @@ function splitComment(lines, docs) {
   return { own: lines, found: false, todo: false };
 }
 
+/**
+ * The author's lines without copies of the technical comment right above it (current or older wording, `docs`): a
+ * copy left by an earlier run is never the author's own comment, and kept it would stay in the file forever.
+ */
+function withoutCopies(own, docs) {
+  for (let split = splitComment(own, docs); split.found; split = splitComment(own, docs)) own = split.own;
+  return own;
+}
+
 /** Current and older wordings of a field's technical comment, as lines. */
 const docVariants = (field) => [
   docLines(field),
@@ -81,15 +90,20 @@ function stripCommented(text, fields) {
     // the last such line: a technical comment may show the attribute in an example above it
     const at = lines.findLastIndex((l) => new RegExp(`^#\\s?${field.key}:(\\s|$)`).test(l));
     if (at === -1) continue;
+    // the technical comment, and copies of it right above it left by an earlier run (withoutCopies)
     let start = at;
-    for (const doc of docVariants(field)) {
-      if (at < doc.length) continue;
-      const above = lines.slice(at - doc.length, at);
-      const texts = above.map((l) => l.replace(/^# ?/, ''));
-      const first = texts[0].startsWith(`${TODO} `) ? texts[0].slice(TODO.length + 1) : texts[0];
-      if (above.every((l) => l.startsWith('#')) && first === doc[0] && texts.slice(1).every((l, i) => l === doc[i + 1])) {
-        start = at - doc.length;
-        break;
+    for (let found = true; found;) {
+      found = false;
+      for (const doc of docVariants(field)) {
+        if (start < doc.length) continue;
+        const above = lines.slice(start - doc.length, start);
+        const texts = above.map((l) => l.replace(/^# ?/, ''));
+        const first = texts[0].startsWith(`${TODO} `) ? texts[0].slice(TODO.length + 1) : texts[0];
+        if (above.every((l) => l.startsWith('#')) && first === doc[0] && texts.slice(1).every((l, i) => l === doc[i + 1])) {
+          start -= doc.length;
+          found = true;
+          break;
+        }
       }
     }
     // the author's comment: the comment lines right above, up to an empty line or an attribute
@@ -167,7 +181,7 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
     // a known attribute may still carry the NEZNÁMÝ mark from before it was known
     if (field || ownAttribute) lines = splitComment(lines, [[UNKNOWN_DOC]]).own;
     const split = splitComment(lines, docs);
-    let own = split.own;
+    let own = split.found ? withoutCopies(split.own, docs) : split.own;
     // before technical comments existed, the comment above the first attribute was the file's comment
     if (!split.found && pairs[0] === pair && own.length && !doc.commentBefore && !top.length) {
       top = [...top, ...own];

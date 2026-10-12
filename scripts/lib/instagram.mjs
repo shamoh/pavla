@@ -619,7 +619,8 @@ const tagLine = (words) => [...new Set(words.map(hashtag).filter(Boolean))].map(
 
 /**
  * The text of an Instagram post of a work (in README.md of its export folder), ready to paste: title, description
- * (not a DOPLNIT placeholder), "technique · size · year", the collection, "na prodej" for a work on sale, the address,
+ * (not a DOPLNIT placeholder), "technique · size · year", the collection, "na prodej" for a work on sale, the address
+ * with the work's id ("pavla.kramolis.cz · jujn2": the gallery search finds the work by it),
  * then the hashtags in Czech (technique, tags, the collection as one word, e.g. #plenersumava2026, `always.cs` of the
  * settings) and in English (their translations from
  * `en`, `always.en`); a word without a translation has only the Czech one. `settings` = instagramPost of
@@ -637,7 +638,7 @@ export function instagramPost({ work, year, host, onSale = false, collection = '
     captionFacts(work, year),
     ...(collection ? [`Kolekce: ${collection}`] : []),
     ...(onSale ? ['Obraz je na prodej.'] : []),
-    host,
+    [host, work.id].filter(Boolean).join(' · '),
     '',
     tagLine([...words, ...(collection ? [collection] : []), ...(settings.always?.cs ?? [])]),
     tagLine([...translated, ...(settings.always?.en ?? [])]),

@@ -45,7 +45,7 @@ const jsonLd = year ? graphLd(
       <div>
         <h1>Tvorba {year}</h1>
         {text ? <p class="desc">{text}</p> : null}
-        <SearchField id="works-search" label={`Hledat v názvech a popisech obrazů roku ${year}`} placeholder="Hledat v názvech a popisech…" />
+        <SearchField id="works-search" hint="Enter otevře obraz" label={`Hledat v názvech a popisech obrazů roku ${year}`} placeholder="Hledat v názvech a popisech…" />
       </div>
       {yearPage?.cover ? <Cover cover={yearPage.cover} sizes="(max-width: 900px) 100vw, 45vw" eager /> : null}
     </header>

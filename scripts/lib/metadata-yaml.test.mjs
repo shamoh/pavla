@@ -294,3 +294,20 @@ test('the comment of the file stays on top when its first attribute moves down (
     assert.equal(normalizeMetadata(text, s).changed, false, s.name);
   }
 });
+
+test('copies of the technical comment right above it (left by an earlier run) go; the own comment above them stays', () => {
+  const r = norm(`id: k3f9a\ndraft: false\ntitle: Ráno\n# vlastní\n# Rozměr [a, b],\n# např. [30, 40].\n# Rozměr, starý text.\nsize: [1, 2]\ntext:\n`);
+  assert.match(r.text, /\ntitle: Ráno\n\n# vlastní\n# Rozměr \[a, b\],\n# např\. \[30, 40\]\.\nsize: \[1, 2\]/);
+  assert.equal(r.text.match(/Rozměr \[a, b\]/g).length, 1);
+  assert.doesNotMatch(r.text, /starý text/);
+  assert.equal(norm(r.text).changed, false);
+});
+
+test('commented-out attribute: copies of its comment above it go (current, older and repeated), the own comment stays', () => {
+  const current = normalizeMetadata('title: A\n\n# moje\n# NEPOVINNÉ. Ořez.\n# NEPOVINNÉ. Ořez.\n# crop: "3:2"\n\n# Poznámka.\nnote: ""\n', withOff);
+  assert.equal(current.text, '# Název.\ntitle: A\n\n# moje\n# NEPOVINNÉ. Ořez.\n# crop: "3:2"\n\n# Poznámka.\nnote: ""\n');
+  // the current wording written above the older one by a run that did not know the older one yet
+  const older = normalizeMetadata('title: A\n\n# NEPOVINNÉ. Ořez.\n# NEPOVINNÉ. Ořez.\n# Ořez, starý text.\n# crop: "3:2"\n\nnote: ""\n', withOff);
+  assert.match(older.text, /\ntitle: A\n\n# NEPOVINNÉ\. Ořez\.\n# crop: "3:2"\n\n# Poznámka/);
+  assert.equal(normalizeMetadata(older.text, withOff).changed, false);
+});

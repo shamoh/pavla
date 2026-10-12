@@ -28,6 +28,13 @@ test('pinDescription: the description, technique · size · year, the keywords; 
   assert.ok(long.endsWith('akvarel, mlha · watercolor, fog') && long.includes('…'), 'a long description is shortened, the keywords stay');
 });
 
+test('pinDescription: the id of the work after its facts, so the gallery search finds it', () => {
+  const work = { id: 'jujn2', description: 'Mlha nad vodou.', technique: 'akvarel', size_cm: [40, 30], tags: ['mlha'] };
+  assert.equal(pinDescription(work, 2026, dictionary), 'Mlha nad vodou. akvarel · 40 × 30 cm · 2026 · jujn2. akvarel, mlha · watercolor, fog');
+  const long = pinDescription({ ...work, description: 'slovo '.repeat(200) }, 2026, dictionary);
+  assert.ok(long.length <= PIN_DESCRIPTION_CHARS && long.includes('2026 · jujn2.'), 'kept when the description is shortened');
+});
+
 const channel = { title: 'Pavla & spol.', link: 'https://example.test/', description: 'Akvarely', self: 'https://example.test/pinterest.xml' };
 const item = {
   id: 'jujn2', title: 'Bobří <hráz>', link: 'https://example.test/tvorba/2026/bobri-hraz-jujn2/', description: 'Voda "a" mlha',

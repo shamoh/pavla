@@ -267,6 +267,11 @@ test('instagramPost: no DOPLNIT placeholder, "na prodej" for a work on sale, no 
   assert.match(text, /\n#akvarel #umeni\n#watercolor #art\n$/);
 });
 
+test('instagramPost: the id of the work after the address, so the gallery search finds it', () => {
+  const text = instagramPost({ work: { id: 'jujn2', title: 'Bobří hráz', technique: 'akvarel' }, year: '2026', host: 'pavla.kramolis.cz', settings });
+  assert.match(text, /\npavla\.kramolis\.cz · jujn2\n\n#akvarel/);
+});
+
 test('instagramPost: without settings only the Czech hashtags of the work', () => {
   const text = instagramPost({ work: { title: 'X', technique: 'kvaš', tags: [] }, year: '2025', host: 'h' });
   assert.ok(text.trimEnd().endsWith('#kvas'));
