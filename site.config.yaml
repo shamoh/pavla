@@ -9,7 +9,7 @@ site:
   email: pavla@kramolis.cz
   location: Roztoky                       # kde Pavla žije a maluje, zobrazí se v Kontaktu; prázdné = nic
   instagram: pavla.kramolisova
-  fler: https://www.fler.cz/shop/pk76376   # URL obchůdku na Fleru (patička, Kontakt); prázdné = nic
+  fler: ""   # URL obchůdku na Fleru (patička, Kontakt); prázdné = nic (zatím skryto, dřív https://www.fler.cz/shop/pk76376)
   pinterest: https://cz.pinterest.com/pavlakramolisova/   # URL profilu na Pinterestu (patička a Kontakt vedou na jeho vytvořené piny); prázdné = nic
   verification:                          # ověření webu u vyhledávačů značkou <meta> (jen když ověřuješ touto cestou,
     google: ""                           #   DNS záznam ji nepotřebuje): kód z Google Search Console,
