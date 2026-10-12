@@ -18,6 +18,21 @@ export function groupProblems(problems) {
 
 const SUSPICIOUS = '⚠';
 
+/**
+ * What the run summary says about one file (e.g. a draft for its README in export/draft/), in the same groups:
+ * { errors, review ("Ke kontrole"), advice, todo (attributes still marked DOPLNIT, one per item) }, each a list of
+ * messages without the file name. `result`: the result of a run (or its parts so far).
+ */
+export function workNotes(file, result) {
+  const of = (list) => groupProblems(list ?? []).find((g) => g.file === file)?.messages ?? [];
+  return {
+    errors: of(result.problems),
+    review: [...of(result.pending), ...of((result.detected ?? []).filter((d) => d.includes(SUSPICIOUS))), ...of(result.misfits), ...of(result.commentedOut)],
+    advice: of(result.advice),
+    todo: of(result.todo).flatMap((keys) => keys.split(', ')),
+  };
+}
+
 export function formatSummary(result, error) {
   const lines = [];
   const list = (items) => {
@@ -61,6 +76,7 @@ export function formatSummary(result, error) {
     ['Zveřejněné obrazy, kterým zůstal DOPLNIT (hodnotu zkontroluj, pak slovo DOPLNIT smaž)', result.pending ?? []],
     ['Podezřelý ořez rohů listu (zkontroluj v náhledu ořezu)', suspicious],
     ['Obraz se nevejde do scény ateliéru pro Instagram', result.misfits ?? []],
+    ['Zakomentované údaje, které automatika nečte (jen nepovinné údaje se zapínají smazáním „# “)', result.commentedOut ?? []],
   ].filter(([, items]) => items.length);
   if (warnings.length) {
     lines.push('### ⚠ Ke kontrole', '');

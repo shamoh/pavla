@@ -43,7 +43,9 @@ const publishedLine = (work, platform) => {
 };
 
 /** "Kolekce …" and "Na webu: <url>" lines of a work (only those it has). */
-const about = ({ collection, pageUrl }) => [
+const about = ({ collection, pageUrl, code }) => [
+  // the permanent code of the work (id): finds it on the site (search, /tvorba/<code>/) and in the content repository
+  ...(code ? [`Kód obrazu: \`${code}\``] : []),
   ...(collection ? [`Kolekce: ${escMd(collection)}`] : []),
   ...(pageUrl ? [`Na webu: <${pageUrl}>`] : []),
 ];
@@ -54,7 +56,7 @@ const about = ({ collection, pageUrl }) => [
  * post (the text of the post, instagramPost), collection (title), pageUrl (the work's page on the site) }.
  */
 export function instagramReadme({ work, year, files, post, collection = '', pageUrl = '' }) {
-  const info = [publishedLine(work, 'instagram'), ...about({ collection, pageUrl })];
+  const info = [publishedLine(work, 'instagram'), ...about({ collection, pageUrl, code: work.id })];
   const parts = [
     `# Instagram: ${escMd(work.title)}`,
     '',
@@ -123,7 +125,7 @@ const STATUS = { available: 'na prodej', reserved: 'rezervováno' };
  * pageUrl (the work's page on the site) }.
  */
 export function flerReadme({ work, year, files, collection = '', pageUrl = '' }) {
-  const info = [publishedLine(work, 'fler'), ...about({ collection, pageUrl })];
+  const info = [publishedLine(work, 'fler'), ...about({ collection, pageUrl, code: work.id })];
   const facts = [captionFacts(work, year), work.support].filter(Boolean).join(', ');
   const price = typeof work.price === 'number' ? `${work.price.toLocaleString('cs-CZ')} Kč` : '';
   const description = typeof work.description === 'string' && !/^\s*DOPLNIT/.test(work.description) ? work.description.trim() : '';
@@ -182,7 +184,8 @@ export const NO_COLLECTION = 'Mimo kolekce';
 
 /**
  * Overview README of a platform: `entries` [{ title, folder (relative to the platform folder), thumb (file name in
- * it), note, collection (title, '' = none), url (where it is published, '' = not yet) }], grouped under a heading per
+ * it), code (id of the work, shown after its title), note, collection (title, '' = none), url (where it is published,
+ * '' = not yet) }], grouped under a heading per
  * collection (alphabetically, the works without one last), in the given order within a group.
  * Instagram: a collection whose works have a story (`story`: its file name, `storyUrl`: the link of its sticker, `date`)
  * also gets "Příběh kolekce": the stories in the order of their dates and the links ready to copy, and the link of the
@@ -202,7 +205,7 @@ export function exportIndex(platform, entries) {
     for (const e of groups.get(key)) {
       const state = e.url ? `✓ <a href="${e.url}">${p.done}</a>` : `○ ${p.todo}`;
       lines.push(`<tr><td><a href="${e.folder}/"><img src="${e.folder}/${e.thumb}" width="120" alt="${escMd(e.title)}"></a></td>`
-        + `<td><a href="${e.folder}/"><b>${escMd(e.title)}</b></a><br>${escMd(e.note ?? '')}<br>${state}</td></tr>`);
+        + `<td><a href="${e.folder}/"><b>${escMd(e.title)}</b></a>${e.code ? ` <code>${escMd(e.code)}</code>` : ''}<br>${escMd(e.note ?? '')}<br>${state}</td></tr>`);
     }
     lines.push('</table>');
     if (platform === 'instagram' && key) lines.push(...collectionStory(groups.get(key)));
@@ -215,6 +218,23 @@ export function exportIndex(platform, entries) {
 /** The longer side of the cut previews in export/draft/ in px (the artifact of the run has them in full size). */
 export const DRAFT_EDGE = 2000;
 
+/** Why a draft has no cut previews (`noPreviews` of draftReadme), for its README. */
+const NO_PREVIEWS = {
+  photo: 'Fotka obrazu zatím chybí: náhledy ořezu vzniknou, až ji nahraješ vedle popisu.',
+  uncut: 'Obraz se neořezává (`meta_corners: false`), náhledy ořezu nejsou potřeba.',
+  errors: 'Náhledy ořezu zatím nejsou: vzniknou, až půjde fotku s rohy z `meta_corners` zpracovat (viz chyby výše).',
+};
+
+/**
+ * The state of a description in short, for the overview of drafts: "✗ 1 · ⚠ 2 · 💡 3 · ✎ 4" (errors, "Ke kontrole",
+ * recommendations, attributes to fill in; groups without messages left out), '' when the run says nothing.
+ * `notes`: workNotes in scripts/lib/summary.mjs.
+ */
+export function noteMarks(notes) {
+  return [['✗', notes?.errors], ['⚠', notes?.review], ['💡', notes?.advice], ['✎', notes?.todo]]
+    .filter(([, items]) => items?.length).map(([mark, items]) => `${mark} ${items.length}`).join(' · ');
+}
+
 /** The fingerprint of the previews in the README of a draft (an HTML comment, GitHub does not show it). */
 const fingerprintComment = (fingerprint) => `<!-- otisk: ${fingerprint} -->`;
 
@@ -222,16 +242,25 @@ const fingerprintComment = (fingerprint) => `<!-- otisk: ${fingerprint} -->`;
 export const readmeFingerprint = (text) => /<!-- otisk: ([0-9a-f]+) -->/.exec(String(text ?? ''))?.[1] ?? null;
 
 /**
- * README of the folder of a draft in export/draft/: { work, year, files: { backgrounds, cut, frames } (file names),
- * corners (meta_corners as YAML lines), collection (title), fingerprint (of the previews, kept as a comment) }.
+ * README of the folder of a draft in export/draft/: { work, year, files: { backgrounds, cut, frames } (file names; null
+ * = no previews yet), corners (meta_corners as YAML lines), collection (title), fingerprint (of the previews, kept as
+ * a comment), notes (workNotes in scripts/lib/summary.mjs: what the run summary says about this work; null = none) }.
  */
-export function draftReadme({ work, year, files, corners = '', collection = '', fingerprint = '' }) {
-  const parts = [
-    `# Rozpracováno: ${escMd(work.title)}`,
+export function draftReadme({ work, year, files, corners = '', collection = '', fingerprint = '', notes = null, noPreviews = 'errors' }) {
+  const sections = notes ? [
+    ['✗ Chyby', 'Brání zveřejnění, oprav je v popisu obrazu.', notes.errors],
+    ['⚠ Ke kontrole', 'Nic nezastaví, ale stojí za pohled.', notes.review],
+    ['💡 Doporučení', 'Nic nebrání zveřejnění, jen by to web vylepšilo.', notes.advice],
+    ['✎ Zbývá doplnit', 'Údaje, u kterých v komentáři ještě zůstalo DOPLNIT: zkontroluj hodnotu, pak slovo DOPLNIT smaž.', notes.todo],
+  ].filter(([, , items]) => items.length) : [];
+  const state = !notes ? [] : [
     '',
-    `${escMd(captionFacts(work, year))}. Náhledy ořezu podlahy, než obraz zveřejníš (\`meta_draft: false\`): pak tahle složka sama zmizí.`
-      + ` Zmenšené na ${DRAFT_EDGE} px, v plné velikosti jsou ke stažení jako „nahledy-orezu“ dole na stránce běhu zpracování. Klikni na obrázek pro plnou velikost.`,
-    ...(collection ? ['', `Kolekce: ${escMd(collection)}`] : []),
+    '## Stav popisu',
+    '',
+    sections.length ? 'Totéž, co o tomto obraze říká souhrn posledního běhu zpracování.' : 'Poslední běh zpracování u tohoto obrazu nic nehlásí.',
+    ...sections.flatMap(([title, text, items]) => ['', `### ${title} (${items.length})`, '', text, '', ...items.map((i) => `- ${escMd(i)}`)]),
+  ];
+  const images = !files ? ['', '## Náhledy ořezu', '', NO_PREVIEWS[noPreviews] ?? NO_PREVIEWS.errors] : [
     '',
     '## Na papíru webu',
     '',
@@ -250,26 +279,45 @@ export function draftReadme({ work, year, files, corners = '', collection = '', 
     'Celá fotka s rámečky vzdáleností od krajů, podle nich se rohy dají opravit ručně.',
     '',
     thumbs([files.frames], 800),
+  ];
+  const parts = [
+    `# Rozpracováno: ${escMd(work.title)}`,
+    '',
+    (files
+      ? `${escMd(captionFacts(work, year))}. Náhledy ořezu podlahy, než obraz zveřejníš (\`meta_draft: false\`): pak tahle složka sama zmizí.`
+        + ` Zmenšené na ${DRAFT_EDGE} px, v plné velikosti jsou ke stažení jako „nahledy-orezu“ dole na stránce běhu zpracování. Klikni na obrázek pro plnou velikost.`
+      : `${escMd(captionFacts(work, year))}. Rozpracovaný obraz: až ho zveřejníš (\`meta_draft: false\`), tahle složka sama zmizí.`),
+    ...(work.id || collection ? ['', about({ collection, code: work.id }).join('  \n')] : []),
+    ...state,
+    ...images,
     ...(corners ? ['', '## Použité rohy', '', '```yaml', corners, '```'] : []),
     ...(fingerprint ? ['', fingerprintComment(fingerprint)] : []),
   ];
   return `${parts.join('\n')}\n`;
 }
 
+/** The legend of noteMarks in the overview of drafts. */
+const MARKS_LEGEND = '✗ chyby, ⚠ ke kontrole, 💡 doporučení, ✎ zbývá doplnit (počty)';
+
 /**
- * Overview README of export/draft/: `entries` [{ title, folder, thumb, note, collection (title, '' = none) }],
- * grouped like exportIndex.
+ * Overview README of export/draft/: `entries` [{ title, code (id), folder, thumb (null = no preview), note, collection (title,
+ * '' = none), marks (noteMarks: the state of its description) }], grouped like exportIndex.
  */
 export function draftIndex(entries) {
-  const head = ['# Rozpracované obrazy', '', 'Obrazy s `meta_draft: true` a náhledy ořezu podlahy. Každý má svou složku (stejně jako v `tvorba/`); po zveřejnění zmizí.'];
+  const head = [
+    '# Rozpracované obrazy', '',
+    'Obrazy s `meta_draft: true`, stav jejich popisu a náhledy ořezu podlahy. Každý má svou složku (stejně jako v `tvorba/`); po zveřejnění zmizí.',
+    '', `Značky stavu popisu (podrobně v README obrazu): ${MARKS_LEGEND}.`,
+  ];
   if (!entries.length) return `${[...head, '', 'Zatím žádné.'].join('\n')}\n`;
   const { groups, order } = byCollection(entries);
   const lines = [...head, '', `Celkem ${entries.length}.`];
   for (const key of order) {
     lines.push('', `## ${escMd(key || NO_COLLECTION)}`, '', '<table>');
     for (const e of groups.get(key)) {
-      lines.push(`<tr><td><a href="${e.folder}/"><img src="${e.folder}/${e.thumb}" width="160" alt="${escMd(e.title)}"></a></td>`
-        + `<td><a href="${e.folder}/"><b>${escMd(e.title)}</b></a><br>${escMd(e.note ?? '')}</td></tr>`);
+      const thumb = e.thumb ? `<a href="${e.folder}/"><img src="${e.folder}/${e.thumb}" width="160" alt="${escMd(e.title)}"></a>` : 'bez náhledu';
+      lines.push(`<tr><td>${thumb}</td>`
+        + `<td><a href="${e.folder}/"><b>${escMd(e.title)}</b></a>${e.code ? ` <code>${escMd(e.code)}</code>` : ''}<br>${escMd(e.note ?? '')}${e.marks ? `<br>${e.marks}` : ''}</td></tr>`);
     }
     lines.push('</table>');
   }

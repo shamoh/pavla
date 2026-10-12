@@ -192,6 +192,18 @@ export const validSize = (s) => Array.isArray(s) && s.length === 2 && s.every((n
 export const formatSizeCm = (s) => (validSize(s) ? `${s.map((n) => String(n).replace('.', ',')).join(' × ')} cm` : '');
 
 /** "akvarel · 30 × 30 cm · 2026": the facts under the title of a caption or pin (missing ones are left out). */
+/** The short permanent address of a work by its id (the page redirects to the work, whatever its title is now). */
+export const workShortPath = (id) => `/tvorba/${id}/`;
+
+/**
+ * The bubble over the code of a work on its page ("Kód"): what the code means and its short link, without the
+ * protocol (e.g. "pavla.kramolis.cz/tvorba/mpugj/").
+ */
+export function workCodeHint(id, siteUrl) {
+  const link = new URL(workShortPath(id), siteUrl);
+  return `Trvalý kód obrazu: platí i po přejmenování. Krátký odkaz: ${link.host}${link.pathname}`;
+}
+
 export const captionFacts = (work, year) => [work.technique, formatSizeCm(work.size_cm), year].filter(Boolean).join(' · ');
 
 const formatDate = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d));

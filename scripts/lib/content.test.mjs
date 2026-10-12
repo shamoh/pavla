@@ -5,9 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
-import { DETAIL_CAPTION_TODO, findUnknownAttributes, placeholderProblems, findUnknownTechniques, prepareContent, readTree, withId } from './content.mjs';
+import { DETAIL_CAPTION_TODO, commentedOutReview, findUnknownAttributes, placeholderProblems, schemaOfFile, findUnknownTechniques, prepareContent, readTree, withId } from './content.mjs';
 import { todoKeys } from './metadata-yaml.mjs';
 import { isValidId, validateWorks } from './works.mjs';
+import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, UNCOLLECTED_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA } from './schema.mjs';
 
 let dir;
 const worksDir = () => path.join(dir, 'tvorba');
@@ -251,4 +252,39 @@ test('placeholderProblems: texts starting with DOPLNIT in collections, years, th
     'fotky/portret.yaml: caption pořád začíná „DOPLNIT“, přepiš ho',
   ]);
   assert.deepEqual(placeholderProblems({}), []);
+});
+
+test('prepareContent reports how many stray comments it removed in the run summary', async () => {
+  const corners = WORK_SCHEMA.fields.find((f) => f.key === 'meta_corners').doc.map((l) => `# ${l}`).join('\n');
+  await write('rano.jpg');
+  await prepareContent(dir, { today: new Date('2026-10-07T12:00:00Z') });
+  // people deleted meta_corners but left its comment twice (above the next attribute)
+  const text = await read('rano.yaml');
+  await write('rano.yaml', text.replace(/\n(# Rozpracovaný obraz)/, `\n${corners}\n\n${corners}\n\n$1`));
+  const r = await prepareContent(dir, { today: new Date('2026-10-08T12:00:00Z') });
+  assert.deepEqual(r.updated, ['tvorba/rano.yaml: uklizené zbloudilé komentáře: 2']);
+  assert.equal(await read('rano.yaml'), text);
+});
+
+test('schemaOfFile: the schema of a description by its place in the content repository', () => {
+  assert.equal(schemaOfFile('tvorba/rano.yaml'), WORK_SCHEMA);
+  assert.equal(schemaOfFile('tvorba/2026-plener/rano.yaml'), WORK_SCHEMA);
+  assert.equal(schemaOfFile('tvorba/2026-plener/_index.yaml'), COLLECTION_SCHEMA);
+  assert.equal(schemaOfFile('tvorba/_index.yaml'), UNCOLLECTED_SCHEMA);
+  assert.equal(schemaOfFile('roky/2026.yaml'), YEAR_SCHEMA);
+  assert.equal(schemaOfFile('fotky/portret.yaml'), PHOTO_SCHEMA);
+  assert.equal(schemaOfFile('_index.yaml'), HOME_SCHEMA);
+  assert.equal(schemaOfFile('export/draft/README.yaml'), null);
+});
+
+test('commentedOutReview: commented-out attributes that are not optional, with what to do', () => {
+  const r = commentedOutReview([
+    { file: 'tvorba/rano.yaml', text: 'id: k3f9a\n# id: TODO\n# title: Ráno\n# price: 2500\n' },
+    { file: 'roky/2026.yaml', text: '# description: Rok.\n' },
+    { file: 'jinde.yaml', text: '# id: TODO\n' },
+  ]);
+  assert.equal(r.length, 3);
+  assert.match(r[0], /^tvorba\/rano\.yaml: řádek „# id: TODO“ je zakomentovaný údaj id, který už v souboru je; .*smaž ho$/);
+  assert.match(r[1], /^tvorba\/rano\.yaml: řádek „# title: Ráno“ je zakomentovaný údaj title; .*odkomentuj ho/);
+  assert.match(r[2], /^roky\/2026\.yaml: .*údaj description;/);
 });

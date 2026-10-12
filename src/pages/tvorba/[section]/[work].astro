@@ -3,7 +3,7 @@ import Base from '../../../layouts/Base.astro';
 import Picture from '../../../components/Picture.astro';
 import Img from '../../../components/Img.astro';
 import { collectionUrl, config, detailCaption, getCollection, workPinImage, workShareImage, getWorks, messages, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
-import { isOnSale, wantsMockups } from '../../../../scripts/lib/works.mjs';
+import { isOnSale, wantsMockups, workCodeHint, workShortPath } from '../../../../scripts/lib/works.mjs';
 import { EVENTS } from '../../../../scripts/lib/analytics.mjs';
 import { pinDescription } from '../../../../scripts/lib/pinterest.mjs';
 import { shareLinks } from '../../../../scripts/lib/share.mjs';
@@ -63,9 +63,10 @@ const ICONS: Record<string, string> = {
   facebook: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M15.5 8.5h-1.7c-1 0-1.8.8-1.8 1.8V21M9.8 13h5"/>',
   whatsapp: '<path d="M4.5 19.5l1.2-3.6A8.2 8.2 0 1 1 8.4 18.6z"/><path d="M9.3 9.2c.3 2 2.2 4.2 4.6 4.9l1-1"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l2.8-2.8a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-2.8 2.8a4 4 0 0 0 5.7 5.7l1-1"/>',
+  copy: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M15.5 8.5V5.5a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/>',
   instagram: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r=".6" fill="currentColor"/>',
 };
-const icon = (name: string) => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+const icon = (name: string, size = 20) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
 const jsonLd = graphLd(
   artworkLd(work, site, { path, image: new URL(share.src, site.url).href }),
   breadcrumbLd(site, [
@@ -99,6 +100,11 @@ const jsonLd = graphLd(
           {work.size_cm && <><dt>Rozměr</dt><dd>{formatSize(work.size_cm)}</dd></>}
           <dt>Vzniklo</dt><dd>{date}</dd>
           {collection && <><dt>Kolekce</dt><dd><a href={collectionUrl(collection.slug)} data-return data-return-focus={work.id}>{collection.title}</a></dd></>}
+          <dt>Kód</dt><dd class="code-row">
+            <a class="code" href={url(workShortPath(work.id))} title={workCodeHint(work.id, site.url)}>{work.id}</a>
+            <button type="button" class="copy" data-copy={work.id} data-copy-what="Kód" title="Zkopírovat kód" aria-label="Zkopírovat kód" hidden set:html={icon('copy', 15)} />
+            <span class="muted copied" data-copy-status role="status"></span>
+          </dd>
         </dl>
       </div>
       {work.status !== 'not-for-sale' && (
@@ -173,8 +179,9 @@ const jsonLd = graphLd(
   </nav>
 </Base>
 <script>
-  import { applyShareButtons } from '../../../lib/share-button';
+  import { applyCopyButtons, applyShareButtons } from '../../../lib/share-button';
   applyShareButtons();
+  applyCopyButtons();
 </script>
 <script>
   // Viewer: a dialog (not fullscreen) that steps through the work and its mockups.
@@ -243,6 +250,15 @@ const jsonLd = graphLd(
   .info h1 { margin-top: 0; }
   dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; font-size: 0.93rem; margin: 0 0 20px; }
   dt { color: var(--ink-soft); }
+  /* the permanent code of the work: a quiet catalogue number, a link to its short address */
+  .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85em; letter-spacing: 0.06em; color: var(--ink-soft); text-decoration: none; }
+  .code:hover { color: var(--accent); }
+  .code-row { display: flex; align-items: center; gap: 6px; }
+  .copy { display: inline-flex; padding: 2px; border: 0; background: none; color: var(--ink-soft); cursor: pointer; border-radius: 4px; }
+  .copy:hover, .copy:focus-visible { color: var(--accent); }
+  .copy[hidden] { display: none; }
+  .code-row .copied { font-size: 0.85em; }
+  .code-row .copied:empty { display: none; }
   dd { margin: 0; }
   .desc { white-space: pre-line; }
   .details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }

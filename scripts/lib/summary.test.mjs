@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatSummary, groupProblems } from './summary.mjs';
+import { formatSummary, groupProblems, workNotes } from './summary.mjs';
 
 const base = { ok: true, problems: [], missing: [], created: [], assigned: [], pruned: [], processed: 0, skipped: 0 };
 
@@ -118,4 +118,29 @@ test('formatSummary: what is left to fill in (DOPLNIT) as a folded block of its 
   assert.ok(s.indexOf('### ✎ Zbývá doplnit') < s.indexOf('### Co automatika udělala'));
   assert.match(s, /<details><summary>[^<]+<\/summary>\n\n- \*\*tvorba\/rano\.yaml\*\*: title, description\n- \*\*roky\/2026\.yaml\*\*: description\n\n<\/details>/);
   assert.ok(!formatSummary(base).includes('Zbývá doplnit'), 'nothing to fill in, no block');
+});
+
+test('formatSummary lists commented-out attributes the pipeline ignores under "Ke kontrole"', () => {
+  const s = formatSummary({ ...base, commentedOut: ['tvorba/rano.yaml: řádek „# id: TODO“ je zakomentovaný údaj id'] });
+  assert.match(s, /### ⚠ Ke kontrole\n\n\*\*Zakomentované údaje, které automatika nečte[^*]*\*\*\n\n- tvorba\/rano\.yaml: řádek „# id: TODO“/);
+  assert.doesNotMatch(formatSummary({ ...base, commentedOut: [] }), /Ke kontrole/);
+});
+
+test('workNotes: what the summary says about one file, in its groups, without the file name', () => {
+  const f = 'tvorba/rano.yaml';
+  const notes = workNotes(f, {
+    problems: [`${f}: status: neznámá hodnota`, 'tvorba/jine.yaml: chyba', 'obecná chyba'],
+    pending: [`${f}: title`],
+    detected: [`${f}: tl 10×10 ⚠ PODEZŘELÝ ořez`, 'tvorba/jine.yaml: tl 1×1'],
+    commentedOut: [`${f}: řádek „# id: TODO“ …`],
+    advice: [`${f}: obraz nemá štítky`],
+    todo: [`${f}: date, technique`],
+  });
+  assert.deepEqual(notes, {
+    errors: ['status: neznámá hodnota'],
+    review: ['title', 'tl 10×10 ⚠ PODEZŘELÝ ořez', 'řádek „# id: TODO“ …'],
+    advice: ['obraz nemá štítky'],
+    todo: ['date', 'technique'],
+  });
+  assert.deepEqual(workNotes(f, {}), { errors: [], review: [], advice: [], todo: [] });
 });

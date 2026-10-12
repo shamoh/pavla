@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SHARE_COPY, SHARE_NATIVE, shareLinks } from './share.mjs';
+import { SHARE_COPY, SHARE_NATIVE, copiedText, shareLinks } from './share.mjs';
 
 test('shareLinks: Pinterest with the pin, Facebook with the page, WhatsApp with the title and the page', () => {
   const links = shareLinks({ url: 'https://example.test/a/', media: 'https://example.test/a/pin.jpg', title: 'Ráno & mlha', description: 'Popis' });
@@ -11,4 +11,10 @@ test('shareLinks: Pinterest with the pin, Facebook with the page, WhatsApp with 
   assert.equal(new URL(links[1].href).searchParams.get('u'), 'https://example.test/a/');
   assert.equal(new URL(links[2].href).searchParams.get('text'), 'Ráno & mlha https://example.test/a/');
   assert.deepEqual([SHARE_NATIVE, SHARE_COPY], ['native', 'copy']);
+});
+
+test('copiedText: what a copy button says, the value itself when it could not copy', () => {
+  assert.equal(copiedText(true, 'mpugj', 'Kód'), 'Kód zkopírován');
+  assert.equal(copiedText(true, 'https://x/', 'Odkaz'), 'Odkaz zkopírován');
+  assert.equal(copiedText(false, 'mpugj', 'Kód'), 'mpugj');
 });

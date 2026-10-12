@@ -80,7 +80,10 @@ pavla/                                      (toto repo, veřejné)
 | `/pinterest.xml` | kanál RSS pro Pinterest: díla s `meta_pinterest: true` (viz *Pinterest*) |
 
 **Stránka díla** (`src/pages/tvorba/[section]/[work].astro`): vlevo obraz a pod ním popis a štítky, vpravo název,
-údaje (technika, podklad, rozměr, vznik, kolekce), jeden řádek se stavem, cenou a krátkými tlačítky („Zeptat se“,
+údaje (technika, podklad, rozměr, vznik, kolekce a poslední „Kód“ = trvalé `id` díla tlumeným písmem s pevnou šířkou,
+odkaz na krátkou adresu `/tvorba/<id>/` (`workShortPath`) s bublinou „Trvalý kód obrazu: platí i po přejmenování. Krátký
+odkaz: …“ (`workCodeHint` v `scripts/lib/works.mjs`) a malou ikonou „Zkopírovat kód“ vedle (`data-copy`, `applyCopyButtons`
+v `src/lib/share-button.ts`, hláška „Kód zkopírován“ `copiedText`; skrytá, dokud prohlížeč neumí kopírovat)), jeden řádek se stavem, cenou a krátkými tlačítky („Zeptat se“,
 „Koupit na Fleru“), řádek „Sdílet“ s ikonami (Pinterest, Facebook, WhatsApp a odkaz: na telefonu nabídka sdílení,
 jinde zkopírování s hláškou „Odkaz zkopírován“, `src/lib/share-button.ts`; odkazy `shareLinks` v
 `scripts/lib/share.mjs`, žádné skripty ani cookies služeb, událost GA `share`) a vpravo od nich „Na Instagramu“ (bublina „Obraz na Instagramu“)
@@ -565,7 +568,11 @@ na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`)). V�
     text se tím nezmění, jen se líp čte a upravuje. Krátký text zůstane na řádku s atributem, víc řádků jako `|`,
     prázdná hodnota kostry je `""` (popis kolekce v kostře je prázdný, žádný vzorový text),
   - `DOPLNIT` nechá, dokud ho člověk nesmaže (znamená „hodnotu zkontrolovat“), sám ho nikdy neodstraní,
-  - vlastní komentář nad atributem nechá, nad technickým,
+  - vlastní komentář nad atributem nechá, nad technickým; blok, který je přesně technickým komentářem některého
+    atributu (i starší znění, i s `DOPLNIT`), ale vlastním komentářem není (`withoutTechnical`), smaže: typicky
+    komentář smazaného atributu (např. `meta_corners`), který by jinak zůstal nad dalším a po znovudoplnění atributu
+    byl v souboru dvakrát; totéž platí pro komentář úplně nahoře. Kolik jich uklidil (`stray` z `normalizeMetadata`),
+    ukáže souhrn běhu u souboru ve „Srovnaných popisech“ („uklizené zbloudilé komentáře: 2“),
   - neznámý atribut (např. překlep `mockup:`) nesmaže, dá ho na konec a označí komentářem `NEZNÁMÝ atribut…`;
     na web se nedostane,
   - **atribut s konečnou výchozí hodnotou** (ve schématu `settled: true`: `meta_draft`, `tags`, `meta_instagram`, `meta_pinterest`, `mockups`,
@@ -662,6 +669,8 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | výběr více štítků („a zároveň“): čipy se zapínají a vypínají, aktivní zůstanou jen ty, které výběr zúží, ostatní zašednou | `/tvorba/`: „krajina“ (28 děl, 17 aktivních čipů), + „voda“ (9 děl, aktivní hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, aktivní jaro a léto), „Vše“ zruší |
 | dlouhý popis o jednom odstavci zalomený do `description: >` (`foldLines`, text se nemění) | `demo-content/tvorba/demo-kresby-2025-2026/_index.yaml`: popis delší než 140 znaků v bloku `>` se dvěma řádky; další běh ho nemění |
 | péče o web v „Doporučení“ (`careAdvice`, `photoSizeAdvice`, `featuredAdvice`; stáří z gitu jen na skutečném obsahu) | `npm run demo` (log `? advice:`): díla bez rozměru nebo popisu, malé fotky a stránky s málo obrazy ve výběru autorky, podle toho, co testovací data mají |
+| zakomentovaný údaj, který není nepovinný, v „Ke kontrole“ (`commentedOutReview`) | `npm run demo` (log `! commented-out attribute:`): `tvorba/demo-rozpracovane.yaml: řádek „# title: Pracovní název“ …` |
+| zbloudilý technický komentář uklizený a spočítaný (`stray`) | v `demo-content/tvorba/demo-na-podlaze.yaml` smaž řádky `meta_corners:` s hodnotami (komentář nech) a spusť `npm run demo:prepare`: rohy se najdou znovu s jedním komentářem, log ukáže `… demo-na-podlaze.yaml: uklizené zbloudilé komentáře: 1`; pak `git checkout demo-content/tvorba/demo-na-podlaze.yaml` |
 | „Zbývá doplnit“: atributy s `DOPLNIT` u komentáře (`todoAdvice`) | `npm run demo` (log `? to fill in:`): `tvorba/demo-rozpracovane.yaml: date, technique` a roky bez textu (např. `roky/2023.yaml: description`) |
 | hledání v názvech, popisech a `id` děl | `/tvorba/`: pole vpravo od „Tvorba“, „most noc“ → Most v noci (`?q=most+noc`, v liště čip „„most noc“ ×“), „df9aa“ → Most v noci podle `id`, Enter otevře jeho stránku; `/tvorba/kolekce/demo-plener-sumava-2026/`: pole pod textem kolekce, „mlha“ → Ráno u rybníka (slovo jen v popisu), Šumava v mlze ne (jiný tvar) |
 | combobox Kolekce | `/tvorba/`: klik do „Kolekce“, napiš „plener“ → vše, žádná, Plenér Krkonoše 2006, Plenér Šumava 2026 (podle abecedy), ↓ a Enter vybere Krkonoše (`?collection=demo-plener-krkonose-2006`), Esc zavře seznam a vrátí vybranou; „xyz“ nechá jen vše a žádná |
@@ -876,9 +885,10 @@ Každá složka díla v `export/instagram/` i `export/fler/` má `README.md`, kt
 u Instagramu nahoře text příspěvku v bloku s tlačítkem pro kopírování (jiný soubor s ním není; GitHub neumí vložit
 obsah jiného souboru, ani v AsciiDocu), u Fleru údaje pro inzerát: technika · rozměr · rok, podklad, stav, cena a popis;
 u obou stav zveřejnění podle atributu `instagram` / `fler` („Na Instagramu: <odkaz>“ nebo „zatím nezveřejněno“,
-„Na Fleru: <odkaz>“ nebo „zatím nepřidáno“), kolekce a odkaz na stránku díla na webu (`site.url` +
+„Na Fleru: <odkaz>“ nebo „zatím nepřidáno“), „Kód obrazu: `<id>`“ (trvalé `id`, podle něj se dílo dohledá na webu
+i v obsahovém repu), kolekce a odkaz na stránku díla na webu (`site.url` +
 `/tvorba/<rok>/<slug>-<id>/`), pak náhledy všech fotek (klik = plná velikost). Dřívější `post.txt` úklid smaže. `export/instagram/README.md` a `export/fler/README.md` (seskupené pod nadpisy kolekcí podle abecedy, díla bez kolekce
-na konci pod „Mimo kolekce“, u každého díla ✓/○ stav zveřejnění a nahoře počty) jsou
+na konci pod „Mimo kolekce“, u každého díla kód `<id>` za názvem, ✓/○ stav zveřejnění a nahoře počty) jsou
 přehledy všech děl platformy s miniaturou a odkazem do složky (jen když platforma nějaké dílo má). Kód
 `scripts/lib/export-readme.mjs`; složky děl se píšou každým během (hned následují popis, cenu i štítky), přehledy
 plným během. Úklid je bere jako vlastní soubory pipeline (`EXPORT_FILES`).
@@ -1279,8 +1289,11 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
   1. **Chyby** (`### ✗ Chyby (počet)`): hlášky kontrol seskupené po souborech (`groupProblems`: část před první
      „`: `“ je soubor, hlášky bez souboru pod „Obecně“) a obrazy bez fotky (`missing`). Každá hláška kontroly je česky
      ve tvaru `<soubor>: <co je špatně a jak to opravit>`.
-  2. **Ke kontrole** (`### ⚠ Ke kontrole`): zveřejněné obrazy, kterým zůstal `DOPLNIT` v komentáři, a podezřelý ořez
-     rohů (`⚠`); běh nezastaví.
+  2. **Ke kontrole** (`### ⚠ Ke kontrole`): zveřejněné obrazy, kterým zůstal `DOPLNIT` v komentáři, podezřelý ořez
+     rohů (`⚠`) a zakomentované údaje, které nejsou nepovinné (např. `# id: TODO`; `commentedOutKeys` v
+     `scripts/lib/metadata-yaml.mjs`, `commentedOutReview` v `scripts/lib/content.mjs`, ve všech popisech, log
+     `! commented-out attribute:`): pipeline je nečte, takže nic neznamenají; hláška řekne, jestli údaj v souboru už je
+     (řádek smazat), nebo ne (odkomentovat, nebo smazat). Řádky technických komentářů se nehlásí; běh nezastaví.
   3. **Doporučení** (`### 💡 Doporučení (počet)`, `workAdvice` v `scripts/lib/advice.mjs`): po souborech, u všech děl
      (i rozpracovaných), běh nezastaví ani nezmění: dílo bez štítků (`tags`); `title` začíná malým písmenem nebo končí
      tečkou; `description` a popisky detailů (`details`) začínají malým písmenem nebo nekončí tečkou (stačí i `!`, `?`,
@@ -1651,9 +1664,19 @@ souhrn běhu náhledy vyjmenuje. Jinou složku dá `run({ previewDir })`.
 **Náhledy rozpracovaných děl v gitu (`export/draft/`):** tytéž tři náhledy (`previewBuffers`) zmenšené na delší stranu
 `DRAFT_EDGE` = 2000 px (`shrinkPreview`, nikdy nezvětšené; popisky a čáry rostou s fotkou, čísla zůstávají v px původní
 fotky) jdou do `export/draft/[<kolekce>/]<slug>/` obsahového repa jako `backgrounds.jpg`, `cut.jpg`, `frames.jpg`
-s `README.md` (`draftReadme`: název, údaje, kolekce, všechny tři náhledy, použité `meta_corners`) a přehled
-`export/draft/README.md` podle kolekcí (`draftIndex`). Vznikají při každém běhu, i ve větvi (`--prepare-only`), a workflow
-je commitne zpět. Obrázky se přepíšou jen při změně otisku (fotka, `meta_corners`, `images.edges`, `DRAFT_VERSION`;
+s `README.md` (`draftReadme`: název, údaje, „Kód obrazu“ a kolekce, „Stav popisu“, všechny tři náhledy, použité `meta_corners`) a přehled
+`export/draft/README.md` podle kolekcí (`draftIndex`, u každého díla kód za názvem a značky stavu popisu `noteMarks`, např.
+„✗ 1 · 💡 3“ = chyby, ke kontrole ⚠, doporučení, údaje k doplnění ✎, s legendou nahoře). Složku má **každé** rozpracované
+dílo: bez fotky nebo s `meta_corners: false` jen `README.md` se stavem popisu a důvodem, proč náhledy nejsou
+(`noPreviews`: `photo` / `uncut` / `errors`), v přehledu „bez náhledu“; náhledy dílu, které se přestalo ořezávat,
+smaže další běh bez chyb. „Stav popisu“ je totéž, co o díle říká souhrn běhu (`workNotes`
+v `scripts/lib/summary.mjs`, stejné skupiny: Chyby, Ke kontrole, Doporučení, Zbývá doplnit; bez hlášek věta „nic
+nehlásí“); README se píše každým během (`writeIfChanged`), hlášky do otisku nepatří. Vznikají při každém běhu, i ve větvi
+(`--prepare-only`), **i když běh skončí chybami v popisech** (README díla pak ukáže jeho chyby). Dílo s vlastní chybou
+nové náhledy nedostane (jeho rohy mohou být špatně): staré obrázky i otisk zůstanou, bez nich README místo obrázků napíše
+„Náhledy ořezu zatím nejsou“. Při běhu s chybami se přehled nepřepisuje a nic se nemaže (popis, který nejde přečíst,
+by jinak vypadal jako zveřejněné dílo). Workflow obsahového repa je commitne zpět i po chybách pipeline (krok commitu
+a nahrání náhledů mají `if: !cancelled() && steps.pipeline.outcome != 'skipped'`; stejně nahrání v `dry-run.yml`). Obrázky se přepíšou jen při změně otisku (fotka, `meta_corners`, `images.edges`, `DRAFT_VERSION`;
 otisk je v komentáři `<!-- otisk: … -->` v `README.md`), takže git neroste s každým během. Dílo zveřejněné
 (`meta_draft: false`), smazané nebo přejmenované složku ztratí při dalším běhu bez `only` (`planFolderPrune`
 s `EXPORT_FILES.draft`; souhrn ji uvede pod „Odstraněno“); bez draftů zmizí i přehled. Jiné soubory ve složce

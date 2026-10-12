@@ -15,7 +15,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
 import { photoDate } from './exif.mjs';
-import { normalizeMetadata, skeleton, todoKeys, yamlProblem } from './metadata-yaml.mjs';
+import { commentedOutKeys, normalizeMetadata, skeleton, todoKeys, yamlProblem } from './metadata-yaml.mjs';
 import { artform } from './seo.mjs';
 import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, UNCOLLECTED_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA, publicKeys } from './schema.mjs';
 import { IMAGE_EXTENSIONS, dateYear, generateId, isValidId, slugify, splitExt, titleFromName, todoProblems } from './works.mjs';
@@ -170,8 +170,37 @@ export async function keepInLine(text, schema, file, absPath, updated, problems)
   if (toCheck.length) notes.push(`doplněno ${toCheck.join(', ')} (DOPLNIT)`);
   if (final.length) notes.push(`doplněno ${final.join(', ')} (výchozí hodnota)`);
   if (r.unknown.length) notes.push(`neznámé ${r.unknown.join(', ')} (NEZNÁMÝ)`);
+  if (r.stray) notes.push(`uklizené zbloudilé komentáře: ${r.stray}`);
   updated.push(`${file}: ${notes.length ? notes.join('; ') : 'srovnány komentáře a pořadí'}`);
   return r.text;
+}
+
+/**
+ * The schema of a description by its path in the content repository ("/" separators): tvorba/_index.yaml is
+ * "Mimo kolekce", another _index.yaml in tvorba/ a collection, the rest of tvorba/ works, roky/ years, fotky/
+ * photos, _index.yaml in the root the home page; null for anything else.
+ */
+export function schemaOfFile(file) {
+  if (file === INDEX_FILE) return HOME_SCHEMA;
+  if (file === `${WORKS_SUBDIR}/${INDEX_FILE}`) return UNCOLLECTED_SCHEMA;
+  if (file.startsWith(`${WORKS_SUBDIR}/`)) return path.posix.basename(file) === INDEX_FILE ? COLLECTION_SCHEMA : WORK_SCHEMA;
+  if (file.startsWith('roky/')) return YEAR_SCHEMA;
+  if (file.startsWith('fotky/')) return PHOTO_SCHEMA;
+  return null;
+}
+
+/**
+ * "Ke kontrole": commented-out lines of attributes that are not optional ones (commentedOutKeys), e.g. "# id: TODO";
+ * the pipeline ignores them, so they only confuse. `files`: [{ file, text }]. Returns ["<file>: …"] in Czech.
+ */
+export function commentedOutReview(files) {
+  return files.flatMap(({ file, text }) => {
+    const schema = schemaOfFile(file);
+    if (!schema) return [];
+    return commentedOutKeys(text, schema).map(({ key, line, set }) => (set
+      ? `${file}: řádek „${line}“ je zakomentovaný údaj ${key}, který už v souboru je; automatika ho nečte, smaž ho`
+      : `${file}: řádek „${line}“ je zakomentovaný údaj ${key}; automatika zakomentované údaje nečte (jen ty s NEPOVINNÉ), odkomentuj ho (smaž „# “), nebo řádek smaž`));
+  });
 }
 
 /**

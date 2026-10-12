@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DRAFT_EDGE, draftIndex, draftReadme, exportIndex, flerReadme, instagramReadme, readmeFingerprint } from './export-readme.mjs';
+import { DRAFT_EDGE, draftIndex, draftReadme, exportIndex, flerReadme, instagramReadme, noteMarks, readmeFingerprint } from './export-readme.mjs';
 
 const work = { title: 'Bobří hráz', technique: 'akvarel', size_cm: [30, 30] };
 
@@ -143,6 +143,50 @@ test('draftReadme: without a collection, corners or fingerprint those lines are 
   assert.ok(!text.includes('Kolekce:') && !text.includes('```yaml') && !text.includes('otisk'));
 });
 
+test('draftReadme: the state of the description in the groups of the run summary, before the previews', () => {
+  const notes = { errors: ['status: <xyz> neznámá'], review: [], advice: ['obraz nemá štítky', 'název končí tečkou'], todo: ['date'] };
+  const text = draftReadme({ work: { title: 'X' }, year: '2026', files: draftFiles, notes });
+  assert.match(text, /## Stav popisu\n\nTotéž, co[^\n]*\n\n### ✗ Chyby \(1\)\n\n[^\n]+\n\n- status: &lt;xyz&gt; neznámá\n\n### 💡 Doporučení \(2\)\n\n[^\n]+\n\n- obraz nemá štítky\n- název končí tečkou\n\n### ✎ Zbývá doplnit \(1\)\n\n[^\n]+\n\n- date\n/);
+  assert.ok(!text.includes('Ke kontrole'), 'an empty group is left out');
+  assert.ok(text.indexOf('## Stav popisu') < text.indexOf('## Na papíru webu'));
+  const clean = draftReadme({ work: { title: 'X' }, year: '2026', files: draftFiles, notes: { errors: [], review: [], advice: [], todo: [] } });
+  assert.match(clean, /## Stav popisu\n\nPoslední běh zpracování u tohoto obrazu nic nehlásí\.\n/);
+  assert.ok(!draftReadme({ work: { title: 'X' }, year: '2026', files: draftFiles }).includes('Stav popisu'), 'without notes no section');
+});
+
+test('draftReadme: without previews (a draft with an error of its own) it says so instead of the images', () => {
+  const text = draftReadme({ work: { title: 'X' }, year: '2026', files: null, notes: { errors: ['chyba'], review: [], advice: [], todo: [] } });
+  assert.match(text, /Náhledy ořezu zatím nejsou/);
+  assert.ok(!text.includes('<img') && !text.includes('## Ořez'));
+});
+
+test('draftReadme: a draft without previews says why (no photo, not cut, errors) and how it goes', () => {
+  const at = (noPreviews) => draftReadme({ work: { title: 'X' }, year: '2026', files: null, noPreviews });
+  assert.match(at('photo'), /## Náhledy ořezu\n\nFotka obrazu zatím chybí/);
+  assert.match(at('uncut'), /meta_corners: false/);
+  assert.match(at('errors'), /viz chyby výše/);
+  assert.match(at(undefined), /viz chyby výše/);
+  assert.match(at('photo'), /^# Rozpracováno: X\n\n2026\. Rozpracovaný obraz: až ho zveřejníš/);
+  assert.ok(!at('photo').includes('nahledy-orezu'));
+});
+
+test('noteMarks: errors, review, advice and attributes to fill in as short counts; nothing = empty', () => {
+  assert.equal(noteMarks({ errors: ['a'], review: [], advice: ['b', 'c', 'd'], todo: ['date', 'technique'] }), '✗ 1 · 💡 3 · ✎ 2');
+  assert.equal(noteMarks({ errors: [], review: ['x', 'y'], advice: [], todo: [] }), '⚠ 2');
+  assert.equal(noteMarks({ errors: [], review: [], advice: [], todo: [] }), '');
+  assert.equal(noteMarks(null), '');
+});
+
+test('draftIndex: the marks of the state under the facts, a legend on top, "bez náhledu" without a preview', () => {
+  const text = draftIndex([
+    { title: 'Ráno', folder: 'rano', thumb: 'backgrounds.jpg', note: 'akvarel · 2026', collection: '', marks: '✗ 1 · 💡 3' },
+    { title: 'Bez fotky', folder: 'bez-fotky', thumb: null, note: '2026', collection: '', marks: '' },
+  ]);
+  assert.match(text, /Značky stavu popisu[^\n]*✗ chyby, ⚠ ke kontrole, 💡 doporučení, ✎ zbývá doplnit/);
+  assert.ok(text.includes('<b>Ráno</b></a><br>akvarel · 2026<br>✗ 1 · 💡 3</td>'));
+  assert.ok(text.includes('<tr><td>bez náhledu</td><td><a href="bez-fotky/"><b>Bez fotky</b></a><br>2026</td></tr>'));
+});
+
 test('draftIndex: drafts grouped by collection, without one last; empty = "Zatím žádné."', () => {
   const text = draftIndex([
     { title: 'Bez kolekce', folder: 'bez', thumb: 'backgrounds.jpg', note: 'akvarel · 2026', collection: '' },
@@ -152,4 +196,26 @@ test('draftIndex: drafts grouped by collection, without one last; empty = "Zatí
   assert.ok(text.indexOf('## Plenér') < text.indexOf('## Mimo kolekce'));
   assert.ok(text.includes('<a href="plener/rano/"><img src="plener/rano/backgrounds.jpg"'));
   assert.match(draftIndex([]), /Zatím žádné\.\n$/);
+});
+
+test('the code of the work (id) in the README of its Instagram and Fler folder and next to its title in the overviews', () => {
+  const work = { id: 'mpugj', title: 'Jez', technique: 'akvarel', status: 'available', price: 2500 };
+  const insta = instagramReadme({ work, year: '2026', files: { captions: [], scenes: [], details: [] }, post: 'text' });
+  assert.ok(insta.includes('Kód obrazu: `mpugj`'));
+  const fler = flerReadme({ work, year: '2026', files: { original: ['original.jpg'], mockups: [] } });
+  assert.ok(fler.includes('Kód obrazu: `mpugj`'));
+  // without an id (never on real data) no line
+  assert.ok(!flerReadme({ work: { ...work, id: undefined }, year: '2026', files: { original: ['original.jpg'], mockups: [] } }).includes('Kód obrazu'));
+  for (const platform of ['instagram', 'fler']) {
+    const text = exportIndex(platform, [{ title: 'Jez', code: 'mpugj', folder: 'jez', thumb: 't.jpg', note: 'akvarel', collection: '', url: '' }]);
+    assert.ok(text.includes('<b>Jez</b></a> <code>mpugj</code><br>akvarel'), platform);
+  }
+});
+
+test('drafts: the code of the work in its README (with the collection) and next to its title in the overview', () => {
+  const text = draftReadme({ work: { id: 'mpugj', title: 'Jez' }, year: '2026', files: draftFiles, collection: 'Plenér' });
+  assert.ok(text.includes('\n\nKód obrazu: `mpugj`  \nKolekce: Plenér\n'));
+  assert.ok(draftReadme({ work: { id: 'mpugj', title: 'Jez' }, year: '2026', files: draftFiles }).includes('\n\nKód obrazu: `mpugj`\n'));
+  const index = draftIndex([{ title: 'Jez', code: 'mpugj', folder: 'jez', thumb: null, note: '2026', collection: '', marks: '' }]);
+  assert.ok(index.includes('<b>Jez</b></a> <code>mpugj</code><br>2026</td>'));
 });

@@ -5,7 +5,9 @@
 //     marks a value that still needs checking (added by the pipeline, removed by people),
 //   - an attribute whose default is final (`settled` in the schema: meta_draft, tags, switches) is never marked DOPLNIT,
 //     an old DOPLNIT there goes,
-//   - an author's own comment above an attribute stays, above the technical one,
+//   - an author's own comment above an attribute stays, above the technical one; a block in it that is exactly the
+//     technical comment of an attribute (e.g. left there when people deleted the attribute, which the pipeline then
+//     added again with its comment) is no own comment and goes,
 //   - attributes the schema does not know stay too, at the end, marked "NEZNÁMÝ"; an own private_ attribute is no
 //     unknown one: it stays without a technical comment among the private_ attributes, alphabetically,
 //   - a former name of an attribute (`renamed` in the schema) or a derived_ attribute is a problem: the file is left
@@ -102,6 +104,34 @@ function withoutCopies(own, docs) {
   return own;
 }
 
+/**
+ * `lines` without every block that is exactly one of `docs` (DOPLNIT in front allowed), e.g. the technical comment of
+ * an attribute people deleted: it stays in the file, above the next attribute, and is never anyone's own comment.
+ * Empty lines left at the ends or doubled by a removal go too; without a removal the lines stay as they are.
+ * Returns { lines, removed (number of blocks) }.
+ */
+function withoutTechnical(lines, docs) {
+  const longestFirst = [...docs].sort((a, b) => b.length - a.length);
+  const out = [];
+  let removed = 0;
+  for (let i = 0; i < lines.length;) {
+    const first = lines[i].startsWith(`${TODO} `) ? lines[i].slice(TODO.length + 1) : lines[i];
+    const doc = longestFirst.find((d) => first === d[0] && d.every((l, k) => k === 0 || lines[i + k] === l));
+    if (doc) {
+      i += doc.length;
+      removed += 1;
+    } else {
+      out.push(lines[i]);
+      i += 1;
+    }
+  }
+  if (!removed) return { lines, removed };
+  const tidy = out.filter((l, i) => l !== '' || (i > 0 && out[i - 1] !== ''));
+  while (tidy[0] === '') tidy.shift();
+  while (tidy.at(-1) === '') tidy.pop();
+  return { lines: tidy, removed };
+}
+
 /** Current and older wordings of a field's technical comment, as lines. */
 const docVariants = (field) => [
   docLines(field),
@@ -182,14 +212,15 @@ function newValueNode(doc, field, value) {
  * changes on the site. Options: `values` (values of added attributes, e.g. { id, title, date } of a new skeleton; a
  * commented-out attribute with a non-empty value is written as a set one, marked DOPLNIT),
  * `header` (top comment when the file has none), `fresh` (a new skeleton: schema defaults instead).
- * Returns { text, changed, added (keys), unknown (keys), problem } — with a problem the text is the original.
+ * Returns { text, changed, added (keys), unknown (keys), stray (number of stray technical comments removed, see
+ * withoutTechnical), problem } — with a problem the text is the original.
  */
 export function normalizeMetadata(original, schema, { values = {}, header = null, fresh = false } = {}) {
   const { text, own: commentedOwn } = stripCommented(original, schema.fields.filter((f) => f.commented));
   const doc = YAML.parseDocument(text);
-  if (doc.errors.length) return { text: original, changed: false, added: [], unknown: [], problem: yamlProblem(doc.errors[0]) };
+  if (doc.errors.length) return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: yamlProblem(doc.errors[0]) };
   if (doc.contents !== null && !YAML.isMap(doc.contents)) {
-    return { text: original, changed: false, added: [], unknown: [], problem: 'musí to být seznam údajů (klíč: hodnota)' };
+    return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: 'musí to být seznam údajů (klíč: hodnota)' };
   }
   const before = doc.toJS() ?? {};
   const pairs = doc.contents?.items ?? [];
@@ -200,10 +231,18 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
     ...[...byKey.keys()].filter((k) => attributeGroup(k) === 'derived')
       .map((k) => `${k}: údaje derived_ vyrábí automatika pro web, sem nepatří; smaž ho`),
   ];
-  if (wrong.length) return { text: original, changed: false, added: [], unknown: [], problem: wrong.join('; ') };
+  if (wrong.length) return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: wrong.join('; ') };
   // the author's own private_ attributes: kept like known ones, without a technical comment
   const ownPrivate = [...byKey.keys()].filter((k) => !known.has(k) && attributeGroup(k) === 'private');
 
+  // technical comments of every attribute (all wordings): never the author's own comment nor the file's comment
+  const allDocs = schema.fields.flatMap(docVariants);
+  let stray = 0;
+  const clean = (lines) => {
+    const r = withoutTechnical(lines, allDocs);
+    stray += r.removed;
+    return r.lines;
+  };
   let top = toLines(doc.commentBefore);
   const items = [];
   const added = [];
@@ -233,7 +272,7 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
     }
     const trailing = [pair.key.comment, pair.value?.comment, YAML.isCollection(pair.value) ? pair.value.commentBefore : null]
       .flatMap(toLines).filter((l) => l.trim());
-    own = withoutLegacy([...own, ...trailing]);
+    own = clean(withoutLegacy([...own, ...trailing]));
     pair.key.comment = undefined;
     if (field?.block) foldLong(pair.value);
     if (pair.value) {
@@ -252,7 +291,7 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
   const commentOut = (field, own) => {
     const placeholder = doc.createPair(`${COMMENTED}${field.key}`, null);
     placeholder.key = doc.createNode(`${COMMENTED}${field.key}`);
-    placeholder.key.commentBefore = toComment([...own, ...docLines(field)]);
+    placeholder.key.commentBefore = toComment([...clean(own), ...docLines(field)]);
     placeholder.key.spaceBefore = items.length > 0;
     items.push(placeholder);
   };
@@ -306,6 +345,7 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
 
   const out = new YAML.Document(new YAML.YAMLMap());
   out.contents.items = items;
+  top = clean(top);
   if (!top.length && header) top = header;
   // the file's comment on top, then an empty line
   const result = foldLines(((top.length ? `${top.map((l) => (l ? `# ${l}` : '#')).join('\n')}\n\n` : '') + out.toString(STRINGIFY))
@@ -314,9 +354,9 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
   // safety: the values must be exactly the same (plus the added attributes, minus emptied commented-out ones)
   const after = YAML.parse(result) ?? {};
   if (!isDeepStrictEqual(after, expected)) {
-    return { text: original, changed: false, added: [], unknown, problem: 'automatika tento soubor neumí srovnat, aniž by změnila hodnotu; dej prosím vědět správci webu' };
+    return { text: original, changed: false, added: [], unknown, stray: 0, problem: 'automatika tento soubor neumí srovnat, aniž by změnila hodnotu; dej prosím vědět správci webu' };
   }
-  return { text: result, changed: result !== original, added, unknown, problem: null };
+  return { text: result, changed: result !== original, added, unknown, stray, problem: null };
 }
 
 /** A new file of `schema`: every attribute with its default or given value, all marked DOPLNIT except generated ones. */
@@ -342,6 +382,22 @@ export function todoKeys(text) {
     }
   }
   return keys;
+}
+
+/**
+ * Commented-out lines "# key: …" of attributes of `schema` that are not optional-commented ones (`commented`), e.g.
+ * "# id: TODO" left by people: the pipeline never reads them, so they mean nothing. Lines of technical comments
+ * are no such lines. Returns [{ key, line, set (the attribute is also set in the file) }], in file order.
+ */
+export function commentedOutKeys(text, schema) {
+  const docs = new Set(schema.fields.flatMap(docVariants).flat().map((l) => `# ${l}`));
+  const keys = new Set(schema.fields.filter((f) => !f.commented).map((f) => f.key));
+  const set = new Set(text.split('\n').map((l) => l.match(/^([^\s#:][^:]*):/)?.[1]).filter(Boolean));
+  return text.split('\n')
+    .filter((line) => !docs.has(line) && !docs.has(line.replace(`# ${TODO} `, '# ')))
+    .map((line) => ({ line, key: line.match(/^#\s?([^\s:]+):(\s|$)/)?.[1] }))
+    .filter(({ key }) => keys.has(key))
+    .map(({ key, line }) => ({ key, line, set: set.has(key) }));
 }
 
 /** Attributes of `schema` in a file, in file order: the set ones and the commented-out ones ("# key: …"). */

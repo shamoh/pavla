@@ -7,6 +7,7 @@ import sharp from 'sharp';
 import YAML from 'yaml';
 import { run } from './process-images.mjs';
 import { sheetXmp } from './lib/sheet-box.mjs';
+import { readmeFingerprint } from './lib/export-readme.mjs';
 import { WORK_FIELDS } from './lib/works.mjs';
 import { COLLECTION_FIELDS } from './lib/collections.mjs';
 import { WORK_SCHEMA } from './lib/schema.mjs';
@@ -1050,7 +1051,9 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   assert.equal(skeleton.meta_instagram, false);
   assert.ok(await idOf('2026', 'hotovy'));
   for (const p of ['content', 'public']) assert.ok(!(await exists(path.join(siteDir, p))), p);
-  assert.ok(!(await exists(path.join(contentDir, 'export'))));
+  // no exports; the new draft (no photo to cut here) has only the state of its description in export/draft/
+  assert.deepEqual(await fs.readdir(path.join(contentDir, 'export')), ['draft']);
+  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/novy'))).sort(), ['README.md']);
 
   // problems are reported as in a full run
   await setYaml('2026', 'hotovy', `id: ${await idOf('2026', 'hotovy')}\ntitle: Hotový\ndate: 2026-06-14\nstatus: available\n`);
@@ -1336,7 +1339,9 @@ test('corners: prepare only finds the corners of every work and writes the cut p
   assert.match(readme, /<!-- otisk: [0-9a-f]+ -->/);
   const overview = await fs.readFile(path.join(contentDir, 'export/draft/README.md'), 'utf8');
   assert.match(overview, /## Mimo kolekce[\s\S]*href="rozpracovany\/"[\s\S]*Rozpracovaný/);
-  assert.ok(!overview.includes('Bez podlahy'), 'nothing to preview without a floor');
+  // a draft without a floor: in the overview without a preview, its folder has only the README
+  assert.match(overview, /<td>bez náhledu<\/td><td><a href="bez-podlahy\/"><b>Bez podlahy<\/b>/);
+  assert.deepEqual(await fs.readdir(path.join(contentDir, 'export/draft/bez-podlahy')), ['README.md']);
   // unchanged photo and corners: the previews in git are not written again
   const before = (await fs.stat(path.join(draftDir, 'cut.jpg'))).mtimeMs;
   await new Promise((resolve) => setTimeout(resolve, 20));
@@ -1349,8 +1354,9 @@ test('corners: prepare only finds the corners of every work and writes the cut p
   assert.deepEqual(full.detected, [], 'found once, kept since');
   assert.deepEqual(full.previews, []);
   assert.ok(!(await exists(previewDir)));
-  assert.ok(!(await exists(path.join(contentDir, 'export/draft'))));
-  assert.ok(full.pruned.includes('export/draft/rozpracovany/cut.jpg') && full.pruned.includes('export/draft/README.md'), full.pruned.join(', '));
+  // the draft without a floor stays, with the overview
+  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft'))).sort(), ['README.md', 'bez-podlahy']);
+  assert.ok(full.pruned.includes('export/draft/rozpracovany/cut.jpg') && full.pruned.includes('export/draft/rozpracovany/README.md'), full.pruned.join(', '));
 });
 
 test('corners: the previews of a draft in git are written again when its corners change, and also on a branch it goes once published', async () => {
@@ -1371,6 +1377,41 @@ test('corners: the previews of a draft in git are written again when its corners
   const branch = await run(opts({ prepareOnly: true, previewDir }));
   assert.ok(branch.pruned.includes('export/draft/rozpracovany/README.md'), branch.pruned.join(', '));
   assert.ok(!(await exists(path.join(contentDir, 'export/draft'))));
+});
+
+test('drafts: the README in export/draft/ lists what the summary says about the work, also when the run fails', async () => {
+  await floorMaster('rozpracovany', 'meta_draft: true\ntitle: Rozpracovaný\ndate: 2026-06-14\n');
+  await floorMaster('novy', 'meta_draft: true\ntitle: Nový\ndate: 2026-06-14\nstatus: xyz\n');
+  await addWork('2026', 'rozbity', 'meta_draft: true\ntitle: Rozbitý\ndate: 2026-06-14\n');
+  const previewDir = path.join(tmp, 'previews');
+  const draft = (slug, file = 'README.md') => path.join(contentDir, 'export/draft', slug, file);
+  // the first run is fine for "rozpracovany" (DOPLNIT left), "novy" has an error of its own
+  const first = await run(opts({ prepareOnly: true, previewDir }));
+  assert.equal(first.ok, false);
+  const ok = await fs.readFile(draft('rozpracovany'), 'utf8');
+  assert.match(ok, /## Stav popisu\n[\s\S]*### ✎ Zbývá doplnit \(\d+\)\n[\s\S]*\n- technique\n/);
+  assert.doesNotMatch(ok, /### ✗ Chyby/);
+  assert.ok(await exists(draft('rozpracovany', 'cut.jpg')), 'previews made although the run failed');
+  // an error of its own: no previews made, the README says so and lists the error
+  const bad = await fs.readFile(draft('novy'), 'utf8');
+  assert.match(bad, /### ✗ Chyby \(1\)\n\nBrání zveřejnění[^\n]*\n\n- status/);
+  assert.match(bad, /Náhledy ořezu zatím nejsou/);
+  assert.ok(!(await exists(draft('novy', 'cut.jpg'))) && !bad.includes('otisk'));
+  assert.ok(!first.previews.some((p) => p.startsWith('novy-')));
+  // "rozpracovany" gets an error: its old previews and fingerprint stay, the README lists the error
+  const yamlPath = path.join(contentDir, 'tvorba/rozpracovany.yaml');
+  await fs.writeFile(yamlPath, (await fs.readFile(yamlPath, 'utf8')).replace(/^status: .*$/m, 'status: xyz'));
+  const cut = (await fs.stat(draft('rozpracovany', 'cut.jpg'))).mtimeMs;
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal((await run(opts({ prepareOnly: true, previewDir }))).ok, false);
+  const second = await fs.readFile(draft('rozpracovany'), 'utf8');
+  assert.match(second, /### ✗ Chyby \(1\)[\s\S]*- status/);
+  assert.equal(readmeFingerprint(second), readmeFingerprint(ok));
+  assert.equal((await fs.stat(draft('rozpracovany', 'cut.jpg'))).mtimeMs, cut);
+  // a description that cannot be read during a failed run: its folder is not taken for published
+  await fs.writeFile(yamlPath, 'title: [\n');
+  assert.equal((await run(opts({ prepareOnly: true, previewDir }))).ok, false);
+  assert.ok(await exists(draft('rozpracovany', 'cut.jpg')));
 });
 
 test('corners: the floor is transparent on the web, paper in the JPEG, white for Fler, gone from mockups and exports', async () => {

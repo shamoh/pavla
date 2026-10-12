@@ -18,3 +18,9 @@ export function shareLinks({ url, media, title, description }) {
     { method: 'whatsapp', label: 'Poslat přes WhatsApp', href: `https://wa.me/?${new URLSearchParams({ text })}` },
   ];
 }
+
+/**
+ * What a copy button says after a click: "<what> zkopírován" (e.g. "Kód zkopírován", "Odkaz zkopírován"), or the
+ * value itself when the browser did not let it copy (the visitor can select it by hand).
+ */
+export const copiedText = (ok, value, what) => (ok ? `${what} zkopírován` : value);

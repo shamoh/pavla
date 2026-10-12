@@ -61,9 +61,12 @@ jobs:
           done
 
       - name: Pipeline as on a branch (prepare only)
+        id: pipeline
         run: npm run images -- --demo --prepare-only
 
+      # kept also when the pipeline fails on the descriptions (as in the workflow of the content repository)
       - name: Cut previews of drafts
+        if: ${{ !cancelled() && steps.pipeline.outcome != 'skipped' }}
         uses: actions/upload-artifact@v7
         with:
           name: nahledy-orezu

@@ -65,12 +65,12 @@ import {
 } from './lib/site-images.mjs';
 import { HOME_COPY, MODIFIED, UNCOLLECTED_COPY, collectionCopyPath, photoCopyPath, staleCopies, workCopyPath, yearCopyPath } from './lib/site-content.mjs';
 import { coverProblems, coverShareSource } from './lib/covers.mjs';
-import { placeholderProblems, prepareContent } from './lib/content.mjs';
+import { commentedOutReview, placeholderProblems, prepareContent } from './lib/content.mjs';
 import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
 import { rightsXmp } from './lib/image-rights.mjs';
-import { DRAFT_EDGE, STORY_UTM, draftIndex, draftReadme, exportIndex, flerReadme, instagramReadme, publishedUrl, readmeFingerprint } from './lib/export-readme.mjs';
+import { DRAFT_EDGE, STORY_UTM, draftIndex, draftReadme, noteMarks, exportIndex, flerReadme, instagramReadme, publishedUrl, readmeFingerprint } from './lib/export-readme.mjs';
 import {
   GRID_DEFAULTS, GRID_VERSION, captionFacts, detailLayout, detailSuffixes, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
   panoramaSuffixes, renderCaption, renderGrid, renderPanorama, renderScene, renderStory, siteHost,
@@ -81,7 +81,7 @@ import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
 import { PREVIEW_KINDS, cornersYaml, cutOut, masterSize, prepareCorners, previewBuffers, shrinkPreview, trimTransparent, writePreviewFiles } from './lib/corners.mjs';
 import { EDGE_DEFAULTS, cutsSheet, edgeLook, innerRegion } from './lib/edges.mjs';
 import { PALETTES } from './lib/palettes.mjs';
-import { formatSummary } from './lib/summary.mjs';
+import { formatSummary, workNotes } from './lib/summary.mjs';
 import {
   careAdvice, draftAgeAdvice, featuredAdvice, hashtagAdvice, instagramLinkAdvice, pageAdvice, photoSizeAdvice, pinterestAdvice, tagAdvice, tagStats,
   techniqueAdvice, todoAdvice, workAdvice,
@@ -481,8 +481,12 @@ export async function run({
   }), ...await careOfSite({ works, years: years.years, collections: collections.collections, home: home.home, uncollected: uncollected.uncollected, contentDir, today })];
   advice.forEach((p) => log(`? advice: ${p}`));
   // "Zbývá doplnit": descriptions still marked DOPLNIT, a block of their own under the recommendations
-  const todo = todoAdvice(await contentYamls(contentDir), new Set(pending.map((p) => p.slice(0, p.indexOf(': ')))));
+  const yamls = await contentYamls(contentDir);
+  const todo = todoAdvice(yamls, new Set(pending.map((p) => p.slice(0, p.indexOf(': ')))));
   todo.forEach((p) => log(`? to fill in: ${p}`));
+  // "Ke kontrole": commented-out attributes that are not optional (e.g. "# id: TODO"), ignored by the pipeline
+  const commentedOut = commentedOutReview(yamls);
+  commentedOut.forEach((p) => log(`! commented-out attribute: ${p}`));
   const problems = [
     ...scanProblems, ...corners.problems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems, ...home.problems, ...uncollected.problems,
     ...years.years.flatMap((y) => coverProblems({
@@ -500,15 +504,16 @@ export async function run({
     ...demoProblems({ works, collections: collections.collections, marked: await exists(path.join(contentDir, DEMO_MARKER)) }, dataset),
   ];
   const detected = corners.detected;
-  if (problems.length) {
-    return { ok: false, problems, created, assigned, detected, updated, pending, advice, todo, tags, processed: 0, skipped: 0, missing: [], pruned: [], previews: [], prepared: prepareOnly };
-  }
+  // what the summary of this run says about each work so far, for the READMEs of drafts (also when the run fails)
+  const noted = { problems, pending, detected, commentedOut, advice, todo };
 
   // Cut previews of drafts (all three, like npm run preview), to check the corners before publishing: in full size
   // in previewDir (the artifact of the run; written fresh by every full run, a run of `only` adds to them) and
   // smaller (DRAFT_EDGE) in export/draft/[<collection>/]<slug>/ of the content repository with a README.md, committed
   // like the other exports; written again only when their fingerprint (photo, corners, settings) changes. On every
   // branch (also --prepare-only); the folder of a work goes once it is published (or deleted).
+  // Also when the run fails on problems: the README of a draft lists what the summary says about it (workNotes); the
+  // previews of a draft with problems of its own are not made again (its corners may be wrong), the old ones stay.
   previewDir = path.resolve(previewDir ?? path.join(siteDir, '.previews'));
   if (!only.length) await fs.rm(previewDir, { recursive: true, force: true });
   const exportRoot = path.join(contentDir, 'export');
@@ -520,32 +525,49 @@ export async function run({
   // folder of a draft (exportFolder) -> the file names it should have in export/draft/
   const draftWanted = new Map();
   for (const w of works) {
-    if (w.data.meta_draft !== true || !w.masterPath || !cutsSheet(w.data.meta_corners)) continue;
+    if (w.data.meta_draft !== true) continue;
+    // every draft has its folder with the state of its description; cut previews only with a photo to cut
+    const cut = Boolean(w.masterPath) && cutsSheet(w.data.meta_corners);
     const folder = exportFolder(w.yamlPath, w.slug);
     const collection = draftTitles.get(w.collection) ?? '';
-    draftWanted.set(folder, new Set([...Object.values(draftFiles), README]));
-    drafts.push({ title: w.data.title, folder, thumb: draftFiles.backgrounds, note: captionFacts(w.data, w.year), collection });
-    if (only.length && !only.includes(w.slug)) continue;
-    const buffers = await previewBuffers(w.masterPath, w.data.meta_corners, edges);
-    const names = await writePreviewFiles(previewDir, `${w.slug}-${w.id}`, buffers);
-    previews.push(...names);
-    log(`→ cut previews: ${names.join(', ')}`);
+    const notes = workNotes(w.yamlPath, noted);
     const dir = path.join(draftRoot, folder);
-    const readmePath = path.join(dir, README);
-    const fingerprint = sha1(String(DRAFT_VERSION), await fs.readFile(w.masterPath), JSON.stringify([w.data.meta_corners, edges, DRAFT_EDGE]));
-    const current = readmeFingerprint(await fs.readFile(readmePath, 'utf8').catch(() => ''));
-    const complete = (await Promise.all(Object.values(draftFiles).map((f) => exists(path.join(dir, f))))).every(Boolean);
-    if (current !== fingerprint || !complete) {
-      await fs.mkdir(dir, { recursive: true });
-      for (const [kind, buf] of buffers) await fs.writeFile(path.join(dir, draftFiles[kind]), await shrinkPreview(buf, DRAFT_EDGE));
-      log(`→ export/draft/${folder}/: cut previews`);
+    const complete = async () => (await Promise.all(Object.values(draftFiles).map((f) => exists(path.join(dir, f))))).every(Boolean);
+    const entry = { title: w.data.title, code: w.id, folder, thumb: null, note: captionFacts(w.data, w.year), collection, marks: noteMarks(notes) };
+    drafts.push(entry);
+    if (only.length && !only.includes(w.slug)) {
+      if (cut && (await complete())) entry.thumb = draftFiles.backgrounds;
+      continue;
     }
+    const readmePath = path.join(dir, README);
+    const current = readmeFingerprint(await fs.readFile(readmePath, 'utf8').catch(() => ''));
+    let fingerprint = current ?? '';
+    if (cut && !notes.errors.length) {
+      const buffers = await previewBuffers(w.masterPath, w.data.meta_corners, edges);
+      const names = await writePreviewFiles(previewDir, `${w.slug}-${w.id}`, buffers);
+      previews.push(...names);
+      log(`→ cut previews: ${names.join(', ')}`);
+      fingerprint = sha1(String(DRAFT_VERSION), await fs.readFile(w.masterPath), JSON.stringify([w.data.meta_corners, edges, DRAFT_EDGE]));
+      if (current !== fingerprint || !(await complete())) {
+        await fs.mkdir(dir, { recursive: true });
+        for (const [kind, buf] of buffers) await fs.writeFile(path.join(dir, draftFiles[kind]), await shrinkPreview(buf, DRAFT_EDGE));
+        log(`→ export/draft/${folder}/: cut previews`);
+      }
+    } else if (cut) log(`! export/draft/${folder}/: problems of its own, cut previews not made again`);
+    // previews of a draft that is no longer cut (meta_corners: false) go with the next run without problems
+    const files = cut && (await complete()) ? draftFiles : null;
+    if (files) entry.thumb = draftFiles.backgrounds;
+    draftWanted.set(folder, new Set([...(files ? Object.values(draftFiles) : []), README]));
+    const noPreviews = !w.masterPath ? 'photo' : !cut ? 'uncut' : 'errors';
+    await fs.mkdir(dir, { recursive: true });
     await writeIfChanged(readmePath, draftReadme({
-      work: w.data, year: w.year, files: draftFiles, corners: cornersYaml(w.data.meta_corners), collection, fingerprint,
+      work: w.data, year: w.year, files, corners: cornersYaml(w.data.meta_corners), collection, fingerprint: files ? fingerprint : '', notes, noPreviews,
     }));
   }
   const draftPruned = [];
-  if (!only.length) {
+  // the overview and pruning only in a run without problems: a description that cannot be read is no work then, and
+  // its folder would go as if it were published
+  if (!only.length && !problems.length) {
     if (drafts.length) {
       drafts.sort((a, b) => a.folder.localeCompare(b.folder));
       draftWanted.set('', new Set([README]));
@@ -558,7 +580,10 @@ export async function run({
     }
     await removeEmptyDirs(draftRoot);
   }
-  if (prepareOnly) return { ok: true, problems: [], created, assigned, detected, updated, pending, advice, todo, tags, processed: 0, skipped: 0, missing: [], pruned: draftPruned, previews, prepared: true };
+  if (problems.length) {
+    return { ok: false, problems, created, assigned, detected, updated, pending, advice, todo, tags, processed: 0, skipped: 0, missing: [], pruned: draftPruned, previews, prepared: prepareOnly, commentedOut };
+  }
+  if (prepareOnly) return { ok: true, problems: [], created, assigned, detected, updated, pending, advice, todo, tags, processed: 0, skipped: 0, missing: [], pruned: draftPruned, previews, prepared: true, commentedOut };
   const { scenes, text: scenesText } = await loadScenes(scenesDir);
   // Instagram: captions on the papers of the palettes of the site, scenes of the studio (loaded once, when needed)
   const instagramScenes = await loadInstagramScenes(instagramScenesDir);
@@ -804,7 +829,7 @@ export async function run({
       const facts = captionFacts(w.data, w.year);
       if (wantsInstagram(w.data)) {
         overview.instagram.push({
-          title: w.data.title, folder, thumb: exportFileName('-caption-papir'), note: facts, collection, url: publishedUrl(w.data, 'instagram'),
+          title: w.data.title, code: w.id, folder, thumb: exportFileName('-caption-papir'), note: facts, collection, url: publishedUrl(w.data, 'instagram'),
           // the story of the collection: its frames and links (with the UTM of stories)
           story: exportFileName('-story'), date: String(w.data.date ?? ''), storyUrl: withParams(workPageUrl(w.year, workKey(w.slug, w.id)), STORY_UTM),
           collectionUrl: w.collection ? withParams(`${siteUrl}/${collectionPageDir(w.collection)}/`, STORY_UTM) : '',
@@ -812,7 +837,7 @@ export async function run({
       }
       if (isOnSale(w.data.status)) {
         const price = typeof w.data.price === 'number' ? `${w.data.price.toLocaleString('cs-CZ')} Kč` : '';
-        overview.fler.push({ title: w.data.title, folder, thumb: exportFileName(''), note: [facts, price].filter(Boolean).join(' · '), collection, url: publishedUrl(w.data, 'fler') });
+        overview.fler.push({ title: w.data.title, code: w.id, folder, thumb: exportFileName(''), note: [facts, price].filter(Boolean).join(' · '), collection, url: publishedUrl(w.data, 'fler') });
       }
     }
     for (const sub of ['instagram', 'fler']) {
@@ -915,7 +940,7 @@ export async function run({
   }
   pruned.forEach((p) => log(`- removed ${p}`));
 
-  return { ok: missing.length === 0, problems: [], created, assigned, detected, updated, pending, advice, todo, tags, processed, skipped, missing, pruned, previews, misfits };
+  return { ok: missing.length === 0, problems: [], created, assigned, detected, updated, pending, advice, todo, tags, processed, skipped, missing, pruned, previews, misfits, commentedOut };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

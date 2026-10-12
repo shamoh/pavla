@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, wantsPinterest, workKey, instagramGrid, parseGrid } from './works.mjs';
+import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, wantsPinterest, workCodeHint, workKey, workShortPath, instagramGrid, parseGrid } from './works.mjs';
 
 /** Deterministic "random" returning the given values in a loop. */
 const sequence = (...values) => {
@@ -342,4 +342,11 @@ test('EXPORT_FILES: the cut previews of drafts and their README; anything else i
   for (const f of ['backgrounds.jpg', 'cut.jpg', 'frames.jpg', 'README.md']) assert.ok(EXPORT_FILES.draft.test(f), f);
   for (const f of ['poznamka.md', 'caption-papir.jpg', 'cut.png']) assert.ok(!EXPORT_FILES.draft.test(f), f);
   assert.deepEqual(planFolderPrune(['rano/cut.jpg', 'rano/poznamka.md', 'vecer/cut.jpg'], new Map([['vecer', new Set(['cut.jpg'])]]), EXPORT_FILES.draft), ['rano/cut.jpg']);
+});
+
+test('workShortPath and workCodeHint: the short permanent address of a work and the bubble over its code', () => {
+  assert.equal(workShortPath('mpugj'), '/tvorba/mpugj/');
+  assert.equal(workCodeHint('mpugj', 'https://pavla.kramolis.cz'),
+    'Trvalý kód obrazu: platí i po přejmenování. Krátký odkaz: pavla.kramolis.cz/tvorba/mpugj/');
+  assert.ok(workCodeHint('mpugj', 'https://example.org/').endsWith('example.org/tvorba/mpugj/'));
 });
