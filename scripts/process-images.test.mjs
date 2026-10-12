@@ -1326,13 +1326,51 @@ test('corners: prepare only finds the corners of every work and writes the cut p
   assert.equal(meta.format, 'jpeg');
   assert.ok(meta.width > meta.height * 2, 'light and dark side by side');
   for (const p of ['content', 'public']) assert.ok(!(await exists(path.join(siteDir, p))), p);
-  // published, the draft's preview is gone with the next full run
+  // the same previews (smaller, here not enlarged) in export/draft/<slug>/ with a README, and the overview
+  const draftDir = path.join(contentDir, 'export/draft/rozpracovany');
+  assert.deepEqual((await fs.readdir(draftDir)).sort(), ['README.md', 'backgrounds.jpg', 'cut.jpg', 'frames.jpg']);
+  assert.equal((await sharp(path.join(draftDir, 'frames.jpg')).metadata()).width, 400, 'never enlarged');
+  const readme = await fs.readFile(path.join(draftDir, 'README.md'), 'utf8');
+  assert.match(readme, /^# Rozpracováno: Rozpracovaný\n/);
+  assert.match(readme, /```yaml\nmeta_corners:\n {2}photo: \[400, 300\]/);
+  assert.match(readme, /<!-- otisk: [0-9a-f]+ -->/);
+  const overview = await fs.readFile(path.join(contentDir, 'export/draft/README.md'), 'utf8');
+  assert.match(overview, /## Mimo kolekce[\s\S]*href="rozpracovany\/"[\s\S]*Rozpracovaný/);
+  assert.ok(!overview.includes('Bez podlahy'), 'nothing to preview without a floor');
+  // unchanged photo and corners: the previews in git are not written again
+  const before = (await fs.stat(path.join(draftDir, 'cut.jpg'))).mtimeMs;
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal((await run(opts({ prepareOnly: true, previewDir }))).ok, true);
+  assert.equal((await fs.stat(path.join(draftDir, 'cut.jpg'))).mtimeMs, before);
+  // published, the draft's preview is gone with the next full run, in export/draft/ too
   const rozpracovany = path.join(contentDir, 'tvorba/rozpracovany.yaml');
   await fs.writeFile(rozpracovany, (await fs.readFile(rozpracovany, 'utf8')).replace('meta_draft: true', 'meta_draft: false'));
   const full = await run(opts({ previewDir }));
   assert.deepEqual(full.detected, [], 'found once, kept since');
   assert.deepEqual(full.previews, []);
   assert.ok(!(await exists(previewDir)));
+  assert.ok(!(await exists(path.join(contentDir, 'export/draft'))));
+  assert.ok(full.pruned.includes('export/draft/rozpracovany/cut.jpg') && full.pruned.includes('export/draft/README.md'), full.pruned.join(', '));
+});
+
+test('corners: the previews of a draft in git are written again when its corners change, and also on a branch it goes once published', async () => {
+  await floorMaster('rozpracovany', 'meta_draft: true\ntitle: Rozpracovaný\ndate: 2026-06-14\n');
+  const previewDir = path.join(tmp, 'previews');
+  assert.equal((await run(opts({ prepareOnly: true, previewDir }))).ok, true);
+  const readme = path.join(contentDir, 'export/draft/rozpracovany/README.md');
+  const first = await fs.readFile(readme, 'utf8');
+  const yamlPath = path.join(contentDir, 'tvorba/rozpracovany.yaml');
+  const text = await fs.readFile(yamlPath, 'utf8');
+  const corners = YAML.parse(text).meta_corners;
+  await fs.writeFile(yamlPath, text.replace(`tl: [${corners.tl.join(', ')}]`, `tl: [${corners.tl[0] + 3}, ${corners.tl[1]}]`));
+  assert.equal((await run(opts({ prepareOnly: true, previewDir }))).ok, true);
+  const second = await fs.readFile(readme, 'utf8');
+  assert.notEqual(second.match(/otisk: (\w+)/)[1], first.match(/otisk: (\w+)/)[1]);
+  assert.match(second, new RegExp(`tl: \\[${corners.tl[0] + 3}, ${corners.tl[1]}\\]`));
+  await fs.writeFile(yamlPath, (await fs.readFile(yamlPath, 'utf8')).replace('meta_draft: true', 'meta_draft: false'));
+  const branch = await run(opts({ prepareOnly: true, previewDir }));
+  assert.ok(branch.pruned.includes('export/draft/rozpracovany/README.md'), branch.pruned.join(', '));
+  assert.ok(!(await exists(path.join(contentDir, 'export/draft'))));
 });
 
 test('corners: the floor is transparent on the web, paper in the JPEG, white for Fler, gone from mockups and exports', async () => {

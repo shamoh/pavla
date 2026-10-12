@@ -469,27 +469,50 @@ export async function cutOriginalOf(file, value, edges, { info = true, lines: la
     .toBuffer();
 }
 
+/** The kinds of cut previews, in this order: on the papers of the site, the cut lines, the guide frames. */
+export const PREVIEW_KINDS = ['backgrounds', 'cut', 'frames'];
+
 /**
- * The three cut previews of the master photo `file` with the corners `value` (`edges`: images.edges), by their purpose:
- * -backgrounds (previewOf), -cut (cutOriginalOf), -frames (framesOf). Written into `dir` as <key>-<suffix>.jpg (`key`:
- * <slug>-<id> like the work's folder on the site); returns the file names in this order. Locally (npm run preview) and
- * in the pipeline (previews of drafts, the artifact "nahledy-orezu") alike.
+ * The three cut previews of the master photo `file` with the corners `value` (`edges`: images.edges) as JPEG buffers
+ * by their kind (PREVIEW_KINDS): backgrounds (previewOf), cut (cutOriginalOf), frames (framesOf); [[kind, buffer]].
  */
-export async function writePreviews(dir, key, file, value, edges) {
-  const kinds = [
-    ['backgrounds', () => previewOf(file, value, edges)],
-    ['cut', () => cutOriginalOf(file, value, edges)],
-    ['frames', () => framesOf(file, edges?.guides ?? EDGE_DEFAULTS.guides)],
+export async function previewBuffers(file, value, edges) {
+  return [
+    ['backgrounds', await previewOf(file, value, edges)],
+    ['cut', await cutOriginalOf(file, value, edges)],
+    ['frames', await framesOf(file, edges?.guides ?? EDGE_DEFAULTS.guides)],
   ];
+}
+
+/** Writes `buffers` (previewBuffers) into `dir` as <key>-<kind>.jpg; returns the file names in their order. */
+export async function writePreviewFiles(dir, key, buffers) {
   await fs.mkdir(dir, { recursive: true });
   const names = [];
-  for (const [suffix, make] of kinds) {
-    const name = `${key}-${suffix}.jpg`;
-    await fs.writeFile(path.join(dir, name), await make());
+  for (const [kind, buf] of buffers) {
+    const name = `${key}-${kind}.jpg`;
+    await fs.writeFile(path.join(dir, name), buf);
     names.push(name);
   }
   return names;
 }
+
+/**
+ * The three cut previews written into `dir` as <key>-<kind>.jpg (`key`: <slug>-<id> like the work's folder on the
+ * site); returns the file names in their order. Locally (npm run preview) and in the pipeline (previews of drafts,
+ * the artifact "nahledy-orezu") alike.
+ */
+export async function writePreviews(dir, key, file, value, edges) {
+  return writePreviewFiles(dir, key, await previewBuffers(file, value, edges));
+}
+
+/**
+ * A preview made smaller for git (export/draft/): the longer side at most `edge` px, never enlarged. Labels and
+ * lines of the previews are sized by the photo, so they stay readable; their numbers stay in pixels of the photo.
+ */
+export const shrinkPreview = (buf, edge) => sharp(buf)
+  .resize({ width: edge, height: edge, fit: 'inside', withoutEnlargement: true })
+  .jpeg({ quality: 82, mozjpeg: true })
+  .toBuffer();
 
 /** A `meta_corners` value as YAML lines, the way the pipeline writes it into a description (to copy into one). */
 export const cornersYaml = (value) => ['meta_corners:', `  photo: [${value.photo.join(', ')}]`, ...CORNER_KEYS.map((k) => `  ${k}: [${value[k].join(', ')}]`)].join('\n');

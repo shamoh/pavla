@@ -37,6 +37,8 @@
 //   <contentDir>/tvorba/…/<slug>.yaml  meta_corners (corners of the sheet) written when missing (scripts/lib/corners.mjs)
 //   .previews/<slug>-<id>-*.jpg        cut previews of drafts: -backgrounds, -cut, -frames (outside git; on GitHub the
 //                                      artifact "nahledy-orezu" of the content workflow's run)
+//   <contentDir>/export/draft/[<collection>/]<slug>/   the same previews of a draft, smaller (DRAFT_EDGE), in git:
+//     backgrounds.jpg, cut.jpg, frames.jpg, README.md   (also on a branch; removed once the work is published)
 //
 // Usage:  npm run images             (only works whose outputs are missing or older than the master)
 //         npm run images -- --force  (regenerate everything)
@@ -68,7 +70,7 @@ import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
 import { rightsXmp } from './lib/image-rights.mjs';
-import { STORY_UTM, exportIndex, flerReadme, instagramReadme, publishedUrl } from './lib/export-readme.mjs';
+import { DRAFT_EDGE, STORY_UTM, draftIndex, draftReadme, exportIndex, flerReadme, instagramReadme, publishedUrl, readmeFingerprint } from './lib/export-readme.mjs';
 import {
   GRID_DEFAULTS, GRID_VERSION, captionFacts, detailLayout, detailSuffixes, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
   panoramaSuffixes, renderCaption, renderGrid, renderPanorama, renderScene, renderStory, siteHost,
@@ -76,7 +78,7 @@ import {
 import { PIN_DEFAULTS, PIN_FILE, withParams } from './lib/pinterest.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
-import { cutOut, prepareCorners, trimTransparent, writePreviews } from './lib/corners.mjs';
+import { PREVIEW_KINDS, cornersYaml, cutOut, prepareCorners, previewBuffers, shrinkPreview, trimTransparent, writePreviewFiles } from './lib/corners.mjs';
 import { EDGE_DEFAULTS, cutsSheet, edgeLook, innerRegion } from './lib/edges.mjs';
 import { PALETTES } from './lib/palettes.mjs';
 import { formatSummary } from './lib/summary.mjs';
@@ -88,6 +90,8 @@ import {
 
 /** Bump when the output format changes, so every work is regenerated once. */
 const PIPELINE_VERSION = 8;
+/** Bump when the cut previews of drafts in export/draft/ change, so all of them are written again once. */
+const DRAFT_VERSION = 1;
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -437,19 +441,61 @@ export async function run({
     return { ok: false, problems, created, assigned, detected, updated, pending, advice, tags, processed: 0, skipped: 0, missing: [], pruned: [], previews: [], prepared: prepareOnly };
   }
 
-  // Cut previews of drafts (all three, writePreviews: like npm run preview), to check the corners before publishing.
-  // Written fresh by every full run; a run of `only` adds to them.
+  // Cut previews of drafts (all three, like npm run preview), to check the corners before publishing: in full size
+  // in previewDir (the artifact of the run; written fresh by every full run, a run of `only` adds to them) and
+  // smaller (DRAFT_EDGE) in export/draft/[<collection>/]<slug>/ of the content repository with a README.md, committed
+  // like the other exports; written again only when their fingerprint (photo, corners, settings) changes. On every
+  // branch (also --prepare-only); the folder of a work goes once it is published (or deleted).
   previewDir = path.resolve(previewDir ?? path.join(siteDir, '.previews'));
   if (!only.length) await fs.rm(previewDir, { recursive: true, force: true });
+  const exportRoot = path.join(contentDir, 'export');
+  const draftRoot = path.join(exportRoot, 'draft');
+  const draftTitles = new Map(collections.collections.map((c) => [c.slug, typeof c.data?.title === 'string' ? c.data.title : '']));
+  const draftFiles = Object.fromEntries(PREVIEW_KINDS.map((k) => [k, `${k}.jpg`]));
   const previews = [];
+  const drafts = [];
+  // folder of a draft (exportFolder) -> the file names it should have in export/draft/
+  const draftWanted = new Map();
   for (const w of works) {
     if (w.data.meta_draft !== true || !w.masterPath || !cutsSheet(w.data.meta_corners)) continue;
+    const folder = exportFolder(w.yamlPath, w.slug);
+    const collection = draftTitles.get(w.collection) ?? '';
+    draftWanted.set(folder, new Set([...Object.values(draftFiles), README]));
+    drafts.push({ title: w.data.title, folder, thumb: draftFiles.backgrounds, note: captionFacts(w.data, w.year), collection });
     if (only.length && !only.includes(w.slug)) continue;
-    const names = await writePreviews(previewDir, `${w.slug}-${w.id}`, w.masterPath, w.data.meta_corners, edges);
+    const buffers = await previewBuffers(w.masterPath, w.data.meta_corners, edges);
+    const names = await writePreviewFiles(previewDir, `${w.slug}-${w.id}`, buffers);
     previews.push(...names);
     log(`→ cut previews: ${names.join(', ')}`);
+    const dir = path.join(draftRoot, folder);
+    const readmePath = path.join(dir, README);
+    const fingerprint = sha1(String(DRAFT_VERSION), await fs.readFile(w.masterPath), JSON.stringify([w.data.meta_corners, edges, DRAFT_EDGE]));
+    const current = readmeFingerprint(await fs.readFile(readmePath, 'utf8').catch(() => ''));
+    const complete = (await Promise.all(Object.values(draftFiles).map((f) => exists(path.join(dir, f))))).every(Boolean);
+    if (current !== fingerprint || !complete) {
+      await fs.mkdir(dir, { recursive: true });
+      for (const [kind, buf] of buffers) await fs.writeFile(path.join(dir, draftFiles[kind]), await shrinkPreview(buf, DRAFT_EDGE));
+      log(`→ export/draft/${folder}/: cut previews`);
+    }
+    await writeIfChanged(readmePath, draftReadme({
+      work: w.data, year: w.year, files: draftFiles, corners: cornersYaml(w.data.meta_corners), collection, fingerprint,
+    }));
   }
-  if (prepareOnly) return { ok: true, problems: [], created, assigned, detected, updated, pending, advice, tags, processed: 0, skipped: 0, missing: [], pruned: [], previews, prepared: true };
+  const draftPruned = [];
+  if (!only.length) {
+    if (drafts.length) {
+      drafts.sort((a, b) => a.folder.localeCompare(b.folder));
+      draftWanted.set('', new Set([README]));
+      await writeIfChanged(path.join(draftRoot, README), draftIndex(drafts));
+    }
+    // folders of works published, deleted or renamed since, and the overview once there is no draft
+    for (const rel of planFolderPrune(await listFiles(draftRoot), draftWanted, EXPORT_FILES.draft)) {
+      await fs.rm(path.join(draftRoot, rel));
+      draftPruned.push(`export/draft/${rel}`);
+    }
+    await removeEmptyDirs(draftRoot);
+  }
+  if (prepareOnly) return { ok: true, problems: [], created, assigned, detected, updated, pending, advice, tags, processed: 0, skipped: 0, missing: [], pruned: draftPruned, previews, prepared: true };
   const { scenes, text: scenesText } = await loadScenes(scenesDir);
   // Instagram: captions on the papers of the palettes of the site, scenes of the studio (loaded once, when needed)
   const instagramScenes = await loadInstagramScenes(instagramScenesDir);
@@ -461,7 +507,6 @@ export async function run({
   let fonts = null;
 
   const publicDir = path.join(siteDir, 'public');
-  const exportRoot = path.join(contentDir, 'export');
   // A draft never leaves the content repository: no metadata copy, no web images, no exports.
   // Outputs it had while published are removed by the prune below.
   const published = works.filter((w) => !w.data.meta_draft);
@@ -666,7 +711,7 @@ export async function run({
     }
   }
 
-  const pruned = [];
+  const pruned = [...draftPruned];
   if (!only.length) {
     // Stale exports, independent of whether the work was regenerated in this run: exports of deleted, renamed
     // or draft works, of detail photos and mockup scenes a work no longer has, Fler exports of works not on sale.

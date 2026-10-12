@@ -161,7 +161,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   mockup přepočítá rohy i `pavla:sheet` o posun `offset`): web AVIF/WebP průhledné (`transparent` v `info.json`, třída `cutout`:
   bez `--ph`, stín jen `filter: var(--drop-…)`, nikdy `box-shadow`), JPEG na papíře první palety, og/Instagram na
   svém pozadí, Fler bílá, mockup jen vnitřní obdélník (průnik s `pavla:sheet`). Náhledy ořezu draftů (všechny tři, `writePreviews`, stejně jako `npm run preview`) do
-  `.previews/` (mimo git), workflow obsahového repa i `dry-run.yml` je nahrají jako artefakt `nahledy-orezu`.
+  `.previews/` (mimo git), workflow obsahového repa i `dry-run.yml` je nahrají jako artefakt `nahledy-orezu`; zmenšené
+  (`DRAFT_EDGE`, `shrinkPreview`) i v `export/draft/[<kolekce>/]<slug>/` obsahového repa s `README.md` (`draftReadme`,
+  přehled `draftIndex`), i ve větvi, přepsané jen při změně otisku v README; zveřejněním zmizí (`EXPORT_FILES.draft`).
   `npm run preview -- <fotka|složka>` (`scripts/preview.mjs`): tentýž náhled (`<slug>-<id>-backgrounds.jpg`, i u pipeline) +
   `<slug>-<id>-frames.jpg` (celá neoříznutá fotka v plné velikosti, rámečky čar podíl šířky / výšky od každého kraje z `images.edges.guides`,
   u každé čáry jen vzdálenost od kraje v px fotky jako `meta_corners`, popisky po schodech) + `<slug>-<id>-cut.jpg`

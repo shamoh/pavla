@@ -78,7 +78,7 @@ test('formatSummary lists the corners found and the cut previews of drafts; a su
     previews: ['rano-k3f9a-backgrounds.jpg'],
   });
   assert.match(s, /\*\*Nalezené rohy listu \(meta_corners[^\n]*\*\*\n\n- tvorba\/rano\.yaml: tl 40×25/);
-  assert.match(s, /\*\*Náhledy ořezu rozpracovaných obrazů \(ke stažení jako „nahledy-orezu“[^\n]*\*\*\n\n- rano-k3f9a-backgrounds\.jpg/);
+  assert.match(s, /\*\*Náhledy ořezu rozpracovaných obrazů \(zmenšené v export\/draft\/, v plné velikosti ke stažení jako „nahledy-orezu“[^\n]*\*\*\n\n- rano-k3f9a-backgrounds\.jpg/);
   assert.match(s, /### ⚠ Ke kontrole\n\n\*\*Podezřelý ořez rohů listu[^\n]*\*\*\n\n- tvorba\/vecer\.yaml: tl 400×25 ⚠/);
   assert.ok(s.indexOf('Podezřelý ořez') < s.indexOf('Nalezené rohy'), 'the warning comes first');
   assert.doesNotMatch(formatSummary(base), /rohy listu|Náhledy ořezu/, 'nothing when there is nothing');

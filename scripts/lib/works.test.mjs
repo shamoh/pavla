@@ -337,3 +337,9 @@ test('validateWorks: meta_instagram_grid must be columns x rows', () => {
   assert.match(validateWorks([work({ data: { meta_instagram_grid: '7x1' } })]).join('\n'), /meta_instagram_grid „7x1“ musí být sloupce x řádky, např\. 3x3/);
 });
 
+
+test('EXPORT_FILES: the cut previews of drafts and their README; anything else in export/draft/ is left alone', () => {
+  for (const f of ['backgrounds.jpg', 'cut.jpg', 'frames.jpg', 'README.md']) assert.ok(EXPORT_FILES.draft.test(f), f);
+  for (const f of ['poznamka.md', 'caption-papir.jpg', 'cut.png']) assert.ok(!EXPORT_FILES.draft.test(f), f);
+  assert.deepEqual(planFolderPrune(['rano/cut.jpg', 'rano/poznamka.md', 'vecer/cut.jpg'], new Map([['vecer', new Set(['cut.jpg'])]]), EXPORT_FILES.draft), ['rano/cut.jpg']);
+});

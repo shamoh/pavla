@@ -646,7 +646,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | ořez podlahy: rohy listu najde pipeline (průhledné okolí na webu, papír v JPEG a na Instagramu, bílá pro Fler, mockupy bez podlahy) | Na podlaze (list vyfocený nakřivo, recept `floor` v `demo-content/images.yaml`) |
 | ořez podlahy: rohy zadané ručně | Bouřka nad polem (`meta_corners` v `demo-content/`) |
 | ořez podlahy vypnutý (`meta_corners: false`) | Lípa u kaple |
-| náhled ořezu rozpracovaného díla | Rozpracovaný obraz (`.demo/site/.previews/`), zveřejněná díla náhled nemají |
+| náhled ořezu rozpracovaného díla | Rozpracovaný obraz (`.demo/site/.previews/` v plné velikosti, `.demo/content/export/draft/` zmenšený s `README.md` a přehledem), zveřejněná díla náhled nemají |
 | rohy bez podlahy (všechny nuly, nic se neořezává; i obraz s barvou až do kraje) | ostatní díla |
 | soukromá poznámka | Ráno u rybníka, Jablka na stole, kolekce Plenér Šumava 2026 |
 | vlastní `private_…` atribut (bez `NEZNÁMÝ`, abecedně mezi `private_`, nikdy na web) | Máky (`private_kupec`) |
@@ -1268,10 +1268,11 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
   - popis: číslo běhu a seznam změněných děl, kolekcí a fotek. Pull request je veřejný, takže **nikdy
     neuvádí název ani odkaz na obsahové repo** (to platí i pro jeho titulek a commit).
 - **přípravný běh** (`npm run images -- --prepare-only`, na větvích obsahového repa): jen kostry popisů, `id`,
-  rohy listu (`meta_corners`), srovnání popisů, kontroly a náhledy ořezu rozpracovaných děl (`.previews/`), bez
-  obrázků, exportů a zápisu do tohoto repa.
+  rohy listu (`meta_corners`), srovnání popisů, kontroly a náhledy ořezu rozpracovaných děl (`.previews/` a zmenšené
+  v `export/draft/` obsahového repa), bez obrázků webu, ostatních exportů a zápisu do tohoto repa.
 - **náhledy ořezu** (`.previews/`) nahraje workflow obsahového repa (na `main` i ve větvi) jako artefakt běhu
-  `nahledy-orezu` (14 dní, mimo git); zkušební běh totéž s testovacími daty.
+  `nahledy-orezu` v plné velikosti (14 dní, mimo git); zmenšené v `export/draft/` commitne zpět s ostatními změnami
+  (viz *Ořez podlahy*); zkušební běh totéž s testovacími daty.
 - Souhrn běhu (`scripts/lib/summary.mjs`) jde do `GITHUB_STEP_SUMMARY`, celý česky (čte ho autorka), v tomto pořadí:
   1. **Chyby** (`### ✗ Chyby (počet)`): hlášky kontrol seskupené po souborech (`groupProblems`: část před první
      „`: `“ je soubor, hlášky bez souboru pod „Obecně“) a obrazy bez fotky (`missing`). Každá hláška kontroly je česky
@@ -1632,6 +1633,17 @@ složku vždy vyprázdní a naplní znovu (zveřejněné dílo náhled nemá). N
 nahraje jako artefakt **„nahledy-orezu“** na stránku běhu (dole, *Artifacts*, ke stažení jako zip, 14 dní);
 souhrn běhu náhledy vyjmenuje. Jinou složku dá `run({ previewDir })`.
 
+**Náhledy rozpracovaných děl v gitu (`export/draft/`):** tytéž tři náhledy (`previewBuffers`) zmenšené na delší stranu
+`DRAFT_EDGE` = 2000 px (`shrinkPreview`, nikdy nezvětšené; popisky a čáry rostou s fotkou, čísla zůstávají v px původní
+fotky) jdou do `export/draft/[<kolekce>/]<slug>/` obsahového repa jako `backgrounds.jpg`, `cut.jpg`, `frames.jpg`
+s `README.md` (`draftReadme`: název, údaje, kolekce, všechny tři náhledy, použité `meta_corners`) a přehled
+`export/draft/README.md` podle kolekcí (`draftIndex`). Vznikají při každém běhu, i ve větvi (`--prepare-only`), a workflow
+je commitne zpět. Obrázky se přepíšou jen při změně otisku (fotka, `meta_corners`, `images.edges`, `DRAFT_VERSION`;
+otisk je v komentáři `<!-- otisk: … -->` v `README.md`), takže git neroste s každým během. Dílo zveřejněné
+(`meta_draft: false`), smazané nebo přejmenované složku ztratí při dalším běhu bez `only` (`planFolderPrune`
+s `EXPORT_FILES.draft`; souhrn ji uvede pod „Odstraněno“); bez draftů zmizí i přehled. Jiné soubory ve složce
+zůstanou.
+
 **Náhled bez zápisu (`npm run preview`, `scripts/preview.mjs`):** ukáže, co pipeline udělá s podlahou, dřív než
 cokoli zapíše. Obsahové repo **jen čte**, nic v něm nemění (kromě `--write`, viz níže).
 
@@ -1708,9 +1720,10 @@ npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s po
   `npm run images` složku `.previews/` vyprázdní (nechá v ní jen náhledy draftů).
 
 **Vyzkoušení:** `npm run demo` (testovací data mají list vyfocený nakřivo na podlaze, viz *Testovací data*),
-pak dílo „Na podlaze“ ve všech třech paletách; náhled rozpracovaného díla je v `.demo/site/.previews/`. Na skutečném
+pak dílo „Na podlaze“ ve všech třech paletách; náhled rozpracovaného díla je v `.demo/site/.previews/` a zmenšený
+v `.demo/content/export/draft/` (`README.md` s náhledy). Na skutečném
 obsahu nejdřív `npm run preview -- <fotka|složka>` (nic nezapíše), pak `npm run images -- --prepare-only`
-(zapíše rohy do popisů v obsahovém repu, náhledy draftů do `.previews/`).
+(zapíše rohy do popisů v obsahovém repu, náhledy draftů do `.previews/` a do `export/draft/`).
 
 ## Srovnání fotek obrazů (`npm run straighten`)
 

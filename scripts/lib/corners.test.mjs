@@ -6,7 +6,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
 import { EDGE_DEFAULTS } from './edges.mjs';
-import { cornersYaml, CUT_COLOURS, cutLabelLines, cutLinesSvg, cutOut, cutPreview, describeCorners, cutInfo, edgeOverlay, FRAME_COLOURS, frameLines, framesOf, framesSvg, guidesProblems, cutOriginalOf, infoPanelSvg, removedSides, trimTransparent, detectFile, masterSize, prepareCorners, previewOf, withCorners, writePreviews } from './corners.mjs';
+import { cornersYaml, CUT_COLOURS, cutLabelLines, cutLinesSvg, cutOut, cutPreview, describeCorners, cutInfo, edgeOverlay, FRAME_COLOURS, frameLines, framesOf, framesSvg, guidesProblems, cutOriginalOf, infoPanelSvg, removedSides, trimTransparent, detectFile, masterSize, prepareCorners, previewOf, shrinkPreview, withCorners, writePreviews } from './corners.mjs';
 
 let tmp;
 beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-corners-')); });
@@ -413,4 +413,14 @@ test('edgeOverlay: the edge of the fully opaque area, widened to the stroke', ()
   assert.deepEqual([...thin.subarray((1 * 10 + 3) * 4, (1 * 10 + 3) * 4 + 4)], [1, 2, 3, 255]);
   const wide = edgeOverlay(alpha, 10, 6, 3, [1, 2, 3]);
   assert.ok(on(wide, 2, 1) && on(wide, 5, 2), 'widened by one pixel to both sides');
+});
+
+test('shrinkPreview: the longer side at most the given edge, the shape kept, a small one never enlarged', async () => {
+  const big = await sharp({ create: { width: 3000, height: 1500, channels: 3, background: '#808080' } }).jpeg().toBuffer();
+  const meta = await sharp(await shrinkPreview(big, 2000)).metadata();
+  assert.deepEqual([meta.format, meta.width, meta.height], ['jpeg', 2000, 1000]);
+  const tall = await sharp({ create: { width: 1000, height: 4000, channels: 3, background: '#808080' } }).jpeg().toBuffer();
+  assert.deepEqual(await sharp(await shrinkPreview(tall, 2000)).metadata().then((m) => [m.width, m.height]), [500, 2000]);
+  const small = await sharp({ create: { width: 400, height: 300, channels: 3, background: '#808080' } }).jpeg().toBuffer();
+  assert.equal((await sharp(await shrinkPreview(small, 2000)).metadata()).width, 400);
 });

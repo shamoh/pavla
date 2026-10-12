@@ -84,9 +84,9 @@ export function formatSummary(result, error) {
     ['Nové popisy k doplnění (doplň hodnoty s DOPLNIT, u obrazu pak meta_draft: false)', result.created],
     ['Přidělené kódy obrazů', result.assigned],
     ['Nalezené rohy listu (meta_corners; podlaha vně nich bude průhledná, hodnoty smíš upravit; ⚠ = podezřelý ořez)', result.detected ?? []],
-    ['Náhledy ořezu rozpracovaných obrazů (ke stažení jako „nahledy-orezu“ dole na stránce tohoto běhu)', result.previews ?? []],
+    ['Náhledy ořezu rozpracovaných obrazů (zmenšené v export/draft/, v plné velikosti ke stažení jako „nahledy-orezu“ dole na stránce tohoto běhu)', result.previews ?? []],
     ['Srovnané popisy (nové údaje mají u komentáře DOPLNIT, neznámé NEZNÁMÝ)', result.updated ?? []],
-    ['Odstraněno (web a exporty smazaných či přejmenovaných obrazů)', result.pruned],
+    ['Odstraněno (web a exporty smazaných či přejmenovaných obrazů, náhledy ořezu zveřejněných)', result.pruned],
   ].filter(([, items]) => items.length);
   if (done.length || !result.prepared) lines.push('### Co automatika udělala', '');
   for (const [title, items] of done) {

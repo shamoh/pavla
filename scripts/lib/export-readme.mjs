@@ -2,6 +2,7 @@
 // author sees at a glance what is ready (photos as thumbnails, the text of the post ready to copy). Czech: for Pavla.
 //   export/<platform>/README.md                          overview: every work with exports, a thumbnail, a link
 //   export/<platform>/[<collection>/]<slug>/README.md    one work: all its photos (and the text of the post)
+// export/draft/ is the same for the cut previews of drafts (draftReadme, draftIndex).
 
 import { captionFacts } from './instagram.mjs';
 import { withParams } from './pinterest.mjs';
@@ -162,6 +163,20 @@ function collectionStory(entries) {
   ];
 }
 
+/**
+ * `entries` grouped by their `collection` (title, '' = none): { groups: Map(title -> entries in the given order),
+ * order: the titles alphabetically, the works without a collection last }.
+ */
+function byCollection(entries) {
+  const groups = new Map();
+  for (const e of entries) {
+    const key = e.collection || '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(e);
+  }
+  return { groups, order: [...groups.keys()].sort((a, b) => (!a) - (!b) || a.localeCompare(b, 'cs')) };
+}
+
 /** Heading of the works without a collection in an overview. */
 export const NO_COLLECTION = 'Mimo kolekce';
 
@@ -180,13 +195,7 @@ export function exportIndex(platform, entries) {
     : ['# Fotky pro Fler', '', 'Obrazy na prodej (`available`, `reserved`). Každý má svou složku (stejně jako v `tvorba/`): originál a mockupy s podpisem.'];
   if (!entries.length) return `${[...head, '', 'Zatím žádné.'].join('\n')}\n`;
   const done = entries.filter((e) => e.url).length;
-  const groups = new Map();
-  for (const e of entries) {
-    const key = e.collection || '';
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(e);
-  }
-  const order = [...groups.keys()].sort((a, b) => (!a) - (!b) || a.localeCompare(b, 'cs'));
+  const { groups, order } = byCollection(entries);
   const lines = [...head, '', `Celkem ${entries.length}, z toho ${p.done} ${done}, ${p.todo} ${entries.length - done}.`];
   for (const key of order) {
     lines.push('', `## ${escMd(key || NO_COLLECTION)}`, '', '<table>');
@@ -197,6 +206,72 @@ export function exportIndex(platform, entries) {
     }
     lines.push('</table>');
     if (platform === 'instagram' && key) lines.push(...collectionStory(groups.get(key)));
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+// ---------------------------------------------------------------- cut previews of drafts (export/draft/)
+
+/** The longer side of the cut previews in export/draft/ in px (the artifact of the run has them in full size). */
+export const DRAFT_EDGE = 2000;
+
+/** The fingerprint of the previews in the README of a draft (an HTML comment, GitHub does not show it). */
+const fingerprintComment = (fingerprint) => `<!-- otisk: ${fingerprint} -->`;
+
+/** The fingerprint written into a README of a draft by draftReadme, or null. */
+export const readmeFingerprint = (text) => /<!-- otisk: ([0-9a-f]+) -->/.exec(String(text ?? ''))?.[1] ?? null;
+
+/**
+ * README of the folder of a draft in export/draft/: { work, year, files: { backgrounds, cut, frames } (file names),
+ * corners (meta_corners as YAML lines), collection (title), fingerprint (of the previews, kept as a comment) }.
+ */
+export function draftReadme({ work, year, files, corners = '', collection = '', fingerprint = '' }) {
+  const parts = [
+    `# Rozpracováno: ${escMd(work.title)}`,
+    '',
+    `${escMd(captionFacts(work, year))}. Náhledy ořezu podlahy, než obraz zveřejníš (\`meta_draft: false\`): pak tahle složka sama zmizí.`
+      + ` Zmenšené na ${DRAFT_EDGE} px, v plné velikosti jsou ke stažení jako „nahledy-orezu“ dole na stránce běhu zpracování. Klikni na obrázek pro plnou velikost.`,
+    ...(collection ? ['', `Kolekce: ${escMd(collection)}`] : []),
+    '',
+    '## Na papíru webu',
+    '',
+    'Obraz po ořezu na světlém a tmavém papíru: takhle bude vypadat na webu.',
+    '',
+    thumbs([files.backgrounds], 800),
+    '',
+    '## Ořez',
+    '',
+    'Celá fotka s čarami ořezu; čísla jsou pixely původní fotky (jako v `meta_corners`).',
+    '',
+    thumbs([files.cut], 800),
+    '',
+    '## Rámečky',
+    '',
+    'Celá fotka s rámečky vzdáleností od krajů, podle nich se rohy dají opravit ručně.',
+    '',
+    thumbs([files.frames], 800),
+    ...(corners ? ['', '## Použité rohy', '', '```yaml', corners, '```'] : []),
+    ...(fingerprint ? ['', fingerprintComment(fingerprint)] : []),
+  ];
+  return `${parts.join('\n')}\n`;
+}
+
+/**
+ * Overview README of export/draft/: `entries` [{ title, folder, thumb, note, collection (title, '' = none) }],
+ * grouped like exportIndex.
+ */
+export function draftIndex(entries) {
+  const head = ['# Rozpracované obrazy', '', 'Obrazy s `meta_draft: true` a náhledy ořezu podlahy. Každý má svou složku (stejně jako v `tvorba/`); po zveřejnění zmizí.'];
+  if (!entries.length) return `${[...head, '', 'Zatím žádné.'].join('\n')}\n`;
+  const { groups, order } = byCollection(entries);
+  const lines = [...head, '', `Celkem ${entries.length}.`];
+  for (const key of order) {
+    lines.push('', `## ${escMd(key || NO_COLLECTION)}`, '', '<table>');
+    for (const e of groups.get(key)) {
+      lines.push(`<tr><td><a href="${e.folder}/"><img src="${e.folder}/${e.thumb}" width="160" alt="${escMd(e.title)}"></a></td>`
+        + `<td><a href="${e.folder}/"><b>${escMd(e.title)}</b></a><br>${escMd(e.note ?? '')}</td></tr>`);
+    }
+    lines.push('</table>');
   }
   return `${lines.join('\n')}\n`;
 }

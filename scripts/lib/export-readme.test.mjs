@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { exportIndex, flerReadme, instagramReadme } from './export-readme.mjs';
+import { DRAFT_EDGE, draftIndex, draftReadme, exportIndex, flerReadme, instagramReadme, readmeFingerprint } from './export-readme.mjs';
 
 const work = { title: 'Bobří hráz', technique: 'akvarel', size_cm: [30, 30] };
 
@@ -119,4 +119,37 @@ test('instagramReadme: the grid with its preview, the tiles in rows of three and
   assert.ok(md.includes('grid-04-1_3.jpg" width="120" alt="grid-04-1_3.jpg"></a>\n<br>\n<a href="grid-03-2_1.jpg"'), 'rows of three');
   assert.ok(md.includes('**Zveřejňuj pozpátku**'));
   assert.ok(md.indexOf('1. `grid-01-2_3.jpg`') < md.indexOf('2. `grid-06-1_1.jpg`') && md.includes('```text\ncelý text\n```'));
+});
+
+const draftFiles = { backgrounds: 'backgrounds.jpg', cut: 'cut.jpg', frames: 'frames.jpg' };
+
+test('draftReadme: title, facts, the three previews, the corners used and the fingerprint (not shown by GitHub)', () => {
+  const text = draftReadme({
+    work: { title: 'Ráno <u> rybníka', technique: 'akvarel', size_cm: [40, 30] }, year: '2026', files: draftFiles,
+    corners: 'meta_corners:\n  photo: [400, 300]', collection: 'Plenér Šumava 2026', fingerprint: 'abc123',
+  });
+  assert.match(text, /^# Rozpracováno: Ráno &lt;u&gt; rybníka\n/);
+  assert.ok(text.includes('akvarel · 40 × 30 cm · 2026') && text.includes('Kolekce: Plenér Šumava 2026'));
+  assert.ok(text.includes(`${DRAFT_EDGE} px`) && text.includes('nahledy-orezu'));
+  for (const f of Object.values(draftFiles)) assert.ok(text.includes(`<a href="${f}"><img src="${f}"`), f);
+  assert.match(text, /```yaml\nmeta_corners:\n {2}photo: \[400, 300\]\n```/);
+  assert.equal(readmeFingerprint(text), 'abc123');
+  assert.equal(readmeFingerprint('# bez otisku'), null);
+  assert.equal(readmeFingerprint(null), null);
+});
+
+test('draftReadme: without a collection, corners or fingerprint those lines are left out', () => {
+  const text = draftReadme({ work: { title: 'X' }, year: '2026', files: draftFiles });
+  assert.ok(!text.includes('Kolekce:') && !text.includes('```yaml') && !text.includes('otisk'));
+});
+
+test('draftIndex: drafts grouped by collection, without one last; empty = "Zatím žádné."', () => {
+  const text = draftIndex([
+    { title: 'Bez kolekce', folder: 'bez', thumb: 'backgrounds.jpg', note: 'akvarel · 2026', collection: '' },
+    { title: 'Ráno', folder: 'plener/rano', thumb: 'backgrounds.jpg', note: 'akvarel · 2026', collection: 'Plenér' },
+  ]);
+  assert.ok(text.startsWith('# Rozpracované obrazy\n') && text.includes('Celkem 2.'));
+  assert.ok(text.indexOf('## Plenér') < text.indexOf('## Mimo kolekce'));
+  assert.ok(text.includes('<a href="plener/rano/"><img src="plener/rano/backgrounds.jpg"'));
+  assert.match(draftIndex([]), /Zatím žádné\.\n$/);
 });
