@@ -78,14 +78,18 @@ import {
 import { PIN_DEFAULTS, PIN_FILE, withParams } from './lib/pinterest.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
-import { PREVIEW_KINDS, cornersYaml, cutOut, prepareCorners, previewBuffers, shrinkPreview, trimTransparent, writePreviewFiles } from './lib/corners.mjs';
+import { PREVIEW_KINDS, cornersYaml, cutOut, masterSize, prepareCorners, previewBuffers, shrinkPreview, trimTransparent, writePreviewFiles } from './lib/corners.mjs';
 import { EDGE_DEFAULTS, cutsSheet, edgeLook, innerRegion } from './lib/edges.mjs';
 import { PALETTES } from './lib/palettes.mjs';
 import { formatSummary } from './lib/summary.mjs';
-import { hashtagAdvice, pageAdvice, pinterestAdvice, tagAdvice, tagStats, techniqueAdvice, workAdvice } from './lib/advice.mjs';
 import {
-  EXPORT_FILES, PUBLIC_WORK_FIELDS, expectedExports, exportFileName, exportFolder, exportPattern, instagramGrid, isOnSale, wantsInstagram, wantsMockups, wantsPinterest,
-  planFolderPrune, publicFields, validSize, validateWorks, workKey,
+  careAdvice, draftAgeAdvice, featuredAdvice, hashtagAdvice, instagramLinkAdvice, pageAdvice, photoSizeAdvice, pinterestAdvice, tagAdvice, tagStats,
+  techniqueAdvice, todoAdvice, workAdvice,
+} from './lib/advice.mjs';
+import { addedDates } from './lib/git-dates.mjs';
+import {
+  EXPORT_FILES, PUBLIC_WORK_FIELDS, expectedExports, exportFileName, exportFolder, exportPattern, instagramGrid, isInstagramUrl, isOnSale, wantsInstagram, wantsMockups,
+  wantsPinterest, planFolderPrune, publicFields, validSize, validateWorks, workKey, workPath,
 } from './lib/works.mjs';
 
 /** Bump when the output format changes, so every work is regenerated once. */
@@ -321,6 +325,62 @@ async function listFiles(root) {
   return out;
 }
 
+/**
+ * Recommendations on the care of the site (scripts/lib/advice.mjs): what published works lack (size, description),
+ * detail photos without a caption, small master photos, pages whose cover never changes for few featured works, and,
+ * from the history of the content repository (scripts/lib/git-dates.mjs; none without it), drafts waiting too long
+ * and Instagram photos without the link of their post.
+ */
+async function careOfSite({ works, years, collections, home, uncollected, contentDir, today }) {
+  const day = (today ?? new Date()).toISOString().slice(0, 10);
+  const published = works.filter((w) => w.data?.meta_draft !== true);
+  const own = (page) => Boolean(page.coverPath) || (typeof page.data?.cover === 'string' && page.data.cover.trim() !== '');
+  const pages = [
+    ...years.map((y) => ({ where: y.yamlPath, label: `roku ${y.year}`, works: published.filter((w) => w.year === y.year), own: own(y) })),
+    ...collections.map((c) => ({
+      where: c.yamlPath, label: `kolekce „${typeof c.data?.title === 'string' && c.data.title ? c.data.title : c.slug}“`,
+      works: published.filter((w) => w.collection === c.slug), own: own(c),
+    })),
+    ...(home ? [{ where: home.yamlPath, label: 'úvodní stránky', works: published, own: own(home) }] : []),
+    ...(uncollected ? [{ where: uncollected.yamlPath, label: '„Mimo kolekce“', works: published.filter((w) => !w.collection), own: own(uncollected) }] : []),
+  ];
+  const photos = [];
+  for (const w of works) {
+    if (!w.masterPath) continue;
+    try {
+      photos.push({ where: workPath(w), ...(await masterSize(w.masterPath)) });
+    } catch {
+      // an unreadable photo is reported by the processing itself
+    }
+  }
+  const drafts = works.filter((w) => w.data?.meta_draft === true);
+  const linkless = published.filter((w) => wantsInstagram(w.data) && !isInstagramUrl(w.data?.instagram));
+  const readme = (w) => `export/instagram/${exportFolder(w.yamlPath, w.slug)}/${README}`;
+  const dates = await addedDates(contentDir, [...drafts.map((w) => w.yamlPath), ...linkless.map(readme)]);
+  return [
+    ...careAdvice(works),
+    ...photoSizeAdvice(photos),
+    ...featuredAdvice(pages),
+    ...draftAgeAdvice(drafts.map((w) => ({ where: workPath(w), added: dates.get(w.yamlPath) })), day),
+    ...instagramLinkAdvice(linkless.map((w) => ({ where: workPath(w), data: w.data, ready: dates.get(readme(w)) })), day),
+  ];
+}
+
+/**
+ * Every description of the content repository as it is now (after the skeletons and normalization of this run):
+ * works and collections in tvorba/ (any depth), years in roky/, photos in fotky/ and the home page _index.yaml;
+ * [{ file (relative, "/"), text }] sorted by file.
+ */
+async function contentYamls(contentDir) {
+  const files = [
+    ...(await listFiles(path.join(contentDir, 'tvorba'))).map((f) => `tvorba/${f}`),
+    ...(await listFiles(path.join(contentDir, 'roky'))).map((f) => `roky/${f}`),
+    ...(await listFiles(path.join(contentDir, 'fotky'))).map((f) => `fotky/${f}`),
+    ...((await exists(path.join(contentDir, '_index.yaml'))) ? ['_index.yaml'] : []),
+  ].filter((f) => f.endsWith('.yaml')).sort();
+  return Promise.all(files.map(async (file) => ({ file, text: await fs.readFile(path.join(contentDir, file), 'utf8') })));
+}
+
 /** Removes empty folders under `root`, deepest first, and `root` itself when it ends up empty. */
 async function removeEmptyDirs(root) {
   if (!(await exists(root))) return;
@@ -418,8 +478,11 @@ export async function run({
   const tags = tagStats(works);
   const advice = [...workAdvice(works, { siteTitle: config.site?.title ?? '' }), ...techniqueAdvice(works), ...tagAdvice(works), ...hashtagAdvice(works, config.instagramPost), ...pinterestAdvice(works, config.pinterestKeywords?.en), ...pageAdvice({
     collections: collections.collections, years: years.years, home: home.home, uncollected: uncollected.uncollected, photos: photos.photos,
-  })];
+  }), ...await careOfSite({ works, years: years.years, collections: collections.collections, home: home.home, uncollected: uncollected.uncollected, contentDir, today })];
   advice.forEach((p) => log(`? advice: ${p}`));
+  // "Zbývá doplnit": descriptions still marked DOPLNIT, a block of their own under the recommendations
+  const todo = todoAdvice(await contentYamls(contentDir), new Set(pending.map((p) => p.slice(0, p.indexOf(': ')))));
+  todo.forEach((p) => log(`? to fill in: ${p}`));
   const problems = [
     ...scanProblems, ...corners.problems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems, ...home.problems, ...uncollected.problems,
     ...years.years.flatMap((y) => coverProblems({
@@ -438,7 +501,7 @@ export async function run({
   ];
   const detected = corners.detected;
   if (problems.length) {
-    return { ok: false, problems, created, assigned, detected, updated, pending, advice, tags, processed: 0, skipped: 0, missing: [], pruned: [], previews: [], prepared: prepareOnly };
+    return { ok: false, problems, created, assigned, detected, updated, pending, advice, todo, tags, processed: 0, skipped: 0, missing: [], pruned: [], previews: [], prepared: prepareOnly };
   }
 
   // Cut previews of drafts (all three, like npm run preview), to check the corners before publishing: in full size
@@ -495,7 +558,7 @@ export async function run({
     }
     await removeEmptyDirs(draftRoot);
   }
-  if (prepareOnly) return { ok: true, problems: [], created, assigned, detected, updated, pending, advice, tags, processed: 0, skipped: 0, missing: [], pruned: draftPruned, previews, prepared: true };
+  if (prepareOnly) return { ok: true, problems: [], created, assigned, detected, updated, pending, advice, todo, tags, processed: 0, skipped: 0, missing: [], pruned: draftPruned, previews, prepared: true };
   const { scenes, text: scenesText } = await loadScenes(scenesDir);
   // Instagram: captions on the papers of the palettes of the site, scenes of the studio (loaded once, when needed)
   const instagramScenes = await loadInstagramScenes(instagramScenesDir);
@@ -852,7 +915,7 @@ export async function run({
   }
   pruned.forEach((p) => log(`- removed ${p}`));
 
-  return { ok: missing.length === 0, problems: [], created, assigned, detected, updated, pending, advice, tags, processed, skipped, missing, pruned, previews, misfits };
+  return { ok: missing.length === 0, problems: [], created, assigned, detected, updated, pending, advice, todo, tags, processed, skipped, missing, pruned, previews, misfits };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

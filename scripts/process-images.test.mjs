@@ -1565,3 +1565,26 @@ test('web images of a work carry creator, copyright and its page (XMP), a new ti
   assert.equal((await run(opts())).processed, 1, 'a new title rewrites the XMP');
   assert.ok(String((await sharp(path.join(dir, '40.jpg')).metadata()).xmp).includes('Ráno u vody'));
 });
+
+test('todo: descriptions still marked DOPLNIT are listed apart ("Zbývá doplnit"); a published work stays under "Ke kontrole" only', async () => {
+  await addWork('2026', 'rozpracovany', 'meta_draft: true\ntitle: Rozpracovaný\ndate: 2026-06-14\n');
+  await addWork('2026', 'hotovy', '# DOPLNIT Název obrazu.\ntitle: Hotový\nmeta_draft: false\ndate: 2026-06-14\ntechnique: akvarel\n');
+  const r = await run(opts({ prepareOnly: true }));
+  assert.equal(r.ok, true, r.problems.join('\n'));
+  const draft = r.todo.find((a) => a.startsWith('tvorba/rozpracovany.yaml: '));
+  assert.ok(draft, r.todo.join('\n'));
+  assert.ok(draft.includes('description') && !draft.includes('meta_draft'), 'settled attributes are never marked');
+  assert.ok(!r.advice.some((a) => a.startsWith('tvorba/rozpracovany.yaml: description')), 'not among the other recommendations');
+  assert.ok(r.pending.some((p) => p.startsWith('tvorba/hotovy.yaml: ')), r.pending.join('\n'));
+  assert.ok(!r.todo.some((a) => a.startsWith('tvorba/hotovy.yaml: ')), 'not twice');
+});
+
+test('care of the site: a published work without size or description is a recommendation; without git history no age', async () => {
+  await addWork('2026', 'bez-rozmeru', 'meta_draft: false\ntitle: Bez rozměru\ndate: 2026-06-14\ntechnique: akvarel\ndescription: ""\ntags: [voda]\n');
+  const r = await run(opts({ prepareOnly: true }));
+  assert.equal(r.ok, true, r.problems.join('\n'));
+  const mine = r.advice.filter((a) => a.startsWith('tvorba/bez-rozmeru.yaml: '));
+  assert.ok(mine.some((a) => a.includes('nemá rozměr (size_cm)')), mine.join('\n'));
+  assert.ok(mine.some((a) => a.includes('nemá popis (description)')), mine.join('\n'));
+  assert.ok(!r.advice.some((a) => a.includes('rozpracovaný už') || a.includes('připravené od')), 'the test content is no git repository');
+});

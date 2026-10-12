@@ -35,7 +35,7 @@ id: bja33
 # Den vzniku ve tvaru 2026-06-14. Rok z něj určuje rok obrazu na webu (stránka roku, adresa).
 date: 2026-06-15
 
-# Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.
+# Pár vět o obraze, zobrazí se na jeho stránce. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.
 description: |
   Potok mezi slatěmi, odpoledne před bouřkou.
 

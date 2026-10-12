@@ -455,9 +455,10 @@ export const WORK_SCHEMA = {
     {
       key: 'description',
       block: true,
-      doc: 'Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.',
-      value: 'Pár vět o obraze.\n',
+      doc: 'Pár vět o obraze, zobrazí se na jeho stránce. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.',
+      value: '',
       missing: null,
+      previous: ['Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.'],
     },
     {
       key: 'details',

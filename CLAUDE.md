@@ -179,7 +179,10 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Automatika: workflow obsahového repa spouští tuto pipeline a otevírá PR do tohoto repa (větev `obsah/aktualizace`,
   auto-merge po projití „Kontroly kódu“, větev se po sloučení maže);
   na jeho ostatních větvích jen `--prepare-only`. Souhrn běhu: `scripts/lib/summary.mjs` (nahoře chyby po souborech, pak „Ke kontrole“, pak „Doporučení“ z `scripts/lib/advice.mjs`
-  včetně štítků `tagAdvice` (jen co jde opravit: dva tvary, vždy spolu, čipy přes 2 řádky), pak co automatika udělala, nakonec statistika štítků `tagStats`). Pull request připravuje
+  včetně štítků `tagAdvice` (jen co jde opravit: dva tvary, vždy spolu, čipy přes 2 řádky) a péče o web `careOfSite` (zveřejněné dílo bez
+  `size_cm` či popisu, detail bez popisku, malá fotka, málo `featured` u stránky, z historie gitu `git-dates.mjs` dlouhý draft
+  a Instagram bez odkazu; obsahové repo proto checkout s `fetch-depth: 0`), pod nimi sbalené „Zbývá doplnit“ (atributy s `DOPLNIT`
+  u komentáře, `todoAdvice`, kromě zveřejněných děl v „Ke kontrole“), pak co automatika udělala, nakonec statistika štítků `tagStats`). Pull request připravuje
   `scripts/pull-request.mjs` (`scripts/lib/pull-request.mjs`, `OUTPUT_PATHS`); text PR nikdy nejmenuje obsahové repo.
   „Zkušební běh zpracování“ (`.github/workflows/dry-run.yml`, každou neděli na testovacích datech, nic nepushne)
   prochází tytéž kroky: změna kroků zpracování obsahu = stejná změna ve `dry-run.yml`.

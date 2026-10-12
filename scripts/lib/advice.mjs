@@ -3,9 +3,10 @@
 // scripts/lib/summary.mjs). Messages are Czech ("<file>: <what and how>") because Pavla reads them. Texts still starting with DOPLNIT are left to the checks.
 
 import { untranslatedWords } from './instagram.mjs';
+import { todoKeys } from './metadata-yaml.mjs';
 import { TODO } from './schema.mjs';
 import { SEARCH_TITLE_MAX } from './seo.mjs';
-import { isOnSale, wantsMockups, workPath } from './works.mjs';
+import { detailKey, isInstagramUrl, isOnSale, validSize, wantsInstagram, wantsMockups, workPath } from './works.mjs';
 
 /** The first letter (after quotes, brackets and digits) is a small one: "ráno" yes, "„ráno“" yes, "3 ovce" no. */
 export const startsLowercase = (text) => /^[^\p{L}\p{N}]*\p{Ll}/u.test(text);
@@ -120,6 +121,105 @@ export function pageAdvice({ collections = [], years = [], home = null, uncollec
     ]),
     ...photos.flatMap((p) => ['alt', 'caption'].flatMap((key) => sentenceAdvice(`fotky/${p.name}.yaml`, key, p.data?.[key]))),
   ];
+}
+
+/**
+ * Descriptions with attributes still marked DOPLNIT at their technical comment (`todoKeys` of
+ * scripts/lib/metadata-yaml.mjs): `files` [{ file (relative to the content repository), text }], one line
+ * "<file>: <attributes in file order>" per file, for the block "Zbývá doplnit" of the run summary (formatSummary).
+ * `skip`: files reported elsewhere (published works under "Ke kontrole").
+ */
+export function todoAdvice(files, skip = new Set()) {
+  return files
+    .filter(({ file }) => !skip.has(file))
+    .map(({ file, text }) => [file, todoKeys(text)])
+    .filter(([, keys]) => keys.length)
+    .map(([file, keys]) => `${file}: ${keys.join(', ')}`);
+}
+
+// Care of the site: what a visitor would miss (published works only) and what was forgotten (drafts, links).
+
+/** The master photo of a work should have at least this many px on its shorter side (the height of an Instagram photo). */
+export const MIN_PHOTO_SIDE = 1350;
+
+/** A draft older than this many days (since its description came into git) is a recommendation. */
+export const DRAFT_DAYS = 30;
+
+/** Instagram photos ready for this many days without the link of the post (`instagram`) are a recommendation. */
+export const INSTAGRAM_LINK_DAYS = 14;
+
+/** A year, collection or home page with at least this many published works should have more than one featured. */
+export const FEATURED_GROUP = 3;
+
+const hasText = (v) => typeof v === 'string' && v.trim() !== '';
+const isPublished = (w) => w.data?.meta_draft !== true;
+
+/** Whole days from `from` to `to` (both YYYY-MM-DD). */
+export const daysBetween = (from, to) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
+
+/**
+ * What a published work lacks on the site: its size (size_cm: the size on the site, the scale of mockups, the studio
+ * scenes for Instagram) and its description (its page, search results, the pin). For every work: a detail photo
+ * without a caption (`details`; a DOPLNIT placeholder is checked elsewhere). `works`: { yamlPath|…, data, details: [{ name }] }.
+ */
+export function careAdvice(works) {
+  const advice = [];
+  for (const w of works) {
+    const where = workPath(w);
+    const data = w.data ?? {};
+    if (isPublished(w)) {
+      if (!validSize(data.size_cm)) advice.push(`${where}: nemá rozměr (size_cm): na webu chybí, mockupy nedrží měřítko a nevzniknou scény ateliéru pro Instagram`);
+      if (!hasText(data.description)) advice.push(`${where}: nemá popis (description): ukáže se na stránce obrazu, ve výsledcích vyhledávání i v pinu`);
+    }
+    const captions = new Map(Object.entries(data.details && typeof data.details === 'object' ? data.details : {}).map(([k, v]) => [detailKey(k), v]));
+    for (const { name } of w.details ?? []) {
+      if (!hasText(captions.get(detailKey(name)))) advice.push(`${where}: detailní fotka „${name}“ nemá popisek (details: ${name}: …)`);
+    }
+  }
+  return advice;
+}
+
+/** Master photos too small for sharp Instagram photos and enlargements: `photos` [{ where, width, height }]. */
+export function photoSizeAdvice(photos) {
+  return photos
+    .filter((p) => Math.min(p.width, p.height) < MIN_PHOTO_SIDE)
+    .map((p) => `${p.where}: fotka obrazu je malá (${p.width} × ${p.height} px), fotky pro Instagram a zvětšení na webu nebudou ostré; nahraj větší, aspoň ${MIN_PHOTO_SIDE} px na kratší straně`);
+}
+
+/**
+ * Drafts waiting too long: `drafts` [{ where, added (YYYY-MM-DD: since when the description is in git) }], `today`
+ * (YYYY-MM-DD). A draft without a known date (not committed yet, no history) is left out.
+ */
+export function draftAgeAdvice(drafts, today) {
+  return drafts
+    .filter((d) => d.added && daysBetween(d.added, today) > DRAFT_DAYS)
+    .map((d) => `${d.where}: je rozpracovaný už ${daysBetween(d.added, today)} dní (od ${d.added}); doplň ho a zveřejni (meta_draft: false), nebo ho smaž`);
+}
+
+/**
+ * Published works with Instagram photos (`meta_instagram: true`) ready for long without the link of the post:
+ * `works` [{ where, data, ready (YYYY-MM-DD: since when the photos are in git, or null) }], `today` (YYYY-MM-DD).
+ */
+export function instagramLinkAdvice(works, today) {
+  return works
+    .filter((w) => isPublished(w) && wantsInstagram(w.data) && !isInstagramUrl(w.data?.instagram))
+    .filter((w) => w.ready && daysBetween(w.ready, today) > INSTAGRAM_LINK_DAYS)
+    .map((w) => `${w.where}: fotky pro Instagram jsou připravené od ${w.ready} (${daysBetween(w.ready, today)} dní), ale chybí odkaz na příspěvek; po zveřejnění ho doplň (instagram: https://www.instagram.com/p/…)`);
+}
+
+/**
+ * Pages whose cover is picked from the author's selection (no own cover photo, no `cover`) with too few featured
+ * works for it to change: `pages` [{ where, label ("roku 2025", "kolekce …"), works (published works of the page),
+ * own (true when the page has its own cover photo or `cover`) }]. None featured: always the newest work; one: always that one.
+ */
+export function featuredAdvice(pages) {
+  return pages.flatMap((p) => {
+    if (p.own || p.works.length < FEATURED_GROUP) return [];
+    const featured = p.works.filter((w) => w.data?.featured === true).length;
+    if (featured === 0) return [`${p.where}: úvodní obraz ${p.label} je vždy nejnovější obraz; označ pár nejlepších featured: true, budou se na něm střídat`];
+    if (featured === 1) return [`${p.where}: ve výběru autorky ${p.label} je jen 1 obraz, úvodní obraz se nestřídá; označ featured: true ještě další`];
+    return [];
+  });
 }
 
 // Tags: the gallery shows every tag used as a chip, so the list should stay short and clear. The advice speaks only

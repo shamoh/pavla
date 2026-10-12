@@ -108,3 +108,14 @@ test('formatSummary lists works that do not fit a studio scene under "Ke kontrol
   const s = formatSummary({ ...base, misfits: ['tvorba/velky.yaml: obraz se na „Stůl“ nevejde mimo rekvizity'] });
   assert.match(s, /### ⚠ Ke kontrole\n\n\*\*Obraz se nevejde do scény ateliéru pro Instagram\*\*\n\n- tvorba\/velky\.yaml: obraz se na „Stůl“ nevejde/);
 });
+
+test('formatSummary: what is left to fill in (DOPLNIT) as a folded block of its own after the recommendations', () => {
+  const s = formatSummary({
+    ...base, advice: ['tvorba/rano.yaml: název končí tečkou'],
+    todo: ['tvorba/rano.yaml: title, description', 'roky/2026.yaml: description'],
+  });
+  assert.ok(s.indexOf('### 💡 Doporučení (1)') < s.indexOf('### ✎ Zbývá doplnit (2)'), 'after the recommendations, counted apart');
+  assert.ok(s.indexOf('### ✎ Zbývá doplnit') < s.indexOf('### Co automatika udělala'));
+  assert.match(s, /<details><summary>[^<]+<\/summary>\n\n- \*\*tvorba\/rano\.yaml\*\*: title, description\n- \*\*roky\/2026\.yaml\*\*: description\n\n<\/details>/);
+  assert.ok(!formatSummary(base).includes('Zbývá doplnit'), 'nothing to fill in, no block');
+});

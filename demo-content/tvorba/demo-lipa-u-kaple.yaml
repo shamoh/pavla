@@ -33,7 +33,7 @@ id: g7np2
 date: 2021-03-15
 
 # testovací data: grafická technika (druh díla „grafika“ pro vyhledávače)
-# Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.
+# Pár vět o obraze, zobrazí se na jeho stránce. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.
 description: |
   Stará lípa u kapličky za vsí, vyřezaná do linolea a tištěná ručně lžící.
 

@@ -661,6 +661,8 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (8 děl, Kolekce jen Kresby…, Skicák (po 2), Plenér Šumava, Portréty, Ptáci, Tatry (po 1), bez „žádná“), + kolekce Kresby, pastely a kvaš (2 díla; přepínač Doporučené zmizí, oba obrazy jsou vybrané); štítek „krajina“: Technika jen akvarel (23), kresba tužkou, kvaš, linoryt |
 | výběr více štítků („a zároveň“): čipy se zapínají a vypínají, aktivní zůstanou jen ty, které výběr zúží, ostatní zašednou | `/tvorba/`: „krajina“ (28 děl, 17 aktivních čipů), + „voda“ (9 děl, aktivní hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, aktivní jaro a léto), „Vše“ zruší |
 | dlouhý popis o jednom odstavci zalomený do `description: >` (`foldLines`, text se nemění) | `demo-content/tvorba/demo-kresby-2025-2026/_index.yaml`: popis delší než 140 znaků v bloku `>` se dvěma řádky; další běh ho nemění |
+| péče o web v „Doporučení“ (`careAdvice`, `photoSizeAdvice`, `featuredAdvice`; stáří z gitu jen na skutečném obsahu) | `npm run demo` (log `? advice:`): díla bez rozměru nebo popisu, malé fotky a stránky s málo obrazy ve výběru autorky, podle toho, co testovací data mají |
+| „Zbývá doplnit“: atributy s `DOPLNIT` u komentáře (`todoAdvice`) | `npm run demo` (log `? to fill in:`): `tvorba/demo-rozpracovane.yaml: date, technique` a roky bez textu (např. `roky/2023.yaml: description`) |
 | hledání v názvech, popisech a `id` děl | `/tvorba/`: pole vpravo od „Tvorba“, „most noc“ → Most v noci (`?q=most+noc`, v liště čip „„most noc“ ×“), „df9aa“ → Most v noci podle `id`, Enter otevře jeho stránku; `/tvorba/kolekce/demo-plener-sumava-2026/`: pole pod textem kolekce, „mlha“ → Ráno u rybníka (slovo jen v popisu), Šumava v mlze ne (jiný tvar) |
 | combobox Kolekce | `/tvorba/`: klik do „Kolekce“, napiš „plener“ → vše, žádná, Plenér Krkonoše 2006, Plenér Šumava 2026 (podle abecedy), ↓ a Enter vybere Krkonoše (`?collection=demo-plener-krkonose-2006`), Esc zavře seznam a vrátí vybranou; „xyz“ nechá jen vše a žádná |
 | přehled kolekcí: pořadí, stránkování, hledání | `/tvorba/kolekce/`: 16 kolekcí + „Mimo kolekce“ = 2 stránky po 12 (Město 2026 první, „Mimo kolekce“ poslední na 2. stránce), „Na stránku“ 24 = vše na jedné (paměť `pavla.collections.perPage`, galerie se nezmění); hledání „plener“ → Plenér Šumava 2026 a Plenér Krkonoše 2006, „strbskym“ → Tatry 2000 (slovo jen v popisu), „mimo“ → „Hledání neodpovídá žádná kolekce.“ |
@@ -1290,6 +1292,19 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
      (`pageAdvice`). Název kolekce delší než `COLLECTION_TITLE_CHARS` (19) a technika delší než `TECHNIQUE_CHARS` (14)
      znaků (`techniqueAdvice`, jednou za techniku s počtem děl): zavřený výběr v galerii je zkrátí (viz *Řádek filtrů*).
      Texty začínající `DOPLNIT` a prázdné přeskočí (ty hlídají kontroly).
+     Péče o web (`careOfSite` v `scripts/process-images.mjs`, funkce v `scripts/lib/advice.mjs`): zveřejněné dílo bez
+     rozměru (`size_cm`) nebo bez popisu (`careAdvice`); detailní fotka bez popisku v `details` (u všech děl); fotka díla
+     s kratší stranou pod `MIN_PHOTO_SIDE` (1350 px, `photoSizeAdvice`); rok, kolekce, úvodní stránka nebo „Mimo kolekce“
+     s aspoň `FEATURED_GROUP` (3) zveřejněnými díly, bez vlastní fotky a `cover`, kde je ve výběru autorky žádné dílo
+     (úvodní obraz je vždy nejnovější) nebo jen jedno (nestřídá se; `featuredAdvice`). Z historie gitu obsahového repa
+     (`scripts/lib/git-dates.mjs`: den commitu, který soubor přidal, i přes přesun do kolekce; bez gitu nebo v mělkém
+     klonu nic, proto `fetch-depth: 0` ve workflow obsahového repa): rozpracované dílo déle než `DRAFT_DAYS` (30) dní
+     (`draftAgeAdvice`) a zveřejněné dílo s `meta_instagram: true` bez odkazu `instagram`, jehož `README.md` v
+     `export/instagram/` je v gitu déle než `INSTAGRAM_LINK_DAYS` (14) dní (`instagramLinkAdvice`).
+     Pod Doporučeními vlastní sbalený blok **Zbývá doplnit** (`### ✎ Zbývá doplnit (počet)`, `<details>`, `result.todo`):
+     každý popis obsahového repa (díla i rozpracovaná, kolekce, roky, úvod, „Mimo kolekce“, fotky; `contentYamls`), který
+     má u technického komentáře ještě `DOPLNIT`, jedním řádkem „**soubor**: atributy v pořadí souboru“ (`todoAdvice`
+     přes `todoKeys`); do počtu Doporučení se nepočítá. Zveřejněná díla s `DOPLNIT` vynechá, ta jsou v „Ke kontrole“.
      Pod „**Štítky**“ doporučení k seznamu štítků všech děl (i rozpracovaných; `tagAdvice`): jen tam, kde jde něco
      udělat. Jeden štítek ve dvou tvarech (velká písmena, diakritika nebo koncové samohlásky: „plener“ / „plenér“,
      „hora“ / „hory“, kmen aspoň 3 písmena, `sameTag`); dva štítky skoro vždy spolu (podobnost množin děl

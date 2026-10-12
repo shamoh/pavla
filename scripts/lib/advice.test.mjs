@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  COLLECTION_TITLE_CHARS, TAG_ROWS, TECHNIQUE_CHARS, endsSentence, endsWithFullStop, hashtagAdvice, pageAdvice, pinterestAdvice, sameTag, startsLowercase, tagAdvice, tagKey, tagRows, tagStats, techniqueAdvice, workAdvice, workTitleChars,
+  COLLECTION_TITLE_CHARS, TAG_ROWS, TECHNIQUE_CHARS, endsSentence, endsWithFullStop, hashtagAdvice, pageAdvice, pinterestAdvice, sameTag, startsLowercase, tagAdvice, tagKey, tagRows, tagStats, techniqueAdvice, todoAdvice, workAdvice, workTitleChars,
+  DRAFT_DAYS, FEATURED_GROUP, INSTAGRAM_LINK_DAYS, MIN_PHOTO_SIDE, careAdvice, daysBetween, draftAgeAdvice, featuredAdvice, instagramLinkAdvice, photoSizeAdvice,
 } from './advice.mjs';
 
 const good = {
@@ -224,4 +225,100 @@ test('pinterestAdvice: only works in the feed for Pinterest, every word without 
     'tvorba/a.yaml: štítek „mlha“ nemá v popisu pinu pro Pinterest anglické klíčové slovo (překlad doplní Libor do nastavení webu, pinterestKeywords.en)',
   ]);
   assert.deepEqual(pinterestAdvice(works, { ...dictionary, mlha: 'fog' }), []);
+});
+
+test('todoAdvice: one recommendation per description with attributes still marked DOPLNIT, in file order', () => {
+  const draft = '# DOPLNIT Název.\ntitle: Ráno\n\n# Kód.\nid: k3f9a\n\n# vlastní poznámka\n# DOPLNIT Popis.\ndescription: ""\n';
+  const done = '# Název.\ntitle: Večer\n';
+  const advice = todoAdvice([
+    { file: 'tvorba/rano.yaml', text: draft },
+    { file: 'tvorba/vecer.yaml', text: done },
+    { file: 'roky/2026.yaml', text: '# DOPLNIT Pár vět o roce.\ndescription: ""\n' },
+  ]);
+  assert.deepEqual(advice, [
+    'tvorba/rano.yaml: title, description',
+    'roky/2026.yaml: description',
+  ]);
+});
+
+test('todoAdvice: files reported elsewhere (published works under "Ke kontrole") are skipped', () => {
+  const text = '# DOPLNIT Název.\ntitle: Ráno\n';
+  assert.deepEqual(todoAdvice([{ file: 'tvorba/rano.yaml', text }], new Set(['tvorba/rano.yaml'])), []);
+  assert.deepEqual(todoAdvice([]), []);
+});
+
+test('careAdvice: a published work without size or description; a draft only for its detail photos', () => {
+  const published = { yamlPath: 'tvorba/rano.yaml', data: { meta_draft: false, description: '  ' }, details: [] };
+  assert.deepEqual(careAdvice([published]).map((a) => a.split(':')[1].trim()), ['nemá rozměr (size_cm)', 'nemá popis (description)']);
+  const complete = { yamlPath: 'tvorba/vecer.yaml', data: { size_cm: [30, 40], description: 'Večer.' }, details: [] };
+  assert.deepEqual(careAdvice([complete]), []);
+  const draft = { yamlPath: 'tvorba/novy.yaml', data: { meta_draft: true }, details: [] };
+  assert.deepEqual(careAdvice([draft]), [], 'a draft is filled in under "Zbývá doplnit"');
+});
+
+test('careAdvice: a detail photo without a caption (missing or empty), names compared like the pipeline does', () => {
+  const w = {
+    yamlPath: 'tvorba/rano.yaml', data: { meta_draft: true, details: { '1-Květ': 'Květ zblízka.', mlha: '' } },
+    details: [{ name: '1-kvet' }, { name: 'mlha' }, { name: 'brana' }],
+  };
+  assert.deepEqual(careAdvice([w]), [
+    'tvorba/rano.yaml: detailní fotka „mlha“ nemá popisek (details: mlha: …)',
+    'tvorba/rano.yaml: detailní fotka „brana“ nemá popisek (details: brana: …)',
+  ]);
+});
+
+test('photoSizeAdvice: the shorter side under MIN_PHOTO_SIDE', () => {
+  const advice = photoSizeAdvice([
+    { where: 'a.yaml', width: 4000, height: MIN_PHOTO_SIDE - 1 },
+    { where: 'b.yaml', width: MIN_PHOTO_SIDE, height: 3000 },
+  ]);
+  assert.equal(advice.length, 1);
+  assert.match(advice[0], new RegExp(`^a\\.yaml: fotka obrazu je malá \\(4000 × ${MIN_PHOTO_SIDE - 1} px\\)`));
+});
+
+test('daysBetween: whole days between two dates', () => {
+  assert.equal(daysBetween('2026-09-30', '2026-10-12'), 12);
+  assert.equal(daysBetween('2026-10-12', '2026-10-12'), 0);
+});
+
+test('draftAgeAdvice: a draft in git longer than DRAFT_DAYS; unknown date = nothing', () => {
+  const today = '2026-10-12';
+  const advice = draftAgeAdvice([
+    { where: 'stary.yaml', added: '2026-08-01' },
+    { where: 'novy.yaml', added: '2026-10-01' },
+    { where: 'necommitnuty.yaml', added: undefined },
+    { where: 'hranice.yaml', added: '2026-09-12' },
+  ], today);
+  assert.equal(daysBetween('2026-09-12', today), DRAFT_DAYS, 'exactly DRAFT_DAYS is not yet too long');
+  assert.deepEqual(advice, ['stary.yaml: je rozpracovaný už 72 dní (od 2026-08-01); doplň ho a zveřejni (meta_draft: false), nebo ho smaž']);
+});
+
+test('instagramLinkAdvice: published, meta_instagram, no link, photos ready longer than INSTAGRAM_LINK_DAYS', () => {
+  const today = '2026-10-12';
+  const old = '2026-09-01';
+  const advice = instagramLinkAdvice([
+    { where: 'ceka.yaml', data: { meta_instagram: true }, ready: old },
+    { where: 'odkaz.yaml', data: { meta_instagram: true, instagram: 'https://www.instagram.com/p/AbC/' }, ready: old },
+    { where: 'bez.yaml', data: { meta_instagram: false }, ready: old },
+    { where: 'draft.yaml', data: { meta_instagram: true, meta_draft: true }, ready: old },
+    { where: 'cerstve.yaml', data: { meta_instagram: true }, ready: '2026-10-05' },
+    { where: 'nezname.yaml', data: { meta_instagram: true }, ready: undefined },
+  ], today);
+  assert.equal(advice.length, 1);
+  assert.match(advice[0], /^ceka\.yaml: fotky pro Instagram jsou připravené od 2026-09-01 \(41 dní\)/);
+  assert.ok(daysBetween('2026-10-05', today) <= INSTAGRAM_LINK_DAYS);
+});
+
+test('featuredAdvice: none or one featured on a page with enough works and no own cover', () => {
+  const works = (n, featured) => Array.from({ length: n }, (_, i) => ({ data: { featured: i < featured } }));
+  const advice = featuredAdvice([
+    { where: 'roky/2025.yaml', label: 'roku 2025', works: works(FEATURED_GROUP, 0), own: false },
+    { where: 'roky/2024.yaml', label: 'roku 2024', works: works(5, 1), own: false },
+    { where: 'roky/2023.yaml', label: 'roku 2023', works: works(5, 2), own: false },
+    { where: 'roky/2022.yaml', label: 'roku 2022', works: works(5, 0), own: true },
+    { where: 'roky/2021.yaml', label: 'roku 2021', works: works(FEATURED_GROUP - 1, 0), own: false },
+  ]);
+  assert.deepEqual(advice.map((a) => a.split(':')[0]), ['roky/2025.yaml', 'roky/2024.yaml']);
+  assert.match(advice[0], /vždy nejnovější obraz/);
+  assert.match(advice[1], /jen 1 obraz/);
 });

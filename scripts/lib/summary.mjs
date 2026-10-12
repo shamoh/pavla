@@ -1,6 +1,7 @@
 // Markdown summary of a pipeline run, shown on the GitHub Actions run page ($GITHUB_STEP_SUMMARY).
 // Everything is Czech because Pavla reads it. Errors come first (grouped by file), then warnings, then
-// recommendations (grouped by file, scripts/lib/advice.mjs), then what the run did and last the tag statistics,
+// recommendations (grouped by file, scripts/lib/advice.mjs) and, folded, what is left to fill in (DOPLNIT), then what
+// the run did and last the tag statistics,
 // so whatever needs fixing is visible without scrolling.
 
 /** Problems ("<file>: <message>") grouped by file in order of appearance: [{ file, messages }]; file '' = general. */
@@ -77,6 +78,17 @@ export function formatSummary(result, error) {
       lines.push(file ? `**${file}**` : '**Obecně**', '');
       list(messages);
     }
+  }
+  // "Zbývá doplnit": attributes still marked DOPLNIT (todoAdvice), folded so they never hide the recommendations
+  const todo = result.todo ?? [];
+  if (todo.length) {
+    lines.push(`### ✎ Zbývá doplnit (${todo.length})`, '', 'Popisy, ve kterých u komentáře atributu ještě zůstalo DOPLNIT: zkontroluj hodnotu, pak slovo DOPLNIT smaž.', '');
+    lines.push('<details><summary>Zobrazit soubory a atributy</summary>', '');
+    list(todo.map((t) => {
+      const at = t.indexOf(': ');
+      return at > 0 ? `**${t.slice(0, at)}**: ${t.slice(at + 2)}` : t;
+    }));
+    lines.push('</details>', '');
   }
 
   // 4. what the run did
