@@ -21,7 +21,7 @@ export const MAX_CORNER_SHARE = 0.25;
 /** Defaults of `images.edges` in site.config.yaml. */
 // suspicious: a corner cut further than this share of the photo's width / height is marked in previews
 // guides: frame lines of the preview this share of the width / height in from every border of the photo
-export const EDGE_DEFAULTS = { feather: 0.01, inset: 0.002, search: 0.1, suspicious: 0.05, guides: [0.003, 0.006, 0.01, 0.015, 0.02, 0.025, 0.03, 0.04, 0.05] };
+export const EDGE_DEFAULTS = { feather: 0.01, inset: 0.002, search: 0.1, suspicious: 0.05, guides: [0.003, 0.006, 0.01, 0.015, 0.02, 0.025, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1] };
 
 /** How far (RGB distance) a pixel must be from the floor walked so far to count as the sheet (paper or paint). */
 export const FLOOR_DISTANCE = 50;

@@ -1665,7 +1665,7 @@ o kousek víc, `feather` (výchozí 1 %) je šířka pásu podél hrany, ve kter
 `search` (jak daleko od okraje fotky hledat hranu, výchozí 10 %) a `suspicious` (od kolika procent je ořez rohu
 v náhledech podezřelý, výchozí 5 %) obrázky nemění, takže nic nepřegenerují; stejně tak
 `guides` (čáry náhledu `-frames.jpg`: podíly šířky, resp. výšky fotky od každého kraje, libovolně mnoho mezi 0 a 0,5,
-výchozí `[0.003, 0.006, 0.01, 0.015, 0.02, 0.025, 0.03, 0.04, 0.05]`, jinak `npm run preview` skončí chybou).
+výchozí `[0.003, 0.006, 0.01, 0.015, 0.02, 0.025, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]`, jinak `npm run preview` skončí chybou).
 
 **Kde se co použije:**
 
@@ -1783,7 +1783,7 @@ npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s po
     jako u rámečků, popisky po schodech v půlce dál od rohu; číslo u čáry je přímo hodnota pro `meta_corners`.
   - `<out>/<slug>-<id>-frames.jpg` je celá **neoříznutá** fotka v plné velikosti (vidět jsou všechny její původní okraje)
     s rámečky čar (`framesOf`, `frameLines`, `framesSvg`): pro každý podíl z `images.edges.guides` (výchozí 0,3; 0,6;
-    1; 1,5; 2; 2,5; 3; 4 a 5 %) dvě svislé čáry ve vzdálenosti podílu **šířky** od levého a pravého kraje a dvě
+    1; 1,5; 2; 2,5; 3; 4; 5; 6; 7; 8; 9 a 10 %) dvě svislé čáry ve vzdálenosti podílu **šířky** od levého a pravého kraje a dvě
     vodorovné ve vzdálenosti podílu **výšky** od horního a dolního kraje. Barvy se střídají (`FRAME_COLOURS`: žlutá,
     modrá, zelená, purpurová, azurová, červená, tedy světlá a tmavá na přeskáčku), aby sousední čáry byly odlišné odstínem
     i jasem; číslo má obrys černý u světlé barvy a bílý u tmavé (`outlineOf`). U každé čáry je v její barvě napsaná její vzdálenost od

@@ -235,9 +235,9 @@ test('frameLines: each share of the width in from left and right, of the height 
   ]);
   // colours in turn, so neighbours differ however many lines there are
   const many = frameLines(1000, 500);
-  assert.equal(many.length, 9);
+  assert.equal(many.length, 14);
   assert.deepEqual(many.slice(5, 8).map((l) => l.colour), [FRAME_COLOURS[5], FRAME_COLOURS[0], FRAME_COLOURS[1]]);
-  assert.deepEqual([many[0].x, many[0].y, many.at(-1).x, many.at(-1).y], [3, 2, 50, 25]);
+  assert.deepEqual([many[0].x, many[0].y, many.at(-1).x, many.at(-1).y], [3, 2, 100, 50]);
 });
 
 test('framesSvg: four lines per frame, every line labelled with its distance, labels in steps never on one place', () => {
