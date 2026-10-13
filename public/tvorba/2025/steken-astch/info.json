@@ -1,6 +1,6 @@
 {
-  "width": 3305,
-  "height": 2206,
+  "width": 3154,
+  "height": 2089,
   "widths": [
     480,
     960,
@@ -13,24 +13,24 @@
     {
       "scene": "komoda",
       "label": "Komoda",
-      "width": 1363,
-      "height": 909,
+      "width": 1565,
+      "height": 1043,
       "widths": [
         480,
         960,
-        1363
+        1565
       ],
       "dominant": "rgb(216,216,216)"
     },
     {
       "scene": "police",
       "label": "Polička",
-      "width": 1320,
-      "height": 880,
+      "width": 1584,
+      "height": 1056,
       "widths": [
         480,
         960,
-        1320
+        1584
       ],
       "dominant": "rgb(216,216,216)"
     },
@@ -44,7 +44,7 @@
         960,
         1320
       ],
-      "dominant": "rgb(232,232,216)"
+      "dominant": "rgb(232,232,232)"
     }
   ],
   "details": [],
@@ -55,8 +55,8 @@
   "pin": {
     "width": 1000,
     "height": 1500,
-    "bytes": 179289,
+    "bytes": 186636,
     "feed": true
   },
-  "fingerprint": "cd3b2cd4b5084a0c"
+  "fingerprint": "79f108e98e6c1a91"
 }

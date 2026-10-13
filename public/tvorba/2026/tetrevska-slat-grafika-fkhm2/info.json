@@ -1,11 +1,12 @@
 {
-  "width": 631,
-  "height": 1092,
+  "width": 612,
+  "height": 1068,
   "widths": [
     480,
-    631
+    612
   ],
   "dominant": "rgb(40,40,40)",
+  "transparent": true,
   "mockups": [],
   "details": [
     {
@@ -26,7 +27,7 @@
   "pin": {
     "width": 1000,
     "height": 1500,
-    "bytes": 192667
+    "bytes": 190621
   },
-  "fingerprint": "df8f02f26d19b0b7"
+  "fingerprint": "ecebaaeb57084e1f"
 }

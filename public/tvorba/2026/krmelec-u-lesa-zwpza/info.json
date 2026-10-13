@@ -1,6 +1,6 @@
 {
-  "width": 2672,
-  "height": 2705,
+  "width": 2572,
+  "height": 2588,
   "widths": [
     480,
     960,
@@ -55,7 +55,7 @@
   "pin": {
     "width": 1000,
     "height": 1500,
-    "bytes": 185201
+    "bytes": 190355
   },
-  "fingerprint": "e9c084224a475ee5"
+  "fingerprint": "e67f61092925f231"
 }
