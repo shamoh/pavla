@@ -21,8 +21,8 @@
 // images.edges.suspicious); <out>/<slug>-<id>-cut.jpg, the original photo in its full size with the lines of the cut
 // (corners, inset, feather, the trimmed image), each labelled on every side; <out>/<slug>-<id>-frames.jpg, the whole photo in its full size with frame
 // lines in from every border (images.edges.guides), each labelled with its distance in pixels; and
-// <out>/<slug>-<id>-frames-tl.jpg (-tr, -br, -bl), each corner of the photo close up, 300 × 300 pixels of the photo
-// enlarged twice
+// <out>/<slug>-<id>-frames-tl.jpg (-tr, -br, -bl), each corner of the photo close up, 200 × 200 pixels of the photo
+// enlarged 2.5 times
 // with lines every 5 pixels up to 100 and every 10 up to 130 in from its two borders (cornerFramesOf). The same shares are
 // printed, "!" marks a suspicious corner, and at the end the photos with a suspicious corner are listed once more.
 // Settings: images.edges in site.config.yaml.

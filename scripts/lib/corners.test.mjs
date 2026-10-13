@@ -6,7 +6,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
 import { EDGE_DEFAULTS } from './edges.mjs';
-import { CORNER_LINES, CORNER_SCALE, CORNER_SIZE, PREVIEW_KINDS, cornerFramesOf, cornerFramesSvg, cornersYaml, CUT_COLOURS, cutLabelLines, cutLinesSvg, cutOut, cutPreview, describeCorners, cutInfo, edgeOverlay, FRAME_COLOURS, frameLines, framesOf, framesSvg, guidesProblems, cutOriginalOf, infoPanelSvg, removedSides, trimTransparent, detectFile, masterSize, prepareCorners, previewOf, shrinkPreview, withCorners, writePreviews } from './corners.mjs';
+import { CORNER_LINES, CORNER_SCALE, CORNER_SIZE, PREVIEW_KINDS, outlineOf, cornerFramesOf, cornerFramesSvg, cornersYaml, CUT_COLOURS, cutLabelLines, cutLinesSvg, cutOut, cutPreview, describeCorners, cutInfo, edgeOverlay, FRAME_COLOURS, frameLines, framesOf, framesSvg, guidesProblems, cutOriginalOf, infoPanelSvg, removedSides, trimTransparent, detectFile, masterSize, prepareCorners, previewOf, shrinkPreview, withCorners, writePreviews } from './corners.mjs';
 
 let tmp;
 beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-corners-')); });
@@ -142,7 +142,7 @@ test('writePreviews: the previews by purpose, <key>-backgrounds / -cut / -frames
   assert.ok((await size(names[0]))[1] > 800, 'light and dark side by side');
   assert.deepEqual(await size(names[1]), ['jpeg', 400, 300], 'the original in its full size');
   assert.deepEqual(await size(names[2]), ['jpeg', 400, 300], 'the whole photo');
-  for (const n of names.slice(3)) assert.deepEqual(await size(n), ['jpeg', 600, 600], `${n}: a corner of 300 pixels, enlarged twice`);
+  for (const n of names.slice(3)) assert.deepEqual(await size(n), ['jpeg', 500, 500], `${n}: a corner of 200 pixels, enlarged 2.5 times`);
 });
 
 test('cornersYaml: the value the way a description holds it', () => {
@@ -229,14 +229,14 @@ test('guidesProblems: a non-empty list of shares between 0 and 0.5', () => {
 
 test('frameLines: each share of the width in from left and right, of the height in from top and bottom, in pixels', () => {
   assert.deepEqual(frameLines(3673, 2785, [0.002, 0.01, 0.05]), [
-    { share: 0.002, colour: '#00ff66', x: 7, y: 6 },
-    { share: 0.01, colour: '#ffe600', x: 37, y: 28 },
-    { share: 0.05, colour: '#00e5ff', x: 184, y: 139 },
+    { share: 0.002, colour: FRAME_COLOURS[0], x: 7, y: 6 },
+    { share: 0.01, colour: FRAME_COLOURS[1], x: 37, y: 28 },
+    { share: 0.05, colour: FRAME_COLOURS[2], x: 184, y: 139 },
   ]);
   // colours in turn, so neighbours differ however many lines there are
   const many = frameLines(1000, 500);
   assert.equal(many.length, 9);
-  assert.deepEqual(many.slice(3, 6).map((l) => l.colour), [FRAME_COLOURS[3], FRAME_COLOURS[0], FRAME_COLOURS[1]]);
+  assert.deepEqual(many.slice(5, 8).map((l) => l.colour), [FRAME_COLOURS[5], FRAME_COLOURS[0], FRAME_COLOURS[1]]);
   assert.deepEqual([many[0].x, many[0].y, many.at(-1).x, many.at(-1).y], [3, 2, 50, 25]);
 });
 
@@ -246,9 +246,12 @@ test('framesSvg: four lines per frame, every line labelled with its distance, la
   assert.equal((svg.match(/<line /g) ?? []).length, 8);
   // stroke 1 px: lines through the middle of pixel 10 from the left, 989 from the right (10 px after it), 5 and 494
   for (const at of ['x1="10.5"', 'x1="989.5"', 'y1="5.5"', 'y1="494.5"']) assert.ok(svg.includes(at), at);
-  const labels = [...svg.matchAll(/<text [^>]*x="([\d.]+)" y="([\d.]+)"[^>]*fill="([^"]+)">([^<]+)</g)].map((m) => [Number(m[1]), Number(m[2]), m[3], m[4]]);
+  const labels = [...svg.matchAll(/<text [^>]*x="([\d.]+)" y="([\d.]+)"[^>]*fill="([^"]+)" stroke="([^"]+)">([^<]+)</g)]
+    .map((m) => [Number(m[1]), Number(m[2]), m[3], m[5], m[4]]);
   assert.deepEqual(labels.map((l) => l[3]), ['10 px', '10 px', '5 px', '5 px', '50 px', '50 px', '25 px', '25 px']);
-  assert.deepEqual(labels.map((l) => l[2]), [...Array(4).fill('#00ff66'), ...Array(4).fill('#ffe600')]);
+  assert.deepEqual(labels.map((l) => l[2]), [...Array(4).fill(FRAME_COLOURS[0]), ...Array(4).fill(FRAME_COLOURS[1])]);
+  // a light colour outlined in black, a dark one in white
+  assert.deepEqual(labels.map((l) => l[4]), [...Array(4).fill('#000'), ...Array(4).fill('#fff')]);
   assert.ok(svg.lastIndexOf('<line ') < svg.indexOf('<text '), 'the labels over all the lines');
   assert.equal(new Set(labels.map(([x, y]) => `${x},${y}`)).size, labels.length, 'no two labels on one place');
   // the second line's labels one step further: the left ones lower, the top ones more to the right
@@ -263,8 +266,8 @@ test('framesOf: the whole photo in its full size, never cut, with the frame line
   assert.deepEqual([meta.format, meta.width, meta.height], ['jpeg', 1200, 900]);
   const { data } = await sharp(jpeg).raw().toBuffer({ resolveWithObject: true });
   const at = (x, y) => [...data.subarray((y * 1200 + x) * 3, (y * 1200 + x) * 3 + 3)];
-  // the green of the first line (#00ff66), 1 px on this photo, dimmed by the JPEG
-  const green = (p) => p[1] - p[0] > 40 && p[1] - p[2] > 40;
+  // the yellow of the first line (FRAME_COLOURS[0]), 1 px on this photo, dimmed by the JPEG
+  const green = (p) => p[0] - p[2] > 60 && p[1] - p[2] > 60;
   // 5 % = 60 px in from the left and the right, 45 px from the top and the bottom, away from the labels
   assert.ok(green(at(60, 200)) && green(at(1139, 200)), 'the vertical lines');
   assert.ok(green(at(300, 45)) && green(at(300, 854)), 'the horizontal lines');
@@ -428,24 +431,24 @@ test('shrinkPreview: the longer side at most the given edge, the shape kept, a s
 
 test('cornerFramesSvg: lines through pixel CORNER_LINES from the two borders of each corner, enlarged, labelled with the distance', () => {
   assert.deepEqual(CORNER_LINES, [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 110, 120, 130]);
-  assert.deepEqual([CORNER_SIZE, CORNER_SCALE], [300, 2]);
+  assert.deepEqual([CORNER_SIZE, CORNER_SCALE], [200, 2.5]);
   const xs = (svg) => [...svg.matchAll(/<line x1="([\d.]+)" y1="0"/g)].map((m) => Number(m[1]));
   const ys = (svg) => [...svg.matchAll(/<line x1="0" y1="([\d.]+)"/g)].map((m) => Number(m[1]));
-  // the middle of pixel d in the image enlarged twice: 2·d + 1 from the border
-  const near = CORNER_LINES.map((d) => 2 * d + 1), far = CORNER_LINES.map((d) => 600 - (2 * d + 1));
+  // the middle of pixel d in the image enlarged 2.5 times: 2.5·d + 1.25 from the border
+  const near = CORNER_LINES.map((d) => 2.5 * d + 1.25), far = CORNER_LINES.map((d) => 500 - (2.5 * d + 1.25));
   assert.deepEqual([xs(cornerFramesSvg('tl')), ys(cornerFramesSvg('tl'))], [near, near]);
   assert.deepEqual([xs(cornerFramesSvg('tr')), ys(cornerFramesSvg('tr'))], [far, near]);
   assert.deepEqual([xs(cornerFramesSvg('br')), ys(cornerFramesSvg('br'))], [far, far]);
   assert.deepEqual([xs(cornerFramesSvg('bl')), ys(cornerFramesSvg('bl'))], [near, far]);
   const labels = [...cornerFramesSvg('tl').matchAll(/>(\d+)<\/text>/g)].map((m) => Number(m[1]));
   assert.deepEqual(labels, CORNER_LINES.flatMap((d) => [d, d]), 'every line labelled');
-  assert.match(cornerFramesSvg('tl'), /^<svg [^>]*width="600" height="600"/);
+  assert.match(cornerFramesSvg('tl'), /^<svg [^>]*width="500" height="500"/);
   // every label over every line: no line after the first label
   const svg = cornerFramesSvg('br');
   assert.ok(svg.lastIndexOf('<line') < svg.indexOf('<text'), 'lines first, labels over them');
 });
 
-test('cornerFramesOf: each corner of the photo enlarged twice (every pixel a sharp square), smaller when the photo is', async () => {
+test('cornerFramesOf: each corner of the photo enlarged 2.5 times (sharp pixels), smaller when the photo is', async () => {
   const file = path.join(tmp, 'c.jpg');
   // a red pixel block at the very top left, blue at the bottom right
   await sharp({ create: { width: 400, height: 300, channels: 3, background: '#808080' } })
@@ -453,14 +456,21 @@ test('cornerFramesOf: each corner of the photo enlarged twice (every pixel a sha
       { input: { create: { width: 4, height: 4, channels: 3, background: '#0000ff' } }, left: 396, top: 296 }])
     .jpeg({ quality: 100 }).toFile(file);
   const out = await cornerFramesOf(file);
-  for (const k of ['tl', 'tr', 'br', 'bl']) assert.deepEqual(await sharp(out[k]).metadata().then((m) => [m.width, m.height]), [600, 600], k);
+  for (const k of ['tl', 'tr', 'br', 'bl']) assert.deepEqual(await sharp(out[k]).metadata().then((m) => [m.width, m.height]), [500, 500], k);
   const pixel = async (buf, x, y) => [...(await sharp(buf).extract({ left: x, top: y, width: 1, height: 1 }).raw().toBuffer())];
   const [r, , b] = await pixel(out.tl, 1, 1);
   assert.ok(r > 200 && b < 80, 'tl starts at the top left corner of the photo');
-  const [r2, , b2] = await pixel(out.br, 597, 597);
+  const [r2, , b2] = await pixel(out.br, 497, 497);
   assert.ok(b2 > 200 && r2 < 80, 'br ends at the bottom right corner of the photo');
   const small = path.join(tmp, 's.jpg');
   await sharp({ create: { width: 150, height: 120, channels: 3, background: '#808080' } }).jpeg().toFile(small);
-  assert.deepEqual(await sharp((await cornerFramesOf(small)).tl).metadata().then((m) => [m.width, m.height]), [240, 240]);
+  assert.deepEqual(await sharp((await cornerFramesOf(small)).tl).metadata().then((m) => [m.width, m.height]), [300, 300]);
+});
+
+test('FRAME_COLOURS: six hues, light and dark by turns; outlineOf: black around light, white around dark', () => {
+  assert.equal(new Set(FRAME_COLOURS).size, 6);
+  assert.deepEqual(FRAME_COLOURS.map(outlineOf), ['#000', '#fff', '#000', '#fff', '#000', '#fff']);
+  assert.equal(outlineOf('#ffffff'), '#000');
+  assert.equal(outlineOf('#000000'), '#fff');
 });
 

@@ -194,8 +194,17 @@ export async function trimTransparent(buf) {
   return { buf: await sharp(buf).extract(region).png({ compressionLevel: 2 }).toBuffer(), ...region };
 }
 
-/** Colours of the frame lines (images.edges.guides), in turn, so neighbouring lines always differ. */
-export const FRAME_COLOURS = ['#00ff66', '#ffe600', '#00e5ff', '#ff00cc'];
+/**
+ * Colours of the frame lines (images.edges.guides, corner close-ups), in turn: a light one and a dark one by turns,
+ * six hues, so neighbouring lines always differ in both.
+ */
+export const FRAME_COLOURS = ['#ffe600', '#2f5bff', '#00ff66', '#ff00cc', '#00e5ff', '#e8112d'];
+
+/** The outline of a label in `colour` (#rrggbb): black around a light colour, white around a dark one. */
+export const outlineOf = (colour) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(colour.slice(i, i + 2), 16) / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? '#000' : '#fff';
+};
 
 /** Problems of images.edges.guides: a non-empty list of shares, each above 0 and below 0.5. */
 export function guidesProblems(shares) {
@@ -225,7 +234,7 @@ export function framesSvg(width, height, lines) {
   // the middle of a stroke on whole pixels, the stroke covering pixel `d` (counted from 0 at the border)
   const mid = (d) => d + (stroke % 2 ? 0.5 : 0);
   const top = height / 2 - (lines.length * row) / 2 + size, left = width / 2 - (lines.length * column) / 2;
-  const text = (x, y, anchor, colour, d) => `<text x="${x}" y="${y}" text-anchor="${anchor}" fill="${colour}">${d} px</text>`;
+  const text = (x, y, anchor, colour, d) => `<text x="${x}" y="${y}" text-anchor="${anchor}" fill="${colour}" stroke="${outlineOf(colour)}">${d} px</text>`;
   const at = ({ x, y }) => [mid(x), mid(width - 1 - x), mid(y), mid(height - 1 - y)];
   const strokes = lines.map((line) => {
     const [l, r, t, b] = at(line);
@@ -241,7 +250,7 @@ export function framesSvg(width, height, lines) {
   });
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${strokes.join('')}`
     + `<g font-family="DejaVu Sans, Arial, sans-serif" font-size="${size}" font-weight="bold" stroke-linejoin="round">`
-    + `${labels.join('').replace(/<text /g, `<text stroke="#000" stroke-width="${Math.max(2, Math.round(size / 6))}" paint-order="stroke" `)}</g></svg>`;
+    + `${labels.join('').replace(/<text /g, `<text stroke-width="${Math.max(2, Math.round(size / 6))}" paint-order="stroke" `)}</g></svg>`;
 }
 
 /**
@@ -258,10 +267,13 @@ export async function framesOf(file, shares = EDGE_DEFAULTS.guides) {
 }
 
 /** The size of a corner close-up (cornerFramesOf) in pixels of the photo. */
-export const CORNER_SIZE = 300;
+export const CORNER_SIZE = 200;
 
-/** How many times a corner close-up is enlarged (every pixel of the photo a CORNER_SCALE × CORNER_SCALE square). */
-export const CORNER_SCALE = 2;
+/**
+ * How many times a corner close-up is enlarged: 200 pixels of the photo → 500. Not a whole number, so a pixel of the
+ * photo is 2 or 3 points wide in it; every line still goes through the middle of its pixel.
+ */
+export const CORNER_SCALE = 2.5;
 
 /** Distances of the frame lines of a corner close-up from its two borders, in pixels of the photo: every 5 up to 100, then every 10 up to 130. */
 export const CORNER_LINES = [...Array.from({ length: 20 }, (_, i) => 5 * (i + 1)), 110, 120, 130];
@@ -278,11 +290,11 @@ const CORNER_SIDES = { tl: [false, false], tr: [true, false], br: [true, true], 
  */
 export function cornerFramesSvg(k, size = CORNER_SIZE, distances = CORNER_LINES, scale = CORNER_SCALE) {
   const [right, bottom] = CORNER_SIDES[k];
-  const out = size * scale;
+  const out = Math.round(size * scale);
   // the middle of pixel d (counted from 0 at the border) in the enlarged image
   const mid = (d) => d * scale + scale / 2;
   const fx = (d) => (right ? out - mid(d) : mid(d)), fy = (d) => (bottom ? out - mid(d) : mid(d));
-  const font = 7 * scale, step = 7.5 * scale, gap = scale;
+  const font = 6 * scale, step = 6.5 * scale, gap = scale;
   // labels in the half away from the corner: those of the vertical lines in rows, of the horizontal ones in columns;
   // the last one ends inside the image (about 0.65 of the font size per digit)
   const label = Math.max(font, Math.ceil(0.65 * font * Math.max(...distances.map((d) => String(d).length))));
@@ -295,12 +307,13 @@ export function cornerFramesSvg(k, size = CORNER_SIZE, distances = CORNER_LINES,
   const labels = distances.map((d, i) => {
     const row = bottom ? out - first - i * step - gap : first + i * step + font;
     const column = right ? out - first - i * step : first + i * step;
-    return `<text x="${fx(d) + (right ? -gap : gap)}" y="${row}" text-anchor="${anchor}" fill="${colour(i)}">${d}</text>`
-      + `<text x="${column}" y="${bottom ? fy(d) - gap : fy(d) + font}" text-anchor="${anchor}" fill="${colour(i)}">${d}</text>`;
+    const paint = `fill="${colour(i)}" stroke="${outlineOf(colour(i))}"`;
+    return `<text x="${fx(d) + (right ? -gap : gap)}" y="${row}" text-anchor="${anchor}" ${paint}>${d}</text>`
+      + `<text x="${column}" y="${bottom ? fy(d) - gap : fy(d) + font}" text-anchor="${anchor}" ${paint}>${d}</text>`;
   });
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${out}" height="${out}">${lines.join('')}`
     + `<g font-family="DejaVu Sans, Arial, sans-serif" font-size="${font}" font-weight="bold" stroke-linejoin="round">`
-    + labels.join('').replace(/<text /g, `<text stroke="#000" stroke-width="${scale + 1}" paint-order="stroke" `)
+    + labels.join('').replace(/<text /g, `<text stroke-width="${Math.round(scale) + 1}" paint-order="stroke" `)
     + '</g></svg>';
 }
 
@@ -319,7 +332,7 @@ export async function cornerFramesOf(file) {
     const region = { left: right ? width - size : 0, top: bottom ? height - size : 0, width: size, height: size };
     out[k] = await sharp(photo).extract(region)
       // every pixel a sharp square, so the lines can be counted against the pixels
-      .resize(size * CORNER_SCALE, size * CORNER_SCALE, { kernel: 'nearest' })
+      .resize(Math.round(size * CORNER_SCALE), Math.round(size * CORNER_SCALE), { kernel: 'nearest' })
       .composite([{ input: Buffer.from(cornerFramesSvg(k, size)) }])
       .jpeg({ quality: 90, mozjpeg: true })
       .toBuffer();

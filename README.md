@@ -1693,7 +1693,7 @@ souhrn běhu náhledy vyjmenuje. Jinou složku dá `run({ previewDir })`.
 **Náhledy rozpracovaných děl v gitu (`export/draft/`):** tytéž tři náhledy (`previewBuffers`) zmenšené na delší stranu
 `DRAFT_EDGE` = 2000 px (`shrinkPreview`, nikdy nezvětšené; popisky a čáry rostou s fotkou, čísla zůstávají v px původní
 fotky) jdou do `export/draft/[<kolekce>/]<slug>/` obsahového repa jako `backgrounds.jpg`, `cut.jpg`, `frames.jpg`
-a rohy zblízka `frames-tl.jpg`, `frames-tr.jpg`, `frames-br.jpg`, `frames-bl.jpg` (`PREVIEW_KINDS`; 600 px, nezmenšují se, v README zobrazené ve 400 px)
+a rohy zblízka `frames-tl.jpg`, `frames-tr.jpg`, `frames-br.jpg`, `frames-bl.jpg` (`PREVIEW_KINDS`; 500 px, nezmenšují se, v README zobrazené ve 400 px)
 s `README.md` (`draftReadme`: název, údaje, „Kód obrazu“ a kolekce, „Stav popisu“, všechny náhledy, v „Rámečcích“ rohy
 jako tabulka 2 × 2 nad celou fotkou, použité `meta_corners`) a přehled
 `export/draft/README.md` podle kolekcí (`draftIndex`, u každého díla kód za názvem a značky stavu popisu `noteMarks`, např.
@@ -1776,16 +1776,17 @@ npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s po
     (menší ze dvou rohů dané strany) a z toho `inset` a prolnutí, nastavení `inset` a `feather` v % i px s vysvětlením
     prolnutí a `meta_corners`, ze kterých obrázek vznikl.
   - `<out>/<slug>-<id>-frames-tl.jpg`, `-frames-tr.jpg`, `-frames-br.jpg`, `-frames-bl.jpg`: každý roh fotky zblízka
-    (`cornerFramesOf`, `cornerFramesSvg`), `CORNER_SIZE` 300 × 300 bodů fotky zvětšených `CORNER_SCALE` 2× na 600 × 600
-    (každý bod ostrý čtverec, `kernel: 'nearest'`; menší fotka = menší výřez), s čarami `CORNER_LINES` (po 5 bodech
+    (`cornerFramesOf`, `cornerFramesSvg`), `CORNER_SIZE` 200 × 200 bodů fotky zvětšených `CORNER_SCALE` 2,5× na 500 × 500
+    (body ostré, `kernel: 'nearest'`, střídavě 2 a 3 body široké; menší fotka = menší výřez), s čarami `CORNER_LINES` (po 5 bodech
     od 5 do 100, pak 110, 120 a 130) středem toho bodu od obou krajů rohu, nakreslenými až do zvětšeniny (nejdřív všechny
     čáry, přes ně všechna čísla s tmavým obrysem, aby je žádná čára nepřeškrtla), barvy
     jako u rámečků, popisky po schodech v půlce dál od rohu; číslo u čáry je přímo hodnota pro `meta_corners`.
   - `<out>/<slug>-<id>-frames.jpg` je celá **neoříznutá** fotka v plné velikosti (vidět jsou všechny její původní okraje)
     s rámečky čar (`framesOf`, `frameLines`, `framesSvg`): pro každý podíl z `images.edges.guides` (výchozí 0,3; 0,6;
     1; 1,5; 2; 2,5; 3; 4 a 5 %) dvě svislé čáry ve vzdálenosti podílu **šířky** od levého a pravého kraje a dvě
-    vodorovné ve vzdálenosti podílu **výšky** od horního a dolního kraje. Barvy se střídají (zelená, žlutá, modrá,
-    růžová; `FRAME_COLOURS`), aby sousední čáry byly odlišné. U každé čáry je v její barvě napsaná její vzdálenost od
+    vodorovné ve vzdálenosti podílu **výšky** od horního a dolního kraje. Barvy se střídají (`FRAME_COLOURS`: žlutá,
+    modrá, zelená, purpurová, azurová, červená, tedy světlá a tmavá na přeskáčku), aby sousední čáry byly odlišné odstínem
+    i jasem; číslo má obrys černý u světlé barvy a bílý u tmavé (`outlineOf`). U každé čáry je v její barvě napsaná její vzdálenost od
     nejbližšího kraje v pixelech fotky (`37 px`), tedy v jednotkách `meta_corners`; procenta se nepíšou. Popisky jdou
     po schodech (každá další čára o řádek či sloupec dál: svislých kolem poloviny výšky, vodorovných kolem poloviny
     šířky) a kreslí se až po všech čarách, takže se nepřekrývají a žádná čára přes ně nevede.

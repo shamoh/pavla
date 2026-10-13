@@ -175,7 +175,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   README díla má „Stav popisu“ = jeho hlášky ze souhrnu (`workNotes`, stejné skupiny); píše se i při běhu s chybami
   v popisech (dílo s vlastní chybou bez nových náhledů; přehledy vždy, mazání jen bez chyb), commit zpět i po chybě.
   `npm run preview -- <fotka|složka>` (`scripts/preview.mjs`): tentýž náhled (`<slug>-<id>-backgrounds.jpg`, i u pipeline) +
-  `<slug>-<id>-frames-tl|tr|br|bl.jpg` (roh fotky 300 × 300 bodů zvětšený 2× na 600 × 600, čáry po 5 bodech do 100 a po 10 do 130 středem pixelu od obou krajů, čísla přes čáry, `cornerFramesOf`;
+  `<slug>-<id>-frames-tl|tr|br|bl.jpg` (roh fotky 200 × 200 bodů zvětšený 2,5× na 500 × 500, čáry po 5 bodech do 100 a po 10 do 130 středem pixelu od obou krajů, čísla přes čáry, `cornerFramesOf`;
   v README draftu tabulka 2 × 2 nad `frames.jpg`; nový druh náhledu = do `PREVIEW_KINDS`, `EXPORT_FILES.draft` a zvýšit `DRAFT_VERSION`) +
   `<slug>-<id>-frames.jpg` (celá neoříznutá fotka v plné velikosti, rámečky čar podíl šířky / výšky od každého kraje z `images.edges.guides`,
   u každé čáry jen vzdálenost od kraje v px fotky jako `meta_corners`, popisky po schodech) + `<slug>-<id>-cut.jpg`

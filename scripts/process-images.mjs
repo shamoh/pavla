@@ -96,7 +96,7 @@ import {
 /** Bump when the output format changes, so every work is regenerated once. */
 const PIPELINE_VERSION = 8;
 /** Bump when the cut previews of drafts in export/draft/ change, so all of them are written again once. */
-const DRAFT_VERSION = 2;
+const DRAFT_VERSION = 3;
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
