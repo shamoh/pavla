@@ -312,7 +312,7 @@ export function draftReadme({ work, year, files, corners = '', collection = '', 
     `# Rozpracováno: ${escMd(work.title)}`,
     '',
     (files
-      ? `${escMd(captionFacts(work, year))}. Náhledy ořezu podlahy, než obraz zveřejníš (\`meta_draft: false\`): pak tahle složka sama zmizí.`
+      ? `${escMd(captionFacts(work, year))}. Náhledy ořezu pozadí (podlahy nebo zdi kolem obrazu), než obraz zveřejníš (\`meta_draft: false\`): pak tahle složka sama zmizí.`
         + ` Zmenšené na ${DRAFT_EDGE} px, v plné velikosti jsou ke stažení jako „nahledy-orezu“ dole na stránce běhu zpracování. Klikni na obrázek pro plnou velikost.`
       : `${escMd(captionFacts(work, year))}. Rozpracovaný obraz: až ho zveřejníš (\`meta_draft: false\`), tahle složka sama zmizí.`),
     ...(work.id || collection ? ['', about({ collection, code: work.id }).join('  \n')] : []),
@@ -333,7 +333,7 @@ const MARKS_LEGEND = '✗ chyby, ⚠ ke kontrole, 💡 doporučení, ✎ zbývá
  */
 export function draftIndex(entries, { within = '' } = {}) {
   const head = [
-    ...overviewHead('Rozpracované obrazy', 'Obrazy s `meta_draft: true`, stav jejich popisu a náhledy ořezu podlahy. Každý má svou složku (stejně jako v `tvorba/`); po zveřejnění zmizí.', within),
+    ...overviewHead('Rozpracované obrazy', 'Obrazy s `meta_draft: true`, stav jejich popisu a náhledy ořezu pozadí. Každý má svou složku (stejně jako v `tvorba/`); po zveřejnění zmizí.', within),
     '', `Značky stavu popisu (podrobně v README obrazu): ${MARKS_LEGEND}.`,
   ];
   if (!entries.length) return `${[...head, '', 'Zatím žádné.'].join('\n')}\n`;

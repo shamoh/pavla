@@ -59,12 +59,42 @@ export function recipeProblems(recipe) {
       if (!recipe.palettes?.[r.palette]) problems.push(`images.yaml: ${file}: unknown palette "${r.palette}"`);
       if (!Array.isArray(r.size) || r.size.length !== 2) problems.push(`images.yaml: ${file}: size must be [width, height]`);
       if (!Number.isInteger(r.seed)) problems.push(`images.yaml: ${file}: seed must be a whole number`);
-      if (r.floor !== undefined && !(Number.isFinite(r.floor?.angle) && Math.abs(r.floor.angle) <= 10 && r.floor?.margin > 0 && r.floor.margin < 0.2)) {
-        problems.push(`images.yaml: ${file}: floor must be { angle: <-10…10 degrees>, margin: <0…0.2> }`);
+      for (const key of ['floor', 'wall']) {
+        const v = r[key];
+        if (v !== undefined && !(Number.isFinite(v?.angle) && Math.abs(v.angle) <= 10 && v?.margin > 0 && v.margin < 0.2)) {
+          problems.push(`images.yaml: ${file}: ${key} must be { angle: <-10…10 degrees>, margin: <0…0.2> }`);
+        }
       }
+      if (r.floor !== undefined && r.wall !== undefined) problems.push(`images.yaml: ${file}: floor or wall, not both`);
     }
   }
   return problems;
+}
+
+/** Colours of the light wall the test photos of works "hang" on (r.wall in the recipe): lit side, the other side. */
+export const WALL_COLORS = ['#d8d3cd', '#c2bdb7'];
+
+/**
+ * The painted sheet photographed on a light wall (or white backdrop paper), a little askew: like onFloor, but the
+ * background is light, its light falling off from one side to the other, with the grain of the plaster, and the
+ * sheet casts a soft shadow on it (as a real one does; a light wash at its edge looks like the wall), so its edge is
+ * found as a light background (scripts/lib/edges.mjs#looksLikeBackground). Returns PNG.
+ */
+export async function onWall(sheet, [w, h], { angle, margin }) {
+  const m = Math.round(Math.max(w, h) * margin);
+  // transparent around the rotated sheet, so the wall shows in its corners too
+  const rotated = await sharp(sheet).ensureAlpha().rotate(angle, { background: '#00000000' }).png().toBuffer();
+  const { width, height } = await sharp(rotated).metadata();
+  const W = width + 2 * m, H = height + 2 * m;
+  const wall = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><defs>`
+    + `<linearGradient id="l"><stop offset="0" stop-color="${WALL_COLORS[0]}"/><stop offset="1" stop-color="${WALL_COLORS[1]}"/></linearGradient>`
+    + '<filter id="g"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/>'
+    + '<feColorMatrix values="0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0.12 0"/></filter>'
+    + `<filter id="s"><feGaussianBlur stdDeviation="${Math.max(2, m / 10).toFixed(1)}"/></filter>`
+    + '</defs><rect width="100%" height="100%" fill="url(#l)"/><rect width="100%" height="100%" filter="url(#g)"/>'
+    + `<rect x="${(W - w) / 2}" y="${(H - h) / 2 + 1}" width="${w}" height="${h}" transform="rotate(${angle} ${W / 2} ${H / 2})" `
+    + 'fill="#000" fill-opacity="0.5" filter="url(#s)"/></svg>');
+  return sharp(wall).composite([{ input: rotated, left: m, top: m }]).png().toBuffer();
 }
 
 /** Renders every image of the recipe into `outDir` (paths as in the recipe). Returns the written paths. */
@@ -83,6 +113,7 @@ export async function renderDemoImages(recipe, outDir) {
     } else {
       img = sharp(Buffer.from(blobSvg(r.size, recipe.palettes[r.palette], r.seed)));
       if (r.floor) img = sharp(await onFloor(await img.png().toBuffer(), r.size, r.floor));
+      if (r.wall) img = sharp(await onWall(await img.png().toBuffer(), r.size, r.wall));
     }
     await fs.writeFile(target, await img.jpeg({ quality: 88 }).toBuffer());
     written.push(file);

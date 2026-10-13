@@ -1,0 +1,107 @@
+# Rohy obrazu na fotce: všechno vně čtyřúhelníku (pozadí: podlaha, zeď, podkladový papír) bude na webu průhledné.
+# Najde je pipeline, smíš je upravit. photo = [šířka, výška] fotky; tl/tr/br/bl = levý horní, pravý horní, pravý
+# dolní, levý dolní roh jako [px vodorovně, px svisle] od toho rohu fotky směrem dovnitř, např. tl: [40, 25].
+# false = nic neořezávat. Po výměně fotky za jinou velikost atribut smaž, pipeline rohy najde znovu.
+meta_corners:
+  photo: [2189, 1602]
+  tl: [73, 116]
+  tr: [103, 75]
+  br: [74, 115]
+  bl: [103, 72]
+
+# Rozpracovaný obraz, možnosti:
+# - true - rozpracovaný, na webu se nezobrazí
+# - false - zveřejnit
+meta_draft: false
+
+# Fotky pro Instagram, možnosti:
+# - true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, panorama pro karusel, příběh, detailní fotky)
+# - false - žádné
+meta_instagram: false
+
+# NEPOVINNÉ. Mřížka na profilu Instagramu (obraz rozřezaný na dlaždice), sloupce x řádky, např. 3x3, 2x1, 3x1, 1x2, 3x4
+# (od 1x1 do 5x5; jen spolu s meta_instagram: true a jen pro aplikaci v telefonu, web na počítači má 4 sloupce).
+# meta_instagram_grid: 3x3
+
+# Pin na Pinterest, možnosti:
+# - true - připravit (obrázek pinu na webu, Pinterest si ho sám vezme z kanálu /pinterest.xml)
+# - false - žádný
+meta_pinterest: false
+
+# Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
+# Generuje ho pipeline, NIKDY neměnit. Hodí se napsat tužkou na zadní stranu obrazu.
+id: sg54p
+
+# Den vzniku ve tvaru 2026-06-14. Rok z něj určuje rok obrazu na webu (stránka roku, adresa).
+date: 2026-09-12
+
+# Pár vět o obraze, zobrazí se na jeho stránce. Text piš pod „description: |“, každý řádek odsazený dvěma
+# mezerami; dlouhý řádek automatika zalomí.
+description: |
+  Rybník v září. Vyfoceno na světlé zdi, zeď kolem listu zmizí.
+
+# NEPOVINNÉ. Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.
+# details: { 1-mlha: Ranní mlha nad vodou }
+
+# Výběr autorky, možnosti:
+# - true - ve výběru: přepínač „Doporučené“ v galerii; z 10 nejnovějších vybraných se náhodně střídají
+#   obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover)
+# - false - ne
+featured: false
+
+# NEPOVINNÉ. Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
+# fler: https://www.fler.cz/zbozi/…
+
+# NEPOVINNÉ. Odkaz na příspěvek s obrazem na Instagramu (https://www.instagram.com/p/…), až ho zveřejníš. Web ho ukáže u obrazu.
+# instagram: https://www.instagram.com/p/…
+
+# Mockupy (obraz v rámu v interiéru), možnosti:
+# - true - na webu, u obrazu na prodej i pro Fler
+# - false - žádné
+mockups: false
+
+# NEPOVINNÉ. Cena v Kč, např. 2500. Povinná u available a reserved.
+# price: 2500
+
+# Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu.
+# Podle rozměrů se dělají mockupy ve skutečné velikosti. Nejčastější možnosti jsou:
+# - [38, 29] - Baohong
+# - [20, 20] - Khadi malý
+# - [30, 30] - Khadi velký
+# - [42, 30] - Canson Montval A3
+# - [21, 30] - Canson Montval A4
+# - [41, 30] - Canson XL A3
+# - [43, 31] - Chamoix A3
+size_cm: [40, 28]
+
+# Stav obrazu, možnosti:
+# - available - k prodeji (s cenou price)
+# - reserved - rezervováno (s cenou price)
+# - sold - prodáno, na webu „V soukromé sbírce“
+# - gifted - darováno, na webu „V soukromé sbírce“ (stejně jako prodané)
+# - not-for-sale - není na prodej, na webu bez štítku
+status: not-for-sale
+
+# NEPOVINNÉ. Podklad, např. papír. Bez něj se na webu nezobrazí. Nejčastější možnosti jsou:
+# - papír Baohong Cold Pressed (300 g), 100% bavlna
+# - ruční papír Khadi (320 g), 100% bavlna
+# - papír Canson Montval Cold Pressed (300 g), 100% celulóza
+# - papír Canson XL Aquarelle (300 g), 100% celulóza
+# - akvarelový karton Chamoix (220 g)
+support: papír Arches 300 g
+
+# Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
+tags: [krajina, voda]
+
+# Technika, podle ní se filtruje v galerii. Nejčastější možnosti jsou:
+# - akvarel
+# - brush pen
+# - tisk z výšky
+# - kresba tužkou
+technique: akvarel
+
+# Název obrazu, jak ho uvidí návštěvníci webu.
+title: Na zdi
+
+# NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+# private_note: kde obraz visí, komu patří

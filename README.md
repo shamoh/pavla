@@ -40,7 +40,7 @@ pavla/                                      (toto repo, veřejné)
   demo-content/                             testovací data: vymyšlené obsahové repo (stejná struktura jako
                                             skutečné, yaml + recept na obrázky), viz Testovací data
   .demo/                                    připravená testovací data a web z nich (npm run demo, mimo git)
-  .previews/                                náhledy ořezu (npm run images: drafty, npm run preview: cokoli; mimo git), viz Ořez podlahy
+  .previews/                                náhledy ořezu (npm run images: drafty, npm run preview: cokoli; mimo git), viz Ořez pozadí
   content/                                  veřejné kopie popisů = zrcadlo obsahového repa (generuje pipeline, needitovat):
     _index.yaml                             úvodní stránka
     tvorba/<slug>.yaml                      dílo bez kolekce
@@ -488,7 +488,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 
 | Atribut | Význam |
 |---|---|
-| `meta_corners` | rohy listu na fotce, podlaha vně nich bude průhledná; najde je pipeline, smí se upravit, `false` = neořezávat (viz *Ořez podlahy*) |
+| `meta_corners` | rohy obrazu na fotce, pozadí vně nich (podlaha, zeď) bude průhledné; najde je pipeline, smí se upravit, `false` = neořezávat (viz *Ořez pozadí*) |
 | `meta_draft` | `true` = rozpracované: do tohoto repa se nedostane nic (popis, obrázky), ani exporty; do veřejné kopie se nekopíruje |
 | `meta_instagram` | `true` = exporty pro Instagram (výchozí `false`) |
 | `meta_instagram_grid` | nepovinné (v kostře zakomentované `# meta_instagram_grid: 3x3`): mřížka na profilu Instagramu jako `<sloupce>x<řádky>`, od `1x1` do `5x5` (`parseGrid`, např. `3x3`, `2x1`, `3x1`, `1x2`, `3x4`; i `×` nebo `X`), jiná hodnota = chyba; bez hodnoty žádná; jen s `meta_instagram: true`, jen pro aplikaci (viz *Exporty*, Mřížka na profilu) |
@@ -656,9 +656,10 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | kolekce přes víc let a přelom roku | `demo-kresby-2025-2026/`: Kočka na okně, Jablka na stole (2025), Rybník v zimě (prosinec 2025), Nádraží (únor 2026) |
 | filtr roku na přehledu kolekcí | `/tvorba/kolekce/`: 2026 (3 kolekce: Město, Plenér Šumava, Kresby), 2025 (2: Ze zahrady, Kresby); Kresby jsou v obou letech: s rokem 2025 „3 z 4 děl“ a odkaz `?year=2025`, ostatní celé v jednom roce bez roku v odkazu; „Kolekce“ na `/tvorba/2025/` vede na `/tvorba/kolekce/?year=2025`; „← Kolekce“ z Kresby otevřených z přehledu s 2025 vede zpět na `?year=2025`, i po prokliku na dílo a zpět na kolekci (viz *Návrat do výpisu*); výběr Rok u kolekcí přes víc let (Kresby: 2025 (3), 2026 (1); dále Skicák, Z cest, U moře, Zátiší, Řeky), ostatní testovací kolekce jsou z jednoho roku |
 | díla bez kolekce (12 zveřejněných), volba Kolekce „žádná“ | Zimní sad, Slunečnice, Máky, Bouřka nad polem, Lípa u kaple, Na podlaze, Zahrada po dešti, Kočka na plotu, Osamělý strom, Podzimní alej, Lodky na břehu, Oblaka, Rozpracovaný obraz; `/tvorba/?collection=none` (12 děl, v liště „bez kolekce ×“); s technikou „kresba tužkou“ „žádná“ zmizí (žádná kresba není bez kolekce) |
-| ořez podlahy: rohy listu najde pipeline (průhledné okolí na webu, papír v JPEG a na Instagramu, bílá pro Fler, mockupy bez podlahy) | Na podlaze (list vyfocený nakřivo, recept `floor` v `demo-content/images.yaml`) |
-| ořez podlahy: rohy zadané ručně | Bouřka nad polem (`meta_corners` v `demo-content/`) |
-| ořez podlahy vypnutý (`meta_corners: false`) | Lípa u kaple |
+| ořez pozadí (podlaha): rohy listu najde pipeline (průhledné okolí na webu, papír v JPEG a na Instagramu, bílá pro Fler, mockupy bez podlahy) | Na podlaze (list vyfocený nakřivo, recept `floor` v `demo-content/images.yaml`) |
+| ořez pozadí: list na světlé zdi (zeď s pozvolným úbytkem světla a stínem kolem listu) | Na zdi (recept `wall` v `demo-content/images.yaml`; rohy najde pipeline jako světlé pozadí) |
+| ořez pozadí: rohy zadané ručně | Bouřka nad polem (`meta_corners` v `demo-content/`) |
+| ořez pozadí vypnutý (`meta_corners: false`) | Lípa u kaple |
 | náhled ořezu rozpracovaného díla | Rozpracovaný obraz (`.demo/site/.previews/` v plné velikosti, `.demo/content/export/draft/` zmenšený s `README.md` a přehledem), zveřejněná díla náhled nemají |
 | rohy bez podlahy (všechny nuly, nic se neořezává; i obraz s barvou až do kraje) | ostatní díla |
 | soukromá poznámka | Ráno u rybníka, Jablka na stole, kolekce Plenér Šumava 2026 |
@@ -701,7 +702,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
   (`optionProblems` v `scripts/lib/schema.mjs`; chybějící = výchozí); jinak chyba „status „availble“ není mezi
   možnostmi: available, reserved, sold, gifted, not-for-sale“,
 - `meta_corners` je `false`, nebo `photo` (rozměr fotky, musí sedět s fotkou) a rohy `tl`, `tr`, `br`, `bl` jako dvě celá
-  nezáporná čísla, nejvýš čtvrtinu fotky od jejího rohu (viz *Ořez podlahy*),
+  nezáporná čísla, nejvýš čtvrtinu fotky od jejího rohu (viz *Ořez pozadí*),
 - `collection` je slug (malá písmena, číslice, pomlčky), kolekce má `title`,
 - `cover` kolekce je `id` publikovaného díla této kolekce (případně `#` a jeho existující detail) a kolekce nemá zároveň vlastní úvodní fotku, `aspect` (`šířka:výška`) a `focus` (`[x, y]` 0–100) kolekce, roku i úvodu jsou jen u vybraného obrazu (`cover` nebo vlastní fotka),
 - `focus` fotky je `[x, y]` v rozsahu 0–100,
@@ -791,7 +792,7 @@ na GitHubu. Logika: `planFolderPrune` v `scripts/lib/works.mjs`.
 | Instagram | jen dílo s `meta_instagram: true` | složka díla `export/instagram/[<kolekce>/]<slug>/` (stejná cesta jako popis v `tvorba/`, `exportFolder` v `scripts/lib/works.mjs`): `caption-<paleta>.jpg` (dílo s popiskem na papíru každé palety webu: `papir`, `pergamen`, `noc`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru: `stul-tmavy`, `stul-svetly`, `stojan`; jen dílo s `size_cm`), `pano-<n>.jpg` (panorama pro karusel, jen široká díla), `detail-<jméno>.jpg` (každý detail; dlouhý úzký jako panorama `detail-<jméno>-pano-<n>.jpg`), vše 4:5 (1080 × 1350), `story.jpg` (příběh 9:16), `grid-<n>.jpg` + `grid-preview.jpg` (mřížka na profilu, jen s `meta_instagram_grid`) a `README.md` (náhled s textem příspěvku). **Nikdy mockupy webu.** |
 | Fler | jen `available` a `reserved` | složka díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` (originál), `mockup-<scéna>.jpg` (každý mockup), vše s vodoznakem, a `README.md` (náhled). |
 
-Průhledné okolí díla (podlaha vně rohů listu, viz *Ořez podlahy*) dostane v exportu barvu: pro Instagram
+Průhledné okolí díla (podlaha vně rohů listu, viz *Ořez pozadí*) dostane v exportu barvu: pro Instagram
 papír palety (snímek s popiskem) nebo scénu ateliéru, pro Fler bílou (`images.fler.background`, výchozí `#ffffff`);
 mockupy ukazují jen holý papír.
 
@@ -931,7 +932,7 @@ Messenger…) ukázaly velký náhled hned napoprvé. Všechny náhledy jsou
 | přehled kolekcí | náhled první (nejnovější) kolekce | týž soubor |
 
 Obraz se v náhledu díla neořezává, protože jde o umělecké dílo: obraz na výšku
-má po stranách papír. Průhledné okolí díla (*Ořez podlahy*) se prolne s papírovým pozadím náhledu. Náhled díla vzniká s webovými obrázky (přegeneruje se se
+má po stranách papír. Průhledné okolí díla (*Ořez pozadí*) se prolne s papírovým pozadím náhledu. Náhled díla vzniká s webovými obrázky (přegeneruje se se
 změnou fotky). Dokud neexistuje, stránka sdílí největší webovou velikost do
 1600 px. Kód: `shareImage` v `scripts/process-images.mjs`, `workShareImage`,
 `worksShareImage` a `collectionShareImage` v `src/lib/site.ts`, meta v `src/layouts/Base.astro`.
@@ -1072,7 +1073,7 @@ ukazuje kolem listu úzký okraj podkladu, aby byly vidět okraje papíru, a fot
 vyfocená nakřivo kolem listu podlahu. V rámu na zdi by ale okraj nepatřil (pasparta
 kryje okraje papíru) a měřítko podle `size_cm` by nesedělo. Pipeline proto
 pro mockupy (na webu i pro Fler) master ořízne na největší obdélník uvnitř rohů listu
-(`meta_corners`, viz *Ořez podlahy*, `innerRegion` v `scripts/lib/edges.mjs`) a uvnitř listu
+(`meta_corners`, viz *Ořez pozadí*, `innerRegion` v `scripts/lib/edges.mjs`) a uvnitř listu
 z metadat fotky (`pavla:sheet`, viz *Srovnání fotek obrazů*); má-li obojí, na jejich průnik.
 Webové obrázky díla a exporty pro Instagram a Fler okraj neořezávají, jen podlahu vně rohů
 zprůhlední nebo nahradí barvou pozadí. Master bez obojího (sken, fotka upravená jinde) jde do
@@ -1294,8 +1295,14 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
   v `export/draft/` obsahového repa), bez obrázků webu, ostatních exportů a zápisu do tohoto repa.
 - **náhledy ořezu** (`.previews/`) nahraje workflow obsahového repa (na `main` i ve větvi) jako artefakt běhu
   `nahledy-orezu` v plné velikosti (14 dní, mimo git); zmenšené v `export/draft/` commitne zpět s ostatními změnami
-  (viz *Ořez podlahy*); zkušební běh totéž s testovacími daty.
-- Souhrn běhu (`scripts/lib/summary.mjs`) jde do `GITHUB_STEP_SUMMARY`, celý česky (čte ho autorka), v tomto pořadí:
+  (viz *Ořez pozadí*); zkušební běh totéž s testovacími daty.
+- Souhrn běhu (`scripts/lib/summary.mjs`) jde do `GITHUB_STEP_SUMMARY`, celý česky (čte ho autorka). Jména souborů
+  obsahového repa v něm jsou odkazy na GitHub do větve běhu (`fileLinks` v `scripts/lib/summary-links.mjs`, adresu dává
+  workflow v `CONTENT_BLOB_URL`, např. `<server>/<repo>/blob/<větev>`; zkušební běh `…/blob/<větev>/demo-content`; bez ní
+  a lokálně bez odkazů): u hlášky, která jmenuje řádek („na řádku 43“, „(řádek 44)“) nebo začíná atributem
+  („date musí být…“, i zakomentovaným `# price:`), rovnou na řádek (`#L<n>`, `lineOf`, čte soubor po běhu = stav, který
+  automatika commitne zpět). Soubor s víc hláškami: nadpis vede na soubor a každá hláška s řádkem má „(řádek N)“.
+  Pořadí částí:
   1. **Chyby** (`### ✗ Chyby (počet)`): hlášky kontrol seskupené po souborech (`groupProblems`: část před první
      „`: `“ je soubor, hlášky bez souboru pod „Obecně“) a obrazy bez fotky (`missing`). Každá hláška kontroly je česky
      ve tvaru `<soubor>: <co je špatně a jak to opravit>`.
@@ -1602,10 +1609,10 @@ kalendářní verzování (CalVer): verze **je** čas, kdy se web sestavil, ve f
 - Kód, komentáře a názvy v kódu jsou anglicky; texty webu, URL a dokumentace česky.
 - README obou rep udržujeme průběžně aktuální s každou změnou pipeline, struktury nebo webu.
 
-## Ořez podlahy (rohy listu, `meta_corners`)
+## Ořez pozadí (rohy obrazu, `meta_corners`)
 
-Fotka obrazu bývá trochu křivá a kolem listu je vidět podlaha (nebo okraj podkladu, který nechává
-`npm run straighten`). Pipeline proto **najde čtyři rohy listu** a všechno vně čtyřúhelníku mezi nimi
+Fotka obrazu bývá trochu křivá a kolem listu je vidět pozadí: podlaha, světlá zeď nebo bílý podkladový papír
+(nebo okraj podkladu, který nechává `npm run straighten`). Pipeline proto **najde čtyři rohy listu** a všechno vně čtyřúhelníku mezi nimi
 **na webu zprůhlední**: obraz pak leží přímo na papíru stránky, v každé paletě (Papír, Pergamen, Noc).
 Výsledek nemusí být obdélník, kopíruje skutečný (pootočený, zkosený) list. Obrázek se pak **zmenší na nejmenší
 obdélník, ve kterém je celý list** (`trimTransparent` v `scripts/lib/corners.mjs`): z obrazu nic neubude a průhledný
@@ -1637,7 +1644,17 @@ meta_corners:
 **Jak se rohy hledají** (`scripts/lib/edges.mjs`, na zmenšenině o šířce 1200 px): na každé straně fotky 60 vzorků
 (prostředních 80 % strany) jde od okraje dovnitř, dokud se barva nezmění z podlahy na list (papír i barva obrazu,
 `floorDepth`; nejdál `images.edges.search` rozměru). Strana, jejíž okraj nevypadá jako podlaha (většinou papír,
-nebo pestrá barva obrazu malovaného do kraje, `looksLikeFloor`), podlahu nemá. Z každé poloviny strany vznikne
+nebo pestrá barva obrazu malovaného do kraje, `looksLikeFloor`), podlahu nemá.
+**Světlé pozadí** (bílá zeď, podkladový papír; vypadá jako papír, takže ho test podlahy nevidí): strana, jejíž okraj
+je téměř celý (`BACKGROUND_SHARE` 90 %) světlý a podél strany se mění jen plynule (sousední vzorky nejvýš
+`BACKGROUND_STEP` 20 od sebe: světlo na zdi slábne pozvolna, barva obrazu skáče; `looksLikeBackground`), se měří
+`backgroundDepth`: barvy průměrované podél strany (`backgroundRadius`, zrno omítky), od okraje dovnitř, dokud se 3 body
+za sebou neliší o víc než `BACKGROUND_DISTANCE` (30) od dosavadního průměru pozadí (stín u hrany, hrana plátna
+či papíru). Polovina strany platí, jen když hranu najde aspoň 70 % vzorků a leží na jedné přímce
+(`straightEdge`, `BACKGROUND_STRAIGHT`): hrana plátna nebo listu je rovná, začátek malby na bílém okraji papíru
+(list vyfocený bez okolí) nerovný, takže se okraj papíru nikdy neodřízne. Okraj, kde se papír střídá s pruhem
+podlahy, světlé pozadí není (zůstane 0 jako dřív). Omezení: papír skoro stejně světlý jako zeď se pozná jen podle
+stínu u hrany široký aspoň 3 body zmenšeniny; bez něj strana zůstane 0 a rohy je třeba doplnit ručně. Z každé poloviny strany vznikne
 přímka hrany u jejího rohu (`edgeLine`: přímka, na které leží nejvíc vzorků, posunutá dovnitř tak, aby 85 %
 vzorků leželo vně, protože skutečná hrana bývá zvlněná: raději kousek papíru než podlaha). Roh je průsečík
 přímek. Roh mimo fotku (list pokračuje za její okraj) = 0, roh dál než čtvrtina fotky = nedůvěryhodný, 0.

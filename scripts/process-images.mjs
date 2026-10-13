@@ -82,6 +82,7 @@ import { PREVIEW_KINDS, cornersYaml, cutOut, masterSize, prepareCorners, preview
 import { EDGE_DEFAULTS, cutsSheet, edgeLook, innerRegion } from './lib/edges.mjs';
 import { PALETTES } from './lib/palettes.mjs';
 import { formatSummary, workNotes } from './lib/summary.mjs';
+import { fileLinks } from './lib/summary-links.mjs';
 import {
   careAdvice, draftAgeAdvice, featuredAdvice, hashtagAdvice, instagramLinkAdvice, pageAdvice, photoSizeAdvice, pinterestAdvice, tagAdvice, tagStats,
   techniqueAdvice, todoAdvice, workAdvice,
@@ -961,7 +962,9 @@ export async function run({
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = process.argv.slice(2);
   // On GitHub Actions the result is also written to the run page.
-  const summary = (r, e) => process.env.GITHUB_STEP_SUMMARY && fs.appendFile(process.env.GITHUB_STEP_SUMMARY, formatSummary(r, e));
+  // File names in it link to the content repository on GitHub when its workflow gives the address (CONTENT_BLOB_URL).
+  const link = process.env.CONTENT_DIR ? fileLinks(process.env.CONTENT_BLOB_URL, process.env.CONTENT_DIR) : null;
+  const summary = (r, e) => process.env.GITHUB_STEP_SUMMARY && fs.appendFile(process.env.GITHUB_STEP_SUMMARY, formatSummary(r, e, { link }));
   try {
     // --demo: the content is the test data (dry run of the workflow on GitHub, see .github/workflows/dry-run.yml)
     const r = await run({

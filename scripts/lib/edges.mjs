@@ -1,7 +1,9 @@
-// Edges of the paper sheet in a master photo that also shows the floor around it (a photo taken at a slight angle,
-// or a master of `npm run straighten` with its margin). The pipeline finds the four corners of the sheet once and
-// writes them into the work's description (`meta_corners`, see scripts/lib/schema.mjs), where they can be adjusted
-// by hand; everything outside the quadrilateral is then made transparent, with a soft edge (scripts/process-images.mjs).
+// Edges of the work (a paper sheet, a canvas, a print) in a master photo that also shows the background around it:
+// a floor (darker than paper, a photo taken at a slight angle, or a master of `npm run straighten` with its margin)
+// or a light background (a white wall or backdrop paper; see backgroundDepth). The pipeline finds the four corners
+// once and writes them into the work's description (`meta_corners`, see scripts/lib/schema.mjs), where they can be
+// adjusted by hand; everything outside the quadrilateral is then made transparent, with a soft edge
+// (scripts/process-images.mjs).
 //
 // meta_corners: { photo: [width, height], tl: [x, y], tr: [x, y], br: [x, y], bl: [x, y] }
 //   photo   size of the master the corners belong to (a replaced photo needs new corners)
@@ -64,6 +66,84 @@ export function looksLikeFloor(colours) {
 /** Share of the samples of a side that must show a floor at the border (and of those, alike in colour). */
 export const FLOOR_SHARE = 0.6;
 
+// A light background (a white wall, backdrop paper) looks like paper, so the floor test never sees it. It is found
+// the other way round: a border of light colours alike along the whole side (looksLikeBackground), and the depth
+// where the colour changes (backgroundDepth). Such a border could also be the white margin of a sheet photographed
+// without anything around it, which must never be cut: so a side counts only when the change lies on one straight
+// line along most of the side (BACKGROUND_STRAIGHT), as the edge of a canvas, a board or a sheet does. Where paint
+// starts on a sheet (a white margin), the line is ragged and the side stays at its border.
+
+/**
+ * Share of the samples of a side whose border must be light and alike to be a light background. Much more than for a
+ * floor: a border of paper (the sheet going on beyond the photo) mixed with a strip of floor is no background.
+ */
+export const BACKGROUND_SHARE = 0.9;
+
+/** How far (RGB distance) a pixel must be from the light background walked so far to count as the work. */
+export const BACKGROUND_DISTANCE = 30;
+
+/** Share of the samples of a side that must find the end of a light background, and lie on one line (LINE_TOLERANCE). */
+export const BACKGROUND_STRAIGHT = 0.7;
+
+/**
+/**
+ * How far (RGB distance) two neighbouring samples along the border of a light background may differ: the light of
+ * a photo falls off gradually along a wall (not alike from end to end, but smooth), paint changes in jumps.
+ */
+export const BACKGROUND_STEP = 20;
+
+/**
+ * True when the colours at the border of a side (in their order along it) are a light background: nearly all of
+ * them (BACKGROUND_SHARE) look like paper, and nearly all neighbours differ by at most BACKGROUND_STEP (smooth).
+ */
+export function looksLikeBackground(colours) {
+  const light = colours.filter((c) => isPaperPixel(...c));
+  if (light.length < colours.length * BACKGROUND_SHARE) return false;
+  const steps = colours.slice(1).map((c, i) => Math.hypot(c[0] - colours[i][0], c[1] - colours[i][1], c[2] - colours[i][2]));
+  return steps.filter((s) => s <= BACKGROUND_STEP).length >= steps.length * BACKGROUND_SHARE;
+}
+
+/**
+ * Distance from the border to where a light background ends along one line of pixels (`pixel(d)` = [r, g, b] at
+ * depth d): the first of `run` pixels in a row further than BACKGROUND_DISTANCE from the mean colour of the background
+ * walked so far (a shadow, the edge of a canvas or a sheet); null when none within `limit`. A light wall shows its
+ * grain, dust and the noise of the photo in a bigger image: sheetSides passes colours averaged along the side
+ * (backgroundRadius), which keeps a shadow along the work (long along the side, often only 2–3 pixels deep) and
+ * smooths out a speck; `run` stays short, a longer one would step over such a shadow.
+ */
+export function backgroundDepth(pixel, limit, run = 3) {
+  const first = pixel(0);
+  const sum = [...first];
+  let n = 1;
+  const off = (d) => {
+    const p = pixel(d);
+    return Math.hypot(p[0] - sum[0] / n, p[1] - sum[1] / n, p[2] - sum[2] / n) > BACKGROUND_DISTANCE;
+  };
+  for (let d = 1; d <= limit; d++) {
+    if (Array.from({ length: run }, (_, i) => d + i).every(off)) return d;
+    if (off(d)) continue;
+    const p = pixel(d);
+    sum[0] += p[0]; sum[1] += p[1]; sum[2] += p[2]; n++;
+  }
+  return null;
+}
+
+/** The size of the small image at which a light background is averaged over 1 pixel on each side (backgroundRadius). */
+export const BACKGROUND_SIZE = 400;
+
+/**
+ * For a light background in an image `size` pixels across (along the depth): how many pixels on each side of a
+ * sample are averaged along the side, so the grain of a wall shows about the same in any size of the small image.
+ */
+export const backgroundRadius = (size) => Math.max(1, Math.round(size / BACKGROUND_SIZE));
+
+/** True when most of `points` ([u, v]) lie on one line (fitLine, within LINE_TOLERANCE): BACKGROUND_STRAIGHT of `total`. */
+export function straightEdge(points, total) {
+  if (points.length < total * BACKGROUND_STRAIGHT) return false;
+  const line = fitLine(points);
+  return points.filter(([u, v]) => Math.abs(v - (line.a * u + line.b)) <= LINE_TOLERANCE).length >= total * BACKGROUND_STRAIGHT;
+}
+
 /** How far (pixels of the small image) a sample may lie off a side's line and still be on it. */
 export const LINE_TOLERANCE = 3;
 
@@ -121,7 +201,8 @@ export function edgeLine(points) {
  * a side, where the floor ends (floorDepth) within `search` (share of the size) from the border; a sample without
  * an end (floor coloured like the paint) is left out. Each half of a side gives the edge near its corner
  * (edgeLine), so a bent side does not move the far corner. A side whose border does not look like a floor
- * (looksLikeFloor) is the border itself (0).
+ * (looksLikeFloor) but like a light background (looksLikeBackground) is measured where that ends (backgroundDepth),
+ * a half only when its edge is straight (straightEdge); any other side is the border itself (0).
  * Returns { top, bottom, left, right }, each { start, end } (start = the half at the smaller coordinate):
  * top/bottom as y = a·x + b, left/right as x = a·y + b, in pixels of the image.
  */
@@ -135,13 +216,32 @@ export function sheetSides(rgb, width, height, search = EDGE_DEFAULTS.search) {
     const limit = Math.round(depth * search);
     const samples = 60;
     const lines = Array.from({ length: samples }, (_, k) => Math.round(length * (0.1 + (0.8 * k) / (samples - 1))));
-    if (!looksLikeFloor(lines.map((t) => at(t, 0)))) return none;
+    // a light background: colours averaged along the side (backgroundRadius; at the border also a little in depth),
+    // a wall shows its grain pixel by pixel
+    const radius = backgroundRadius(depth);
+    const run = 3;
+    const averaged = (t) => (dd) => {
+      const sum = [0, 0, 0];
+      for (let k = -radius; k <= radius; k++) {
+        const c = at(t + k, dd);
+        sum[0] += c[0]; sum[1] += c[1]; sum[2] += c[2];
+      }
+      return sum.map((v) => v / (2 * radius + 1));
+    };
+    const blurred = (t) => {
+      const cs = Array.from({ length: run }, (_, dd) => averaged(t)(dd));
+      return [0, 1, 2].map((k) => cs.reduce((s, c) => s + c[k], 0) / cs.length);
+    };
+    const floor = looksLikeFloor(lines.map((t) => at(t, 0)));
+    if (!floor && !looksLikeBackground(lines.map(blurred))) return none;
+    const depthAt = (t) => (floor ? floorDepth((dd) => at(t, dd), limit) : backgroundDepth(averaged(t), limit, run));
     const half = (ts) => {
       const points = [];
       for (const t of ts) {
-        const d = floorDepth((dd) => at(t, dd), limit);
+        const d = depthAt(t);
         if (d !== null) points.push([t + 0.5, d]);
       }
+      if (!floor) return straightEdge(points, ts.length) ? edgeLine(points) : { a: 0, b: 0 };
       return points.length >= ts.length * 0.3 ? edgeLine(points) : { a: 0, b: 0 };
     };
     return { start: half(lines.slice(0, samples / 2)), end: half(lines.slice(samples / 2)) };

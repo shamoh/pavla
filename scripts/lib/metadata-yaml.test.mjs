@@ -340,15 +340,15 @@ test('the comment of a deleted attribute is never taken for the file comment', (
 test('the real work schema: meta_corners deleted and found again has its comment once (also cleans doubled ones)', () => {
   const corners = { photo: [100, 80], tl: [1, 2], tr: [3, 4], br: [5, 6], bl: [7, 8] };
   const work = skeleton(WORK_SCHEMA, { id: 'k3f9a', title: 'Ráno', date: '2026-05-01', meta_corners: corners });
-  const count = (text) => text.match(/^# Rohy listu na fotce/gm).length;
+  const count = (text) => text.match(/^# Rohy obrazu na fotce/gm).length;
   const deleted = work.replace(/^meta_corners:\n( {2}.*\n)+/m, '');
   assert.equal(count(deleted), 1);
   const after = normalizeMetadata(deleted, WORK_SCHEMA);
-  assert.doesNotMatch(after.text, /Rohy listu na fotce/);
+  assert.doesNotMatch(after.text, /Rohy obrazu na fotce/);
   const again = normalizeMetadata(deleted, WORK_SCHEMA, { values: { meta_corners: corners } });
   assert.equal(count(again.text), 1);
   // a file doubled by the earlier pipeline: the stray copy above meta_draft goes
-  const doubled = work.replace(/\n(# Rozpracovaný obraz)/, `\n${work.match(/^# Rohy listu[\s\S]*?(?=\nmeta_corners:)/m)[0]}\n\n$1`);
+  const doubled = work.replace(/\n(# Rozpracovaný obraz)/, `\n${work.match(/^# Rohy obrazu[\s\S]*?(?=\nmeta_corners:)/m)[0]}\n\n$1`);
   assert.equal(count(doubled), 2);
   const cleaned = normalizeMetadata(doubled, WORK_SCHEMA);
   assert.equal(cleaned.text, work);

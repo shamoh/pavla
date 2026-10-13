@@ -77,7 +77,7 @@ test('formatSummary lists the corners found and the cut previews of drafts; a su
     detected: ['tvorba/rano.yaml: tl 40×25, tr 30×20, br 35×28, bl 41×22', 'tvorba/vecer.yaml: tl 400×25 ⚠ PODEZŘELÝ ořez'],
     previews: ['rano-k3f9a-backgrounds.jpg'],
   });
-  assert.match(s, /\*\*Nalezené rohy listu \(meta_corners[^\n]*\*\*\n\n- tvorba\/rano\.yaml: tl 40×25/);
+  assert.match(s, /\*\*Nalezené rohy obrazu \(meta_corners[^\n]*\*\*\n\n- tvorba\/rano\.yaml: tl 40×25/);
   assert.match(s, /\*\*Náhledy ořezu rozpracovaných obrazů \(zmenšené v export\/draft\/, v plné velikosti ke stažení jako „nahledy-orezu“[^\n]*\*\*\n\n- rano-k3f9a-backgrounds\.jpg/);
   assert.match(s, /### ⚠ Ke kontrole\n\n\*\*Podezřelý ořez rohů listu[^\n]*\*\*\n\n- tvorba\/vecer\.yaml: tl 400×25 ⚠/);
   assert.ok(s.indexOf('Podezřelý ořez') < s.indexOf('Nalezené rohy'), 'the warning comes first');
@@ -144,3 +144,31 @@ test('workNotes: what the summary says about one file, in its groups, without th
   });
   assert.deepEqual(workNotes(f, {}), { errors: [], review: [], advice: [], todo: [] });
 });
+
+test('formatSummary with links: file names link to their file, at the line of the message when it can be told', () => {
+  const link = (file, message = '') => {
+    if (!file.endsWith('.yaml')) return null;
+    const line = /^date\b/.test(message) ? 7 : /řádek (\d+)/.exec(message)?.[1];
+    return `https://x/blob/b/${file}${line ? `#L${line}` : ''}`;
+  };
+  const s = formatSummary({
+    ...base, ok: false,
+    problems: ['tvorba/a.yaml: date musí být den', 'tvorba/b.yaml: date musí být den', 'tvorba/b.yaml: nemá cenu', 'obecná chyba'],
+    pending: ['tvorba/c.yaml: size_cm'],
+    advice: ['tvorba/d.yaml: nemá štítky (tags)', 'Technika „x“ (2 díla) má 20 znaků'],
+    todo: ['tvorba/e.yaml: date, technique'],
+    created: ['roky/2019.yaml'],
+    updated: ['tvorba/f.yaml: srovnány komentáře a pořadí'],
+  }, null, { link });
+  // one message: the file at its line; more: the file, each message with its own line when it has one
+  assert.ok(s.includes('**[tvorba/a.yaml](https://x/blob/b/tvorba/a.yaml#L7)**\n\n- date musí být den\n'), s);
+  assert.ok(s.includes('**[tvorba/b.yaml](https://x/blob/b/tvorba/b.yaml)**\n\n- date musí být den ([řádek 7](https://x/blob/b/tvorba/b.yaml#L7))\n- nemá cenu\n'));
+  assert.ok(s.includes('**Obecně**\n\n- obecná chyba\n'));
+  assert.ok(s.includes('- [tvorba/c.yaml](https://x/blob/b/tvorba/c.yaml): size_cm'), 'Ke kontrole');
+  assert.ok(s.includes('**[tvorba/d.yaml](https://x/blob/b/tvorba/d.yaml)**') && s.includes('**Obecně**\n\n- Technika „x“'), 'Doporučení');
+  assert.ok(s.includes('- **[tvorba/e.yaml](https://x/blob/b/tvorba/e.yaml#L7)**: date, technique'), 'Zbývá doplnit: at the first attribute');
+  assert.ok(s.includes('- [roky/2019.yaml](https://x/blob/b/roky/2019.yaml)\n') && s.includes('- [tvorba/f.yaml](https://x/blob/b/tvorba/f.yaml): srovnány'), 'Co automatika udělala');
+  // without links the names stay plain text
+  assert.ok(!formatSummary({ ...base, ok: false, problems: ['tvorba/a.yaml: date musí být den'] }).includes(']('));
+});
+

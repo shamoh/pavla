@@ -33,11 +33,43 @@ export function workNotes(file, result) {
   };
 }
 
-export function formatSummary(result, error) {
+/**
+ * Options: `link(file, message)` (fileLinks in scripts/lib/summary-links.mjs): the URL of a file of the content
+ * repository on GitHub, at the line of the message when it can be told; null for anything else. Without it the file
+ * names are plain text.
+ */
+export function formatSummary(result, error, { link = null } = {}) {
   const lines = [];
   const list = (items) => {
     items.forEach((i) => lines.push(`- ${i}`));
     lines.push('');
+  };
+  /** A file name as a link (at the line of `message`), or as it is. */
+  const named = (file, message = '') => {
+    const url = link?.(file, message);
+    return url ? `[${file}](${url})` : file;
+  };
+  /** "<file>: <message>" with the file as a link at the line of the message. */
+  const item = (text) => {
+    const at = text.indexOf(': ');
+    return at > 0 ? `${named(text.slice(0, at), text.slice(at + 2))}: ${text.slice(at + 2)}` : text;
+  };
+  /**
+   * A group of messages of one file: the file in bold as a link (at the line of its only message), each of more
+   * messages with a link to its own line when there is one.
+   */
+  const group = (file, messages) => {
+    if (!file) {
+      lines.push('**Obecně**', '');
+      list(messages);
+      return;
+    }
+    lines.push(`**${named(file, messages.length === 1 ? messages[0] : '')}**`, '');
+    list(messages.length === 1 ? messages : messages.map((m) => {
+      const url = link?.(file, m);
+      const line = url && /#L(\d+)$/.exec(url)?.[1];
+      return line ? `${m} ([řádek ${line}](${url}))` : m;
+    }));
   };
   if (error) {
     lines.push(
@@ -60,10 +92,7 @@ export function formatSummary(result, error) {
   const errors = result.problems.length + result.missing.length;
   if (errors) {
     lines.push(`### ✗ Chyby (${errors})`, '');
-    for (const { file, messages } of groupProblems(result.problems)) {
-      lines.push(file ? `**${file}**` : '**Obecně**', '');
-      list(messages);
-    }
+    for (const { file, messages } of groupProblems(result.problems)) group(file, messages);
     if (result.missing.length) {
       lines.push('**Chybí fotka obrazu** (popis je, ale fotka ani hotové obrázky webu ne; nahraj fotku vedle popisu)', '');
       list(result.missing);
@@ -82,7 +111,7 @@ export function formatSummary(result, error) {
     lines.push('### ⚠ Ke kontrole', '');
     for (const [title, items] of warnings) {
       lines.push(`**${title}**`, '');
-      list(items);
+      list(items.map(item));
     }
   }
 
@@ -90,10 +119,7 @@ export function formatSummary(result, error) {
   const advice = result.advice ?? [];
   if (advice.length) {
     lines.push(`### 💡 Doporučení (${advice.length})`, '', 'Nic nebrání zveřejnění, jen by to web vylepšilo.', '');
-    for (const { file, messages } of groupProblems(advice)) {
-      lines.push(file ? `**${file}**` : '**Obecně**', '');
-      list(messages);
-    }
+    for (const { file, messages } of groupProblems(advice)) group(file, messages);
   }
   // "Zbývá doplnit": attributes still marked DOPLNIT (todoAdvice), folded so they never hide the recommendations
   const todo = result.todo ?? [];
@@ -102,7 +128,7 @@ export function formatSummary(result, error) {
     lines.push('<details><summary>Zobrazit soubory a atributy</summary>', '');
     list(todo.map((t) => {
       const at = t.indexOf(': ');
-      return at > 0 ? `**${t.slice(0, at)}**: ${t.slice(at + 2)}` : t;
+      return at > 0 ? `**${named(t.slice(0, at), t.slice(at + 2))}**: ${t.slice(at + 2)}` : t;
     }));
     lines.push('</details>', '');
   }
@@ -111,7 +137,7 @@ export function formatSummary(result, error) {
   const done = [
     ['Nové popisy k doplnění (doplň hodnoty s DOPLNIT, u obrazu pak meta_draft: false)', result.created],
     ['Přidělené kódy obrazů', result.assigned],
-    ['Nalezené rohy listu (meta_corners; podlaha vně nich bude průhledná, hodnoty smíš upravit; ⚠ = podezřelý ořez)', result.detected ?? []],
+    ['Nalezené rohy obrazu (meta_corners; pozadí vně nich, podlaha nebo zeď, bude průhledné, hodnoty smíš upravit; ⚠ = podezřelý ořez)', result.detected ?? []],
     ['Náhledy ořezu rozpracovaných obrazů (zmenšené v export/draft/, v plné velikosti ke stažení jako „nahledy-orezu“ dole na stránce tohoto běhu)', result.previews ?? []],
     ['Srovnané popisy (nové údaje mají u komentáře DOPLNIT, neznámé NEZNÁMÝ)', result.updated ?? []],
     ['Odstraněno (web a exporty smazaných či přejmenovaných obrazů, náhledy ořezu zveřejněných)', result.pruned],
@@ -119,7 +145,8 @@ export function formatSummary(result, error) {
   if (done.length || !result.prepared) lines.push('### Co automatika udělala', '');
   for (const [title, items] of done) {
     lines.push(`**${title}**`, '');
-    list(items);
+    // the files of the content repository as links (a created one at its file, the others at the line of the message)
+    list(items.map((i) => (i.includes(': ') ? item(i) : named(i))));
   }
   if (!result.prepared) lines.push(`Zpracováno: ${result.processed}, beze změny: ${result.skipped}.`, '');
 

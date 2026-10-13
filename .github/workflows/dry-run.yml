@@ -37,6 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CONTENT_DIR: ${{ github.workspace }}/.demo/content
+      # file names in the run summary link to the test data (.demo/content is a copy of demo-content/)
+      CONTENT_BLOB_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/demo-content
     steps:
       - uses: actions/checkout@v7
 

@@ -3,6 +3,7 @@
 #   <cesta>: { size: [šířka, výška], palette: <paleta>, seed: <číslo> }       nový obrázek
 #   <cesta>: { from: <cesta>, crop: [zleva, shora, šířka, výška], width: <px> } výřez z jiného (detailní fotky)
 #   k novému obrázku navíc floor: { angle: <stupně>, margin: <podíl> } = list vyfocený nakřivo na podlaze (meta_corners)
+#   nebo wall: { angle: <stupně>, margin: <podíl> } = list vyfocený na světlé zdi či bílém podkladu (meta_corners)
 palettes:
   kvetiny: ['#d98ca0', '#e8b4c0', '#8fae7a', '#f0d27a']
   ovoce: ['#c8553d', '#e3a857', '#9bb069', '#7a5c44']
@@ -35,6 +36,7 @@ images:
   tvorba/demo-lipa-u-kaple.jpg: { size: [2000, 1500], palette: sediva, seed: 25 }
   tvorba/demo-rozpracovane.jpg: { size: [1600, 1200], palette: voda, seed: 24, floor: { angle: -1.5, margin: 0.04 } }
   tvorba/demo-na-podlaze.jpg: { size: [2000, 1500], palette: plener, seed: 26, floor: { angle: 2, margin: 0.05 } }
+  tvorba/demo-na-zdi.jpg: { size: [2000, 1400], palette: voda, seed: 27, wall: { angle: -1.2, margin: 0.04 } }
   tvorba/demo-bourka-nad-polem.jpg: { size: [2400, 1600], palette: voda, seed: 32, floor: { angle: -1, margin: 0.03 } }
   tvorba/demo-plener-sumava-2026/_cover.jpg: { size: [2400, 1000], palette: plener, seed: 19 }
   tvorba/demo-skicak-1998-2003/demo-stary-most.jpg: { size: [2000, 1400], palette: sediva, seed: 61 }

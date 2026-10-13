@@ -155,7 +155,7 @@ test('withCorners: the description with meta_corners set, nothing else changed; 
   assert.equal(r.problem, null);
   assert.deepEqual(YAML.parse(r.text).meta_corners, value);
   assert.equal(YAML.parse(r.text).title, 'Ráno');
-  assert.match(r.text, /^# Rohy listu/, 'with its technical comment, first in the file');
+  assert.match(r.text, /^# Rohy obrazu/, 'with its technical comment, first in the file');
   const old = withCorners('draft: true\n', value);
   assert.match(old.problem, /přejmenováno na meta_draft/);
   assert.equal(old.text, 'draft: true\n');

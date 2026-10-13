@@ -215,12 +215,18 @@ export const WORK_SCHEMA = {
       generated: true,
       optional: true,
       doc: [
+        'Rohy obrazu na fotce: všechno vně čtyřúhelníku (pozadí: podlaha, zeď, podkladový papír) bude na webu průhledné.',
+        'Najde je pipeline, smíš je upravit. photo = [šířka, výška] fotky; tl/tr/br/bl = levý horní, pravý horní, pravý',
+        'dolní, levý dolní roh jako [px vodorovně, px svisle] od toho rohu fotky směrem dovnitř, např. tl: [40, 25].',
+        'false = nic neořezávat. Po výměně fotky za jinou velikost atribut smaž, pipeline rohy najde znovu.',
+      ],
+      value: null,
+      previous: [[
         'Rohy listu na fotce: všechno vně čtyřúhelníku (podlaha) bude na webu průhledné. Najde je pipeline, smíš je',
         'upravit. photo = [šířka, výška] fotky; tl/tr/br/bl = levý horní, pravý horní, pravý dolní, levý dolní roh jako',
         '[px vodorovně, px svisle] od toho rohu fotky směrem dovnitř, např. tl: [40, 25]. false = nic neořezávat.',
         'Po výměně fotky za jinou velikost atribut smaž, pipeline rohy najde znovu.',
-      ],
-      value: null,
+      ]],
     },
     { key: 'title', doc: 'Název obrazu, jak ho uvidí návštěvníci webu.', value: '' },
     {
