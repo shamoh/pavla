@@ -35,7 +35,8 @@ id: w5kka
 # Den vzniku ve tvaru 2026-06-14. Rok z něj určuje rok obrazu na webu (stránka roku, adresa).
 date: 2000-07-18
 
-# Pár vět o obraze, zobrazí se na jeho stránce. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.
+# Pár vět o obraze, zobrazí se na jeho stránce. Text piš pod „description: |“, každý řádek odsazený dvěma
+# mezerami; dlouhý řádek automatika zalomí.
 description: |
   Pokroucené smrky na hranici lesa.
 

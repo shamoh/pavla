@@ -7,7 +7,8 @@
 # Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.
 # cover: k3f9a
 
-# Pár vět o kolekci: kde a kdy obrazy vznikly. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.
+# Pár vět o kolekci: kde a kdy obrazy vznikly. Text piš pod „description: |“, každý řádek odsazený dvěma
+# mezerami; dlouhý řádek automatika zalomí.
 description: |
   Lidé kolem mě: rodina, sousedé a jeden rybář od řeky.
 

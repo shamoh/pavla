@@ -9,7 +9,7 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { COVER_NAME, INDEX_FILE, WORKS_SUBDIR, keepInLine } from './content.mjs';
 import { skeleton } from './metadata-yaml.mjs';
-import { UNCOLLECTED_SCHEMA, fieldKeys, publicKeys } from './schema.mjs';
+import { UNCOLLECTED_SCHEMA, UNCOLLECTED_SKELETON_TEXT, fieldKeys, publicKeys } from './schema.mjs';
 import { IMAGE_EXTENSIONS, splitExt } from './works.mjs';
 
 /** The description of the works without a collection, relative to the content repository. */
@@ -33,7 +33,7 @@ export async function prepareUncollected(contentDir, hasWorks) {
   let text = await fs.readFile(file, 'utf8').catch(() => null);
   if (text === null && !hasWorks) return { uncollected: null, created, updated, problems };
   if (text === null) {
-    text = skeleton(UNCOLLECTED_SCHEMA);
+    text = skeleton(UNCOLLECTED_SCHEMA, { description: UNCOLLECTED_SKELETON_TEXT });
     await fs.mkdir(root, { recursive: true });
     await fs.writeFile(file, text);
     created.push(UNCOLLECTED_FILE);

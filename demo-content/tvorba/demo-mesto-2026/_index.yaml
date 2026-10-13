@@ -8,7 +8,8 @@
 # Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.
 cover: kdnth
 
-# Pár vět o kolekci: kde a kdy obrazy vznikly. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.
+# Pár vět o kolekci: kde a kdy obrazy vznikly. Text piš pod „description: |“, každý řádek odsazený dvěma
+# mezerami; dlouhý řádek automatika zalomí.
 description: |
   Ulice, náměstí a nádraží. Úvodní obraz je celé dílo vybrané přes cover (Město v dešti), ne nejnovější Náměstí v mlze
 

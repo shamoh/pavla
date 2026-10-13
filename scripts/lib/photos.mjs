@@ -71,7 +71,7 @@ export async function preparePhotos(contentDir) {
     try {
       data = YAML.parse(text) ?? {};
     } catch (e) {
-      problems.push(`${PHOTOS_SUBDIR}/${name}.yaml: ${yamlProblem(e)}`);
+      problems.push(`${PHOTOS_SUBDIR}/${name}.yaml: ${yamlProblem(e, text)}`);
       continue;
     }
     if (data.focus !== undefined && data.focus !== null && !isValidFocus(data.focus)) {

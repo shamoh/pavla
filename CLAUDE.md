@@ -72,6 +72,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `hashtagAdvice`); před tím ořez `images.instagram.insetPercent`; `scripts/lib/instagram.mjs`.
   Nevejde-li se dílo do volné části scény: snímek vznikne, souhrn běhu „Ke kontrole“ (`misfits`).
   Každá složka díla (obě platformy) má `README.md` s náhledy (GitHub ho vykreslí), platformy přehled `export/<platforma>/README.md`
+  (a týž přehled jen kolekce v každé složce kolekce, `collectionIndexes`; stejně `export/draft/`)
   seskupený podle kolekcí (`scripts/lib/export-readme.mjs`; Instagram i s textem příspěvku, Fler s cenou; stav zveřejnění
   podle atributů `instagram` / `fler`).
 - `instagram` (nepovinný, sdílený) = odkaz na příspěvek na Instagramu jako `fler` u Fleru (`isInstagramUrl`, jinak chyba):
@@ -145,7 +146,10 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   komentář „<co>, možnosti:“ a pod ním každá možnost na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`); povolené hodnoty v `options`
   pole (test hlídá shodu s komentářem), jiná hodnota = chyba (`optionProblems`), i u rozpracovaného díla. `DOPLNIT` nikdy neodstraňovat za lidi.
   Dlouhý text o jednom odstavci (`block: true`, nad `TEXT_WIDTH`) pipeline zalomí do bloku `>` (`foldLines`, hodnota se nemění);
-  kostra nemá vzorové texty v hodnotách (popis kolekce `""`).
+  `description` v kostře vždy jako blok `|` (aby ho nikdo nemusel psát ručně): dílo `DOPLNIT popisek`, kolekce, rok
+  a „Mimo kolekce“ vzorovou větu (`COLLECTION_SKELETON_TEXT`, `yearSkeletonText`, `UNCOLLECTED_SKELETON_TEXT`; nikdy
+  `DOPLNIT`, ty jsou veřejné hned a `DOPLNIT` by zastavilo běh). Neodsazený text pod atributem hlásí `yamlProblem`
+  přesně (`unindentedText`).
 - Testovacích děl (`pavla/demo-content/`) musí být vždy víc, než je nejmenší počet na stránku (aspoň 15 při 12).
 - Autorství v obrázcích: webové obrázky díla (originál, detaily, mockupy ve všech formátech a `og.jpg`) nesou XMP
   (autorka, název, © rok, kredit, odkaz na stránku díla; `scripts/lib/image-rights.mjs`, v otisku díla), JSON-LD obrázku
@@ -167,7 +171,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   Složku má každý draft, s fotkou vždy všechny tři náhledy (i `meta_corners: false` / samé nuly = celá fotka), bez fotky
   jen README s důvodem; přehled se značkami `noteMarks`.
   README díla má „Stav popisu“ = jeho hlášky ze souhrnu (`workNotes`, stejné skupiny); píše se i při běhu s chybami
-  v popisech (dílo s vlastní chybou bez nových náhledů, při chybách bez přehledu a mazání), commit zpět i po chybě.
+  v popisech (dílo s vlastní chybou bez nových náhledů; přehledy vždy, mazání jen bez chyb), commit zpět i po chybě.
   `npm run preview -- <fotka|složka>` (`scripts/preview.mjs`): tentýž náhled (`<slug>-<id>-backgrounds.jpg`, i u pipeline) +
   `<slug>-<id>-frames.jpg` (celá neoříznutá fotka v plné velikosti, rámečky čar podíl šířky / výšky od každého kraje z `images.edges.guides`,
   u každé čáry jen vzdálenost od kraje v px fotky jako `meta_corners`, popisky po schodech) + `<slug>-<id>-cut.jpg`

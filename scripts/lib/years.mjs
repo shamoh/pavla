@@ -7,7 +7,7 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { keepInLine } from './content.mjs';
 import { skeleton } from './metadata-yaml.mjs';
-import { YEAR_SCHEMA, fieldKeys, publicKeys } from './schema.mjs';
+import { YEAR_SCHEMA, fieldKeys, publicKeys, yearSkeletonText } from './schema.mjs';
 import { IMAGE_EXTENSIONS, splitExt } from './works.mjs';
 
 export const YEARS_SUBDIR = 'roky';
@@ -51,7 +51,7 @@ export async function prepareYears(contentDir, withWorks = []) {
   for (const year of [...new Set(withWorks.map(String))].sort()) {
     if (byYear.has(year)) continue;
     await fs.mkdir(root, { recursive: true });
-    await fs.writeFile(path.join(root, `${year}.yaml`), skeleton(YEAR_SCHEMA));
+    await fs.writeFile(path.join(root, `${year}.yaml`), skeleton(YEAR_SCHEMA, { description: yearSkeletonText(year) }));
     created.push(`${YEARS_SUBDIR}/${year}.yaml`);
     byYear.set(year, `${year}.yaml`);
   }

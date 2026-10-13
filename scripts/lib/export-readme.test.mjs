@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DRAFT_EDGE, draftIndex, draftReadme, exportIndex, flerReadme, instagramReadme, noteMarks, readmeFingerprint } from './export-readme.mjs';
+import { DRAFT_EDGE, collectionIndexes, draftIndex, draftReadme, exportIndex, flerReadme, instagramReadme, noteMarks, readmeFingerprint } from './export-readme.mjs';
 
 const work = { title: 'Bobří hráz', technique: 'akvarel', size_cm: [30, 30] };
 
@@ -217,4 +217,29 @@ test('drafts: the code of the work in its README (with the collection) and next 
   assert.ok(draftReadme({ work: { id: 'mpugj', title: 'Jez' }, year: '2026', files: draftFiles }).includes('\n\nKód obrazu: `mpugj`\n'));
   const index = draftIndex([{ title: 'Jez', code: 'mpugj', folder: 'jez', thumb: null, note: '2026', collection: '', marks: '' }]);
   assert.ok(index.includes('<b>Jez</b></a> <code>mpugj</code><br>2026</td>'));
+});
+
+test('collectionIndexes: the entries by the folder of their collection, folders relative to it, none without one', () => {
+  const groups = collectionIndexes([
+    { title: 'A', folder: 'plener/a', collection: 'Plenér' },
+    { title: 'B', folder: 'b', collection: '' },
+    { title: 'C', folder: 'olejomalby/c', collection: '' },
+    { title: 'D', folder: 'plener/d', collection: 'Plenér' },
+  ]);
+  assert.deepEqual(groups.map((g) => [g.dir, g.title, g.entries.map((e) => e.folder)]), [
+    ['olejomalby', 'olejomalby', ['c']],
+    ['plener', 'Plenér', ['a', 'd']],
+  ]);
+});
+
+test('exportIndex and draftIndex within a collection: its title in the heading, a link back, no group heading', () => {
+  const entry = { title: 'Ráno', code: 'k3f9a', folder: 'rano', thumb: 't.jpg', note: 'akvarel', collection: 'Plenér', url: '' };
+  const insta = exportIndex('instagram', [entry], { within: 'Plenér' });
+  assert.ok(insta.startsWith('# Fotky pro Instagram: Plenér\n\n[← Všechny](../README.md)\n\nObrazy s'));
+  assert.ok(!insta.includes('## Plenér') && insta.includes('<a href="rano/">'));
+  const draft = draftIndex([{ ...entry, marks: '✎ 1' }], { within: 'Plenér' });
+  assert.ok(draft.startsWith('# Rozpracované obrazy: Plenér\n\n[← Všechny](../README.md)\n'));
+  assert.ok(!draft.includes('## Plenér') && draft.includes('✎ 1'));
+  // the whole overview keeps its group headings and no link back
+  assert.ok(exportIndex('fler', [entry]).includes('## Plenér') && !exportIndex('fler', [entry]).includes('Všechny'));
 });

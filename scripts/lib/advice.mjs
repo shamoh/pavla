@@ -4,7 +4,7 @@
 
 import { untranslatedWords } from './instagram.mjs';
 import { todoKeys } from './metadata-yaml.mjs';
-import { TODO } from './schema.mjs';
+import { COLLECTION_SKELETON_TEXT, TODO, UNCOLLECTED_SKELETON_TEXT, yearSkeletonText } from './schema.mjs';
 import { SEARCH_TITLE_MAX } from './seo.mjs';
 import { detailKey, isInstagramUrl, isOnSale, validSize, wantsInstagram, wantsMockups, workPath } from './works.mjs';
 
@@ -104,6 +104,15 @@ export function techniqueAdvice(works) {
 }
 
 /**
+ * The sample sentence of a new skeleton (COLLECTION_SKELETON_TEXT, yearSkeletonText, UNCOLLECTED_SKELETON_TEXT) still
+ * as the description: it is on the site, so a recommendation to write an own one. Compared without the spaces around.
+ */
+function sampleAdvice(where, description, sample) {
+  if (!sample || typeof description !== 'string' || description.trim() !== sample.trim()) return [];
+  return [`${where}: description je pořád vzorová věta z kostry („${sample.trim()}“), je vidět na webu; napiš místo ní vlastní text`];
+}
+
+/**
  * Recommendations for the texts of collections (title, description), years, the home page and the works without a
  * collection (description), as prepareCollections / prepareYears / prepareHome / prepareUncollected give them
  * ({ yamlPath, data }), and of photos (alt, caption),
@@ -111,13 +120,14 @@ export function techniqueAdvice(works) {
  */
 export function pageAdvice({ collections = [], years = [], home = null, uncollected = null, photos = [] }) {
   const pages = [
-    ...collections.map((c) => [c, true]), ...years.map((y) => [y, false]), ...(home ? [[home, false]] : []),
-    ...(uncollected ? [[uncollected, false]] : []),
+    ...collections.map((c) => [c, true, COLLECTION_SKELETON_TEXT]), ...years.map((y) => [y, false, yearSkeletonText(y.year)]),
+    ...(home ? [[home, false, null]] : []), ...(uncollected ? [[uncollected, false, UNCOLLECTED_SKELETON_TEXT]] : []),
   ];
   return [
-    ...pages.flatMap(([page, titled]) => [
+    ...pages.flatMap(([page, titled, sample]) => [
       ...(titled ? [...titleAdvice(page.yamlPath, page.data?.title), ...collectionTitleAdvice(page.yamlPath, page.data?.title)] : []),
       ...sentenceAdvice(page.yamlPath, 'description', page.data?.description),
+      ...sampleAdvice(page.yamlPath, page.data?.description, sample),
     ]),
     ...photos.flatMap((p) => ['alt', 'caption'].flatMap((key) => sentenceAdvice(`fotky/${p.name}.yaml`, key, p.data?.[key]))),
   ];

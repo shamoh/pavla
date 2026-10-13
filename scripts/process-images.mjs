@@ -70,7 +70,7 @@ import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
 import { rightsXmp } from './lib/image-rights.mjs';
-import { DRAFT_EDGE, STORY_UTM, draftIndex, draftReadme, noteMarks, exportIndex, flerReadme, instagramReadme, publishedUrl, readmeFingerprint } from './lib/export-readme.mjs';
+import { DRAFT_EDGE, STORY_UTM, collectionIndexes, draftIndex, draftReadme, noteMarks, exportIndex, flerReadme, instagramReadme, publishedUrl, readmeFingerprint } from './lib/export-readme.mjs';
 import {
   GRID_DEFAULTS, GRID_VERSION, captionFacts, detailLayout, detailSuffixes, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
   panoramaSuffixes, renderCaption, renderGrid, renderPanorama, renderScene, renderStory, siteHost,
@@ -568,14 +568,21 @@ export async function run({
     }));
   }
   const draftPruned = [];
-  // the overview and pruning only in a run without problems: a description that cannot be read is no work then, and
-  // its folder would go as if it were published
-  if (!only.length && !problems.length) {
+  // The overview (and one in every collection folder) is written by every run without `only`, also when it fails: a
+  // draft whose description cannot be read is missing from it until it is fixed. Pruning only in a run without
+  // problems: such a draft's folder would go as if it were published.
+  if (!only.length) {
     if (drafts.length) {
       drafts.sort((a, b) => a.folder.localeCompare(b.folder));
       draftWanted.set('', new Set([README]));
       await writeIfChanged(path.join(draftRoot, README), draftIndex(drafts));
+      for (const { dir, title, entries } of collectionIndexes(drafts)) {
+        draftWanted.set(dir, new Set([README]));
+        await writeIfChanged(path.join(draftRoot, dir, README), draftIndex(entries, { within: title }));
+      }
     }
+  }
+  if (!only.length && !problems.length) {
     // folders of works published, deleted or renamed since, and the overview once there is no draft
     for (const rel of planFolderPrune(await listFiles(draftRoot), draftWanted, EXPORT_FILES.draft)) {
       await fs.rm(path.join(draftRoot, rel));
@@ -848,6 +855,11 @@ export async function run({
       overview[sub].sort((a, b) => a.folder.localeCompare(b.folder));
       wanted[sub].set('', new Set([README]));
       await writeIfChanged(path.join(exportRoot, sub, README), exportIndex(sub, overview[sub]));
+      // the same overview for each collection, in its folder
+      for (const { dir, title, entries } of collectionIndexes(overview[sub])) {
+        wanted[sub].set(dir, new Set([README]));
+        await writeIfChanged(path.join(exportRoot, sub, dir, README), exportIndex(sub, entries, { within: title }));
+      }
     }
     for (const sub of ['instagram', 'fler']) {
       const root = path.join(exportRoot, sub);

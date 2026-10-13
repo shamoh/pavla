@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import YAML from 'yaml';
-import { TEXT_WIDTH, commentedOutKeys, normalizeMetadata, schemaKeysIn, skeleton, todoKeys } from './metadata-yaml.mjs';
-import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, UNCOLLECTED_SCHEMA, UNKNOWN_DOC, WORK_SCHEMA, YEAR_SCHEMA, fieldKeys } from './schema.mjs';
+import { TEXT_WIDTH, commentedOutKeys, normalizeMetadata, schemaKeysIn, skeleton, todoKeys, unindentedText, yamlProblem } from './metadata-yaml.mjs';
+import { COLLECTION_SKELETON_TEXT, COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, UNCOLLECTED_SCHEMA, UNKNOWN_DOC, WORK_SCHEMA, YEAR_SCHEMA, fieldKeys } from './schema.mjs';
 
 // A small schema keeps the expected texts readable.
 const schema = {
@@ -413,4 +413,52 @@ test('commentedOutKeys: commented-out lines of attributes that are not optional,
   assert.deepEqual(commentedOutKeys('# NEPOVINNÉ. Ořez.\n# crop: "3:2"\ntitle: A\n', withOff), []);
   // the real work schema: a fresh skeleton has none, its examples in comments are no such lines
   assert.deepEqual(commentedOutKeys(skeleton(WORK_SCHEMA, { id: 'k3f9a', title: 'Ráno', date: '2026-05-01' }), WORK_SCHEMA), []);
+});
+
+const parseError = (text) => { try { YAML.parse(text); } catch (e) { return e; } return null; };
+
+test('yamlProblem: a text not indented under its attribute says what to write instead (with or without "|")', () => {
+  const long = 'Pohodové sluneční odpoledne babího léta u jezu na řece Otavě.';
+  for (const head of ['description: ', 'description:', 'description: |', 'description: >-']) {
+    const text = `title: Ráno\n\n# Pár vět.\n${head}\n${long}\n`;
+    assert.equal(yamlProblem(parseError(text), text),
+      'description: text pod „description:“ musí být odsazený (řádek 5); správně je na konci řádku „description: |“ a každý řádek '
+      + 'textu pod ním začíná dvěma mezerami, např. „  Pohodové sluneční odpoledne babího léta…“', head);
+  }
+  // a short line is quoted whole; the normalization reports the same
+  const short = 'title: Ráno\ndescription:\nKrátce.\nDruhý.\n';
+  assert.match(yamlProblem(parseError(short), short), /řádek 3\).*např\. „  Krátce\.“$/);
+  assert.match(normalizeMetadata(short, WORK_SCHEMA).problem, /^description: text pod „description:“ musí být odsazený/);
+  // other mistakes, or without the text of the file: the general message
+  const other = 'title: [Ráno\n';
+  assert.match(yamlProblem(parseError(other), other), /^chybný zápis YAML na řádku \d+ \(zkontroluj odsazení, dvojtečky a uvozovky\)$/);
+  assert.match(yamlProblem(parseError(short)), /^chybný zápis YAML na řádku 3 /);
+});
+
+test('unindentedText: only a line at the edge right under an attribute without a value (comments and empty lines skipped)', () => {
+  const text = 'title: Ráno\ndescription:\n\nText.\n# komentář\nsize: [1, 2]\n  odsazené\n';
+  assert.deepEqual(unindentedText(text, 4), { key: 'description', line: 'Text.' });
+  assert.equal(unindentedText(text, 1), null, 'nothing above');
+  assert.equal(unindentedText(text, 5), null, 'a comment');
+  assert.equal(unindentedText(text, 7), null, 'indented');
+  assert.equal(unindentedText('title: Ráno\nText.\n', 2), null, 'the attribute above has a value');
+  assert.equal(unindentedText('', 1), null);
+});
+
+test('skeletons: description ready as a block, a work with DOPLNIT, a collection with a sample sentence', () => {
+  const work = skeleton(WORK_SCHEMA, { id: 'k3f9a', title: 'Ráno', date: '2026-05-01' });
+  assert.ok(work.includes(`# mezerami; dlouhý řádek automatika zalomí.\ndescription: |\n  ${TODO} popisek\n`));
+  assert.equal(YAML.parse(work).description, `${TODO} popisek\n`);
+  const collection = skeleton(COLLECTION_SCHEMA, { title: 'Plenér' });
+  assert.ok(collection.includes(`\ndescription: |\n  ${COLLECTION_SKELETON_TEXT}`));
+  assert.ok(!COLLECTION_SKELETON_TEXT.startsWith(TODO), 'a collection is public at once: DOPLNIT would stop the run');
+  // an existing file without a description gets none (missing), whatever the skeleton has
+  for (const schema of [WORK_SCHEMA, COLLECTION_SCHEMA]) {
+    const r = normalizeMetadata('title: Ráno\n', schema);
+    assert.equal(YAML.parse(r.text).description, null, schema === WORK_SCHEMA ? 'work' : 'collection');
+  }
+  // the former wording of the comment is replaced in existing files
+  const old = '# Pár vět o obraze, zobrazí se na jeho stránce. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.\ndescription: ""\n';
+  assert.ok(normalizeMetadata(old, WORK_SCHEMA).text.includes('Text piš pod „description: |“'));
+  assert.ok(!normalizeMetadata(old, WORK_SCHEMA).text.includes('Stačí v uvozovkách'));
 });

@@ -246,7 +246,7 @@ export async function prepareContent(contentDir, { today = new Date(), random } 
       try {
         data = YAML.parse(text) ?? {};
       } catch (e) {
-        problems.push(`${rel(g.dir, file)}: ${yamlProblem(e)}`);
+        problems.push(`${rel(g.dir, file)}: ${yamlProblem(e, text)}`);
         continue;
       }
       if (isValidId(data.id)) taken.add(data.id);

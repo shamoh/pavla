@@ -88,7 +88,7 @@ export async function prepareCollections(contentDir, folders = []) {
     try {
       data = YAML.parse(text) ?? {};
     } catch (e) {
-      problems.push(`${yamlPath}: ${yamlProblem(e)}`);
+      problems.push(`${yamlPath}: ${yamlProblem(e, text)}`);
       continue;
     }
     if (!data.title) problems.push(`${yamlPath}: chybí název kolekce (title)`);

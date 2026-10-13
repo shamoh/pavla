@@ -179,6 +179,33 @@ function byCollection(entries) {
   return { groups, order: [...groups.keys()].sort((a, b) => (!a) - (!b) || a.localeCompare(b, 'cs')) };
 }
 
+/**
+ * The entries of an overview split by the folder of their collection, for a README in each such folder (works without
+ * a collection are left out): [{ dir, title, entries }] sorted by dir, the folders of the entries relative to `dir`.
+ */
+export function collectionIndexes(entries) {
+  const groups = new Map();
+  for (const e of entries) {
+    const at = e.folder.lastIndexOf('/');
+    if (at < 0) continue;
+    const dir = e.folder.slice(0, at);
+    if (!groups.has(dir)) groups.set(dir, []);
+    groups.get(dir).push({ ...e, folder: e.folder.slice(at + 1) });
+  }
+  return [...groups].sort(([a], [b]) => a.localeCompare(b)).map(([dir, list]) => ({ dir, title: list[0].collection || dir, entries: list }));
+}
+
+/**
+ * The head of an overview: in the README of a collection folder (`within`: the title of the collection) its title in
+ * the heading and a link back to the whole overview one folder up.
+ */
+const overviewHead = (title, text, within) => (within
+  ? [`# ${title}: ${escMd(within)}`, '', '[← Všechny](../README.md)', '', text]
+  : [`# ${title}`, '', text]);
+
+/** The heading of a group of an overview; none in the README of a collection folder (it is in its title). */
+const groupHead = (key, within) => (within ? ['', '<table>'] : ['', `## ${escMd(key || NO_COLLECTION)}`, '', '<table>']);
+
 /** Heading of the works without a collection in an overview. */
 export const NO_COLLECTION = 'Mimo kolekce';
 
@@ -190,18 +217,20 @@ export const NO_COLLECTION = 'Mimo kolekce';
  * Instagram: a collection whose works have a story (`story`: its file name, `storyUrl`: the link of its sticker, `date`)
  * also gets "Příběh kolekce": the stories in the order of their dates and the links ready to copy, and the link of the
  * collection itself (`collectionUrl`, with the UTM of stories) for the last frame or the profile.
+ * `within`: the title of a collection, for the README of its folder (collectionIndexes): its works only, no group
+ * heading, a link back to the whole overview.
  */
-export function exportIndex(platform, entries) {
+export function exportIndex(platform, entries, { within = '' } = {}) {
   const p = PLATFORM[platform];
   const head = platform === 'instagram'
-    ? ['# Fotky pro Instagram', '', 'Obrazy s `meta_instagram: true`. Každý má svou složku (stejně jako v `tvorba/`): fotky s popiskem, ve scénách ateliéru, panorama pro karusel (široké obrazy), příběh, detaily a text příspěvku.']
-    : ['# Fotky pro Fler', '', 'Obrazy na prodej (`available`, `reserved`). Každý má svou složku (stejně jako v `tvorba/`): originál a mockupy s podpisem.'];
+    ? overviewHead('Fotky pro Instagram', 'Obrazy s `meta_instagram: true`. Každý má svou složku (stejně jako v `tvorba/`): fotky s popiskem, ve scénách ateliéru, panorama pro karusel (široké obrazy), příběh, detaily a text příspěvku.', within)
+    : overviewHead('Fotky pro Fler', 'Obrazy na prodej (`available`, `reserved`). Každý má svou složku (stejně jako v `tvorba/`): originál a mockupy s podpisem.', within);
   if (!entries.length) return `${[...head, '', 'Zatím žádné.'].join('\n')}\n`;
   const done = entries.filter((e) => e.url).length;
   const { groups, order } = byCollection(entries);
   const lines = [...head, '', `Celkem ${entries.length}, z toho ${p.done} ${done}, ${p.todo} ${entries.length - done}.`];
   for (const key of order) {
-    lines.push('', `## ${escMd(key || NO_COLLECTION)}`, '', '<table>');
+    lines.push(...groupHead(key, within));
     for (const e of groups.get(key)) {
       const state = e.url ? `✓ <a href="${e.url}">${p.done}</a>` : `○ ${p.todo}`;
       lines.push(`<tr><td><a href="${e.folder}/"><img src="${e.folder}/${e.thumb}" width="120" alt="${escMd(e.title)}"></a></td>`
@@ -300,19 +329,18 @@ const MARKS_LEGEND = '✗ chyby, ⚠ ke kontrole, 💡 doporučení, ✎ zbývá
 
 /**
  * Overview README of export/draft/: `entries` [{ title, code (id), folder, thumb (null = no preview), note, collection (title,
- * '' = none), marks (noteMarks: the state of its description) }], grouped like exportIndex.
+ * '' = none), marks (noteMarks: the state of its description) }], grouped like exportIndex; `within` like exportIndex.
  */
-export function draftIndex(entries) {
+export function draftIndex(entries, { within = '' } = {}) {
   const head = [
-    '# Rozpracované obrazy', '',
-    'Obrazy s `meta_draft: true`, stav jejich popisu a náhledy ořezu podlahy. Každý má svou složku (stejně jako v `tvorba/`); po zveřejnění zmizí.',
+    ...overviewHead('Rozpracované obrazy', 'Obrazy s `meta_draft: true`, stav jejich popisu a náhledy ořezu podlahy. Každý má svou složku (stejně jako v `tvorba/`); po zveřejnění zmizí.', within),
     '', `Značky stavu popisu (podrobně v README obrazu): ${MARKS_LEGEND}.`,
   ];
   if (!entries.length) return `${[...head, '', 'Zatím žádné.'].join('\n')}\n`;
   const { groups, order } = byCollection(entries);
   const lines = [...head, '', `Celkem ${entries.length}.`];
   for (const key of order) {
-    lines.push('', `## ${escMd(key || NO_COLLECTION)}`, '', '<table>');
+    lines.push(...groupHead(key, within));
     for (const e of groups.get(key)) {
       const thumb = e.thumb ? `<a href="${e.folder}/"><img src="${e.folder}/${e.thumb}" width="160" alt="${escMd(e.title)}"></a>` : 'bez náhledu';
       lines.push(`<tr><td>${thumb}</td>`

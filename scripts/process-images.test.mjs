@@ -1230,7 +1230,7 @@ test('years: a skeleton per year, the public text reaches the site, the private 
   let r = await run(opts());
   assert.ok(r.created.includes('roky/2026.yaml'));
   const copyPath = path.join(siteDir, 'content/roky/2026.yaml');
-  assert.equal(YAML.parse(await fs.readFile(copyPath, 'utf8')).description, '');
+  assert.equal(YAML.parse(await fs.readFile(copyPath, 'utf8')).description, 'Můj oblíbený rok, rok 2026.\n', 'the sample text is public');
 
   await fs.writeFile(path.join(contentDir, 'roky/2026.yaml'), 'description: |\n  Rok plenérů.\nprivate_note: tajné\n');
   r = await run(opts());
@@ -1607,6 +1607,50 @@ test('exports: the READMEs say where a work is published, the overviews group th
   assert.match(index, /Celkem 2, z toho na Instagramu 1, zatím nezveřejněno 1\./);
   assert.ok(index.indexOf(`## ${title}`) < index.indexOf('## Mimo kolekce'), 'collections first, the rest last');
   assert.ok(index.indexOf('rano/') < index.indexOf('## Mimo kolekce') && index.indexOf('vecer/') > index.indexOf('## Mimo kolekce'));
+  // the same overview in the folder of each collection: its works only, links relative to it, a way back (Instagram
+  // also with the story of the collection)
+  for (const [sub, heading] of [['instagram', 'Fotky pro Instagram'], ['fler', 'Fotky pro Fler']]) {
+    const own = await fs.readFile(path.join(contentDir, `export/${sub}/2026-plener/README.md`), 'utf8');
+    assert.ok(own.startsWith(`# ${heading}: ${title}\n\n[← Všechny](../README.md)\n`), sub);
+    assert.ok(own.includes('<a href="rano/"><b>Ráno</b></a>') && !own.includes('Večer') && !own.includes(`## ${title}`), sub);
+  }
+  // kept by the next run (not taken for a stale export)
+  const again = await run(opts());
+  assert.ok(!again.pruned.some((p) => p.endsWith('2026-plener/README.md')), again.pruned.join(', '));
+  assert.ok(await exists(path.join(contentDir, 'export/fler/2026-plener/README.md')));
+  // the last work of the collection gone from Fler (sold): its folder goes with the README of the collection
+  const rano = path.join(contentDir, 'tvorba/2026-plener/rano.yaml');
+  await fs.writeFile(rano, (await fs.readFile(rano, 'utf8')).replace(/^status: .*$/m, 'status: sold'));
+  const sold = await run(opts());
+  assert.ok(sold.pruned.includes('export/fler/2026-plener/README.md'), sold.pruned.join(', '));
+  assert.ok(!(await exists(path.join(contentDir, 'export/fler/2026-plener'))));
+  assert.ok(await exists(path.join(contentDir, 'export/instagram/2026-plener/README.md')), 'still on Instagram');
+});
+
+test('drafts: an overview in the folder of each collection; both written also when the run fails', async () => {
+  await addWork('2026', 'rano', 'meta_draft: true\ntitle: Ráno\ndate: 2026-06-14\n', { collection: 'plener' });
+  await addWork('2026', 'vecer', 'meta_draft: true\ntitle: Večer\ndate: 2026-06-14\n');
+  assert.equal((await run(opts({ prepareOnly: true }))).ok, true);
+  const draftDir = path.join(contentDir, 'export/draft');
+  const own = await fs.readFile(path.join(draftDir, 'plener/README.md'), 'utf8');
+  assert.match(own, /^# Rozpracované obrazy: [^\n]+\n\n\[← Všechny\]\(\.\.\/README\.md\)\n/);
+  assert.ok(own.includes('<a href="rano/"><img src="rano/backgrounds.jpg"') && !own.includes('Večer'));
+  // a failing run (an error in another description) still writes the overviews: a new draft shows up in them
+  await addWork('2026', 'noc', 'meta_draft: true\ntitle: Noc\ndate: 2026-06-14\n', { collection: 'plener' });
+  await addWork('2026', 'chyba', 'title: [\n', { image: false });
+  assert.equal((await run(opts({ prepareOnly: true }))).ok, false);
+  assert.ok((await fs.readFile(path.join(draftDir, 'plener/README.md'), 'utf8')).includes('<b>Noc</b>'));
+  assert.ok((await fs.readFile(path.join(draftDir, 'README.md'), 'utf8')).includes('<b>Noc</b>'));
+  // nothing is pruned in a failing run; once fixed and the collection has no draft left, its README goes too
+  await fs.rm(path.join(contentDir, 'tvorba/chyba.yaml'));
+  for (const slug of ['rano', 'noc']) {
+    const file = path.join(contentDir, 'tvorba/plener', `${slug}.yaml`);
+    await fs.writeFile(file, (await fs.readFile(file, 'utf8')).replace('meta_draft: true', 'meta_draft: false'));
+  }
+  const published = await run(opts({ prepareOnly: true }));
+  assert.ok(published.pruned.includes('export/draft/plener/README.md'), published.pruned.join(', '));
+  assert.ok(!(await exists(path.join(draftDir, 'plener'))));
+  assert.ok(await exists(path.join(draftDir, 'vecer/README.md')), 'the draft without a collection stays');
 });
 
 test('web images of a work carry creator, copyright and its page (XMP), a new title makes them again; other photos not', async () => {

@@ -4,6 +4,7 @@ import {
   COLLECTION_TITLE_CHARS, TAG_ROWS, TECHNIQUE_CHARS, endsSentence, endsWithFullStop, hashtagAdvice, pageAdvice, pinterestAdvice, sameTag, startsLowercase, tagAdvice, tagKey, tagRows, tagStats, techniqueAdvice, todoAdvice, workAdvice, workTitleChars,
   DRAFT_DAYS, FEATURED_GROUP, INSTAGRAM_LINK_DAYS, MIN_PHOTO_SIDE, careAdvice, daysBetween, draftAgeAdvice, featuredAdvice, instagramLinkAdvice, photoSizeAdvice,
 } from './advice.mjs';
+import { COLLECTION_SKELETON_TEXT, UNCOLLECTED_SKELETON_TEXT, yearSkeletonText } from './schema.mjs';
 
 const good = {
   title: 'Ráno u jezu', tags: ['voda'], description: 'Mlha nad vodou.', details: { mlha: 'Hladina v mlze.' },
@@ -322,3 +323,23 @@ test('featuredAdvice: none or one featured on a page with enough works and no ow
   assert.match(advice[0], /vždy nejnovější obraz/);
   assert.match(advice[1], /jen 1 obraz/);
 });
+
+test('pageAdvice: the sample sentence of a skeleton still as the description of a collection, a year or "Mimo kolekce"', () => {
+  const advice = pageAdvice({
+    collections: [
+      { yamlPath: 'tvorba/plener/_index.yaml', data: { title: 'Plenér', description: COLLECTION_SKELETON_TEXT } },
+      { yamlPath: 'tvorba/zahrada/_index.yaml', data: { title: 'Zahrada', description: 'Moje zahrada v létě.\n' } },
+    ],
+    years: [
+      { year: '2026', yamlPath: 'roky/2026.yaml', data: { description: yearSkeletonText('2026') } },
+      // the sentence of another year is a text of its own
+      { year: '2025', yamlPath: 'roky/2025.yaml', data: { description: yearSkeletonText('2024') } },
+    ],
+    uncollected: { yamlPath: 'tvorba/_index.yaml', data: { description: `  ${UNCOLLECTED_SKELETON_TEXT.trim()}  ` } },
+    home: { yamlPath: '_index.yaml', data: { description: COLLECTION_SKELETON_TEXT } },
+  }).filter((a) => a.includes('vzorová věta'));
+  assert.deepEqual(advice.map((a) => a.split(':')[0]), ['tvorba/plener/_index.yaml', 'roky/2026.yaml', 'tvorba/_index.yaml']);
+  assert.equal(advice[0], `tvorba/plener/_index.yaml: description je pořád vzorová věta z kostry („${COLLECTION_SKELETON_TEXT.trim()}“), je vidět na webu; napiš místo ní vlastní text`);
+  assert.ok(COLLECTION_SKELETON_TEXT.includes('nejvíc nejoblíbenější'), 'on purpose');
+});
+

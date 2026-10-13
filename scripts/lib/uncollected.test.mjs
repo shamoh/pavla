@@ -4,8 +4,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { UNCOLLECTED_FIELDS, prepareUncollected } from './uncollected.mjs';
-import { UNCOLLECTED_SCHEMA } from './schema.mjs';
-import { schemaKeysIn } from './metadata-yaml.mjs';
+import { UNCOLLECTED_SCHEMA, UNCOLLECTED_SKELETON_TEXT } from './schema.mjs';
+import { schemaKeysIn, todoKeys } from './metadata-yaml.mjs';
 
 let dir;
 beforeEach(async () => {
@@ -14,7 +14,7 @@ beforeEach(async () => {
 });
 afterEach(() => fs.rm(dir, { recursive: true, force: true }));
 
-test('prepareUncollected writes a skeleton only once a work lies right in tvorba/, every attribute commented out', async () => {
+test('prepareUncollected writes a skeleton only once a work lies right in tvorba/: the text set in a block, the rest commented out', async () => {
   const none = await prepareUncollected(dir, false);
   assert.deepEqual([none.uncollected, none.created], [null, []]);
   const r = await prepareUncollected(dir, true);
@@ -22,9 +22,10 @@ test('prepareUncollected writes a skeleton only once a work lies right in tvorba
   const text = await fs.readFile(path.join(dir, 'tvorba', '_index.yaml'), 'utf8');
   assert.deepEqual(schemaKeysIn(text, UNCOLLECTED_SCHEMA), UNCOLLECTED_FIELDS);
   assert.match(text, /\n# cover: k3f9a\n/);
-  assert.match(text, /\n# description: Obrazy, které nepatří do žádné kolekce: samostatné listy, dárky a skici\.\n/, 'the text is optional');
-  assert.doesNotMatch(text, /DOPLNIT/);
-  assert.deepEqual(r.uncollected, { data: {}, yamlPath: 'tvorba/_index.yaml', coverPath: null });
+  // a sample text, ready in a block ("|", indented), checked like any added value (DOPLNIT at its comment only)
+  assert.ok(text.includes(`\ndescription: |\n  ${UNCOLLECTED_SKELETON_TEXT}`), text);
+  assert.deepEqual(todoKeys(text), ['description']);
+  assert.deepEqual(r.uncollected, { data: { description: UNCOLLECTED_SKELETON_TEXT }, yamlPath: 'tvorba/_index.yaml', coverPath: null });
   const again = await prepareUncollected(dir, true);
   assert.deepEqual([again.created, again.updated, again.problems], [[], [], []]);
 });

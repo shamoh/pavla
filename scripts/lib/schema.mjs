@@ -49,6 +49,16 @@ function ordered(fields) {
 
 /** Prefix of a technical comment whose value still needs checking; the pipeline adds it, people remove it. */
 export const TODO = 'DOPLNIT';
+
+/**
+ * Sample texts of new skeletons, in a block ("description: |"), so the text is written in the right place with the
+ * indentation already there. A collection, a year and "Mimo kolekce" are public at once, so a real sentence (no
+ * DOPLNIT, which would stop the run): the author rewrites it whenever she likes.
+ */
+// "nejvíc nejoblíbenější" on purpose (a nod to Forrest Gump), do not correct it
+export const COLLECTION_SKELETON_TEXT = 'Toto je moje nejvíc nejoblíbenější kolekce.\n';
+export const yearSkeletonText = (year) => `Můj oblíbený rok, rok ${year}.\n`;
+export const UNCOLLECTED_SKELETON_TEXT = 'Tato díla se nevešla do žádné složky a toulají se volně po ateliéru.\n';
 /** Technical comment of an attribute the pipeline does not know (a typo?); it is kept, at the end of the file. */
 export const UNKNOWN_DOC = 'NEZNÁMÝ atribut: pipeline ho nezná (překlep?) a nepoužije ho. Oprav jeho název, nebo řádek smaž.';
 
@@ -455,10 +465,17 @@ export const WORK_SCHEMA = {
     {
       key: 'description',
       block: true,
-      doc: 'Pár vět o obraze, zobrazí se na jeho stránce. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.',
-      value: '',
+      doc: [
+        'Pár vět o obraze, zobrazí se na jeho stránce. Text piš pod „description: |“, každý řádek odsazený dvěma',
+        'mezerami; dlouhý řádek automatika zalomí.',
+      ],
+      // a block ready for the text, so nobody has to add "|" and the indentation by hand
+      value: `${TODO} popisek\n`,
       missing: null,
-      previous: ['Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.'],
+      previous: [
+        'Pár vět o obraze, zobrazí se na jeho stránce. Víc řádků pod sebou, odsazených dvěma mezerami.',
+        'Pár vět o obraze, zobrazí se na jeho stránce. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.',
+      ],
     },
     {
       key: 'details',
@@ -495,10 +512,17 @@ export const COLLECTION_SCHEMA = {
     {
       key: 'description',
       block: true,
-      doc: 'Pár vět o kolekci: kde a kdy obrazy vznikly. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.',
-      value: '',
+      doc: [
+        'Pár vět o kolekci: kde a kdy obrazy vznikly. Text piš pod „description: |“, každý řádek odsazený dvěma',
+        'mezerami; dlouhý řádek automatika zalomí.',
+      ],
+      // a sample text in a block (a collection is public at once, so no DOPLNIT): rewrite it, keep the indentation
+      value: COLLECTION_SKELETON_TEXT,
       missing: null,
-      previous: ['Pár vět o kolekci: kde a kdy obrazy vznikly. Víc řádků pod sebou, odsazených dvěma mezerami.'],
+      previous: [
+        'Pár vět o kolekci: kde a kdy obrazy vznikly. Víc řádků pod sebou, odsazených dvěma mezerami.',
+        'Pár vět o kolekci: kde a kdy obrazy vznikly. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.',
+      ],
     },
     coverField('z kolekce', '_cover.jpg', [
       'Úvodní obraz: id díla z kolekce (např. k3f9a) nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer.',
@@ -555,10 +579,14 @@ export const YEAR_SCHEMA = {
       block: true,
       doc: [
         'Pár vět o roce za sebe (jaký byl, co se v tvorbě dělo); zobrazí se nahoře na stránce roku /tvorba/<rok>/.',
-        'Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí. Prázdné "" = bez textu.',
+        'Text piš pod „description: |“, každý řádek odsazený dvěma mezerami. Prázdné "" = bez textu.',
       ],
+      // the skeleton gets yearSkeletonText(<year>) (scripts/lib/years.mjs); a file without it stays without text
       value: '',
       previous: [[
+        'Pár vět o roce za sebe (jaký byl, co se v tvorbě dělo); zobrazí se nahoře na stránce roku /tvorba/<rok>/.',
+        'Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí. Prázdné "" = bez textu.',
+      ], [
         'Pár vět o roce za sebe (jaký byl, co se v tvorbě dělo); zobrazí se nahoře na stránce roku /tvorba/<rok>/.',
         'Víc řádků: napiš description: | a pod to text odsazený dvěma mezerami. Prázdné "" = bez textu.',
       ]],
@@ -593,11 +621,15 @@ export const UNCOLLECTED_SCHEMA = {
       commented: true,
       example: 'Obrazy, které nepatří do žádné kolekce: samostatné listy, dárky a skici.',
       doc: [
-        'Pár vět pod „Mimo kolekce“ na přehledu kolekcí. Stačí v uvozovkách na jeden řádek, dlouhý text automatika',
-        `zalomí. Prázdné = „${UNCOLLECTED_TEXT}“`,
+        'Pár vět pod „Mimo kolekce“ na přehledu kolekcí. Text piš pod „description: |“, každý řádek odsazený',
+        `dvěma mezerami. Prázdné = „${UNCOLLECTED_TEXT}“`,
       ],
+      // the skeleton gets UNCOLLECTED_SKELETON_TEXT (scripts/lib/uncollected.mjs)
       value: '',
       previous: [[
+        'Pár vět pod „Mimo kolekce“ na přehledu kolekcí. Stačí v uvozovkách na jeden řádek, dlouhý text automatika',
+        `zalomí. Prázdné = „${UNCOLLECTED_TEXT}“`,
+      ], [
         'Pár vět pod „Mimo kolekce“ na přehledu kolekcí. Víc řádků: napiš description: | a pod to text odsazený',
         `dvěma mezerami. Prázdné = „${UNCOLLECTED_TEXT}“`,
       ]],

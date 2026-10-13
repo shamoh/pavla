@@ -566,7 +566,13 @@ na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`)). V�
   - dlouhý text o jednom odstavci u textových atributů (`block: true` ve schématu: `description` díla, kolekce, roku, úvodu a „Mimo kolekce“)
     delší než `TEXT_WIDTH` (140 znaků) převede na zalomený blok `description: >` s řádky do 140 znaků (`foldLines`);
     text se tím nezmění, jen se líp čte a upravuje. Krátký text zůstane na řádku s atributem, víc řádků jako `|`,
-    prázdná hodnota kostry je `""` (popis kolekce v kostře je prázdný, žádný vzorový text),
+    `description` nové kostry je vždy blok `|`, aby se text psal rovnou na správné místo s odsazením: dílo
+    `DOPLNIT popisek` (rozpracované dílo smí, zveřejnění ho odmítne), kolekce `COLLECTION_SKELETON_TEXT`, rok
+    `yearSkeletonText(<rok>)`, „Mimo kolekce“ `UNCOLLECTED_SKELETON_TEXT` (vzorové věty bez `DOPLNIT`: jsou veřejné hned
+    a `DOPLNIT` by zastavilo běh); existující soubor bez popisu dostane dál `missing` (`null`/`""`),
+  - text napsaný pod `klíč:` / `klíč: |` bez odsazení (častá chyba) pozná `unindentedText` a `yamlProblem` napíše
+    místo obecné „chybný zápis YAML“ přesnou hlášku s ukázkou („description: text pod „description:“ musí být odsazený
+    (řádek 5); správně je …“); funguje pro dílo, kolekci, rok, úvod, „Mimo kolekce“ i fotky,
   - `DOPLNIT` nechá, dokud ho člověk nesmaže (znamená „hodnotu zkontrolovat“), sám ho nikdy neodstraní,
   - vlastní komentář nad atributem nechá, nad technickým; blok, který je přesně technickým komentářem některého
     atributu (i starší znění, i s `DOPLNIT`), ale vlastním komentářem není (`withoutTechnical`), smaže: typicky
@@ -663,6 +669,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | strukturovaná data: obraz na prodej jen s dostupností (`InStock` / `LimitedAvailability`), bez ceny | Máky (`available`), Kočka na okně (`reserved`) |
 | stránka 404 s výběrem autorky | libovolná neexistující adresa, např. `/tvorba/nic/` (v `npm run demo`) nebo `.demo/site/dist/404.html` |
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
+| doporučení „vzorová věta z kostry“ (`sampleAdvice`) | v kopii testovacích dat nastav `description` kolekce na „Toto je moje nejvíc nejoblíbenější kolekce.“ a spusť `npm run demo:prepare` (log `? advice:`), pak `git checkout demo-content/` |
 | doporučení v souhrnu běhu: bez štítků, popis s malým písmenem a bez tečky / popisky detailů bez tečky / na prodej bez mockupů / text kolekce bez tečky / popis a popisek fotky bez tečky | Rozpracovaný obraz / Ráno u rybníka, Pivoňky / Máky, Bouřka nad polem, Modravské slatě, Pivoňky / Město 2026 / fotky stránek |
 | lišta filtrů při posunu nahoru, panel „Upravit“ (na úzké obrazovce zespodu) | `/tvorba/` (58 děl, stránka je dost dlouhá); úzká obrazovka: DevTools → režim zařízení |
 | počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (8 děl, Kolekce jen Kresby…, Skicák (po 2), Plenér Šumava, Portréty, Ptáci, Tatry (po 1), bez „žádná“), + kolekce Kresby, pastely a kvaš (2 díla; přepínač Doporučené zmizí, oba obrazy jsou vybrané); štítek „krajina“: Technika jen akvarel (23), kresba tužkou, kvaš, linoryt |
@@ -889,7 +896,10 @@ u obou stav zveřejnění podle atributu `instagram` / `fler` („Na Instagramu:
 i v obsahovém repu), kolekce a odkaz na stránku díla na webu (`site.url` +
 `/tvorba/<rok>/<slug>-<id>/`), pak náhledy všech fotek (klik = plná velikost). Dřívější `post.txt` úklid smaže. `export/instagram/README.md` a `export/fler/README.md` (seskupené pod nadpisy kolekcí podle abecedy, díla bez kolekce
 na konci pod „Mimo kolekce“, u každého díla kód `<id>` za názvem, ✓/○ stav zveřejnění a nahoře počty) jsou
-přehledy všech děl platformy s miniaturou a odkazem do složky (jen když platforma nějaké dílo má). Kód
+přehledy všech děl platformy s miniaturou a odkazem do složky (jen když platforma nějaké dílo má). Stejný přehled
+jen s díly kolekce je i v její složce: `export/<platforma>/<kolekce>/README.md` a `export/draft/<kolekce>/README.md`
+(`collectionIndexes`, `within`: název kolekce v nadpisu, odkaz „← Všechny“ na celý přehled, bez nadpisu skupiny;
+u Instagramu i „Příběh kolekce“), úklid je nechá (`wanted`). Kód
 `scripts/lib/export-readme.mjs`; složky děl se píšou každým během (hned následují popis, cenu i štítky), přehledy
 plným během. Úklid je bere jako vlastní soubory pipeline (`EXPORT_FILES`).
 
@@ -1300,7 +1310,9 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
      `…`, případně před uzavírací uvozovkou či závorkou); dílo na prodej (`available`, `reserved`) bez `mockups: true`;
      název díla delší než `workTitleChars` (60 znaků titulku stránky ve výsledcích vyhledávání, `SEARCH_TITLE_MAX`,
      minus „ · “ a `site.title`, teď 40): ve výsledcích vyhledávání a v záložce se zkrátí (bublina nad obrazem název
-     nezkracuje).
+     nezkracuje). Kolekce, rok nebo „Mimo kolekce“ s `description` pořád jako vzorová věta z kostry
+     (`COLLECTION_SKELETON_TEXT`, `yearSkeletonText(<rok>)`, `UNCOLLECTED_SKELETON_TEXT`, bez mezer okolo; `sampleAdvice`
+     v `pageAdvice`): „description je pořád vzorová věta z kostry (…), je vidět na webu; napiš místo ní vlastní text“.
      Stejně `title` a `description` kolekce, `description` roku a úvodní stránky a `alt` a `caption` fotek stránek
      (`pageAdvice`). Název kolekce delší než `COLLECTION_TITLE_CHARS` (19) a technika delší než `TECHNIQUE_CHARS` (14)
      znaků (`techniqueAdvice`, jednou za techniku s počtem děl): zavřený výběr v galerii je zkrátí (viz *Řádek filtrů*).
@@ -1674,8 +1686,9 @@ v `scripts/lib/summary.mjs`, stejné skupiny: Chyby, Ke kontrole, Doporučení, 
 nehlásí“); README se píše každým během (`writeIfChanged`), hlášky do otisku nepatří. Vznikají při každém běhu, i ve větvi
 (`--prepare-only`), **i když běh skončí chybami v popisech** (README díla pak ukáže jeho chyby). Dílo s vlastní chybou
 nové náhledy nedostane (jeho rohy mohou být špatně): staré obrázky i otisk zůstanou, bez nich README místo obrázků napíše
-„Náhledy ořezu zatím nejsou“. Při běhu s chybami se přehled nepřepisuje a nic se nemaže (popis, který nejde přečíst,
-by jinak vypadal jako zveřejněné dílo). Workflow obsahového repa je commitne zpět i po chybách pipeline (krok commitu
+„Náhledy ořezu zatím nejsou“. Přehled (i v každé složce kolekce) se píše každým během bez `only`, i s chybami; dílo,
+jehož popis nejde přečíst, v něm do opravy chybí. Při běhu s chybami se ale nic nemaže (takový popis by jinak vypadal
+jako zveřejněné dílo). Workflow obsahového repa je commitne zpět i po chybách pipeline (krok commitu
 a nahrání náhledů mají `if: !cancelled() && steps.pipeline.outcome != 'skipped'`; stejně nahrání v `dry-run.yml`). Obrázky se přepíšou jen při změně otisku (fotka, `meta_corners`, `images.edges`, `DRAFT_VERSION`;
 otisk je v komentáři `<!-- otisk: … -->` v `README.md`), takže git neroste s každým během. Dílo zveřejněné
 (`meta_draft: false`), smazané nebo přejmenované složku ztratí při dalším běhu bez `only` (`planFolderPrune`

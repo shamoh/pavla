@@ -68,9 +68,38 @@ export function foldLines(text) {
   return out.join('\n');
 }
 
-/** A syntax error of the yaml library as a Czech problem for the people who write the files. */
-export function yamlProblem(error) {
+/**
+ * The attribute whose text was written without indentation on the lines under it (the most common mistake with a text
+ * of more lines): line `line` (1-based) starts at the edge and is no comment, and the nearest non-empty line above is
+ * "<key>:" with nothing after it, or "<key>: |" / "<key>: >". Returns { key, line (its text) } or null.
+ */
+export function unindentedText(text, line) {
+  const lines = String(text ?? '').split('\n');
+  const here = lines[line - 1];
+  if (!here || /^[\s#]/.test(here)) return null;
+  for (let i = line - 2; i >= 0; i -= 1) {
+    if (!lines[i].trim()) continue;
+    const m = lines[i].match(/^([^\s#:][^:]*):[ \t]*(?:[|>][-+]?)?[ \t]*$/);
+    return m ? { key: m[1], line: here } : null;
+  }
+  return null;
+}
+
+/** At most this many characters of a line quoted in a problem. */
+const QUOTE_CHARS = 40;
+
+/**
+ * A syntax error of the yaml library as a Czech problem for the people who write the files. With the `text` of the
+ * file, a text written without indentation under its attribute (unindentedText) says exactly what to do.
+ */
+export function yamlProblem(error, text = '') {
   const at = error?.linePos?.[0];
+  const loose = at && unindentedText(text, at.line);
+  if (loose) {
+    const start = loose.line.length > QUOTE_CHARS ? `${loose.line.slice(0, QUOTE_CHARS).trimEnd()}…` : loose.line;
+    return `${loose.key}: text pod „${loose.key}:“ musí být odsazený (řádek ${at.line}); správně je na konci řádku `
+      + `„${loose.key}: |“ a každý řádek textu pod ním začíná dvěma mezerami, např. „  ${start}“`;
+  }
   return `chybný zápis YAML${at ? ` na řádku ${at.line}` : ''} (zkontroluj odsazení, dvojtečky a uvozovky)`;
 }
 
@@ -218,7 +247,7 @@ function newValueNode(doc, field, value) {
 export function normalizeMetadata(original, schema, { values = {}, header = null, fresh = false } = {}) {
   const { text, own: commentedOwn } = stripCommented(original, schema.fields.filter((f) => f.commented));
   const doc = YAML.parseDocument(text);
-  if (doc.errors.length) return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: yamlProblem(doc.errors[0]) };
+  if (doc.errors.length) return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: yamlProblem(doc.errors[0], original) };
   if (doc.contents !== null && !YAML.isMap(doc.contents)) {
     return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: 'musí to být seznam údajů (klíč: hodnota)' };
   }

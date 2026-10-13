@@ -9,7 +9,8 @@ aspect: "2:1"
 # Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.
 cover: vjr39#1-kvety-nahore
 
-# Pár vět o kolekci: kde a kdy obrazy vznikly. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.
+# Pár vět o kolekci: kde a kdy obrazy vznikly. Text piš pod „description: |“, každý řádek odsazený dvěma
+# mezerami; dlouhý řádek automatika zalomí.
 description: |
   Květiny ze zahrady a z louky za domem. Úvodní obraz je široký detail Pivoněk.
 

@@ -8,7 +8,7 @@
 # cover: k3f9a
 
 # Pár vět o roce za sebe (jaký byl, co se v tvorbě dělo); zobrazí se nahoře na stránce roku /tvorba/<rok>/.
-# Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí. Prázdné "" = bez textu.
+# Text piš pod „description: |“, každý řádek odsazený dvěma mezerami. Prázdné "" = bez textu.
 description: |
   Rok plenérů: Šumava v září, zahrada v létě a první pokusy s tuší ve městě.
   Víc než kdy dřív jsem malovala venku, přímo před motivem.
