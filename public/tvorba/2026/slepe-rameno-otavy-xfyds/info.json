@@ -1,11 +1,11 @@
 {
-  "width": 2377,
-  "height": 2262,
+  "width": 2281,
+  "height": 2225,
   "widths": [
     480,
     960,
     1600,
-    2377
+    2281
   ],
   "dominant": "rgb(168,184,216)",
   "transparent": true,
@@ -55,7 +55,7 @@
   "pin": {
     "width": 1000,
     "height": 1500,
-    "bytes": 210639
+    "bytes": 218531
   },
-  "fingerprint": "3dc1f32d001ab6d4"
+  "fingerprint": "3014bff0d6962300"
 }
