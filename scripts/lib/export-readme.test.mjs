@@ -243,3 +243,12 @@ test('exportIndex and draftIndex within a collection: its title in the heading, 
   // the whole overview keeps its group headings and no link back
   assert.ok(exportIndex('fler', [entry]).includes('## Plenér') && !exportIndex('fler', [entry]).includes('Všechny'));
 });
+
+test('draftReadme: the four corners close up as a 2 × 2 table above the whole photo with its frames', () => {
+  const files = { ...draftFiles, 'frames-tl': 'frames-tl.jpg', 'frames-tr': 'frames-tr.jpg', 'frames-br': 'frames-br.jpg', 'frames-bl': 'frames-bl.jpg' };
+  const text = draftReadme({ work: { title: 'X' }, year: '2026', files });
+  assert.match(text, /<table>\n<tr><td><a href="frames-tl\.jpg"><img src="frames-tl\.jpg" width="400"[^\n]*<td><a href="frames-tr\.jpg">[^\n]*<\/tr>\n<tr><td><a href="frames-bl\.jpg">[^\n]*<td><a href="frames-br\.jpg">[^\n]*<\/tr>\n<\/table>/);
+  assert.ok(text.indexOf('<table>') < text.indexOf('src="frames.jpg"'), 'above the whole photo');
+  assert.ok(!draftReadme({ work: { title: 'X' }, year: '2026', files: draftFiles }).includes('<table>'), 'none without them');
+});
+

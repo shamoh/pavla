@@ -247,6 +247,12 @@ export function exportIndex(platform, entries, { within = '' } = {}) {
 /** The longer side of the cut previews in export/draft/ in px (the artifact of the run has them in full size). */
 export const DRAFT_EDGE = 2000;
 
+/** The four corner close-ups of a draft as a 2 × 2 table: top left, top right / bottom left, bottom right. */
+const cornerTable = (files) => {
+  const cell = (k) => `<td><a href="${files[`frames-${k}`]}"><img src="${files[`frames-${k}`]}" width="400" alt="${files[`frames-${k}`]}"></a></td>`;
+  return `<table>\n<tr>${cell('tl')}${cell('tr')}</tr>\n<tr>${cell('bl')}${cell('br')}</tr>\n</table>`;
+};
+
 /** Why a draft has no cut previews (`noPreviews` of draftReadme), for its README. */
 const NO_PREVIEWS = {
   photo: 'Fotka obrazu zatím chybí: náhledy ořezu vzniknou, až ji nahraješ vedle popisu.',
@@ -304,8 +310,11 @@ export function draftReadme({ work, year, files, corners = '', collection = '', 
     '',
     '## Rámečky',
     '',
-    'Celá fotka s rámečky vzdáleností od krajů, podle nich se rohy dají opravit ručně.',
+    'Celá fotka s rámečky vzdáleností od krajů, podle nich se rohy dají opravit ručně. Nahoře rohy fotky zblízka',
+    '(300 × 300 bodů fotky, dvakrát zvětšené; klikni pro plnou velikost), čáry po 5 bodech do 100 a po 10 do 130 od krajů rohu:',
+    'číslo u čáry je hodnota pro `meta_corners`.',
     '',
+    ...(files['frames-tl'] ? [cornerTable(files), ''] : []),
     thumbs([files.frames], 800),
   ];
   const parts = [

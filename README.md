@@ -1693,7 +1693,9 @@ souhrn běhu náhledy vyjmenuje. Jinou složku dá `run({ previewDir })`.
 **Náhledy rozpracovaných děl v gitu (`export/draft/`):** tytéž tři náhledy (`previewBuffers`) zmenšené na delší stranu
 `DRAFT_EDGE` = 2000 px (`shrinkPreview`, nikdy nezvětšené; popisky a čáry rostou s fotkou, čísla zůstávají v px původní
 fotky) jdou do `export/draft/[<kolekce>/]<slug>/` obsahového repa jako `backgrounds.jpg`, `cut.jpg`, `frames.jpg`
-s `README.md` (`draftReadme`: název, údaje, „Kód obrazu“ a kolekce, „Stav popisu“, všechny tři náhledy, použité `meta_corners`) a přehled
+a rohy zblízka `frames-tl.jpg`, `frames-tr.jpg`, `frames-br.jpg`, `frames-bl.jpg` (`PREVIEW_KINDS`; 600 px, nezmenšují se, v README zobrazené ve 400 px)
+s `README.md` (`draftReadme`: název, údaje, „Kód obrazu“ a kolekce, „Stav popisu“, všechny náhledy, v „Rámečcích“ rohy
+jako tabulka 2 × 2 nad celou fotkou, použité `meta_corners`) a přehled
 `export/draft/README.md` podle kolekcí (`draftIndex`, u každého díla kód za názvem a značky stavu popisu `noteMarks`, např.
 „✗ 1 · 💡 3“ = chyby, ke kontrole ⚠, doporučení, údaje k doplnění ✎, s legendou nahoře). Složku má **každé** rozpracované
 dílo a každé s fotkou má všechny tři náhledy, i když se nic neořezává (`meta_corners: false` nebo samé nuly: celá fotka
@@ -1732,7 +1734,8 @@ npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s po
   ```
   → ../obsah/tvorba/rano-u-rybnika.jpg: no meta_corners in rano-u-rybnika.yaml, detected
     preview: .previews/rano-u-rybnika-k3f9a-backgrounds.jpg (light and dark), .previews/rano-u-rybnika-k3f9a-cut.jpg (cut lines),
-             .previews/rano-u-rybnika-k3f9a-frames.jpg (frame lines)
+             .previews/rano-u-rybnika-k3f9a-frames.jpg (frame lines), .previews/rano-u-rybnika-k3f9a-frames-tl.jpg, …-frames-tr.jpg,
+             …-frames-br.jpg, …-frames-bl.jpg (corners close up)
     cut (% of the photo, ! = more than 5.0 %): tl 2.5 % · 1.7 %, tr 0.7 % · 2.3 %, br 1.1 % · 1.6 %, bl 1.0 % · 1.4 %
     meta_corners:
       photo: [3673, 2785]
@@ -1772,6 +1775,12 @@ npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s po
     tečkovaně) a pod ním rozměr fotky, rozměr obrázku po ořezu, kolik se odstranilo z každé strany celkem, z toho rohy
     (menší ze dvou rohů dané strany) a z toho `inset` a prolnutí, nastavení `inset` a `feather` v % i px s vysvětlením
     prolnutí a `meta_corners`, ze kterých obrázek vznikl.
+  - `<out>/<slug>-<id>-frames-tl.jpg`, `-frames-tr.jpg`, `-frames-br.jpg`, `-frames-bl.jpg`: každý roh fotky zblízka
+    (`cornerFramesOf`, `cornerFramesSvg`), `CORNER_SIZE` 300 × 300 bodů fotky zvětšených `CORNER_SCALE` 2× na 600 × 600
+    (každý bod ostrý čtverec, `kernel: 'nearest'`; menší fotka = menší výřez), s čarami `CORNER_LINES` (po 5 bodech
+    od 5 do 100, pak 110, 120 a 130) středem toho bodu od obou krajů rohu, nakreslenými až do zvětšeniny (nejdřív všechny
+    čáry, přes ně všechna čísla s tmavým obrysem, aby je žádná čára nepřeškrtla), barvy
+    jako u rámečků, popisky po schodech v půlce dál od rohu; číslo u čáry je přímo hodnota pro `meta_corners`.
   - `<out>/<slug>-<id>-frames.jpg` je celá **neoříznutá** fotka v plné velikosti (vidět jsou všechny její původní okraje)
     s rámečky čar (`framesOf`, `frameLines`, `framesSvg`): pro každý podíl z `images.edges.guides` (výchozí 0,3; 0,6;
     1; 1,5; 2; 2,5; 3; 4 a 5 %) dvě svislé čáry ve vzdálenosti podílu **šířky** od levého a pravého kraje a dvě

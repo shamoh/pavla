@@ -8,6 +8,10 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { cornersFor, listMasters, sharesLine, suspiciousSummary, writeDetected } from './preview.mjs';
+import { PREVIEW_KINDS } from './lib/corners.mjs';
+
+/** The preview files of one photo `key` (all PREVIEW_KINDS), sorted like readdir().sort(). */
+const kinds = (key) => PREVIEW_KINDS.map((k) => `${key}-${k}.jpg`).sort();
 
 let tmp;
 beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-preview-')); });
@@ -123,7 +127,7 @@ test('npm run preview --only-suspicious: previews and output only of the photos 
   const out = path.join(tmp, 'out');
   const r = cli('tvorba', '--out', out, '--only-suspicious');
   assert.equal(r.status, 0, r.stderr);
-  assert.deepEqual((await fs.readdir(out)).sort(), ['vecer-backgrounds.jpg', 'vecer-cut.jpg', 'vecer-frames.jpg']);
+  assert.deepEqual((await fs.readdir(out)).sort(), kinds('vecer'));
   assert.doesNotMatch(r.stdout, /rano/);
   assert.match(r.stdout, /→ tvorba\/vecer\.jpg/);
   assert.match(r.stdout, /Check first: 1 photo\(s\)/);
@@ -131,7 +135,7 @@ test('npm run preview --only-suspicious: previews and output only of the photos 
   // without the switch both
   const all = cli('tvorba', '--out', path.join(tmp, 'all'));
   assert.equal(all.status, 0, all.stderr);
-  assert.deepEqual((await fs.readdir(path.join(tmp, 'all'))).sort(), ['rano-backgrounds.jpg', 'rano-cut.jpg', 'rano-frames.jpg', 'vecer-backgrounds.jpg', 'vecer-cut.jpg', 'vecer-frames.jpg']);
+  assert.deepEqual((await fs.readdir(path.join(tmp, 'all'))).sort(), [...kinds('rano'), ...kinds('vecer')].sort());
 });
 
 test('npm run preview: --only-suspicious and --write together are refused, nothing is written', async () => {
@@ -149,7 +153,7 @@ test('npm run preview: <slug>-<id>-backgrounds.jpg, -cut.jpg and -frames.jpg (th
   const out = path.join(tmp, 'out');
   const r = cli('tvorba/rano.jpg', '--out', out);
   assert.equal(r.status, 0, r.stderr);
-  assert.deepEqual((await fs.readdir(out)).sort(), ['rano-k3f9a-backgrounds.jpg', 'rano-k3f9a-cut.jpg', 'rano-k3f9a-frames.jpg']);
+  assert.deepEqual((await fs.readdir(out)).sort(), kinds('rano-k3f9a'));
   assert.match(r.stdout, /preview: out\/rano-k3f9a-backgrounds\.jpg \(light and dark\), out\/rano-k3f9a-cut\.jpg \(cut lines\), out\/rano-k3f9a-frames\.jpg \(frame lines\)/);
   assert.equal((await sharp(path.join(out, 'rano-k3f9a-cut.jpg')).metadata()).width, 400, 'the original in its full size');
   const frames = await sharp(path.join(out, 'rano-k3f9a-frames.jpg')).metadata();

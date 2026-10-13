@@ -8,6 +8,10 @@ import YAML from 'yaml';
 import { run } from './process-images.mjs';
 import { sheetXmp } from './lib/sheet-box.mjs';
 import { readmeFingerprint } from './lib/export-readme.mjs';
+import { PREVIEW_KINDS } from './lib/corners.mjs';
+
+/** The files of a draft's folder in export/draft/ with its previews (all PREVIEW_KINDS), sorted like readdir().sort(). */
+const DRAFT_FILES = ['README.md', ...PREVIEW_KINDS.map((k) => `${k}.jpg`)].sort();
 import { WORK_FIELDS } from './lib/works.mjs';
 import { COLLECTION_FIELDS } from './lib/collections.mjs';
 import { WORK_SCHEMA } from './lib/schema.mjs';
@@ -1053,7 +1057,7 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   for (const p of ['content', 'public']) assert.ok(!(await exists(path.join(siteDir, p))), p);
   // no exports; the new draft has its previews (nothing to cut here: the whole photo) in export/draft/
   assert.deepEqual(await fs.readdir(path.join(contentDir, 'export')), ['draft']);
-  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/novy'))).sort(), ['README.md', 'backgrounds.jpg', 'cut.jpg', 'frames.jpg']);
+  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/novy'))).sort(), DRAFT_FILES);
 
   // problems are reported as in a full run
   await setYaml('2026', 'hotovy', `id: ${await idOf('2026', 'hotovy')}\ntitle: Hotový\ndate: 2026-06-14\nstatus: available\n`);
@@ -1321,9 +1325,9 @@ test('corners: prepare only finds the corners of every work and writes the cut p
   // every draft with a photo gets the previews, also without a floor to cut; a published work never
   const id = await idOf('2026', 'rozpracovany');
   // all three, like npm run preview
-  const three = ['backgrounds', 'cut', 'frames'].map((k) => `rozpracovany-${id}-${k}.jpg`);
+  const three = PREVIEW_KINDS.map((k) => `rozpracovany-${id}-${k}.jpg`);
   const plainId = await idOf('2026', 'bez-podlahy');
-  const plain = ['backgrounds', 'cut', 'frames'].map((k) => `bez-podlahy-${plainId}-${k}.jpg`);
+  const plain = PREVIEW_KINDS.map((k) => `bez-podlahy-${plainId}-${k}.jpg`);
   assert.deepEqual([...r.previews].sort(), [...plain, ...three].sort());
   assert.deepEqual((await fs.readdir(previewDir)).sort(), [...plain, ...three].sort());
   assert.equal((await sharp(path.join(previewDir, `rozpracovany-${id}-frames.jpg`)).metadata()).width, 400, 'the whole photo');
@@ -1333,7 +1337,7 @@ test('corners: prepare only finds the corners of every work and writes the cut p
   for (const p of ['content', 'public']) assert.ok(!(await exists(path.join(siteDir, p))), p);
   // the same previews (smaller, here not enlarged) in export/draft/<slug>/ with a README, and the overview
   const draftDir = path.join(contentDir, 'export/draft/rozpracovany');
-  assert.deepEqual((await fs.readdir(draftDir)).sort(), ['README.md', 'backgrounds.jpg', 'cut.jpg', 'frames.jpg']);
+  assert.deepEqual((await fs.readdir(draftDir)).sort(), DRAFT_FILES);
   assert.equal((await sharp(path.join(draftDir, 'frames.jpg')).metadata()).width, 400, 'never enlarged');
   const readme = await fs.readFile(path.join(draftDir, 'README.md'), 'utf8');
   assert.match(readme, /^# Rozpracováno: Rozpracovaný\n/);
@@ -1343,7 +1347,7 @@ test('corners: prepare only finds the corners of every work and writes the cut p
   assert.match(overview, /## Mimo kolekce[\s\S]*href="rozpracovany\/"[\s\S]*Rozpracovaný/);
   // a draft without a floor: the same previews (the whole photo), in the overview with its thumbnail
   assert.match(overview, /<img src="bez-podlahy\/backgrounds\.jpg"[\s\S]*<b>Bez podlahy<\/b>/);
-  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/bez-podlahy'))).sort(), ['README.md', 'backgrounds.jpg', 'cut.jpg', 'frames.jpg']);
+  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/bez-podlahy'))).sort(), DRAFT_FILES);
   // unchanged photo and corners: the previews in git are not written again
   const before = (await fs.stat(path.join(draftDir, 'cut.jpg'))).mtimeMs;
   await new Promise((resolve) => setTimeout(resolve, 20));
@@ -1355,8 +1359,8 @@ test('corners: prepare only finds the corners of every work and writes the cut p
   const full = await run(opts({ previewDir }));
   assert.deepEqual(full.detected, [], 'found once, kept since');
   // the other draft (no floor) keeps its previews
-  assert.deepEqual([...full.previews].sort(), plain);
-  assert.deepEqual((await fs.readdir(previewDir)).sort(), plain);
+  assert.deepEqual([...full.previews].sort(), [...plain].sort());
+  assert.deepEqual((await fs.readdir(previewDir)).sort(), [...plain].sort());
   // the draft without a floor stays, with the overview
   assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft'))).sort(), ['README.md', 'bez-podlahy']);
   assert.ok(full.pruned.includes('export/draft/rozpracovany/cut.jpg') && full.pruned.includes('export/draft/rozpracovany/README.md'), full.pruned.join(', '));
@@ -1426,7 +1430,7 @@ test('drafts: previews also when nothing is cut (meta_corners: false or all zero
   await run(opts({ prepareOnly: true, previewDir }));
   const draft = (slug) => path.join(contentDir, 'export/draft', slug);
   for (const slug of ['nula', 'vypnuto']) {
-    assert.deepEqual((await fs.readdir(draft(slug))).sort(), ['README.md', 'backgrounds.jpg', 'cut.jpg', 'frames.jpg'], slug);
+    assert.deepEqual((await fs.readdir(draft(slug))).sort(), DRAFT_FILES, slug);
     assert.equal((await sharp(path.join(draft(slug), 'frames.jpg')).metadata()).width, 64, `${slug}: the whole photo`);
   }
   assert.match(await fs.readFile(path.join(draft('vypnuto'), 'README.md'), 'utf8'), /```yaml\nmeta_corners: false\n```/);

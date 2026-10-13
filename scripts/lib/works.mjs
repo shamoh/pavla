@@ -254,7 +254,7 @@ export const EXPORT_FILES = {
   instagram: /^(?:(?:caption|scene|detail|pano)-[a-z0-9-]+\.jpg|grid-(?:\d+-\d+_\d+|preview)\.jpg|story\.jpg|post\.txt|README\.md)$/,
   fler: /^(?:(?:original|mockup-[a-z0-9-]+)\.jpg|README\.md)$/,
   // cut previews of drafts (export/draft/, scripts/lib/export-readme.mjs#draftReadme)
-  draft: /^(?:(?:backgrounds|cut|frames)\.jpg|README\.md)$/,
+  draft: /^(?:(?:backgrounds|cut|frames|frames-(?:tl|tr|br|bl))\.jpg|README\.md)$/,
 };
 
 /**

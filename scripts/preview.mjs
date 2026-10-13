@@ -20,7 +20,10 @@
 // paper side by side, with a thin line along the corners and how much each corner cuts (% of the photo, red above
 // images.edges.suspicious); <out>/<slug>-<id>-cut.jpg, the original photo in its full size with the lines of the cut
 // (corners, inset, feather, the trimmed image), each labelled on every side; <out>/<slug>-<id>-frames.jpg, the whole photo in its full size with frame
-// lines in from every border (images.edges.guides), each labelled with its distance in pixels. The same shares are
+// lines in from every border (images.edges.guides), each labelled with its distance in pixels; and
+// <out>/<slug>-<id>-frames-tl.jpg (-tr, -br, -bl), each corner of the photo close up, 300 × 300 pixels of the photo
+// enlarged twice
+// with lines every 5 pixels up to 100 and every 10 up to 130 in from its two borders (cornerFramesOf). The same shares are
 // printed, "!" marks a suspicious corner, and at the end the photos with a suspicious corner are listed once more.
 // Settings: images.edges in site.config.yaml.
 
@@ -148,10 +151,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       const name = `${key}-backgrounds.jpg`;
       const doubtful = cutsSheet(value) && cornerShares(value, edges.suspicious).suspicious.length > 0;
       if (onlySuspicious && !doubtful) continue;
-      const [backgrounds, cut, frames] = await writePreviews(outDir, key, photo, value, edges);
+      const [backgrounds, cut, frames, ...corners] = await writePreviews(outDir, key, photo, value, edges);
       console.log(`→ ${rel}: ${note}${cutsSheet(value) ? '' : ' (the sheet fills the photo, nothing is cut)'}`);
       const shown = (f) => path.relative(cwd, path.join(outDir, f));
-      console.log(`  preview: ${shown(backgrounds)} (light and dark), ${shown(cut)} (cut lines), ${shown(frames)} (frame lines)`);
+      console.log(`  preview: ${shown(backgrounds)} (light and dark), ${shown(cut)} (cut lines), ${shown(frames)} (frame lines),`
+        + ` ${corners.map(shown).join(', ')} (corners close up)`);
       if (cutsSheet(value)) {
         console.log(`  cut (% of the photo, ! = more than ${percent(edges.suspicious)}): ${sharesLine(value, edges.suspicious)}`);
         if (doubtful) flagged.push({ rel, name, value });

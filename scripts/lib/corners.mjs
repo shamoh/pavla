@@ -257,6 +257,76 @@ export async function framesOf(file, shares = EDGE_DEFAULTS.guides) {
     .toBuffer();
 }
 
+/** The size of a corner close-up (cornerFramesOf) in pixels of the photo. */
+export const CORNER_SIZE = 300;
+
+/** How many times a corner close-up is enlarged (every pixel of the photo a CORNER_SCALE × CORNER_SCALE square). */
+export const CORNER_SCALE = 2;
+
+/** Distances of the frame lines of a corner close-up from its two borders, in pixels of the photo: every 5 up to 100, then every 10 up to 130. */
+export const CORNER_LINES = [...Array.from({ length: 20 }, (_, i) => 5 * (i + 1)), 110, 120, 130];
+
+/** The corners of a photo with the borders they lie on: right (x from the right border), bottom (y from the bottom). */
+const CORNER_SIDES = { tl: [false, false], tr: [true, false], br: [true, true], bl: [false, true] };
+
+/**
+ * SVG of the frame lines of a corner close-up of `size` × `size` pixels of the photo, enlarged `scale` times
+ * (CORNER_SIZE, CORNER_SCALE, CORNER_LINES), for corner `k`: for every distance d a vertical line through the middle
+ * of pixel d from the side border and a horizontal one through pixel d from the top or bottom border of that corner,
+ * colours in turn (FRAME_COLOURS), each labelled with d away from the corner and in steps (one row or column further
+ * for every next line), so labels never overlap however close the lines are; all labels are drawn over all lines.
+ */
+export function cornerFramesSvg(k, size = CORNER_SIZE, distances = CORNER_LINES, scale = CORNER_SCALE) {
+  const [right, bottom] = CORNER_SIDES[k];
+  const out = size * scale;
+  // the middle of pixel d (counted from 0 at the border) in the enlarged image
+  const mid = (d) => d * scale + scale / 2;
+  const fx = (d) => (right ? out - mid(d) : mid(d)), fy = (d) => (bottom ? out - mid(d) : mid(d));
+  const font = 7 * scale, step = 7.5 * scale, gap = scale;
+  // labels in the half away from the corner: those of the vertical lines in rows, of the horizontal ones in columns;
+  // the last one ends inside the image (about 0.65 of the font size per digit)
+  const label = Math.max(font, Math.ceil(0.65 * font * Math.max(...distances.map((d) => String(d).length))));
+  const first = out - gap - label - step * (distances.length - 1);
+  const anchor = right ? 'end' : 'start';
+  const colour = (i) => FRAME_COLOURS[i % FRAME_COLOURS.length];
+  // first every line, then every label over them, so no line crosses a label
+  const lines = distances.map((d, i) => `<g stroke="${colour(i)}" stroke-width="1">`
+    + `<line x1="${fx(d)}" y1="0" x2="${fx(d)}" y2="${out}"/><line x1="0" y1="${fy(d)}" x2="${out}" y2="${fy(d)}"/></g>`);
+  const labels = distances.map((d, i) => {
+    const row = bottom ? out - first - i * step - gap : first + i * step + font;
+    const column = right ? out - first - i * step : first + i * step;
+    return `<text x="${fx(d) + (right ? -gap : gap)}" y="${row}" text-anchor="${anchor}" fill="${colour(i)}">${d}</text>`
+      + `<text x="${column}" y="${bottom ? fy(d) - gap : fy(d) + font}" text-anchor="${anchor}" fill="${colour(i)}">${d}</text>`;
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${out}" height="${out}">${lines.join('')}`
+    + `<g font-family="DejaVu Sans, Arial, sans-serif" font-size="${font}" font-weight="bold" stroke-linejoin="round">`
+    + labels.join('').replace(/<text /g, `<text stroke="#000" stroke-width="${scale + 1}" paint-order="stroke" `)
+    + '</g></svg>';
+}
+
+/**
+ * The four corners of the master photo `file` (oriented, never cut), each CORNER_SIZE × CORNER_SIZE pixels of the
+ * photo (smaller when the photo is) enlarged CORNER_SCALE times, with the frame lines of cornerFramesSvg: to read the
+ * pixels of meta_corners at a glance. { tl, tr, br, bl } of JPEG buffers.
+ */
+export async function cornerFramesOf(file) {
+  const photo = await sharp(file).rotate().toColorspace('srgb').removeAlpha().toBuffer();
+  const { width, height } = await sharp(photo).metadata();
+  const size = Math.min(CORNER_SIZE, width, height);
+  const out = {};
+  for (const k of CORNER_KEYS) {
+    const [right, bottom] = CORNER_SIDES[k];
+    const region = { left: right ? width - size : 0, top: bottom ? height - size : 0, width: size, height: size };
+    out[k] = await sharp(photo).extract(region)
+      // every pixel a sharp square, so the lines can be counted against the pixels
+      .resize(size * CORNER_SCALE, size * CORNER_SCALE, { kernel: 'nearest' })
+      .composite([{ input: Buffer.from(cornerFramesSvg(k, size)) }])
+      .jpeg({ quality: 90, mozjpeg: true })
+      .toBuffer();
+  }
+  return out;
+}
+
 /**
  * How much of every side was removed [left, top, right, bottom], in pixels of the photo: `total` (what the trimmed
  * image lacks, `region`: the trimmed image in the photo, { left, top, width, height }, trimTransparent), `corners` (by the corners alone: the smaller of the two corners of that
@@ -472,18 +542,24 @@ export async function cutOriginalOf(file, value, edges, { info = true, lines: la
     .toBuffer();
 }
 
-/** The kinds of cut previews, in this order: on the papers of the site, the cut lines, the guide frames. */
-export const PREVIEW_KINDS = ['backgrounds', 'cut', 'frames'];
+/**
+ * The kinds of cut previews, in this order: on the papers of the site, the cut lines, the guide frames, and the four
+ * corners close up (frames-tl, frames-tr, frames-br, frames-bl).
+ */
+export const PREVIEW_KINDS = ['backgrounds', 'cut', 'frames', ...CORNER_KEYS.map((k) => `frames-${k}`)];
 
 /**
- * The three cut previews of the master photo `file` with the corners `value` (`edges`: images.edges) as JPEG buffers
- * by their kind (PREVIEW_KINDS): backgrounds (previewOf), cut (cutOriginalOf), frames (framesOf); [[kind, buffer]].
+ * The cut previews of the master photo `file` with the corners `value` (`edges`: images.edges) as JPEG buffers by
+ * their kind (PREVIEW_KINDS): backgrounds (previewOf), cut (cutOriginalOf), frames (framesOf) and the corners close up
+ * (cornerFramesOf); [[kind, buffer]].
  */
 export async function previewBuffers(file, value, edges) {
+  const corners = await cornerFramesOf(file);
   return [
     ['backgrounds', await previewOf(file, value, edges)],
     ['cut', await cutOriginalOf(file, value, edges)],
     ['frames', await framesOf(file, edges?.guides ?? EDGE_DEFAULTS.guides)],
+    ...CORNER_KEYS.map((k) => [`frames-${k}`, corners[k]]),
   ];
 }
 
