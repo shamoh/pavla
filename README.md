@@ -1667,9 +1667,9 @@ fotky) jdou do `export/draft/[<kolekce>/]<slug>/` obsahového repa jako `backgro
 s `README.md` (`draftReadme`: název, údaje, „Kód obrazu“ a kolekce, „Stav popisu“, všechny tři náhledy, použité `meta_corners`) a přehled
 `export/draft/README.md` podle kolekcí (`draftIndex`, u každého díla kód za názvem a značky stavu popisu `noteMarks`, např.
 „✗ 1 · 💡 3“ = chyby, ke kontrole ⚠, doporučení, údaje k doplnění ✎, s legendou nahoře). Složku má **každé** rozpracované
-dílo: bez fotky nebo s `meta_corners: false` jen `README.md` se stavem popisu a důvodem, proč náhledy nejsou
-(`noPreviews`: `photo` / `uncut` / `errors`), v přehledu „bez náhledu“; náhledy dílu, které se přestalo ořezávat,
-smaže další běh bez chyb. „Stav popisu“ je totéž, co o díle říká souhrn běhu (`workNotes`
+dílo a každé s fotkou má všechny tři náhledy, i když se nic neořezává (`meta_corners: false` nebo samé nuly: celá fotka
+na papírech, u `false` bez čáry a popisků ořezu, `cutPreview`), aby měly všechny drafty totéž. Bez fotky jen `README.md`
+se stavem popisu a důvodem, proč náhledy nejsou (`noPreviews`: `photo` / `errors`), v přehledu „bez náhledu“. „Stav popisu“ je totéž, co o díle říká souhrn běhu (`workNotes`
 v `scripts/lib/summary.mjs`, stejné skupiny: Chyby, Ke kontrole, Doporučení, Zbývá doplnit; bez hlášek věta „nic
 nehlásí“); README se píše každým během (`writeIfChanged`), hlášky do otisku nepatří. Vznikají při každém běhu, i ve větvi
 (`--prepare-only`), **i když běh skončí chybami v popisech** (README díla pak ukáže jeho chyby). Dílo s vlastní chybou

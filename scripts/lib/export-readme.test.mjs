@@ -160,10 +160,9 @@ test('draftReadme: without previews (a draft with an error of its own) it says s
   assert.ok(!text.includes('<img') && !text.includes('## Ořez'));
 });
 
-test('draftReadme: a draft without previews says why (no photo, not cut, errors) and how it goes', () => {
+test('draftReadme: a draft without previews says why (no photo, errors) and how it goes', () => {
   const at = (noPreviews) => draftReadme({ work: { title: 'X' }, year: '2026', files: null, noPreviews });
   assert.match(at('photo'), /## Náhledy ořezu\n\nFotka obrazu zatím chybí/);
-  assert.match(at('uncut'), /meta_corners: false/);
   assert.match(at('errors'), /viz chyby výše/);
   assert.match(at(undefined), /viz chyby výše/);
   assert.match(at('photo'), /^# Rozpracováno: X\n\n2026\. Rozpracovaný obraz: až ho zveřejníš/);

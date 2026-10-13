@@ -164,7 +164,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `.previews/` (mimo git), workflow obsahového repa i `dry-run.yml` je nahrají jako artefakt `nahledy-orezu`; zmenšené
   (`DRAFT_EDGE`, `shrinkPreview`) i v `export/draft/[<kolekce>/]<slug>/` obsahového repa s `README.md` (`draftReadme`,
   přehled `draftIndex`), i ve větvi, přepsané jen při změně otisku v README; zveřejněním zmizí (`EXPORT_FILES.draft`).
-  Složku má každý draft (bez fotky / `meta_corners: false` jen README s důvodem), přehled se značkami `noteMarks`.
+  Složku má každý draft, s fotkou vždy všechny tři náhledy (i `meta_corners: false` / samé nuly = celá fotka), bez fotky
+  jen README s důvodem; přehled se značkami `noteMarks`.
   README díla má „Stav popisu“ = jeho hlášky ze souhrnu (`workNotes`, stejné skupiny); píše se i při běhu s chybami
   v popisech (dílo s vlastní chybou bez nových náhledů, při chybách bez přehledu a mazání), commit zpět i po chybě.
   `npm run preview -- <fotka|složka>` (`scripts/preview.mjs`): tentýž náhled (`<slug>-<id>-backgrounds.jpg`, i u pipeline) +

@@ -1051,9 +1051,9 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   assert.equal(skeleton.meta_instagram, false);
   assert.ok(await idOf('2026', 'hotovy'));
   for (const p of ['content', 'public']) assert.ok(!(await exists(path.join(siteDir, p))), p);
-  // no exports; the new draft (no photo to cut here) has only the state of its description in export/draft/
+  // no exports; the new draft has its previews (nothing to cut here: the whole photo) in export/draft/
   assert.deepEqual(await fs.readdir(path.join(contentDir, 'export')), ['draft']);
-  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/novy'))).sort(), ['README.md']);
+  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/novy'))).sort(), ['README.md', 'backgrounds.jpg', 'cut.jpg', 'frames.jpg']);
 
   // problems are reported as in a full run
   await setYaml('2026', 'hotovy', `id: ${await idOf('2026', 'hotovy')}\ntitle: Hotový\ndate: 2026-06-14\nstatus: available\n`);
@@ -1318,12 +1318,14 @@ test('corners: prepare only finds the corners of every work and writes the cut p
   const corners = YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/hotovy.yaml'), 'utf8')).meta_corners;
   assert.deepEqual(corners.photo, [400, 300]);
   assert.ok(corners.tl[0] >= 20 && corners.tl[0] <= 30 && corners.tl[1] >= 12 && corners.tl[1] <= 22, JSON.stringify(corners));
-  // a draft whose photo has no floor needs no preview, a published work never gets one
+  // every draft with a photo gets the previews, also without a floor to cut; a published work never
   const id = await idOf('2026', 'rozpracovany');
   // all three, like npm run preview
   const three = ['backgrounds', 'cut', 'frames'].map((k) => `rozpracovany-${id}-${k}.jpg`);
-  assert.deepEqual(r.previews, three);
-  assert.deepEqual((await fs.readdir(previewDir)).sort(), three);
+  const plainId = await idOf('2026', 'bez-podlahy');
+  const plain = ['backgrounds', 'cut', 'frames'].map((k) => `bez-podlahy-${plainId}-${k}.jpg`);
+  assert.deepEqual([...r.previews].sort(), [...plain, ...three].sort());
+  assert.deepEqual((await fs.readdir(previewDir)).sort(), [...plain, ...three].sort());
   assert.equal((await sharp(path.join(previewDir, `rozpracovany-${id}-frames.jpg`)).metadata()).width, 400, 'the whole photo');
   const meta = await sharp(path.join(previewDir, `rozpracovany-${id}-backgrounds.jpg`)).metadata();
   assert.equal(meta.format, 'jpeg');
@@ -1339,9 +1341,9 @@ test('corners: prepare only finds the corners of every work and writes the cut p
   assert.match(readme, /<!-- otisk: [0-9a-f]+ -->/);
   const overview = await fs.readFile(path.join(contentDir, 'export/draft/README.md'), 'utf8');
   assert.match(overview, /## Mimo kolekce[\s\S]*href="rozpracovany\/"[\s\S]*Rozpracovaný/);
-  // a draft without a floor: in the overview without a preview, its folder has only the README
-  assert.match(overview, /<td>bez náhledu<\/td><td><a href="bez-podlahy\/"><b>Bez podlahy<\/b>/);
-  assert.deepEqual(await fs.readdir(path.join(contentDir, 'export/draft/bez-podlahy')), ['README.md']);
+  // a draft without a floor: the same previews (the whole photo), in the overview with its thumbnail
+  assert.match(overview, /<img src="bez-podlahy\/backgrounds\.jpg"[\s\S]*<b>Bez podlahy<\/b>/);
+  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/bez-podlahy'))).sort(), ['README.md', 'backgrounds.jpg', 'cut.jpg', 'frames.jpg']);
   // unchanged photo and corners: the previews in git are not written again
   const before = (await fs.stat(path.join(draftDir, 'cut.jpg'))).mtimeMs;
   await new Promise((resolve) => setTimeout(resolve, 20));
@@ -1352,8 +1354,9 @@ test('corners: prepare only finds the corners of every work and writes the cut p
   await fs.writeFile(rozpracovany, (await fs.readFile(rozpracovany, 'utf8')).replace('meta_draft: true', 'meta_draft: false'));
   const full = await run(opts({ previewDir }));
   assert.deepEqual(full.detected, [], 'found once, kept since');
-  assert.deepEqual(full.previews, []);
-  assert.ok(!(await exists(previewDir)));
+  // the other draft (no floor) keeps its previews
+  assert.deepEqual([...full.previews].sort(), plain);
+  assert.deepEqual((await fs.readdir(previewDir)).sort(), plain);
   // the draft without a floor stays, with the overview
   assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft'))).sort(), ['README.md', 'bez-podlahy']);
   assert.ok(full.pruned.includes('export/draft/rozpracovany/cut.jpg') && full.pruned.includes('export/draft/rozpracovany/README.md'), full.pruned.join(', '));
@@ -1412,6 +1415,29 @@ test('drafts: the README in export/draft/ lists what the summary says about the 
   await fs.writeFile(yamlPath, 'title: [\n');
   assert.equal((await run(opts({ prepareOnly: true, previewDir }))).ok, false);
   assert.ok(await exists(draft('rozpracovany', 'cut.jpg')));
+});
+
+test('drafts: previews also when nothing is cut (meta_corners: false or all zero), only a draft without a photo has none', async () => {
+  const zero = 'meta_corners:\n  photo: [64, 48]\n  tl: [0, 0]\n  tr: [0, 0]\n  br: [0, 0]\n  bl: [0, 0]\n';
+  await addWork('2026', 'nula', `meta_draft: true\ntitle: Nula\ndate: 2026-06-14\n${zero}`);
+  await addWork('2026', 'vypnuto', 'meta_draft: true\ntitle: Vypnuto\ndate: 2026-06-14\nmeta_corners: false\n');
+  await addWork('2026', 'bez-fotky', 'meta_draft: true\ntitle: Bez fotky\ndate: 2026-06-14\n', { image: false });
+  const previewDir = path.join(tmp, 'previews');
+  await run(opts({ prepareOnly: true, previewDir }));
+  const draft = (slug) => path.join(contentDir, 'export/draft', slug);
+  for (const slug of ['nula', 'vypnuto']) {
+    assert.deepEqual((await fs.readdir(draft(slug))).sort(), ['README.md', 'backgrounds.jpg', 'cut.jpg', 'frames.jpg'], slug);
+    assert.equal((await sharp(path.join(draft(slug), 'frames.jpg')).metadata()).width, 64, `${slug}: the whole photo`);
+  }
+  assert.match(await fs.readFile(path.join(draft('vypnuto'), 'README.md'), 'utf8'), /```yaml\nmeta_corners: false\n```/);
+  assert.match(await fs.readFile(path.join(draft('nula'), 'README.md'), 'utf8'), /tl: \[0, 0\]/);
+  // without a photo: the README only, saying the photo is missing, no corners
+  assert.deepEqual(await fs.readdir(draft('bez-fotky')), ['README.md']);
+  const missing = await fs.readFile(path.join(draft('bez-fotky'), 'README.md'), 'utf8');
+  assert.match(missing, /Fotka obrazu zatím chybí/);
+  assert.ok(!missing.includes('```yaml'));
+  const overview = await fs.readFile(path.join(contentDir, 'export/draft/README.md'), 'utf8');
+  assert.match(overview, /<td>bez náhledu<\/td><td><a href="bez-fotky\/">/);
 });
 
 test('corners: the floor is transparent on the web, paper in the JPEG, white for Fler, gone from mockups and exports', async () => {

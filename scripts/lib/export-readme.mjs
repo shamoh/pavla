@@ -221,7 +221,6 @@ export const DRAFT_EDGE = 2000;
 /** Why a draft has no cut previews (`noPreviews` of draftReadme), for its README. */
 const NO_PREVIEWS = {
   photo: 'Fotka obrazu zatím chybí: náhledy ořezu vzniknou, až ji nahraješ vedle popisu.',
-  uncut: 'Obraz se neořezává (`meta_corners: false`), náhledy ořezu nejsou potřeba.',
   errors: 'Náhledy ořezu zatím nejsou: vzniknou, až půjde fotku s rohy z `meta_corners` zpracovat (viz chyby výše).',
 };
 

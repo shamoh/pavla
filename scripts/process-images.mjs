@@ -381,6 +381,9 @@ async function contentYamls(contentDir) {
   return Promise.all(files.map(async (file) => ({ file, text: await fs.readFile(path.join(contentDir, file), 'utf8') })));
 }
 
+/** `meta_corners` of a draft as YAML lines for its README: the corners, "meta_corners: false", or '' without any. */
+export const draftCorners = (value) => (value === false ? 'meta_corners: false' : value && typeof value === 'object' && value.photo ? cornersYaml(value) : '');
+
 /** Removes empty folders under `root`, deepest first, and `root` itself when it ends up empty. */
 async function removeEmptyDirs(root) {
   if (!(await exists(root))) return;
@@ -526,8 +529,9 @@ export async function run({
   const draftWanted = new Map();
   for (const w of works) {
     if (w.data.meta_draft !== true) continue;
-    // every draft has its folder with the state of its description; cut previews only with a photo to cut
-    const cut = Boolean(w.masterPath) && cutsSheet(w.data.meta_corners);
+    // every draft has its folder with the state of its description and, with a photo, the three previews (also when
+    // nothing is cut: meta_corners false or all zero, then the whole photo on the papers, so every draft looks alike)
+    const cut = Boolean(w.masterPath);
     const folder = exportFolder(w.yamlPath, w.slug);
     const collection = draftTitles.get(w.collection) ?? '';
     const notes = workNotes(w.yamlPath, noted);
@@ -554,14 +558,13 @@ export async function run({
         log(`→ export/draft/${folder}/: cut previews`);
       }
     } else if (cut) log(`! export/draft/${folder}/: problems of its own, cut previews not made again`);
-    // previews of a draft that is no longer cut (meta_corners: false) go with the next run without problems
     const files = cut && (await complete()) ? draftFiles : null;
     if (files) entry.thumb = draftFiles.backgrounds;
     draftWanted.set(folder, new Set([...(files ? Object.values(draftFiles) : []), README]));
-    const noPreviews = !w.masterPath ? 'photo' : !cut ? 'uncut' : 'errors';
+    const noPreviews = !w.masterPath ? 'photo' : 'errors';
     await fs.mkdir(dir, { recursive: true });
     await writeIfChanged(readmePath, draftReadme({
-      work: w.data, year: w.year, files, corners: cornersYaml(w.data.meta_corners), collection, fingerprint: files ? fingerprint : '', notes, noPreviews,
+      work: w.data, year: w.year, files, corners: draftCorners(w.data.meta_corners), collection, fingerprint: files ? fingerprint : '', notes, noPreviews,
     }));
   }
   const draftPruned = [];

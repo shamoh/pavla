@@ -97,14 +97,17 @@ export async function cutOut(buf, value, { inset = EDGE_DEFAULTS.inset, feather 
  * Preview of the cut for checking it (a draft): the result on light paper and on dark paper side by side, each with
  * a thin line along the corners, so both floor left over and paper cut away show, and at every corner how much it
  * cuts (horizontally · vertically, % of the photo; red above `suspicious`, images.edges.suspicious). `cut`: the cut
- * master (cutOut), `value`: its corners, `backgrounds`: [light, dark] CSS colours. Returns a JPEG buffer.
+ * master (cutOut), `value`: its corners (false = nothing is cut: no line, no labels), `backgrounds`: [light, dark]
+ * CSS colours. Returns a JPEG buffer.
  */
 export async function cutPreview(cut, value, backgrounds, { width = 800, pad = 24, suspicious = EDGE_DEFAULTS.suspicious } = {}) {
   const { width: W, height: H } = await sharp(cut).metadata();
   const s = width / W, h = Math.round(H * s);
   const small = await sharp(cut).resize(width, h, { fit: 'fill' }).png().toBuffer();
-  const points = quad(value, W, H).map(([x, y]) => `${(x * s).toFixed(1)},${(y * s).toFixed(1)}`).join(' ');
-  const line = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${h}"><polygon points="${points}" fill="none" stroke="#ff00cc" stroke-width="1" stroke-opacity="0.8"/>${cutLabels(value, width, h, suspicious)}</svg>`);
+  const corners = value && typeof value === 'object';
+  const points = corners ? quad(value, W, H).map(([x, y]) => `${(x * s).toFixed(1)},${(y * s).toFixed(1)}`).join(' ') : '';
+  const marks = corners ? `<polygon points="${points}" fill="none" stroke="#ff00cc" stroke-width="1" stroke-opacity="0.8"/>${cutLabels(value, width, h, suspicious)}` : '';
+  const line = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${h}">${marks}</svg>`);
   const panelW = width + 2 * pad, panelH = h + 2 * pad;
   const panels = await Promise.all(backgrounds.map((background) => sharp({ create: { width: panelW, height: panelH, channels: 3, background } })
     .composite([{ input: small, left: pad, top: pad }, { input: line, left: pad, top: pad }])
