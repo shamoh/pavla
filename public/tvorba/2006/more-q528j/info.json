@@ -18,7 +18,8 @@
   "pin": {
     "width": 1000,
     "height": 1500,
-    "bytes": 174908
+    "bytes": 174908,
+    "feed": true
   },
-  "fingerprint": "8005904acce8941e"
+  "fingerprint": "95c9db0b267fffe9"
 }
