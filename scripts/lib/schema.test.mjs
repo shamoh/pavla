@@ -63,12 +63,12 @@ test('an attribute with options lists exactly them in its technical comment, one
 test('optionProblems: only values outside the options, in Czech with the options listed; missing values are fine', () => {
   const schema = { fields: [{ key: 'a', options: ['x', 'y'] }, { key: 'b', options: [true, false] }, { key: 'c' }] };
   assert.deepEqual(optionProblems('f.yaml', { a: 'z', b: 'ano', c: 'cokoli' }, schema), [
-    'f.yaml: a „z“ není mezi možnostmi: x, y',
-    'f.yaml: b „ano“ není mezi možnostmi: true, false',
+    'f.yaml: a „z“ není mezi možnostmi: x, y [neplatna-moznost]',
+    'f.yaml: b „ano“ není mezi možnostmi: true, false [neplatna-moznost]',
   ]);
   assert.deepEqual(optionProblems('f.yaml', { a: 'x', b: false }, schema), []);
   assert.deepEqual(optionProblems('f.yaml', { a: null }, schema), []);
-  assert.deepEqual(optionProblems('f.yaml', { b: [1] }, schema), ['f.yaml: b „[1]“ není mezi možnostmi: true, false']);
+  assert.deepEqual(optionProblems('f.yaml', { b: [1] }, schema), ['f.yaml: b „[1]“ není mezi možnostmi: true, false [neplatna-moznost]']);
 });
 
 test('technical comments and file headers use a plain hyphen, never an en dash (–)', () => {

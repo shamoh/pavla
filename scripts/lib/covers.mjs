@@ -58,25 +58,25 @@ export function coverCrop(data, chosen = hasCoverRef(data)) {
 export function coverProblems({ where, data, photoPath, works, inScope = () => true, scope = '' }) {
   const problems = [];
   if (hasFocus(data) && !isValidFocus(data.focus)) {
-    problems.push(`${where}: focus musí být [x, y] v procentech (0-100), např. focus: [50, 30]`);
+    problems.push(`${where}: focus musí být [x, y] v procentech (0-100), např. focus: [50, 30] [spatny-focus]`);
   }
   if (hasAspect(data) && !parseAspect(data.aspect)) {
-    problems.push(`${where}: aspect musí být šířka:výška, např. aspect: "3:2"`);
+    problems.push(`${where}: aspect musí být šířka:výška, např. aspect: "3:2" [spatny-aspect]`);
   }
   const cropKeys = [hasAspect(data) && 'aspect', hasFocus(data) && 'focus'].filter(Boolean).join(' a ');
   if (cropKeys && !hasCoverRef(data) && !photoPath) {
-    problems.push(`${where}: ${cropKeys} ořezává jen vybraný úvodní obraz (cover: <kód> nebo vlastní úvodní fotka), náhodný se ukazuje celý; smaž ${cropKeys}`);
+    problems.push(`${where}: ${cropKeys} ořezává jen vybraný úvodní obraz (cover: <kód> nebo vlastní úvodní fotka), náhodný se ukazuje celý; smaž ${cropKeys} [orez-nahodneho]`);
   }
   if (!hasCoverRef(data)) return problems;
   const cover = data.cover;
   const { id, detail } = parseCoverRef(cover);
   const work = works.find((w) => w.id === id);
-  if (photoPath) problems.push(`${where}: je zadaný cover ${cover} i úvodní fotka ${path.basename(photoPath)}, nech jen jedno`);
-  else if (!work) problems.push(`${where}: cover ${cover}: ${id} není kód žádného obrazu`);
-  else if (!inScope(work)) problems.push(`${where}: cover ${cover} (${work.data.title}) nepatří do ${scope}`);
-  else if (work.data.meta_draft) problems.push(`${where}: cover ${cover} (${work.data.title}) je rozpracovaný (meta_draft: true), na webu není`);
+  if (photoPath) problems.push(`${where}: je zadaný cover ${cover} i úvodní fotka ${path.basename(photoPath)}, nech jen jedno [cover-i-fotka]`);
+  else if (!work) problems.push(`${where}: cover ${cover}: ${id} není kód žádného obrazu [cover-neexistuje]`);
+  else if (!inScope(work)) problems.push(`${where}: cover ${cover} (${work.data.title}) nepatří do ${scope} [cover-mimo]`);
+  else if (work.data.meta_draft) problems.push(`${where}: cover ${cover} (${work.data.title}) je rozpracovaný (meta_draft: true), na webu není [cover-draft]`);
   else if (detail !== null && !(work.details ?? []).some((d) => d.name === detail)) {
-    problems.push(`${where}: cover ${cover}: obraz ${work.data.title} nemá detailní fotku „${detail}“ (složka ${WORKS_SUBDIR}/${work.dir ? `${work.dir}/` : ''}${work.slug}/)`);
+    problems.push(`${where}: cover ${cover}: obraz ${work.data.title} nemá detailní fotku „${detail}“ (složka ${WORKS_SUBDIR}/${work.dir ? `${work.dir}/` : ''}${work.slug}/) [cover-bez-detailu]`);
   }
   return problems;
 }

@@ -1,9 +1,11 @@
 ---
 // Under a paged listing (the gallery, the collections overview): the page links in the middle (src/lib/pager.ts
 // draws them into #pager), the page size on the right (#per-page, on a phone below them). The page size select
-// only when there are more items than the smallest page.
-interface Props { pageSizes: number[]; total: number }
-const { pageSizes, total } = Astro.props;
+// only when there are more items than the smallest page. `views`: the switch of the gallery view (big pictures /
+// tiles, #view) next to the page size, with "smaller / larger tiles" (#tile-size, shown only with tiles); the gallery
+// script keeps them in step (aria-pressed, disabled at either end).
+interface Props { pageSizes: number[]; total: number; views?: boolean }
+const { pageSizes, total, views = false } = Astro.props;
 ---
 <div class="pager-row">
   <nav class="pager" id="pager" aria-label="Stránky" hidden></nav>
@@ -11,6 +13,24 @@ const { pageSizes, total } = Astro.props;
     <label class="per-page" id="per-page">Na stránku
       <select name="perPage">{pageSizes.map((n) => <option value={n}>{n}</option>)}</select>
     </label>
+  )}
+  {views && (
+    <div class="views" id="view" role="group" aria-label="Zobrazení">
+      <button type="button" data-view="grid" title="Velké obrazy" aria-label="Velké obrazy" aria-pressed="true">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" /><rect x="9" y="1" width="6" height="6" /><rect x="1" y="9" width="6" height="6" /><rect x="9" y="9" width="6" height="6" /></svg>
+      </button>
+      <button type="button" data-view="tiles" title="Dlaždice" aria-label="Dlaždice" aria-pressed="false">
+        <svg viewBox="0 0 16 16" aria-hidden="true">{[1, 6, 11].flatMap((y) => [1, 6, 11].map((x) => <rect x={x} y={y} width="4" height="4" />))}</svg>
+      </button>
+      <span class="tile-size" id="tile-size" hidden>
+        <button type="button" data-tile-step="-1" title="Menší dlaždice" aria-label="Menší dlaždice">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="7" width="12" height="2" /></svg>
+        </button>
+        <button type="button" data-tile-step="1" title="Větší dlaždice" aria-label="Větší dlaždice">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="7" width="12" height="2" /><rect x="7" y="2" width="2" height="12" /></svg>
+        </button>
+      </span>
+    </div>
   )}
 </div>
 
@@ -20,10 +40,18 @@ const { pageSizes, total } = Astro.props;
   .pager[hidden] { display: none; }
   .per-page { grid-column: 3; justify-self: end; display: flex; gap: 8px; align-items: center; font-size: 0.9rem; color: var(--ink-soft); white-space: nowrap; }
   .per-page[hidden] { display: none; }
+  .views { grid-column: 3; grid-row: 2; justify-self: end; display: flex; gap: 4px; }
+  .views button { display: flex; padding: 5px; color: var(--ink-soft); background: none; border: 1px solid transparent; border-radius: 2px; cursor: pointer; }
+  .views button:hover { color: var(--ink); }
+  .views button[aria-pressed='true'] { color: var(--ink); border-color: var(--line); }
+  .views svg { width: 16px; height: 16px; fill: currentColor; }
+  .views button:disabled { opacity: 0.35; cursor: default; }
+  .tile-size { display: flex; gap: 4px; margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--line); }
+  .tile-size[hidden] { display: none; }
   .per-page select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 4px 8px; border-radius: 2px; }
   @media (max-width: 700px) {
     .pager-row { grid-template-columns: 1fr; justify-items: center; }
-    .pager, .per-page { grid-column: 1; justify-self: center; }
+    .pager, .per-page, .views { grid-column: 1; grid-row: auto; justify-self: center; }
   }
   /* The links are made by the script (src/lib/pager.ts), so :global. */
   .pager :global(a) { text-decoration: none; color: var(--ink-soft); padding: 4px 8px; border-bottom: 1px solid transparent; }

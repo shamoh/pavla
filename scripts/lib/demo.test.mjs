@@ -28,15 +28,15 @@ test('demoProblems: real content without test data is fine; test data without th
   assert.deepEqual(demoProblems(real, 'real'), []);
   assert.deepEqual(demoProblems({}, 'real'), []);
   assert.deepEqual(demoProblems({ ...real, marked: true }, 'demo'), [
-    'r: jména testovacích děl a kolekcí začínají „demo-“',
-    'tvorba/plener/_index.yaml: jména testovacích děl a kolekcí začínají „demo-“',
+    'r: jména testovacích děl a kolekcí začínají „demo-“ [demo-jmeno]',
+    'tvorba/plener/_index.yaml: jména testovacích děl a kolekcí začínají „demo-“ [demo-jmeno]',
   ]);
   assert.deepEqual(demoProblems({ ...set, marked: false }, 'demo'), [
-    `${DEMO_MARKER}: chybí, testovací data označuje tento soubor v kořeni obsahu`,
+    `${DEMO_MARKER}: chybí, testovací data označuje tento soubor v kořeni obsahu [testovaci-data]`,
   ]);
 });
 
 test('demoProblems: a single test work copied into the real content is refused even without the marker', () => {
   const copied = { works: [{ slug: 'rano', yamlPath: 'a' }, { slug: 'demo-maky', yamlPath: 'b' }] };
-  assert.deepEqual(demoProblems(copied, 'real'), ['b: testovací data do skutečného obsahu nepatří, patří do pavla/demo-content (npm run demo)']);
+  assert.deepEqual(demoProblems(copied, 'real'), ['b: testovací data do skutečného obsahu nepatří, patří do pavla/demo-content (npm run demo) [testovaci-data]']);
 });

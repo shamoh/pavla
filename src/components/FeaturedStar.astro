@@ -1,0 +1,10 @@
+---
+// The mark of the author's selection (featured: true) right after the title of a work: on the gallery cards and in the
+// heading of its page. Colour of the ink of the palette; the label says what it means (screen readers, a tooltip).
+interface Props { featured?: boolean }
+const { featured } = Astro.props;
+---
+{featured && <span class="star" role="img" title="Výběr autorky" aria-label="Výběr autorky">★</span>}
+<style>
+  .star { display: inline-block; margin-left: 0.3em; font-size: 0.6em; vertical-align: 0.25em; color: var(--ink); line-height: 1; }
+</style>

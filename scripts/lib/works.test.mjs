@@ -181,7 +181,7 @@ test('todoTexts: where texts start with DOPLNIT, nested too', () => {
 
 test('validateWorks: a value outside the options of status, meta_draft and the switches is a problem, drafts too', () => {
   const [p] = validateWorks([work({ data: { status: 'availble', price: 100 } })]);
-  assert.equal(p, 'tvorba/rano.yaml: status „availble“ není mezi možnostmi: available, reserved, sold, gifted, not-for-sale');
+  assert.equal(p, 'tvorba/rano.yaml: status „availble“ není mezi možnostmi: available, reserved, sold, gifted, not-for-sale [neplatna-moznost]');
   assert.match(validateWorks([work({ data: { meta_draft: 'ne' } })])[0], /meta_draft „ne“ není mezi možnostmi: true, false/);
   assert.match(validateWorks([work({ data: { meta_draft: true, featured: 1 } })])[0], /featured „1“ není mezi možnostmi: true, false/);
   assert.match(validateWorks([work({ data: { status: '' } })])[0], /status „“ není mezi možnostmi/, 'an empty text is no status');

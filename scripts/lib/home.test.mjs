@@ -47,7 +47,7 @@ test('prepareHome refuses the former names uvod.yaml and uvod.jpg and writes no 
   await fs.writeFile(path.join(dir, 'uvod.yaml'), 'description: Můj text.\n');
   await fs.writeFile(path.join(dir, 'uvod.jpg'), 'x');
   const r = await prepareHome(dir);
-  assert.deepEqual(r.problems, ['uvod.jpg: tento soubor se teď jmenuje _cover.jpg, přejmenuj ho', 'uvod.yaml: tento soubor se teď jmenuje _index.yaml, přejmenuj ho']);
+  assert.deepEqual(r.problems, ['uvod.jpg: tento soubor se teď jmenuje _cover.jpg, přejmenuj ho [stare-jmeno-souboru]', 'uvod.yaml: tento soubor se teď jmenuje _index.yaml, přejmenuj ho [stare-jmeno-souboru]']);
   assert.equal(r.home, null);
   assert.deepEqual(r.created, []);
   assert.equal(await fs.access(path.join(dir, '_index.yaml')).then(() => true, () => false), false, 'no skeleton hides the text');
@@ -57,5 +57,5 @@ test('prepareHome refuses the former names uvod.yaml and uvod.jpg and writes no 
   await fs.rename(path.join(dir, 'uvod.yaml'), path.join(dir, '_index.yaml'));
   const again = await prepareHome(dir);
   assert.equal(again.home.data.description, 'Můj text.');
-  assert.deepEqual(again.problems, ['uvod.jpg: tento soubor se teď jmenuje _cover.jpg, přejmenuj ho']);
+  assert.deepEqual(again.problems, ['uvod.jpg: tento soubor se teď jmenuje _cover.jpg, přejmenuj ho [stare-jmeno-souboru]']);
 });

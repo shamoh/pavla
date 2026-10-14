@@ -43,17 +43,17 @@ export async function preparePhotos(contentDir) {
     if (ext === 'yaml' || ext === 'yml') yamls.set(base, file);
     else if (IMAGE_EXTENSIONS.includes(ext)) {
       const name = slugify(base);
-      if (images.has(name)) problems.push(`${PHOTOS_SUBDIR}/${file}: stejné jméno „${name}“ už má jiná fotka, jednu přejmenuj`);
+      if (images.has(name)) problems.push(`${PHOTOS_SUBDIR}/${file}: stejné jméno „${name}“ už má jiná fotka, jednu přejmenuj [stejne-jmeno]`);
       else images.set(name, { file, base });
-    } else problems.push(`${PHOTOS_SUBDIR}/${file}: sem patří jen fotky a popisy (.yaml), tento soubor smaž nebo přesuň`);
+    } else problems.push(`${PHOTOS_SUBDIR}/${file}: sem patří jen fotky a popisy (.yaml), tento soubor smaž nebo přesuň [cizi-soubor]`);
   }
 
   for (const [name, file] of yamls) {
-    if (!images.has(name)) problems.push(`${PHOTOS_SUBDIR}/${file}: chybí k němu fotka „${name}“`);
+    if (!images.has(name)) problems.push(`${PHOTOS_SUBDIR}/${file}: chybí k němu fotka „${name}“ [chybi-fotka]`);
   }
   for (const [name, image] of images) {
     if (!isValidSlug(name)) {
-      problems.push(`${PHOTOS_SUBDIR}/${image.file}: přejmenuj fotku, jméno smí mít jen písmena, číslice a pomlčky`);
+      problems.push(`${PHOTOS_SUBDIR}/${image.file}: přejmenuj fotku, jméno smí mít jen písmena, číslice a pomlčky [neplatne-jmeno]`);
       continue;
     }
     const yamlPath = path.join(root, `${name}.yaml`);
@@ -75,7 +75,7 @@ export async function preparePhotos(contentDir) {
       continue;
     }
     if (data.focus !== undefined && data.focus !== null && !isValidFocus(data.focus)) {
-      problems.push(`${PHOTOS_SUBDIR}/${name}.yaml: focus musí být [x, y] v procentech (0-100), např. focus: [70, 60]`);
+      problems.push(`${PHOTOS_SUBDIR}/${name}.yaml: focus musí být [x, y] v procentech (0-100), např. focus: [70, 60] [spatny-focus]`);
       continue;
     }
     photos.push({ name, data, masterPath: path.join(root, image.file) });

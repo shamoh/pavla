@@ -194,7 +194,7 @@ export function stateFromParams(params, pageSizes = DEFAULT_PAGE_SIZES) {
   state.status = STATUS_ALIASES[state.status] ?? state.status;
   if (!(state.status in STATUS_FILTERS)) state.status = '';
   if (state.featured !== FEATURED_ON) state.featured = '';
-  return { ...state, ...pagingFromParams(params, pageSizes) };
+  return { ...state, ...pagingFromParams(params, pageSizes), view: viewFromParams(params), tile: tileSizeFromParams(params) };
 }
 
 /**
@@ -219,8 +219,8 @@ export function pagingToParams(params, state) {
 }
 
 /**
- * Writes the active filters (empty values left out), the page (only when > 1 or 'all') and the page size
- * (only when the visitor picked a non-default one) to URL search params.
+ * Writes the active filters (empty values left out), the page (only when > 1 or 'all'), the page size
+ * (only when the visitor picked a non-default one) and the view (only tiles) to URL search params.
  */
 export function stateToParams(state) {
   const params = new URLSearchParams();
@@ -228,7 +228,10 @@ export function stateToParams(state) {
     if (key === 'tag') state.tag.forEach((t) => params.append('tag', t));
     else if (state[key]) params.set(key, state[key]);
   }
-  return pagingToParams(params, state);
+  pagingToParams(params, state);
+  if (state.view && state.view !== DEFAULT_VIEW) params.set('view', state.view);
+  if (state.view === 'tiles' && state.tile && state.tile !== DEFAULT_TILE_SIZE) params.set('tile', state.tile);
+  return params;
 }
 
 /** Page size in effect: the visitor's pick, otherwise the default (first offered size). */
@@ -286,3 +289,86 @@ export function rememberedPageSize(params, stored, pageSizes = DEFAULT_PAGE_SIZE
 /** Value to remember after the visitor picks `size`: null (forget) for the default size. */
 export const pageSizeToRemember = (size, pageSizes = DEFAULT_PAGE_SIZES) =>
   pageSizes.includes(size) && size !== pageSizes[0] ? String(size) : null;
+
+// The view of a gallery: big pictures with their titles (grid, the default) or small tiles side by side without
+// texts (tiles). Like the page size: in the URL (?view=tiles, so a sent link shows the same) and remembered.
+
+/** Views of a gallery; the first one is the default and never goes into the URL. */
+export const VIEWS = ['grid', 'tiles'];
+export const DEFAULT_VIEW = VIEWS[0];
+
+/** localStorage key of the view a visitor picked. */
+export const VIEW_STORAGE_KEY = 'pavla.gallery.view';
+
+/** The view from URL search params: an offered one, otherwise the default. */
+export const viewFromParams = (params) => (VIEWS.includes(params.get('view')) ? params.get('view') : DEFAULT_VIEW);
+
+/**
+ * View remembered from an earlier visit that should apply now, or null: a link with `view`, `page` or `perPage` decides
+ * (each view has its own page sizes, so page 2 of a link must stay the view it was sent from); `stored` is the raw
+ * value from storage, only an offered, non-default view applies.
+ */
+export function rememberedView(params, stored) {
+  if (params.has('view') || params.has('page') || params.has('perPage')) return null;
+  return VIEWS.includes(stored) && stored !== DEFAULT_VIEW ? stored : null;
+}
+
+/** Value to remember after the visitor picks `view`: null (forget) for the default view. */
+export const viewToRemember = (view) => (VIEWS.includes(view) && view !== DEFAULT_VIEW ? view : null);
+
+/** Page sizes of the tiles view; the first one is the default (site.config.yaml gallery.tilePageSizes). */
+export const DEFAULT_TILE_PAGE_SIZES = [36, 72, 144];
+
+/** localStorage key of the page size a visitor picked for the tiles (the big pictures keep PAGE_SIZE_STORAGE_KEY). */
+export const TILE_PAGE_SIZE_STORAGE_KEY = 'pavla.gallery.tilesPerPage';
+
+/** The page sizes offered in `view`: `sizes` { grid, tiles }. */
+export const viewPageSizes = (view, sizes) => (view === 'tiles' ? sizes.tiles : sizes.grid);
+
+/** The localStorage key of the page size remembered for `view`. */
+export const pageSizeStorageKey = (view) => (view === 'tiles' ? TILE_PAGE_SIZE_STORAGE_KEY : PAGE_SIZE_STORAGE_KEY);
+
+/**
+ * State after the visitor switches to `view`: its own page size (the one remembered for it, `stored` = raw value from
+ * storage, otherwise its default) and the page that shows the first work of the current page, so the visitor stays
+ * where they were; "Zobrazit vše" stays. `sizes` { grid, tiles }.
+ */
+export function withView(state, view, sizes, stored = null) {
+  if (!VIEWS.includes(view)) return state;
+  const before = pageSizeOf(state, viewPageSizes(state.view ?? DEFAULT_VIEW, sizes));
+  const pageSizes = viewPageSizes(view, sizes);
+  const next = { ...state, view, perPage: rememberedPageSize(new URLSearchParams(), stored, pageSizes) };
+  if (state.page !== ALL_PAGES) next.page = Math.floor(((state.page - 1) * before) / pageSizeOf(next, pageSizes)) + 1;
+  return next;
+}
+
+// The size of the tiles (the width of their columns): small, medium (the default) or large. Like the view: in the URL
+// (?tile=s, only with view=tiles and not the default) and remembered; a link with `tile` decides.
+
+/** Sizes of the tiles from the smallest; the CSS of WorkGallery.astro has a class tiles-<size> for each. */
+export const TILE_SIZES = ['s', 'm', 'l'];
+export const DEFAULT_TILE_SIZE = 'm';
+
+/** Width of a tile column in px by size (the `sizes` of the pictures follow it). */
+export const TILE_WIDTHS = { s: 110, m: 150, l: 210 };
+
+/** localStorage key of the tile size a visitor picked. */
+export const TILE_SIZE_STORAGE_KEY = 'pavla.gallery.tileSize';
+
+/** The tile size from URL search params: an offered one, otherwise the default. */
+export const tileSizeFromParams = (params) => (TILE_SIZES.includes(params.get('tile')) ? params.get('tile') : DEFAULT_TILE_SIZE);
+
+/** Tile size remembered from an earlier visit, or null: a link with `tile` decides; only an offered, non-default size. */
+export function rememberedTileSize(params, stored) {
+  if (params.has('tile')) return null;
+  return TILE_SIZES.includes(stored) && stored !== DEFAULT_TILE_SIZE ? stored : null;
+}
+
+/** Value to remember after the visitor picks `size`: null (forget) for the default size. */
+export const tileSizeToRemember = (size) => (TILE_SIZES.includes(size) && size !== DEFAULT_TILE_SIZE ? size : null);
+
+/** The next smaller (`step` -1) or larger (+1) tile size, the same one at either end. */
+export function stepTileSize(size, step) {
+  const at = TILE_SIZES.indexOf(TILE_SIZES.includes(size) ? size : DEFAULT_TILE_SIZE);
+  return TILE_SIZES[Math.min(TILE_SIZES.length - 1, Math.max(0, at + step))];
+}

@@ -62,7 +62,7 @@ featured: false
 mockups: true
 
 # NEPOVINNÉ. Cena v Kč, např. 2500. Povinná u available a reserved.
-# price: 2500
+price: 1800
 
 # Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu.
 # Podle rozměrů se dělají mockupy ve skutečné velikosti. Nejčastější možnosti jsou:

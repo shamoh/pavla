@@ -21,7 +21,7 @@ meta_instagram: false
 
 # NEPOVINNÉ. Mřížka na profilu Instagramu (obraz rozřezaný na dlaždice), sloupce x řádky, např. 3x3, 2x1, 3x1, 1x2, 3x4
 # (od 1x1 do 5x5; jen spolu s meta_instagram: true a jen pro aplikaci v telefonu, web na počítači má 4 sloupce).
-# meta_instagram_grid: 3x3
+meta_instagram_grid: 2x1
 
 # Pin na Pinterest, možnosti:
 # - true - připravit (obrázek pinu na webu, Pinterest si ho sám vezme z kanálu /pinterest.xml)
@@ -53,7 +53,7 @@ featured: false
 # fler: https://www.fler.cz/zbozi/…
 
 # NEPOVINNÉ. Odkaz na příspěvek s obrazem na Instagramu (https://www.instagram.com/p/…), až ho zveřejníš. Web ho ukáže u obrazu.
-# instagram: https://www.instagram.com/p/…
+instagram: https://www.instagram.com/p/demo-zahrada/
 
 # Mockupy (obraz v rámu v interiéru), možnosti:
 # - true - na webu, u obrazu na prodej i pro Fler

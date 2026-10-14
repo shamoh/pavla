@@ -48,7 +48,7 @@ test('readTree pairs images with metadata by slug and reports stray files', asyn
   assert.deepEqual([...groups[0].yamls.keys()], ['rano-u-rybnika']);
   assert.equal(groups[0].images.get('rano-u-rybnika').file, 'Ráno u rybníka.JPG');
   assert.equal(groups[0].images.size, 1, 'files starting with _ or . are no works');
-  assert.deepEqual(problems, ['tvorba/notes.txt: sem patří jen fotky a popisy (.yaml), tento soubor smaž nebo přesuň']);
+  assert.deepEqual(problems, ['tvorba/notes.txt: sem patří jen fotky a popisy (.yaml), tento soubor smaž nebo přesuň [cizi-soubor]']);
 });
 
 test('readTree reports two images mapping to the same slug', async () => {
@@ -245,11 +245,11 @@ test('placeholderProblems: texts starting with DOPLNIT in collections, years, th
     photos: [{ name: 'portret', data: { alt: 'Portrét', caption: 'DOPLNIT popisek' } }],
   });
   assert.deepEqual(problems, [
-    'tvorba/plener/_index.yaml: title pořád začíná „DOPLNIT“, přepiš ho',
-    'roky/2026.yaml: description pořád začíná „DOPLNIT“, přepiš ho',
-    '_index.yaml: description pořád začíná „DOPLNIT“, přepiš ho',
-    'tvorba/_index.yaml: description pořád začíná „DOPLNIT“, přepiš ho',
-    'fotky/portret.yaml: caption pořád začíná „DOPLNIT“, přepiš ho',
+    'tvorba/plener/_index.yaml: title pořád začíná „DOPLNIT“, přepiš ho [doplnit-verejny]',
+    'roky/2026.yaml: description pořád začíná „DOPLNIT“, přepiš ho [doplnit-verejny]',
+    '_index.yaml: description pořád začíná „DOPLNIT“, přepiš ho [doplnit-verejny]',
+    'tvorba/_index.yaml: description pořád začíná „DOPLNIT“, přepiš ho [doplnit-verejny]',
+    'fotky/portret.yaml: caption pořád začíná „DOPLNIT“, přepiš ho [doplnit-verejny]',
   ]);
   assert.deepEqual(placeholderProblems({}), []);
 });
@@ -284,7 +284,7 @@ test('commentedOutReview: commented-out attributes that are not optional, with w
     { file: 'jinde.yaml', text: '# id: TODO\n' },
   ]);
   assert.equal(r.length, 3);
-  assert.match(r[0], /^tvorba\/rano\.yaml: řádek „# id: TODO“ je zakomentovaný údaj id, který už v souboru je; .*smaž ho$/);
+  assert.match(r[0], /^tvorba\/rano\.yaml: řádek „# id: TODO“ je zakomentovaný údaj id, který už v souboru je; .*smaž ho \[zakomentovany-udaj\]$/);
   assert.match(r[1], /^tvorba\/rano\.yaml: řádek „# title: Ráno“ je zakomentovaný údaj title; .*odkomentuj ho/);
   assert.match(r[2], /^roky\/2026\.yaml: .*údaj description;/);
 });

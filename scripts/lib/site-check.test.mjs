@@ -83,7 +83,7 @@ test('evaluateSiteImages: fine, missing images (listed up to the limit), broken 
   assert.match(bad.message, /^Na webu chybí 12 obrázků/);
   assert.match(bad.message, /\n- \/tvorba\/2026\/x\/0\.jpg \(stránka \/tvorba\/2026\/x\/\)/);
   assert.match(bad.message, /\n- … a dalších 2\n/);
-  assert.match(bad.message, /Nedostupné stránky webu \(1\):\n- \/o-mne\/ \(HTTP 500\)/);
+  assert.match(bad.message, /Nedostupné stránky webu \(1\): \[stranky-nedostupne\]\n- \/o-mne\/ \(HTTP 500\)/);
   assert.equal(evaluateSiteImages(null).ok, true);
 });
 

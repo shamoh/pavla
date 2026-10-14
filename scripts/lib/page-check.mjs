@@ -3,6 +3,7 @@
 // at most DESCRIPTION_MAX characters) and valid structured data (JSON-LD with the schema.org context and a type on
 // every node). The same checks run in the weekly health check over the deployed site (evaluatePageTexts).
 
+import { coded } from './codes.mjs';
 import { isNoindex } from './sitemap.mjs';
 
 /** Longest description a search result shows whole (summarize in scripts/lib/seo.mjs cuts to it). */
@@ -25,20 +26,20 @@ export function pageMeta(html) {
 
 /**
  * The texts of each problem (`code` + `detail`): English for the console ("Kontrola kódu", npm run check:images),
- * Czech for the report of the weekly health check.
+ * Czech for the report of the weekly health check. The codes are those of all messages (scripts/lib/codes.mjs).
  */
 const PROBLEM_TEXTS = {
-  noTitle: ['no <title>', 'chybí titulek'],
-  sameTitle: [(d) => `the same title as ${d}`, (d) => `stejný titulek jako ${d}`],
-  noDescription: ['no meta description', 'chybí popis'],
-  sameDescription: [(d) => `the same description as ${d}`, (d) => `stejný popis jako ${d}`],
-  longDescription: [(d) => `description longer than ${DESCRIPTION_MAX} characters (${d})`, (d) => `popis delší než ${DESCRIPTION_MAX} znaků (${d})`],
-  noJsonLd: ['no structured data (JSON-LD)', 'chybí strukturovaná data (JSON-LD)'],
-  invalidJson: [(d) => `JSON-LD is not valid JSON (${d})`, (d) => `JSON-LD není platný JSON (${d})`],
-  notObject: ['JSON-LD is not an object', 'JSON-LD není objekt'],
-  noContext: ['JSON-LD without the schema.org @context', 'JSON-LD bez @context schema.org'],
-  emptyGraph: ['JSON-LD with an empty @graph', 'JSON-LD s prázdným @graph'],
-  noType: [(d) => `JSON-LD node ${d} without @type`, (d) => `JSON-LD: uzel ${d} bez @type`],
+  'titulek-chybi': ['no <title>', 'chybí titulek'],
+  'stejny-titulek': [(d) => `the same title as ${d}`, (d) => `stejný titulek jako ${d}`],
+  'popis-stranky-chybi': ['no meta description', 'chybí popis'],
+  'stejny-popis-stranky': [(d) => `the same description as ${d}`, (d) => `stejný popis jako ${d}`],
+  'dlouhy-popis-stranky': [(d) => `description longer than ${DESCRIPTION_MAX} characters (${d})`, (d) => `popis delší než ${DESCRIPTION_MAX} znaků (${d})`],
+  'jsonld-chybi': ['no structured data (JSON-LD)', 'chybí strukturovaná data (JSON-LD)'],
+  'jsonld-neplatny': [(d) => `JSON-LD is not valid JSON (${d})`, (d) => `JSON-LD není platný JSON (${d})`],
+  'jsonld-neni-objekt': ['JSON-LD is not an object', 'JSON-LD není objekt'],
+  'jsonld-bez-contextu': ['JSON-LD without the schema.org @context', 'JSON-LD bez @context schema.org'],
+  'jsonld-prazdny-graf': ['JSON-LD with an empty @graph', 'JSON-LD s prázdným @graph'],
+  'jsonld-bez-typu': [(d) => `JSON-LD node ${d} without @type`, (d) => `JSON-LD: uzel ${d} bez @type`],
 };
 
 /** The text of a problem ({ code, detail }) in `lang` ('en' or 'cs'), without its page. */
@@ -53,15 +54,15 @@ export function jsonLdProblems(text) {
   try {
     data = JSON.parse(text);
   } catch (e) {
-    return [{ code: 'invalidJson', detail: e.message }];
+    return [{ code: 'jsonld-neplatny', detail: e.message }];
   }
-  if (!data || typeof data !== 'object' || Array.isArray(data)) return [{ code: 'notObject' }];
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return [{ code: 'jsonld-neni-objekt' }];
   const problems = [];
-  if (!/^https?:\/\/schema\.org\/?$/.test(String(data['@context'] ?? ''))) problems.push({ code: 'noContext' });
+  if (!/^https?:\/\/schema\.org\/?$/.test(String(data['@context'] ?? ''))) problems.push({ code: 'jsonld-bez-contextu' });
   const nodes = Array.isArray(data['@graph']) ? data['@graph'] : [data];
-  if (nodes.length === 0) problems.push({ code: 'emptyGraph' });
+  if (nodes.length === 0) problems.push({ code: 'jsonld-prazdny-graf' });
   nodes.forEach((node, i) => {
-    if (!node || typeof node !== 'object' || !node['@type']) problems.push({ code: 'noType', detail: i + 1 });
+    if (!node || typeof node !== 'object' || !node['@type']) problems.push({ code: 'jsonld-bez-typu', detail: i + 1 });
   });
   return problems;
 }
@@ -84,14 +85,14 @@ export function pageProblems(pages) {
   const titles = repeated('title');
   const descriptions = repeated('description');
   for (const m of metas) {
-    if (!m.title) add(m.path, 'noTitle');
-    else if (titles.get(m.title).length > 1) add(m.path, 'sameTitle', others(titles.get(m.title), m.path));
-    if (!m.description) add(m.path, 'noDescription');
+    if (!m.title) add(m.path, 'titulek-chybi');
+    else if (titles.get(m.title).length > 1) add(m.path, 'stejny-titulek', others(titles.get(m.title), m.path));
+    if (!m.description) add(m.path, 'popis-stranky-chybi');
     else {
-      if (descriptions.get(m.description).length > 1) add(m.path, 'sameDescription', others(descriptions.get(m.description), m.path));
-      if (m.description.length > DESCRIPTION_MAX) add(m.path, 'longDescription', m.description.length);
+      if (descriptions.get(m.description).length > 1) add(m.path, 'stejny-popis-stranky', others(descriptions.get(m.description), m.path));
+      if (m.description.length > DESCRIPTION_MAX) add(m.path, 'dlouhy-popis-stranky', m.description.length);
     }
-    if (m.jsonLd.length === 0) add(m.path, 'noJsonLd');
+    if (m.jsonLd.length === 0) add(m.path, 'jsonld-chybi');
     for (const text of m.jsonLd) problems.push(...jsonLdProblems(text).map((p) => ({ path: m.path, ...p })));
   }
   const key = (p) => `${p.path}: ${problemText(p)}`;
@@ -114,7 +115,7 @@ export function evaluatePageTexts(pages, { limit = 10 } = {}) {
     return { ok: true, message: `Texty stránek pro vyhledávače jsou v pořádku (${pagesCount(indexable.length)}: vlastní titulky a popisy, platná strukturovaná data).` };
   }
   const lines = [`Texty stránek pro vyhledávače mají ${problems.length} ${problems.length === 1 ? 'problém' : problems.length <= 4 ? 'problémy' : 'problémů'}:`];
-  lines.push(...problems.slice(0, limit).map((p) => `- ${p.path}: ${problemText(p, 'cs')}`));
+  lines.push(...problems.slice(0, limit).map((p) => `- ${p.path}: ${coded(p.code, problemText(p, 'cs'))}`));
   if (problems.length > limit) lines.push(`- … a dalších ${problems.length - limit}`);
   lines.push('„Kontrola kódu“ to hlídá před sloučením, nasazený web je tedy nejspíš z commitu, který jí neprošel; spusť `npm run build` a `npm run check:images`.');
   return { ok: false, message: lines.join('\n') };

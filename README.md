@@ -260,7 +260,11 @@ dílo z jiného místa, rozpracované dílo, neexistující detail, neplatný `a
 v kostrách prázdné. V přehledu kolekcí obal nikam
 nevede (celá položka vede na kolekci).
 
-Díla s `featured: true` jsou zároveň filtrovatelná přepínačem „Doporučené“ (`?featured=1`). Na úvodní stránce
+Díla s `featured: true` jsou zároveň filtrovatelná přepínačem „Doporučené“ (`?featured=1`) a mají za názvem
+nenápadnou hvězdičku `★` (na kartě v galerii i za nadpisem stránky díla; barva inkoustu palety, takže na tmavé paletě
+světlá; bublina a `aria-label` „Výběr autorky“; `src/components/FeaturedStar.astro`). Na stránce díla je za `<h1>`, ne
+v něm (blok `.title` má velikost a okraje nadpisu, `<h1>` v něm teče v řádku, takže hvězdička je hned za posledním
+slovem): text nadpisu, titulek stránky, JSON-LD ani bublina nad obrazem ji neobsahují. Na úvodní stránce
 „Nejnovější“ neopakuje dílo z úvodního obrazu (vždy 6 děl).
 
 Náhodný obraz: stránka obsahuje všechny kandidáty, první viditelný a ostatní `hidden` s líně načítanými obrázky
@@ -353,6 +357,24 @@ seznamů.
   - v anonymním okně nebo při zablokovaném úložišti se nic nepamatuje a vše
     ostatní funguje.
 
+- **Zobrazení (dlaždice):** vedle „Na stránku“ (na telefonu pod ním) jsou dvě ikony: „Velké obrazy“ (výchozí,
+  sloupce s názvem, technikou a štítkem stavu) a „Dlaždice“ (malé obrazy hustě vedle sebe, šířka sloupce 150 px,
+  na počítači až 6 sloupců, na telefonu 3, bez textů; údaje ukáže bublina nad obrazem). Dlaždice mají vlastní počty
+  na stránku (`gallery.tilePageSizes` v `site.config.yaml`, výchozí 36, 72, 144) a vlastní paměť počtu
+  (`pavla.gallery.tilesPerPage`, `pageSizeStorageKey`); přepnutí zobrazení vezme počet nového zobrazení a skočí na
+  stránku s prvním dosud zobrazeným dílem (`withView`), „Zobrazit vše“ zůstane. **Velikost dlaždic:** u dlaždic
+  jsou vedle přepínače tlačítka „Menší dlaždice“ / „Větší dlaždice“ (`−` / `+`, na krajích zašedlá): malé (sloupec
+  110 px, na telefonu 4 sloupce), střední (výchozí, 150 px / 3) a velké (210 px / 2) (`TILE_SIZES`, `TILE_WIDTHS`,
+  `stepTileSize`; třídy `tiles-s` / `tiles-m` / `tiles-l`, `sizes` obrázků podle šířky). V URL jako `tile=s` / `tile=l`
+  (jen s `view=tiles`, výchozí se nepíše) a pamatuje se (`pavla.gallery.tileSize`, `rememberedTileSize`,
+  `tileSizeToRemember`); odkaz s `tile` má přednost. Díla ani stránka se změnou velikosti nemění. Platí pro galerii, stránky
+  roků i kolekcí (`WorkGallery.astro`, přepínač `Pager.astro` s `views`), přehled kolekcí ho nemá. Dlaždice jsou
+  v URL jako `view=tiles` (výchozí se nepíše, jiná hodnota se ignoruje) a pamatují se jako počet na stránku
+  (`localStorage`, klíč `pavla.gallery.view`): odkaz s `view`, `page` nebo `perPage` má přednost (odkaz na 2. stránku
+  ukáže zobrazení, ze kterého přišel), zapamatovaná volba se hned zapíše do URL,
+  volba velkých obrazů paměť smaže. Filtry, stránka i počet na stránku se přepnutím nemění. V dlaždicích se
+  obrázkům přepíše `sizes`, aby prohlížeč stahoval menší varianty. Logika: `VIEWS`, `viewFromParams`,
+  `rememberedView`, `viewToRemember`, `viewPageSizes`, `withView` v `scripts/lib/gallery-filter.mjs`.
 - Stránkuje se **vyfiltrovaný** seznam: filtry a stránky fungují dohromady,
   změna filtru vrátí na 1. stránku.
 - Stránka je v URL jako `page` (jen od 2. stránky), např.
@@ -381,6 +403,7 @@ Jez na Otavě                       (u úvodního detailu: „Jez na Otavě, det
 akvarel · 41 × 30 cm · 2025
 papír Canson XL Aquarelle (300 g)  (support, jen když je vyplněný)
 K prodeji                          (jen K prodeji / Rezervováno / V soukromé sbírce)
+#krajina #mlha #voda               (štítky česky podle abecedy, jen když nějaké má)
 
 Popis díla, zkrácený na 240 znaků po celém slově.
 ```
@@ -904,6 +927,27 @@ u Instagramu i „Příběh kolekce“), úklid je nechá (`wanted`). Kód
 `scripts/lib/export-readme.mjs`; složky děl se píšou každým během (hned následují popis, cenu i štítky), přehledy
 plným během. Úklid je bere jako vlastní soubory pipeline (`EXPORT_FILES`).
 
+### Přehled všech děl (`export/README.md`)
+
+Jeden soubor se **vším o všech dílech** pro hledání v prohlížeči (Ctrl+F na stránce, kterou GitHub vykreslí):
+`overviewReadme` v `scripts/lib/overview.mjs`. Bez obrázků a s co nejmenším formátováním, aby zůstal malý.
+
+- Nahoře počty děl (zveřejněná, rozpracovaná, s chybou), odkazy na kolekce s počty a **Hlášky**: každý použitý kód
+  hlášky (viz *Kódy hlášek*) s počtem případů, úrovní a významem, seřazené podle úrovně a počtu.
+- Kolekce česky podle abecedy (`## <název>`), „Mimo kolekce“ na konci; u každé odkaz na její `_index.yaml`, všechny
+  její atributy a hlášky. Díla v kolekci od nejnovějšího (`date`).
+- Dílo: `### <název> · <id>` (+ ` ★` u výběru autorky, ` · draft` u rozpracovaného), řádek s odkazy na popis,
+  fotku („foto“, nebo „bez fotky“) a stránku na webu (jen zveřejněné), pak **všechny atributy z yaml** v pořadí
+  souboru (i `meta_*` a `private_*`, obsahové repo je soukromé; prázdné vynechá) v jednom odstavci
+  `klíč: hodnota · …`, dlouhé texty (nad 80 znaků) každý na vlastním řádku, seznamy čárkami, mapy `klíč=hodnota; …`.
+  Pod tím hlášky běhu k dílu jako `` - `kód` text `` (chyby, ke kontrole, doporučení, zbývá doplnit), bez nich
+  `stav: OK`.
+- „Ostatní“: hlášky jiných souborů (roky, fotky, úvodní stránka) a obecné (štítky, techniky).
+- Píše ho každý běh bez `--only` (i s chybami v popisech a `--prepare-only`, tedy i ve větvi), celý a vždy stejně
+  ze stejných dat (git ukáže jen změněné části); plný běh ho na konci přepíše znovu s varováními exportů
+  (`misfits`). Úklid exportů ho nemaže (maže jen ve složkách platforem). Nad `OVERVIEW_MAX_BYTES` (400 kB) dá
+  doporučení `prehled-velky` (GitHub velké soubory nemusí vykreslit), soubor se ale zapíše celý.
+
 ## Autorství v obrázcích (XMP)
 
 Webové obrázky každého díla (originál ve všech šířkách, detaily, mockupy, ve formátech JPEG, WebP i AVIF, a jeho
@@ -1241,6 +1285,11 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 
 | Změna | Jak ověřit |
 |---|---|
+| hvězdička výběru autorky | `/tvorba/`: „Máky“ má za názvem `★` (bublina „Výběr autorky“), stejně v nadpisu jeho stránky; přepni paletu Noc v patičce, hvězdička zesvětlá. Dílo bez `featured` hvězdičku nemá. |
+| velikost dlaždic | v dlaždicích `−` / `+` vedle přepínače: menší (víc sloupců, `?view=tiles&tile=s`) a větší (`&tile=l`), na krajích zašedlé; střední parametr nemá. Obnov stránku bez parametrů: velikost zůstane (paměť `pavla.gallery.tileSize`); `?view=tiles&tile=m` → střední (odkaz má přednost). Na telefonu 4 / 3 / 2 sloupce. Ve velkých obrazech tlačítka nejsou. |
+| dlaždice | `/tvorba/`: vpravo dole ikona „Dlaždice“: malé obrazy bez textů, 36 na stránku, „Na stránku“ nabízí 36 / 72 / 144, v URL `?view=tiles`; z 4. stránky velkých obrazů skočí na 2. stránku dlaždic (stejné první dílo). Zvol 72, přepni na velké obrazy a zpět: každé zobrazení si pamatuje svůj počet. Změň filtr, dlaždice zůstanou. Otevři `/tvorba/` znovu bez parametrů → dlaždice a `?view=tiles` (paměť); `/tvorba/?view=grid` → velké obrazy (odkaz má přednost); „Velké obrazy“ paměť smaže (DevTools → Local Storage → `pavla.gallery.view`). Na šířce telefonu 3 sloupce. |
+| štítky v bublině | `/tvorba/`: najeď myší na obraz se štítky, bublina má řádek `#štítek …` česky podle abecedy. |
+| přehled všech děl | `npm run demo:prepare`, pak `.demo/content/export/README.md`: kolekce, atributy, kódy hlášek (např. `featured-bez-pinu` u Máků) a „Hlášky“ s počty; v náhledu Markdownu (VS Code) hledej kód. |
 | filtry | `/tvorba/`: klikej na filtry, sleduj URL; zkopíruj URL do nového okna, musí ukázat totéž. Testovací data mají pro každou kombinaci aspoň jedno dílo. |
 | stránkování | `/tvorba/`: 12 děl a stránky 1, 2, …, 5 (mezera „…“); klikni na 2, v URL `?page=2`, zkopíruj do nového okna. Vyber filtr, vrátí tě na 1. stránku; `?page=99` se opraví na poslední. „Zobrazit vše (58)“: všech 58 děl, v URL `?page=all`; změň filtr, zůstane vše; „Zobrazit po stránkách“ vrátí 1. stránku. „Na stránku“ 24: stránky 1, 2, 3, v URL `?perPage=24`; 48: stránky 1, 2; zpět na 12 parametr zmizí; `?perPage=13` se ignoruje. Paměť: zvol 24, otevři `/tvorba/` znovu bez parametrů (nebo stránku kolekce) → 24 a `?perPage=24` v URL; otevři `/tvorba/?page=2` → 12 na stránku (odkaz má přednost); zvol 12 → paměť se smaže. Smazat ručně: DevTools → Application → Local Storage → `pavla.gallery.perPage`. Menší první hodnota `gallery.pageSizes` (např. `[4, 12]`) ukáže mezery na obou stranách aktuální stránky. |
 | náhledy pro sdílení | `grep -o '<meta property="og:image[^>]*>' dist/tvorba/2026/*/index.html` po `npm run build`; soubory `public/tvorba/*/*/og.jpg` a `public/tvorba/kolekce/*/og.jpg`. Online: po nasazení vlož odkaz do <https://www.opengraph.xyz/> nebo do Facebook Sharing Debuggeru. |
@@ -1302,6 +1351,14 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
   a lokálně bez odkazů): u hlášky, která jmenuje řádek („na řádku 43“, „(řádek 44)“) nebo začíná atributem
   („date musí být…“, i zakomentovaným `# price:`), rovnou na řádek (`#L<n>`, `lineOf`, čte soubor po běhu = stav, který
   automatika commitne zpět). Soubor s víc hláškami: nadpis vede na soubor a každá hláška s řádkem má „(řádek N)“.
+  **Kódy hlášek** (`scripts/lib/codes.mjs`): každá hláška o souboru končí kódem v hranatých závorkách, např.
+  „tvorba/jez.yaml: chybí název (title) [chybi-nazev]“. Kód je krátké české slovo bez diakritiky, stejné pro všechny
+  případy stejného problému, takže hledání kódu (v souhrnu, v přehledu `export/README.md`) najde všechny. Registr
+  `CODES` má u každého kódu úroveň (`error`, `review`, `advice`, `todo`) a význam; `coded(code, text)` neznámý kód
+  odmítne, `codesOf` a `withoutCodes` ho z hlášky čtou. Test hlídá, že každý kód je použitý a každý kód v hláškách
+  zná registr. Nová hláška = nový kód v `CODES`. Seznamy `DOPLNIT` (zveřejněné obrazy v „Ke kontrole“ a „Zbývá
+  doplnit“) mají kód až v přehledu (`doplnit-zverejneny`, `doplnit`). Týdenní kontrola používá kódy ze stejného
+  registru (úroveň `health`, viz níže).
   Pořadí částí:
   1. **Chyby** (`### ✗ Chyby (počet)`): hlášky kontrol seskupené po souborech (`groupProblems`: část před první
      „`: `“ je soubor, hlášky bez souboru pod „Obecně“) a obrazy bez fotky (`missing`). Každá hláška kontroly je česky
@@ -1333,6 +1390,13 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
      klonu nic, proto `fetch-depth: 0` ve workflow obsahového repa): rozpracované dílo déle než `DRAFT_DAYS` (30) dní
      (`draftAgeAdvice`) a zveřejněné dílo s `meta_instagram: true` bez odkazu `instagram`, jehož `README.md` v
      `export/instagram/` je v gitu déle než `INSTAGRAM_LINK_DAYS` (14) dní (`instagramLinkAdvice`).
+     Nesoulad atributů díla (`consistencyAdvice`, i u rozpracovaných, pokud není řečeno jinak):
+     `featured-bez-pinu` (zveřejněné dílo ve výběru autorky bez `meta_pinterest: true`), `odkaz-instagram-bez-exportu`
+     (odkaz `instagram`, ale `meta_instagram` není `true`), `fler-neni-na-prodej` (odkaz `fler` u díla, které není
+     `available`/`reserved`), `prodej-bez-fleru` (zveřejněné dílo na prodej bez odkazu `fler`), `cena-neprodava`
+     (`price` u `not-for-sale` nebo `gifted`; prodané si cenu nechává), `mockupy-bez-rozmeru` (`mockups: true` bez
+     platného `size_cm`), `mrizka-bez-instagramu` (`meta_instagram_grid` bez `meta_instagram: true`, mřížka nevznikne),
+     `datum-v-budoucnu` (`date` po dnešku).
      Pod Doporučeními vlastní sbalený blok **Zbývá doplnit** (`### ✎ Zbývá doplnit (počet)`, `<details>`, `result.todo`):
      každý popis obsahového repa (díla i rozpracovaná, kolekce, roky, úvod, „Mimo kolekce“, fotky; `contentYamls`), který
      má u technického komentáře ještě `DOPLNIT`, jedním řádkem „**soubor**: atributy v pořadí souboru“ (`todoAdvice`
@@ -1382,7 +1446,16 @@ nepovinný). Kontroluje:
   (chybu ohlásí kontrola obrázků).
 
 Výsledek je markdown (`formatReport`) na stránce běhu a ve výstupu kroku `report`; když je něco špatně,
-skript skončí kódem 1.
+skript skončí kódem 1. Kódy neúspěšných kontrol (i problémů, které vypisují) jsou v `report.codes` (`formatReport`)
+a jako výstup kroku `codes` (`[token-vyprsi] [obrazky-chybi]`): workflow obsahového repa je dá na konec titulku issue,
+aby šly e-maily filtrovat podle kódu. Každá neúspěšná kontrola končí první řádek své hlášky kódem ze stejného registru jako hlášky
+pipeline (`scripts/lib/codes.mjs`, úroveň `health`): `token-chybi`, `token-neplatny`, `token-nedostupny`,
+`token-vyprsi`, `beh-selhal`, `zkusebni-beh-selhal`, `nasazeni-selhalo`, `nasazeni-chybi`, `aktualizace-ceka`,
+`neznamy-atribut`, `nova-technika`, `obrazky-chybi`, `stranky-nedostupne`, `nacteni-selhalo` (API nebo obsah se
+nepodařilo načíst). Problémy textů stránek mají kód každý (`titulek-chybi`, `stejny-titulek`, `popis-stranky-chybi`,
+`stejny-popis-stranky`, `dlouhy-popis-stranky`, `jsonld-chybi`, `jsonld-neplatny`, `jsonld-neni-objekt`,
+`jsonld-bez-contextu`, `jsonld-prazdny-graf`, `jsonld-bez-typu`); jsou to přímo kódy `pageProblems`, takže je
+vypisuje i `npm run check:images`.
 
 **Zkušební běh zpracování** (`.github/workflows/dry-run.yml` v tomto repu): každou neděli (den před
 týdenní kontrolou), po změně pipeline (`scripts/process-images.mjs`, `scripts/pull-request.mjs`,

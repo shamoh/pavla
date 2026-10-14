@@ -44,5 +44,5 @@ test('prepareUncollected reports two cover photos', async () => {
   await fs.writeFile(path.join(dir, 'tvorba', '_cover.jpg'), 'x');
   await fs.writeFile(path.join(dir, 'tvorba', '_cover.png'), 'x');
   const { problems } = await prepareUncollected(dir, true);
-  assert.deepEqual(problems, ['tvorba/_cover.jpg, tvorba/_cover.png: víc úvodních fotek obrazů mimo kolekce, nech jen jednu']);
+  assert.deepEqual(problems, ['tvorba/_cover.jpg, tvorba/_cover.png: víc úvodních fotek obrazů mimo kolekce, nech jen jednu [vic-uvodnich-fotek]']);
 });

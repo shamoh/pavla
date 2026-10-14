@@ -35,8 +35,8 @@ export const RETIRED_NAMES = { index: ['_kolekce.yaml', 'uvod.yaml'], cover: ['_
 export function retiredNameProblem(rel, file, { index, cover }) {
   const { base, ext } = splitExt(file);
   const where = [rel, file].filter(Boolean).join('/');
-  if (index.includes(file)) return `${where}: tento soubor se teď jmenuje ${INDEX_FILE}, přejmenuj ho`;
-  if (cover.includes(base) && IMAGE_EXTENSIONS.includes(ext)) return `${where}: tento soubor se teď jmenuje ${COVER_NAME}.${ext}, přejmenuj ho`;
+  if (index.includes(file)) return `${where}: tento soubor se teď jmenuje ${INDEX_FILE}, přejmenuj ho [stare-jmeno-souboru]`;
+  if (cover.includes(base) && IMAGE_EXTENSIONS.includes(ext)) return `${where}: tento soubor se teď jmenuje ${COVER_NAME}.${ext}, přejmenuj ho [stare-jmeno-souboru]`;
   return null;
 }
 
@@ -64,14 +64,14 @@ async function readFolder(worksRoot, rel, allowCollections) {
     if (isHidden(file)) continue;
     if (item.isDirectory()) { folders.push(file); continue; }
     if (ext === 'yaml' || ext === 'yml') {
-      if (group.yamls.has(base)) problems.push(`${where(file)}: k „${base}“ jsou dva popisy, nech jen jeden`);
+      if (group.yamls.has(base)) problems.push(`${where(file)}: k „${base}“ jsou dva popisy, nech jen jeden [dva-popisy]`);
       else group.yamls.set(base, file);
     } else if (IMAGE_EXTENSIONS.includes(ext)) {
       const slug = slugify(base);
-      if (group.images.has(slug)) problems.push(`${where(file)}: stejné jméno „${slug}“ dává i fotka ${group.images.get(slug).file}, jednu přejmenuj`);
+      if (group.images.has(slug)) problems.push(`${where(file)}: stejné jméno „${slug}“ dává i fotka ${group.images.get(slug).file}, jednu přejmenuj [stejne-jmeno]`);
       else group.images.set(slug, { file, name: base });
     } else {
-      problems.push(`${where(file)}: sem patří jen fotky a popisy (.yaml), tento soubor smaž nebo přesuň`);
+      problems.push(`${where(file)}: sem patří jen fotky a popisy (.yaml), tento soubor smaž nebo přesuň [cizi-soubor]`);
     }
   }
   // A folder named like a work next to it holds its detail photos; any other folder is a collection.
@@ -86,7 +86,7 @@ async function readFolder(worksRoot, rel, allowCollections) {
       problems.push(...inner.problems);
       collections.push(inner.group);
     } else {
-      problems.push(`${where(name)}/: složka uvnitř kolekce smí obsahovat jen detailní fotky obrazu vedle ní (${where(`${name}.jpg`)}); kolekce v kolekci nejde`);
+      problems.push(`${where(name)}/: složka uvnitř kolekce smí obsahovat jen detailní fotky obrazu vedle ní (${where(`${name}.jpg`)}); kolekce v kolekci nejde [kolekce-v-kolekci]`);
     }
   }
   return { group, collections, problems };
@@ -110,12 +110,12 @@ async function readDetails(dir, where) {
     if (isHidden(item.name)) continue;
     const { base, ext } = splitExt(item.name);
     if (!item.isFile() || !IMAGE_EXTENSIONS.includes(ext)) {
-      problems.push(`${where}/${item.name}: do složky detailních fotek patří jen fotky, tento soubor smaž nebo přesuň`);
+      problems.push(`${where}/${item.name}: do složky detailních fotek patří jen fotky, tento soubor smaž nebo přesuň [cizi-soubor]`);
       continue;
     }
     const name = slugify(base);
     if (!name || names.has(name)) {
-      problems.push(`${where}/${item.name}: stejné jméno „${name}“ už má jiná detailní fotka, jednu přejmenuj`);
+      problems.push(`${where}/${item.name}: stejné jméno „${name}“ už má jiná detailní fotka, jednu přejmenuj [stejne-jmeno]`);
       continue;
     }
     names.add(name);
@@ -198,8 +198,8 @@ export function commentedOutReview(files) {
     const schema = schemaOfFile(file);
     if (!schema) return [];
     return commentedOutKeys(text, schema).map(({ key, line, set }) => (set
-      ? `${file}: řádek „${line}“ je zakomentovaný údaj ${key}, který už v souboru je; automatika ho nečte, smaž ho`
-      : `${file}: řádek „${line}“ je zakomentovaný údaj ${key}; automatika zakomentované údaje nečte (jen ty s NEPOVINNÉ), odkomentuj ho (smaž „# “), nebo řádek smaž`));
+      ? `${file}: řádek „${line}“ je zakomentovaný údaj ${key}, který už v souboru je; automatika ho nečte, smaž ho [zakomentovany-udaj]`
+      : `${file}: řádek „${line}“ je zakomentovaný údaj ${key}; automatika zakomentované údaje nečte (jen ty s NEPOVINNÉ), odkomentuj ho (smaž „# “), nebo řádek smaž [zakomentovany-udaj]`));
   });
 }
 

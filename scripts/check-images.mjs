@@ -51,6 +51,6 @@ const indexable = pages.filter((p) => !isNoindex(p.html));
 const textProblems = pageProblems(indexable);
 if (textProblems.length) {
   console.log(`✗ Titles, descriptions or structured data (${textProblems.length}):`);
-  textProblems.forEach((p) => console.log(`  ${p.path}: ${problemText(p)}`));
+  textProblems.forEach((p) => console.log(`  ${p.path}: ${problemText(p)} [${p.code}]`));
   process.exitCode = 1;
 } else console.log(`✓ ${indexable.length} indexable pages: own titles and descriptions, valid structured data.`);

@@ -117,7 +117,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   Lišta filtrů (`scripts/lib/filter-bar.mjs`): po posunu nahoru tenký řádek s vybranými filtry jako čipy s „×“
   (`withoutFilter`) + „Upravit“ = týž formulář jako panel (nikdy kopie); nový filtr = i do `activeFilters`.
   Prvky tvořené skriptem stylovat přes `:global(…)` (scoped CSS Astra na ně nedosáhne).
-- `featured: true` = výběr autorky: filtr „Výběr autorky“ (`?featured=1`) a kandidáti úvodních obrazů
+- `featured: true` = výběr autorky: `★` za názvem na kartě i za `<h1>` stránky díla (mimo něj, v bloku `.title`;
+  `FeaturedStar.astro`, barva `var(--ink)`, nikdy v textu `<h1>`, `<title>`, JSON-LD ani bublině), filtr „Výběr autorky“ (`?featured=1`) a kandidáti úvodních obrazů
   (`coverCandidates`, `FEATURED_PICK` = 10 nejnovějších vybraných): úvodní obraz bez vlastní fotky a `cover`
   (`Cover.astro`, vede na zobrazené dílo); stránka ukáže náhodného skriptem `scripts/lib/random-pick.mjs`
   (vložený, bez přeblikávání), `og:image` je vždy první kandidát. Web pipeline (`coverSource`) musí vybírat stejně.
@@ -134,6 +135,13 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Každý výpis děl se stránkuje, v prohlížeči nad vyfiltrovaným seznamem (`paginate`); návštěvník volí počet
   na stránku (`gallery.pageSizes`, `?perPage=`, pamatuje se v `localStorage`, ale odkaz s `perPage`/`page` má vždy
   přednost) a může stránkování jednorázově vypnout („Zobrazit vše“, `?page=all`, nepamatuje se).
+  Zobrazení galerie (`VIEWS` v `gallery-filter.mjs`): velké obrazy (výchozí) nebo dlaždice (`?view=tiles`, malé obrazy bez
+  textů, `sizes` přepsané skriptem), přepínač vedle „Na stránku“ (`Pager.astro` `views`); chová se jako `perPage`
+  (v URL jen nevýchozí, paměť `pavla.gallery.view`, odkaz s `view`/`page`/`perPage` má přednost); jen výpisy děl, ne
+  přehled kolekcí. Dlaždice mají vlastní počty `gallery.tilePageSizes` a paměť `pavla.gallery.tilesPerPage`
+  (`viewPageSizes`, `pageSizeStorageKey`); přepnutí = `withView` (počet nového zobrazení, stránka s prvním zobrazeným dílem).
+  Velikost dlaždic `TILE_SIZES` s/m/l (`TILE_WIDTHS`, třídy `tiles-<velikost>`, tlačítka −/+ v `Pager.astro`): `?tile=` jen s
+  `view=tiles` a nevýchozí, paměť `pavla.gallery.tileSize`, odkaz má přednost.
 - **Atributy popisů (dílo, kolekce, fotka) jsou jen v `scripts/lib/schema.mjs`**: pořadí, výchozí hodnota kostry,
   `missing` (hodnota pro doplnění do existujícího souboru, musí znamenat totéž co chybějící atribut) a technický
   komentář (česky, typ, hodnoty, příklady). Pipeline z něj staví kostry a při každém běhu srovná všechny popisy
@@ -194,7 +202,17 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   včetně štítků `tagAdvice` (jen co jde opravit: dva tvary, vždy spolu, čipy přes 2 řádky) a péče o web `careOfSite` (zveřejněné dílo bez
   `size_cm` či popisu, detail bez popisku, malá fotka, málo `featured` u stránky, z historie gitu `git-dates.mjs` dlouhý draft
   a Instagram bez odkazu; obsahové repo proto checkout s `fetch-depth: 0`), pod nimi sbalené „Zbývá doplnit“ (atributy s `DOPLNIT`
-  u komentáře, `todoAdvice`, kromě zveřejněných děl v „Ke kontrole“), pak co automatika udělala, nakonec statistika štítků `tagStats`). Pull request připravuje
+  u komentáře, `todoAdvice`, kromě zveřejněných děl v „Ke kontrole“), pak co automatika udělala, nakonec statistika štítků `tagStats`).
+  Každá hláška o souboru končí kódem `[kód]` (`scripts/lib/codes.mjs`, `CODES`: kód česky bez diakritiky → úroveň a význam);
+  nová hláška = nový kód v `CODES` (test hlídá použití a neznámé kódy), stejný problém = stejný kód; platí i pro týdenní
+  kontrolu (úroveň `health`: kód na konci prvního řádku neúspěšné kontroly, kódy `pageProblems` jsou přímo z registru;
+  `formatReport` vrací `codes`, výstup `codes` jde do titulku issue v obsahovém repu). Nesoulad atributů díla
+  (`consistencyAdvice`: featured bez `meta_pinterest`, odkazy `instagram`/`fler` vs. `meta_instagram`/stav, cena u
+  neprodávaného, mockupy bez rozměru, mřížka bez Instagramu, datum v budoucnu) = doporučení.
+  `export/README.md` obsahového repa = přehled všech děl na jedné stránce (`overviewReadme`, `scripts/lib/overview.mjs`):
+  kolekce abecedně + „Mimo kolekce“, u díla odkazy, všechny atributy yaml (i `meta_*`/`private_*`) a hlášky s kódy, nahoře
+  počty kódů; bez obrázků a s minimem formátování (velikost, `OVERVIEW_MAX_BYTES` → `prehled-velky`); píše každý běh bez
+  `--only` (i s chybami a `--prepare-only`), celý, plný běh znovu na konci s `misfits`. Pull request připravuje
   `scripts/pull-request.mjs` (`scripts/lib/pull-request.mjs`, `OUTPUT_PATHS`); text PR nikdy nejmenuje obsahové repo.
   „Zkušební běh zpracování“ (`.github/workflows/dry-run.yml`, každou neděli na testovacích datech, nic nepushne)
   prochází tytéž kroky: změna kroků zpracování obsahu = stejná změna ve `dry-run.yml`.
@@ -225,7 +243,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `src/lib/message-form.ts`, `MessageForm.astro`, `MessagePanel.astro`). Testovací data = vždy náhled, nic neodesílá.
 - Bublina nad obrazem díla (atribut `title`, karty galerie a úvodní obrazy s dílem, ne stránka díla ani vlastní fotka):
   `workTooltip` (`scripts/lib/tooltip.mjs`) přes `workTitle` v `src/lib/site.ts`, všude stejná (název, technika · rozměr · rok,
-  podklad, stav prodeje, zkrácený popis).
+  podklad, stav prodeje, řádek štítků `#štítek` česky abecedně, zkrácený popis); jen text, štítky v ní nejsou odkazy.
 - Patička nese verzi buildu `vRR.MMDD.HHMM` (pražský čas) s bublinou (datum, commit): `scripts/lib/build-version.mjs`.
 - „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` jen `npm test` + `npm run build`
   + `npm run check:images` (obrázky, úplnost mapy webu `unlistedPages`, unikátní titulky a popisy a platné JSON-LD

@@ -52,7 +52,7 @@ export async function prepareCollections(contentDir, folders = []) {
   const problems = [];
   try {
     if ((await fs.stat(path.join(contentDir, LEGACY_COLLECTIONS_SUBDIR))).isDirectory()) {
-      problems.push(`${LEGACY_COLLECTIONS_SUBDIR}/: kolekce jsou teď složky v ${WORKS_SUBDIR}/ (${WORKS_SUBDIR}/<kolekce>/${COLLECTION_META}), přesuň je tam`);
+      problems.push(`${LEGACY_COLLECTIONS_SUBDIR}/: kolekce jsou teď složky v ${WORKS_SUBDIR}/ (${WORKS_SUBDIR}/<kolekce>/${COLLECTION_META}), přesuň je tam [stara-slozka-kolekci]`);
     }
   } catch {
     // no legacy folder, fine
@@ -61,16 +61,16 @@ export async function prepareCollections(contentDir, folders = []) {
   for (const f of [...folders].sort((a, b) => a.dir.localeCompare(b.dir))) {
     const yamlPath = collectionMetaPath(f.dir);
     if (!isValidSlug(f.slug)) {
-      problems.push(`${WORKS_SUBDIR}/${f.dir}/: přejmenuj složku, její název potřebuje písmena nebo číslice`);
+      problems.push(`${WORKS_SUBDIR}/${f.dir}/: přejmenuj složku, její název potřebuje písmena nebo číslice [neplatne-jmeno]`);
       continue;
     }
     // The gallery uses ?collection=none for the works in no collection ("žádná"): no collection may have that address.
     if (f.slug === NO_COLLECTION) {
-      problems.push(`${WORKS_SUBDIR}/${f.dir}/: adresu „${NO_COLLECTION}“ web používá pro obrazy bez kolekce, přejmenuj složku`);
+      problems.push(`${WORKS_SUBDIR}/${f.dir}/: adresu „${NO_COLLECTION}“ web používá pro obrazy bez kolekce, přejmenuj složku [neplatne-jmeno]`);
       continue;
     }
     if (bySlug.has(f.slug)) {
-      problems.push(`${WORKS_SUBDIR}/${f.dir}/: dává stejnou adresu na webu „${f.slug}“ jako ${WORKS_SUBDIR}/${bySlug.get(f.slug)}/, jednu ze složek přejmenuj`);
+      problems.push(`${WORKS_SUBDIR}/${f.dir}/: dává stejnou adresu na webu „${f.slug}“ jako ${WORKS_SUBDIR}/${bySlug.get(f.slug)}/, jednu ze složek přejmenuj [stejne-jmeno]`);
       continue;
     }
     bySlug.set(f.slug, f.dir);
@@ -91,7 +91,7 @@ export async function prepareCollections(contentDir, folders = []) {
       problems.push(`${yamlPath}: ${yamlProblem(e, text)}`);
       continue;
     }
-    if (!data.title) problems.push(`${yamlPath}: chybí název kolekce (title)`);
+    if (!data.title) problems.push(`${yamlPath}: chybí název kolekce (title) [chybi-nazev-kolekce]`);
     collections.push({ slug: f.slug, dir: f.dir, data, coverPath: f.coverPath, yamlPath });
   }
   return { collections, created, updated, problems };

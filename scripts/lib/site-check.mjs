@@ -131,12 +131,12 @@ export function evaluateSiteImages(result, { limit = 10 } = {}) {
   const path = (url) => new URL(url).pathname;
   const problems = [];
   if (result.missing.length) {
-    problems.push(`Na webu chybí ${count(result.missing.length, IMAGES)}, na které odkazují jeho stránky:`);
+    problems.push(`Na webu chybí ${count(result.missing.length, IMAGES)}, na které odkazují jeho stránky: [obrazky-chybi]`);
     problems.push(...result.missing.slice(0, limit).map((m) => `- ${path(m.image)} (stránka ${path(m.page)})`));
     if (result.missing.length > limit) problems.push(`- … a dalších ${result.missing.length - limit}`);
   }
   if (result.brokenPages.length) {
-    problems.push(`Nedostupné stránky webu (${result.brokenPages.length}):`);
+    problems.push(`Nedostupné stránky webu (${result.brokenPages.length}): [stranky-nedostupne]`);
     problems.push(...result.brokenPages.slice(0, limit).map((p) => `- ${path(p.page)} (HTTP ${p.status})`));
   }
   if (problems.length) {

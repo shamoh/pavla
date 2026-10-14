@@ -73,7 +73,8 @@ export async function prepareCorners(contentDir, works, { search = EDGE_DEFAULTS
     await fs.writeFile(path.join(contentDir, w.yamlPath), r.text);
     w.text = r.text;
     w.data = YAML.parse(r.text) ?? {};
-    detected.push(`${w.yamlPath}: ${describeCorners(value, suspicious)}`);
+    const described = describeCorners(value, suspicious);
+    detected.push(`${w.yamlPath}: ${described}${described.includes('⚠') ? ' [podezrely-orez]' : ''}`);
   }
   return { detected, problems };
 }

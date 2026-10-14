@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FEATURED_ON, NO_COLLECTION, czechOrder,
+import { ALL_PAGES, FEATURED_ON, NO_COLLECTION, czechOrder,
   countStatuses, matchesFilters, offersOption, statusOptions, yearFilterOptions, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
-  facetChoices, facetDisplay, facetValues, pagingFromParams, pagingToParams, sortTags, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
+  DEFAULT_TILE_PAGE_SIZES, DEFAULT_TILE_SIZE, TILE_SIZES, TILE_WIDTHS, rememberedTileSize, stepTileSize, tileSizeFromParams, tileSizeToRemember, DEFAULT_VIEW, PAGE_SIZE_STORAGE_KEY, TILE_PAGE_SIZE_STORAGE_KEY, VIEWS, pageSizeStorageKey, viewPageSizes, withView, facetChoices, facetDisplay, rememberedView, viewFromParams, viewToRemember, facetValues, pagingFromParams, pagingToParams, sortTags, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
 } from './gallery-filter.mjs';
 
 const work = (status, extra = {}) => ({ tags: ['krajina'], technique: 'akvarel', year: '2026', collection: '', status, ...extra });
 const all = { tag: [], technique: '', year: '', collection: '', status: '', featured: '', q: '' };
-const allState = { ...all, page: 1, perPage: null };
+const allState = { ...all, page: 1, perPage: null, view: 'grid', tile: 'm' };
 const statuses = ['available', 'reserved', 'sold', 'gifted', 'not-for-sale'];
 const passing = (state) => statuses.filter((s) => matchesFilters(work(s), { ...all, ...state }));
 
@@ -59,7 +59,7 @@ test('stateFromParams reads every filter and drops an unknown status', () => {
 
 test('stateToParams leaves out empty filters and round-trips any combination', () => {
   assert.equal(stateToParams(all).toString(), '');
-  const state = { tag: ['řeka a mlha'], technique: 'akvarel', year: '2025', collection: 'plener', status: 'gone', featured: '1', q: 'mlha', page: 3, perPage: 48 };
+  const state = { tag: ['řeka a mlha'], technique: 'akvarel', year: '2025', collection: 'plener', status: 'gone', featured: '1', q: 'mlha', page: 3, perPage: 48, view: 'tiles', tile: 'l' };
   assert.equal(stateToParams({ ...all, technique: 'akvarel', status: 'kept' }).toString(), 'technique=akvarel&status=kept');
   assert.deepEqual(stateFromParams(new URLSearchParams(stateToParams(state).toString())), state);
 });
@@ -343,4 +343,88 @@ test('czechOrder: Czech alphabetical order (ch after h, diacritics), by title or
   assert.equal(items[0].title, 'Řeky 2021–2023', 'input left as it was');
   const techniques = [['tempera', 1], ['akvarel', 23], ['kresba tužkou', 8], ['kvaš', 4]];
   assert.deepEqual(czechOrder(techniques, ([t]) => t).map(([t]) => t), ['akvarel', 'kresba tužkou', 'kvaš', 'tempera']);
+});
+
+test('viewFromParams: tiles from the link, anything else is the default grid', () => {
+  assert.deepEqual(VIEWS, ['grid', 'tiles']);
+  assert.equal(viewFromParams(new URLSearchParams('view=tiles')), 'tiles');
+  for (const q of ['', 'view=grid', 'view=bogus', 'view=']) assert.equal(viewFromParams(new URLSearchParams(q)), DEFAULT_VIEW, q);
+  assert.equal(stateFromParams(new URLSearchParams('view=tiles&page=2')).view, 'tiles');
+});
+
+test('stateToParams writes only the tiles view and round-trips it with filters and paging', () => {
+  assert.equal(stateToParams({ ...allState, view: 'grid' }).toString(), '');
+  const state = { ...allState, tag: ['les'], page: 2, perPage: 24, view: 'tiles' };
+  assert.equal(stateToParams(state).toString(), 'tag=les&page=2&perPage=24&view=tiles');
+  assert.deepEqual(stateFromParams(new URLSearchParams(stateToParams(state).toString()), [12, 24, 48]), state);
+});
+
+test('rememberedView never overrides a link, applies only an offered non-default view', () => {
+  assert.equal(rememberedView(new URLSearchParams(''), 'tiles'), 'tiles');
+  assert.equal(rememberedView(new URLSearchParams('view=grid'), 'tiles'), null, 'the link decides');
+  assert.equal(rememberedView(new URLSearchParams('page=2'), 'tiles'), null, 'a link with a page shows the view it was sent from');
+  assert.equal(rememberedView(new URLSearchParams('perPage=24'), 'tiles'), null);
+  assert.equal(rememberedView(new URLSearchParams('tag=les'), 'tiles'), 'tiles', 'filters alone do not decide');
+  for (const stored of [null, '', 'grid', 'bogus']) assert.equal(rememberedView(new URLSearchParams(''), stored), null, String(stored));
+  assert.equal(viewToRemember('tiles'), 'tiles');
+  assert.equal(viewToRemember('grid'), null);
+  assert.equal(viewToRemember('bogus'), null);
+});
+
+const SIZES = { grid: [12, 24, 48], tiles: [36, 72, 144] };
+
+test('viewPageSizes and pageSizeStorageKey: each view its own page sizes and memory', () => {
+  assert.deepEqual(DEFAULT_TILE_PAGE_SIZES, [36, 72, 144]);
+  assert.deepEqual(viewPageSizes('grid', SIZES), [12, 24, 48]);
+  assert.deepEqual(viewPageSizes('tiles', SIZES), [36, 72, 144]);
+  assert.equal(pageSizeStorageKey('grid'), PAGE_SIZE_STORAGE_KEY);
+  assert.equal(pageSizeStorageKey('tiles'), TILE_PAGE_SIZE_STORAGE_KEY);
+  assert.notEqual(PAGE_SIZE_STORAGE_KEY, TILE_PAGE_SIZE_STORAGE_KEY);
+});
+
+test('stateFromParams checks perPage against the sizes of the view it is given', () => {
+  assert.equal(stateFromParams(new URLSearchParams('view=tiles&perPage=72'), SIZES.tiles).perPage, 72);
+  assert.equal(stateFromParams(new URLSearchParams('view=tiles&perPage=24'), SIZES.tiles).perPage, null, 'a size of the other view is ignored');
+  assert.equal(stateFromParams(new URLSearchParams('view=tiles&perPage=36'), SIZES.tiles).perPage, null, 'the default is not stored');
+});
+
+test('withView: its own page size (remembered or default), the page with the first shown work, "all" stays', () => {
+  const grid = { ...allState, page: 4 };
+  // grid page 4 of 12 starts at work 36 = tiles page 2 of 36
+  assert.deepEqual(withView(grid, 'tiles', SIZES), { ...grid, view: 'tiles', perPage: null, page: 2 });
+  assert.deepEqual(withView(grid, 'tiles', SIZES, '72'), { ...grid, view: 'tiles', perPage: 72, page: 1 });
+  assert.deepEqual(withView(grid, 'tiles', SIZES, '24'), { ...grid, view: 'tiles', perPage: null, page: 2 }, 'a grid size is no tiles size');
+  // tiles page 3 of 36 starts at work 72 = grid page 4 of 24
+  const tiles = { ...allState, view: 'tiles', page: 3 };
+  assert.deepEqual(withView(tiles, 'grid', SIZES, '24'), { ...tiles, view: 'grid', perPage: 24, page: 4 });
+  assert.equal(withView({ ...grid, page: ALL_PAGES }, 'tiles', SIZES).page, ALL_PAGES);
+  assert.equal(withView({ ...grid, page: 1 }, 'tiles', SIZES).page, 1);
+  assert.equal(withView(grid, 'bogus', SIZES), grid);
+});
+
+test('tile size: from the link, in the URL only with tiles and not the default', () => {
+  assert.deepEqual(TILE_SIZES, ['s', 'm', 'l']);
+  assert.equal(DEFAULT_TILE_SIZE, 'm');
+  assert.ok(TILE_SIZES.every((t) => TILE_WIDTHS[t] > 0) && TILE_WIDTHS.s < TILE_WIDTHS.m && TILE_WIDTHS.m < TILE_WIDTHS.l);
+  assert.equal(tileSizeFromParams(new URLSearchParams('tile=s')), 's');
+  for (const q of ['', 'tile=xl', 'tile=']) assert.equal(tileSizeFromParams(new URLSearchParams(q)), 'm', q);
+  assert.equal(stateToParams({ ...allState, view: 'tiles', tile: 's' }).toString(), 'view=tiles&tile=s');
+  assert.equal(stateToParams({ ...allState, view: 'tiles', tile: 'm' }).toString(), 'view=tiles');
+  assert.equal(stateToParams({ ...allState, view: 'grid', tile: 's' }).toString(), '', 'no tile size with big pictures');
+  const state = { ...allState, view: 'tiles', tile: 's' };
+  assert.deepEqual(stateFromParams(new URLSearchParams(stateToParams(state).toString())), state);
+});
+
+test('tile size: remembered unless the link has one; stepping stops at either end', () => {
+  assert.equal(rememberedTileSize(new URLSearchParams(''), 'l'), 'l');
+  assert.equal(rememberedTileSize(new URLSearchParams('tile=m'), 'l'), null, 'the link decides');
+  for (const stored of [null, '', 'm', 'xl']) assert.equal(rememberedTileSize(new URLSearchParams(''), stored), null, String(stored));
+  assert.equal(tileSizeToRemember('s'), 's');
+  assert.equal(tileSizeToRemember('m'), null);
+  assert.equal(tileSizeToRemember('xl'), null);
+  assert.equal(stepTileSize('m', -1), 's');
+  assert.equal(stepTileSize('m', 1), 'l');
+  assert.equal(stepTileSize('s', -1), 's');
+  assert.equal(stepTileSize('l', 1), 'l');
+  assert.equal(stepTileSize('bogus', 1), 'l');
 });

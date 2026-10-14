@@ -70,6 +70,7 @@ import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
 import { rightsXmp } from './lib/image-rights.mjs';
+import { overviewReadme, overviewSizeAdvice } from './lib/overview.mjs';
 import { DRAFT_EDGE, STORY_UTM, collectionIndexes, draftIndex, draftReadme, noteMarks, exportIndex, flerReadme, instagramReadme, publishedUrl, readmeFingerprint } from './lib/export-readme.mjs';
 import {
   GRID_DEFAULTS, GRID_VERSION, captionFacts, detailLayout, detailSuffixes, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
@@ -84,13 +85,13 @@ import { PALETTES } from './lib/palettes.mjs';
 import { formatSummary, workNotes } from './lib/summary.mjs';
 import { fileLinks } from './lib/summary-links.mjs';
 import {
-  careAdvice, draftAgeAdvice, featuredAdvice, hashtagAdvice, instagramLinkAdvice, pageAdvice, photoSizeAdvice, pinterestAdvice, tagAdvice, tagStats,
+  careAdvice, consistencyAdvice, draftAgeAdvice, featuredAdvice, hashtagAdvice, instagramLinkAdvice, pageAdvice, photoSizeAdvice, pinterestAdvice, tagAdvice, tagStats,
   techniqueAdvice, todoAdvice, workAdvice,
 } from './lib/advice.mjs';
 import { addedDates } from './lib/git-dates.mjs';
 import {
   EXPORT_FILES, PUBLIC_WORK_FIELDS, expectedExports, exportFileName, exportFolder, exportPattern, instagramGrid, isInstagramUrl, isOnSale, wantsInstagram, wantsMockups,
-  wantsPinterest, planFolderPrune, publicFields, validSize, validateWorks, workKey, workPath,
+  isValidId, wantsPinterest, planFolderPrune, publicFields, validSize, validateWorks, workKey, workPath,
 } from './lib/works.mjs';
 
 /** Bump when the output format changes, so every work is regenerated once. */
@@ -360,6 +361,7 @@ async function careOfSite({ works, years, collections, home, uncollected, conten
   const dates = await addedDates(contentDir, [...drafts.map((w) => w.yamlPath), ...linkless.map(readme)]);
   return [
     ...careAdvice(works),
+    ...consistencyAdvice(works, day),
     ...photoSizeAdvice(photos),
     ...featuredAdvice(pages),
     ...draftAgeAdvice(drafts.map((w) => ({ where: workPath(w), added: dates.get(w.yamlPath) })), day),
@@ -568,6 +570,31 @@ export async function run({
       work: w.data, year: w.year, files, corners: draftCorners(w.data.meta_corners), collection, fingerprint: files ? fingerprint : '', notes, noPreviews,
     }));
   }
+  // export/README.md: everything about every work and what the run says about it, in one file for searching
+  // (scripts/lib/overview.mjs). Written by every run without `only`, also when it fails and with --prepare-only; the
+  // full run writes it again at its end with the warnings of the exports (misfits).
+  const overviewSite = String(config.site?.url ?? '').replace(/\/+$/, '');
+  const writeOverview = async (extra = {}) => {
+    const text = overviewReadme({
+      works: works.map((w) => ({
+        yamlPath: w.yamlPath,
+        photoPath: w.masterPath ? path.relative(contentDir, w.masterPath).split(path.sep).join('/') : null,
+        id: w.id,
+        data: w.data,
+        collection: w.collection,
+        pageUrl: w.data.meta_draft !== true && w.year && isValidId(w.id) && overviewSite ? `${overviewSite}/${workImageDir(w.year, workKey(w.slug, w.id))}/` : '',
+      })),
+      collections: collections.collections,
+      uncollected: uncollected.uncollected,
+      noted: { ...noted, ...extra },
+    });
+    await writeIfChanged(path.join(exportRoot, README), text);
+    return overviewSizeAdvice(`export/${README}`, Buffer.byteLength(text));
+  };
+  if (!only.length) {
+    const tooBig = await writeOverview();
+    if (tooBig) advice.push(tooBig);
+  }
   const draftPruned = [];
   // The overview (and one in every collection folder) is written by every run without `only`, also when it fails: a
   // draft whose description cannot be read is missing from it until it is fixed. Pruning only in a run without
@@ -725,7 +752,7 @@ export async function run({
             log(`  ! ${rel}: does not fit the free part of the scene ${scene.name} (see mockups/instagram/scenes.yaml)`);
             misfits.push(`${w.yamlPath}: obraz se na „${scene.label ?? scene.name}“ nevejde mimo rekvizity, `
               + `na fotce export/instagram/${folder}/${exportFileName(`-scene-${scene.name}`)} je částečně `
-              + 'zakrývá (tuhle fotku raději nepoužij)');
+              + 'zakrývá (tuhle fotku raději nepoužij) [nevejde-do-sceny]');
           }
           await fs.writeFile(path.join(insta, exportFileName(`-scene-${scene.name}`)), buf);
         }
@@ -748,7 +775,7 @@ export async function run({
         if (grid.layout.fill < minFill) {
           log(`  ! ${rel}: the work covers only ${Math.round(grid.layout.fill * 100)} % of its grid ${tiles}`);
           misfits.push(`${w.yamlPath}: obraz zabere v mřížce ${tiles} jen ${Math.round(grid.layout.fill * 100)} % plochy `
-            + '(zbytek je prázdný papír); zvol jinou mřížku (meta_instagram_grid) nebo false');
+            + '(zbytek je prázdný papír); zvol jinou mřížku (meta_instagram_grid) nebo false [mala-mrizka]');
         }
       }
       await fs.writeFile(path.join(insta, exportFileName('-story')), story);
@@ -956,6 +983,7 @@ export async function run({
   }
   pruned.forEach((p) => log(`- removed ${p}`));
 
+  if (!only.length) await writeOverview({ misfits });
   return { ok: missing.length === 0, problems: [], created, assigned, detected, updated, pending, advice, todo, tags, processed, skipped, missing, pruned, previews, misfits, commentedOut };
 }
 

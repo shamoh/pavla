@@ -23,8 +23,8 @@ function sentenceAdvice(where, at, value) {
   const text = textOf(value);
   if (!text) return [];
   return [
-    startsLowercase(text) && `${where}: ${at} začíná malým písmenem`,
-    !endsSentence(text) && `${where}: ${at} by měl končit tečkou`,
+    startsLowercase(text) && `${where}: ${at} začíná malým písmenem [text-male-pismeno]`,
+    !endsSentence(text) && `${where}: ${at} by měl končit tečkou [text-bez-tecky]`,
   ].filter(Boolean);
 }
 
@@ -33,8 +33,8 @@ function titleAdvice(where, value) {
   const title = textOf(value);
   if (!title) return [];
   return [
-    startsLowercase(title) && `${where}: title začíná malým písmenem`,
-    endsWithFullStop(title) && `${where}: title by neměl končit tečkou`,
+    startsLowercase(title) && `${where}: title začíná malým písmenem [nazev-male-pismeno]`,
+    endsWithFullStop(title) && `${where}: title by neměl končit tečkou [nazev-s-teckou]`,
   ].filter(Boolean);
 }
 
@@ -54,18 +54,18 @@ export function workAdvice(works, { siteTitle = '' } = {}) {
   for (const w of works) {
     const where = workPath(w);
     const data = w.data ?? {};
-    if (!Array.isArray(data.tags) || data.tags.length === 0) advice.push(`${where}: nemá štítky (tags), podle nich se v galerii filtruje`);
+    if (!Array.isArray(data.tags) || data.tags.length === 0) advice.push(`${where}: nemá štítky (tags), podle nich se v galerii filtruje [bez-stitku]`);
     advice.push(...titleAdvice(where, data.title));
     const title = textOf(data.title);
     if (title && [...title].length > titleChars) {
-      advice.push(`${where}: název má ${[...title].length} znaků, ve výsledcích vyhledávání a v záložce prohlížeče se zkrátí; celý se vejde do ${titleChars} znaků`);
+      advice.push(`${where}: název má ${[...title].length} znaků, ve výsledcích vyhledávání a v záložce prohlížeče se zkrátí; celý se vejde do ${titleChars} znaků [dlouhy-nazev]`);
     }
     advice.push(...sentenceAdvice(where, 'description', data.description));
     if (data.details && typeof data.details === 'object') {
       for (const [name, caption] of Object.entries(data.details)) advice.push(...sentenceAdvice(where, `popisek detailu ${name}`, caption));
     }
     if (isOnSale(data.status) && !wantsMockups(data)) {
-      advice.push(`${where}: je na prodej, ale nemá mockupy (mockups: true ukáže obraz v interiéru na webu i na Fleru)`);
+      advice.push(`${where}: je na prodej, ale nemá mockupy (mockups: true ukáže obraz v interiéru na webu i na Fleru) [prodej-bez-mockupu]`);
     }
   }
   return advice;
@@ -84,7 +84,7 @@ export const COLLECTION_TITLE_CHARS = 19;
 function collectionTitleAdvice(where, value) {
   const title = textOf(value);
   if (!title || [...title].length <= COLLECTION_TITLE_CHARS) return [];
-  return [`${where}: název kolekce má ${[...title].length} znaků, ve výběru Kolekce v galerii se zkrátí (celý je vidět po rozbalení); celý se vejde do ${COLLECTION_TITLE_CHARS} znaků`];
+  return [`${where}: název kolekce má ${[...title].length} znaků, ve výběru Kolekce v galerii se zkrátí (celý je vidět po rozbalení); celý se vejde do ${COLLECTION_TITLE_CHARS} znaků [dlouhy-nazev-kolekce]`];
 }
 
 /**
@@ -100,7 +100,7 @@ export function techniqueAdvice(works) {
   return [...counts]
     .filter(([t]) => [...t].length > TECHNIQUE_CHARS)
     .sort((a, b) => a[0].localeCompare(b[0], 'cs'))
-    .map(([t, n]) => `Technika „${t}“ (${worksCount(n)}) má ${[...t].length} znaků, ve výběru Technika v galerii se zkrátí (celá je vidět po rozbalení); celá se vejde do ${TECHNIQUE_CHARS} znaků`);
+    .map(([t, n]) => `Technika „${t}“ (${worksCount(n)}) má ${[...t].length} znaků, ve výběru Technika v galerii se zkrátí (celá je vidět po rozbalení); celá se vejde do ${TECHNIQUE_CHARS} znaků [dlouha-technika]`);
 }
 
 /**
@@ -109,7 +109,7 @@ export function techniqueAdvice(works) {
  */
 function sampleAdvice(where, description, sample) {
   if (!sample || typeof description !== 'string' || description.trim() !== sample.trim()) return [];
-  return [`${where}: description je pořád vzorová věta z kostry („${sample.trim()}“), je vidět na webu; napiš místo ní vlastní text`];
+  return [`${where}: description je pořád vzorová věta z kostry („${sample.trim()}“), je vidět na webu; napiš místo ní vlastní text [vzorovy-text]`];
 }
 
 /**
@@ -178,22 +178,66 @@ export function careAdvice(works) {
     const where = workPath(w);
     const data = w.data ?? {};
     if (isPublished(w)) {
-      if (!validSize(data.size_cm)) advice.push(`${where}: nemá rozměr (size_cm): na webu chybí, mockupy nedrží měřítko a nevzniknou scény ateliéru pro Instagram`);
-      if (!hasText(data.description)) advice.push(`${where}: nemá popis (description): ukáže se na stránce obrazu, ve výsledcích vyhledávání i v pinu`);
+      if (!validSize(data.size_cm)) advice.push(`${where}: nemá rozměr (size_cm): na webu chybí, mockupy nedrží měřítko a nevzniknou scény ateliéru pro Instagram [bez-rozmeru]`);
+      if (!hasText(data.description)) advice.push(`${where}: nemá popis (description): ukáže se na stránce obrazu, ve výsledcích vyhledávání i v pinu [bez-popisu]`);
     }
     const captions = new Map(Object.entries(data.details && typeof data.details === 'object' ? data.details : {}).map(([k, v]) => [detailKey(k), v]));
     for (const { name } of w.details ?? []) {
-      if (!hasText(captions.get(detailKey(name)))) advice.push(`${where}: detailní fotka „${name}“ nemá popisek (details: ${name}: …)`);
+      if (!hasText(captions.get(detailKey(name)))) advice.push(`${where}: detailní fotka „${name}“ nemá popisek (details: ${name}: …) [detail-bez-popisku]`);
     }
   }
   return advice;
 }
 
+/** A link of a work on a platform (`fler`, `instagram`): a non-empty http(s) address. */
+const hasLink = (v) => typeof v === 'string' && /^https?:\/\/\S+/.test(v.trim());
+
+/**
+ * Attributes of a work that do not fit together (drafts too, unless said otherwise): what was forgotten when one of
+ * them changed. `works`: { yamlPath|…, data }, `today` (YYYY-MM-DD).
+ */
+export function consistencyAdvice(works, today) {
+  const advice = [];
+  for (const w of works) {
+    const where = workPath(w);
+    const data = w.data ?? {};
+    if (isPublished(w) && data.featured === true && data.meta_pinterest !== true) {
+      advice.push(`${where}: je ve výběru autorky (featured: true), ale není v kanálu pro Pinterest; zvaž meta_pinterest: true [featured-bez-pinu]`);
+    }
+    if (isInstagramUrl(data.instagram) && !wantsInstagram(data)) {
+      advice.push(`${where}: má odkaz na příspěvek na Instagramu, ale nemá fotky pro Instagram (meta_instagram: false); pro další příspěvky dej meta_instagram: true [odkaz-instagram-bez-exportu]`);
+    }
+    if (hasLink(data.fler) && !isOnSale(data.status)) {
+      advice.push(`${where}: má odkaz na Fler, ale není na prodej (status: ${data.status ?? 'není'}); nabídku na Fleru ukonči a odkaz smaž [fler-neni-na-prodej]`);
+    }
+    if (isPublished(w) && isOnSale(data.status) && !hasLink(data.fler)) {
+      advice.push(`${where}: je na prodej, ale chybí odkaz na Fler; po přidání na Fler ho doplň (fler: https://www.fler.cz/…) [prodej-bez-fleru]`);
+    }
+    if (data.price !== undefined && data.price !== null && data.price !== '' && NOT_SOLD.includes(data.status)) {
+      advice.push(`${where}: má cenu (price), ale neprodává se (status: ${data.status}); cenu smaž, nebo změň stav [cena-neprodava]`);
+    }
+    if (wantsMockups(data) && !validSize(data.size_cm)) {
+      advice.push(`${where}: má mockupy (mockups: true), ale nemá rozměr (size_cm), mockupy nedrží skutečné měřítko [mockupy-bez-rozmeru]`);
+    }
+    if (data.meta_instagram_grid !== undefined && data.meta_instagram_grid !== null && data.meta_instagram_grid !== false && !wantsInstagram(data)) {
+      advice.push(`${where}: má mřížku pro Instagram (meta_instagram_grid), ale nemá fotky pro Instagram, takže mřížka nevznikne; dej meta_instagram: true, nebo mřížku smaž [mrizka-bez-instagramu]`);
+    }
+    const date = data.date instanceof Date ? data.date.toISOString().slice(0, 10) : data.date;
+    if (typeof date === 'string' && today && /^\d{4}-\d{2}-\d{2}$/.test(date) && date > today) {
+      advice.push(`${where}: datum ${date} je v budoucnu; zkontroluj ho (date) [datum-v-budoucnu]`);
+    }
+  }
+  return advice;
+}
+
+/** Statuses of works that are not sold (a price makes no sense there; sold keeps it as a record). */
+const NOT_SOLD = ['not-for-sale', 'gifted'];
+
 /** Master photos too small for sharp Instagram photos and enlargements: `photos` [{ where, width, height }]. */
 export function photoSizeAdvice(photos) {
   return photos
     .filter((p) => Math.min(p.width, p.height) < MIN_PHOTO_SIDE)
-    .map((p) => `${p.where}: fotka obrazu je malá (${p.width} × ${p.height} px), fotky pro Instagram a zvětšení na webu nebudou ostré; nahraj větší, aspoň ${MIN_PHOTO_SIDE} px na kratší straně`);
+    .map((p) => `${p.where}: fotka obrazu je malá (${p.width} × ${p.height} px), fotky pro Instagram a zvětšení na webu nebudou ostré; nahraj větší, aspoň ${MIN_PHOTO_SIDE} px na kratší straně [mala-fotka]`);
 }
 
 /**
@@ -203,7 +247,7 @@ export function photoSizeAdvice(photos) {
 export function draftAgeAdvice(drafts, today) {
   return drafts
     .filter((d) => d.added && daysBetween(d.added, today) > DRAFT_DAYS)
-    .map((d) => `${d.where}: je rozpracovaný už ${daysBetween(d.added, today)} dní (od ${d.added}); doplň ho a zveřejni (meta_draft: false), nebo ho smaž`);
+    .map((d) => `${d.where}: je rozpracovaný už ${daysBetween(d.added, today)} dní (od ${d.added}); doplň ho a zveřejni (meta_draft: false), nebo ho smaž [dlouhy-draft]`);
 }
 
 /**
@@ -214,7 +258,7 @@ export function instagramLinkAdvice(works, today) {
   return works
     .filter((w) => isPublished(w) && wantsInstagram(w.data) && !isInstagramUrl(w.data?.instagram))
     .filter((w) => w.ready && daysBetween(w.ready, today) > INSTAGRAM_LINK_DAYS)
-    .map((w) => `${w.where}: fotky pro Instagram jsou připravené od ${w.ready} (${daysBetween(w.ready, today)} dní), ale chybí odkaz na příspěvek; po zveřejnění ho doplň (instagram: https://www.instagram.com/p/…)`);
+    .map((w) => `${w.where}: fotky pro Instagram jsou připravené od ${w.ready} (${daysBetween(w.ready, today)} dní), ale chybí odkaz na příspěvek; po zveřejnění ho doplň (instagram: https://www.instagram.com/p/…) [instagram-bez-odkazu]`);
 }
 
 /**
@@ -226,8 +270,8 @@ export function featuredAdvice(pages) {
   return pages.flatMap((p) => {
     if (p.own || p.works.length < FEATURED_GROUP) return [];
     const featured = p.works.filter((w) => w.data?.featured === true).length;
-    if (featured === 0) return [`${p.where}: úvodní obraz ${p.label} je vždy nejnovější obraz; označ pár nejlepších featured: true, budou se na něm střídat`];
-    if (featured === 1) return [`${p.where}: ve výběru autorky ${p.label} je jen 1 obraz, úvodní obraz se nestřídá; označ featured: true ještě další`];
+    if (featured === 0) return [`${p.where}: úvodní obraz ${p.label} je vždy nejnovější obraz; označ pár nejlepších featured: true, budou se na něm střídat [featured-zadny]`];
+    if (featured === 1) return [`${p.where}: ve výběru autorky ${p.label} je jen 1 obraz, úvodní obraz se nestřídá; označ featured: true ještě další [featured-jeden]`];
     return [];
   });
 }
@@ -310,7 +354,7 @@ export function tagAdvice(works) {
       const [a, b] = [stats[i], stats[j]];
       if (!sameTag(a.tag, b.tag)) continue;
       merged.add(`${a.tag}|${b.tag}`);
-      advice.push(`Štítky: ${quoted(a.tag)} (${worksCount(a.count)}) a ${quoted(b.tag)} (${worksCount(b.count)}) jsou nejspíš jeden štítek, sjednoť je na jeden tvar`);
+      advice.push(`Štítky: ${quoted(a.tag)} (${worksCount(a.count)}) a ${quoted(b.tag)} (${worksCount(b.count)}) jsou nejspíš jeden štítek, sjednoť je na jeden tvar [stitky-dva-tvary]`);
     }
   }
   // 2. two tags that always come together: as filters one adds nothing to the other
@@ -324,7 +368,7 @@ export function tagAdvice(works) {
       if (both / either < TAG_TOGETHER) continue;
       const apart = either - both;
       const how = apart ? `skoro vždy spolu (spolu ${worksAt(both)}, jen jeden z nich ${worksAt(apart)})` : `vždy spolu (${worksAt(both)})`;
-      advice.push(`Štítky: ${quoted(a.tag)} a ${quoted(b.tag)} jsou ${how}; jako filtr v galerii jeden nic nepřidá, zvaž, jestli potřebuješ oba`);
+      advice.push(`Štítky: ${quoted(a.tag)} a ${quoted(b.tag)} jsou ${how}; jako filtr v galerii jeden nic nepřidá, zvaž, jestli potřebuješ oba [stitky-vzdy-spolu]`);
     }
   }
   // 3. too many chips for the gallery: name the cheapest ones to merge, shorten or drop
@@ -338,7 +382,7 @@ export function tagAdvice(works) {
     ].filter(Boolean);
     advice.push(
       `Štítky: v galerii zaberou asi ${rows} ${rows <= 4 ? 'řádky' : 'řádků'} (${stats.length} štítků), přehledné je nejvýš ${TAG_ROWS}; ` +
-      'zvaž sloučení, kratší slova nebo vynechání málo užitých' + (candidates.length ? ` (${candidates.join('; ')})` : ''),
+      'zvaž sloučení, kratší slova nebo vynechání málo užitých' + (candidates.length ? ` (${candidates.join('; ')})` : '') + ' [stitky-moc]',
     );
   }
   return advice;
@@ -354,7 +398,7 @@ export function pinterestAdvice(works, dictionary = {}) {
     .map((w) => [w, untranslatedWords(w.data, { en: dictionary })])
     .filter(([, words]) => words.length)
     .map(([w, words]) => `${workPath(w)}: ${words.length === 1 ? 'štítek' : 'štítky'} ${words.map((x) => `„${x}“`).join(', ')} `
-      + `${words.length === 1 ? 'nemá' : 'nemají'} v popisu pinu pro Pinterest anglické klíčové slovo (překlad doplní Libor do nastavení webu, pinterestKeywords.en)`);
+      + `${words.length === 1 ? 'nemá' : 'nemají'} v popisu pinu pro Pinterest anglické klíčové slovo (překlad doplní Libor do nastavení webu, pinterestKeywords.en) [stitek-bez-prekladu]`);
 }
 
 /**
@@ -367,5 +411,5 @@ export function hashtagAdvice(works, settings = {}) {
     .map((w) => [w, untranslatedWords(w.data, settings)])
     .filter(([, words]) => words.length)
     .map(([w, words]) => `${workPath(w)}: ${words.length === 1 ? 'štítek' : 'štítky'} ${words.map((x) => `„${x}“`).join(', ')} `
-      + `${words.length === 1 ? 'nemá' : 'nemají'} v textu příspěvku pro Instagram anglický hashtag (překlad doplní Libor do nastavení webu, instagramPost.en)`);
+      + `${words.length === 1 ? 'nemá' : 'nemají'} v textu příspěvku pro Instagram anglický hashtag (překlad doplní Libor do nastavení webu, instagramPost.en) [stitek-bez-prekladu]`);
 }

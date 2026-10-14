@@ -32,3 +32,12 @@ test('workTooltip shortens a long description after a whole word', () => {
   assert.ok(description.length <= TOOLTIP_DESCRIPTION_MAX, String(description.length));
   assert.match(description, /slovo…$/);
 });
+
+test('workTooltip ends the head with the tags in Czech alphabetical order, none without tags', () => {
+  assert.equal(
+    workTooltip({ ...work, description: '', tags: ['řeka', 'mlha', 'čáp', ' ', 'mlha'] }, labels),
+    'Jez na Otavě\nakvarel · 41 × 30 cm · 2025\npapír Canson XL Aquarelle (300 g)\nK prodeji\n#čáp #mlha #řeka',
+  );
+  assert.match(workTooltip({ ...work, tags: ['les'] }, labels), /\nK prodeji\n#les\n\nRáno u jezu/);
+  assert.doesNotMatch(workTooltip({ ...work, tags: [] }, labels), /#/);
+});

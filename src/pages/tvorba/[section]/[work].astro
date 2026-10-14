@@ -2,6 +2,7 @@
 import Base from '../../../layouts/Base.astro';
 import Picture from '../../../components/Picture.astro';
 import Img from '../../../components/Img.astro';
+import FeaturedStar from '../../../components/FeaturedStar.astro';
 import { collectionUrl, config, detailCaption, getCollection, workPinImage, workShareImage, getWorks, messages, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
 import { isOnSale, wantsMockups, workCodeHint, workShortPath } from '../../../../scripts/lib/works.mjs';
 import { EVENTS } from '../../../../scripts/lib/analytics.mjs';
@@ -93,7 +94,7 @@ const jsonLd = graphLd(
     )}
     <div class="info">
       <div class="head">
-        <h1>{work.title}</h1>
+        <div class="title"><h1>{work.title}</h1><FeaturedStar featured={work.featured} /></div>
         <dl>
           <dt>Technika</dt><dd>{work.technique}</dd>
           {work.support && <><dt>Podklad</dt><dd>{work.support}</dd></>}
@@ -247,7 +248,10 @@ const jsonLd = graphLd(
   .zoom { display: block; cursor: zoom-in; }
   .zoom :global(picture) { box-shadow: var(--shadow-deep); }
   .zoom :global(picture.cutout) { box-shadow: none; filter: var(--drop-deep); }
-  .info h1 { margin-top: 0; }
+  /* The heading with the star of the author's selection after it, outside the <h1> (its text is the title only): the
+     block has the size and margins of a heading, the <h1> flows inline in it, so the star follows the last word. */
+  .info .title { font-family: var(--serif); font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.15; margin: 0 0 0.4em; }
+  .info .title h1 { display: inline; font-size: inherit; margin: 0; }
   dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; font-size: 0.93rem; margin: 0 0 20px; }
   dt { color: var(--ink-soft); }
   /* the permanent code of the work: a quiet catalogue number, a link to its short address */
@@ -310,7 +314,7 @@ const jsonLd = graphLd(
     .info { display: contents; }
     .zoom, .story, .info > * { grid-column: 1; grid-row: auto; }
     .zoom { order: 1; } .head { order: 2; } .story { order: 3; } .buy { order: 4; } .share { order: 5; } .details { order: 6; } .mockups { order: 7; }
-    .head h1 { margin-top: 16px; }
+    .head .title { margin-top: 16px; }
     .story .desc { margin-top: 0; }
   }
 </style>

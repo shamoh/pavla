@@ -1,5 +1,6 @@
 ---
 import Picture from './Picture.astro';
+import FeaturedStar from './FeaturedStar.astro';
 import { type Work, shownStatus, statusLabel, formatSize, workUrl } from '../lib/site';
 import { searchText } from '../../scripts/lib/search.mjs';
 interface Props { work: Work; eager?: boolean; hidden?: boolean }
@@ -20,7 +21,7 @@ const { work, eager, hidden } = Astro.props;
 >
   <Picture work={work} sizes="(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 33vw" eager={eager} tooltip />
   <span class="meta">
-    <span class="title">{work.title}</span>
+    <span class="title">{work.title}<FeaturedStar featured={work.featured} /></span>
     <span class="sub">{work.technique}{work.size_cm && ` · ${formatSize(work.size_cm)}`}</span>
     {work.status !== 'not-for-sale' && <span class:list={['badge', { available: work.status === 'available' }]}>{statusLabel[work.status]}</span>}
   </span>

@@ -150,3 +150,41 @@ test('evaluateUnknownTechniques: a technique without an art form needs a rule, n
   assert.equal(skipped.ok, true);
   assert.match(skipped.message, /nebyly zkontrolovány/);
 });
+
+test('every failed check ends the first line of its message with its code, a fine check has none', () => {
+  const now = new Date('2026-10-14T12:00:00Z');
+  const first = (r) => r.message.split('\n')[0];
+  const cases = [
+    [evaluateToken({ status: 0 }), 'token-chybi'],
+    [evaluateToken({ status: 401 }), 'token-neplatny'],
+    [evaluateToken({ status: 500 }), 'token-nedostupny'],
+    [evaluateToken({ status: 200, expiration: '2026-10-20 00:00:00 UTC', now }), 'token-vyprsi'],
+    [evaluateRuns([{ status: 'completed', conclusion: 'failure', created_at: '2026-10-14', html_url: 'u' }], { now }), 'beh-selhal'],
+    [evaluateRuns([{ status: 'completed', conclusion: 'failure', created_at: '2026-10-14', html_url: 'u' }], { now, workflow: DRY_RUNS }), 'zkusebni-beh-selhal'],
+    [evaluateDeploy({ sha: 'abcdef1234', date: '2026-10-10' }, [{ head_sha: 'abcdef1234', status: 'completed', conclusion: 'failure', html_url: 'u' }], { now }), 'nasazeni-selhalo'],
+    [evaluateDeploy({ sha: 'abcdef1234', date: '2026-10-10' }, [], { now }), 'nasazeni-chybi'],
+    [evaluatePullRequest([{ created_at: '2026-10-01', html_url: 'u' }], { now }), 'aktualizace-ceka'],
+    [evaluateUnknownAttributes(['tvorba/a.yaml: mockup']), 'neznamy-atribut'],
+    [evaluateUnknownTechniques(['olej: tvorba/a.yaml']), 'nova-technika'],
+  ];
+  for (const [result, code] of cases) {
+    assert.equal(result.ok, false, code);
+    assert.ok(first(result).endsWith(`[${code}]`), `${code}: ${first(result)}`);
+  }
+  assert.doesNotMatch(evaluateToken({ status: 200, now }).message, /\[[a-z-]+\]/);
+  assert.doesNotMatch(evaluateUnknownAttributes([]).message, /\[[a-z-]+\]/);
+});
+
+test('formatReport: the codes of the failed checks and of their listed problems, each once, none when all is fine', () => {
+  const fine = { ok: true, message: 'v pořádku' };
+  assert.deepEqual(formatReport(fine, fine).codes, []);
+  const report = formatReport(
+    evaluateToken({ status: 401 }),
+    fine,
+    { ok: false, message: 'Texty stránek mají 2 problémy:\n- /a/: chybí titulek [titulek-chybi]\n- /b/: chybí titulek [titulek-chybi]' },
+    evaluateUnknownAttributes(['tvorba/a.yaml: mockup']),
+    { ok: true, message: 'nic [beh-selhal]' },
+  );
+  assert.equal(report.ok, false);
+  assert.deepEqual(report.codes, ['token-neplatny', 'titulek-chybi', 'neznamy-atribut']);
+});

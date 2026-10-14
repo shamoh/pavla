@@ -41,6 +41,8 @@ const collectionsHref = overviewLink(url('/tvorba/kolekce/'), year, collectionYe
 // Page sizes the visitor can pick (the first is the default); the rest of the filtered list is on further
 // pages (?page=2), hidden cards load no images.
 const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
+// The tiles view has page sizes of its own (more small pictures on a page); the script switches between them.
+const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
 ---
 {!collection && (
   <nav class="years" id="years" aria-label="Roky">
@@ -97,9 +99,9 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
 </form>
 </div>
 
-<div class="grid" id="grid" data-page-sizes={JSON.stringify(pageSizes)}>{works.map((w, i) => <WorkCard work={w} eager={i < 3} />)}</div>
+<div class="grid" id="grid" data-page-sizes={JSON.stringify({ grid: pageSizes, tiles: tilePageSizes })}>{works.map((w, i) => <WorkCard work={w} eager={i < 3} />)}</div>
 <p class="muted empty" id="empty" hidden>Tomuhle výběru nic neodpovídá.</p>
-<Pager pageSizes={pageSizes} total={works.length} />
+<Pager pageSizes={pageSizes} total={works.length} views />
 
 <script>
   // Every filter and the page are written to the URL right away (?tag=krajina&status=unsold&page=2), so the
@@ -115,8 +117,8 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   // Paging happens here too: the filtered list is split into pages, cards of other pages are hidden
   // (hidden cards load no images). Without JavaScript every work is shown.
   import {
-    ALL_PAGES, FEATURED_ON, NO_COLLECTION, PAGE_SIZE_STORAGE_KEY, facetChoices, facetDisplay, matchesFilters, pageAfterFilterChange, pageSizeOf, pageSizeToRemember, paginate,
-    rememberedPageSize, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
+    ALL_PAGES, DEFAULT_VIEW, FEATURED_ON, TILE_SIZES, TILE_SIZE_STORAGE_KEY, TILE_WIDTHS, rememberedTileSize, stepTileSize, tileSizeToRemember, NO_COLLECTION, VIEW_STORAGE_KEY, facetChoices, pageSizeStorageKey, viewFromParams, viewPageSizes, withView, facetDisplay, matchesFilters, pageAfterFilterChange, pageSizeOf, pageSizeToRemember, paginate,
+    rememberedPageSize, rememberedView, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, viewToRemember, withPageSize,
   } from '../../scripts/lib/gallery-filter.mjs';
   import { EVENTS, filterEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
   import { rememberListing, revealReturned } from '../lib/page-return';
@@ -153,7 +155,8 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   const emptyEl = document.getElementById('empty')!;
   const grid = document.getElementById('grid')!;
   const pager = document.getElementById('pager')!;
-  const pageSizes: number[] = JSON.parse(grid.dataset.pageSizes!);
+  // Page sizes of each view (big pictures, tiles); `pageSizes` = those of the current view.
+  const sizes: { grid: number[]; tiles: number[] } = JSON.parse(grid.dataset.pageSizes!);
   const perPageLabel = document.getElementById('per-page');
   const perPageSelect = perPageLabel?.querySelector('select') ?? null;
   const featuredBox = form.elements.namedItem('featured') as HTMLInputElement | null;
@@ -171,17 +174,48 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     : null;
   const FEATURED_TITLE = featuredBox?.closest('label')?.title ?? '';
   const params = new URLSearchParams(location.search);
-  let state = stateFromParams(params, pageSizes);
-  // The page size the visitor picked earlier is remembered in this browser (not "Zobrazit vše", that one is
-  // one-off). It never overrides a link with perPage or page, and apply() writes it to the URL, so a copied
-  // link still shows the same works. Storage may be blocked (private mode), then nothing is remembered.
-  const storage = {
-    get: () => { try { return localStorage.getItem(PAGE_SIZE_STORAGE_KEY); } catch { return null; } },
+  // What the visitor picked earlier is remembered in this browser: the view (big pictures or tiles) and the page
+  // size of each view (not "Zobrazit vše", that one is one-off). It never overrides a link (?view, ?perPage, ?page),
+  // and apply() writes it to the URL, so a copied link still shows the same works. Storage may be blocked (private
+  // mode), then nothing is remembered.
+  const stored = (key: string) => ({
+    get: () => { try { return localStorage.getItem(key); } catch { return null; } },
     set: (v: string | null) => {
-      try { v === null ? localStorage.removeItem(PAGE_SIZE_STORAGE_KEY) : localStorage.setItem(PAGE_SIZE_STORAGE_KEY, v); } catch { /* ignore */ }
+      try { v === null ? localStorage.removeItem(key) : localStorage.setItem(key, v); } catch { /* ignore */ }
     },
-  };
-  if (perPageSelect) state.perPage = rememberedPageSize(params, storage.get(), pageSizes) ?? state.perPage;
+  });
+  const viewStorage = stored(VIEW_STORAGE_KEY);
+  const viewButtons = [...document.querySelectorAll<HTMLButtonElement>('#view [data-view]')];
+  const sizeStorage = (view: string) => stored(pageSizeStorageKey(view));
+  const view = rememberedView(params, viewStorage.get()) ?? viewFromParams(params);
+  let pageSizes = viewPageSizes(view, sizes);
+  let state = { ...stateFromParams(params, pageSizes), view };
+  // The size of the tiles the same way: remembered, a link with ?tile decides.
+  const tileStorage = stored(TILE_SIZE_STORAGE_KEY);
+  state.tile = rememberedTileSize(params, tileStorage.get()) ?? state.tile;
+  const tileSize = document.getElementById('tile-size');
+  const tileSteps = [...document.querySelectorAll<HTMLButtonElement>('#tile-size [data-tile-step]')];
+  if (perPageSelect) state.perPage = rememberedPageSize(params, sizeStorage(view).get(), pageSizes) ?? state.perPage;
+  /** The options of "Na stránku": the page sizes of the current view. */
+  function fillPageSizes() {
+    if (!perPageSelect) return;
+    perPageSelect.replaceChildren(...pageSizes.map((n) => new Option(String(n), String(n))));
+  }
+  fillPageSizes();
+  // The sizes of the pictures as rendered for big pictures; tiles are narrow, so the browser picks smaller files.
+  const sizesOf = new Map([...grid.querySelectorAll<HTMLElement>('img[sizes], source[sizes]')].map((el) => [el, el.getAttribute('sizes')!]));
+  // phone columns of each tile size (the same as in the CSS below)
+  const PHONE_COLUMNS: Record<string, number> = { s: 4, m: 3, l: 2 };
+  const tileSizes = (t: string) => `(max-width: 640px) ${Math.ceil(100 / PHONE_COLUMNS[t])}vw, ${Math.round(TILE_WIDTHS[t as keyof typeof TILE_WIDTHS] * 1.2)}px`;
+  function showView() {
+    const tiles = state.view === 'tiles';
+    grid.classList.toggle('tiles', tiles);
+    for (const t of TILE_SIZES) grid.classList.toggle(`tiles-${t}`, tiles && state.tile === t);
+    for (const [el, sizes] of sizesOf) el.setAttribute('sizes', tiles ? tileSizes(state.tile) : sizes);
+    for (const b of viewButtons) b.setAttribute('aria-pressed', String(b.dataset.view === state.view));
+    if (tileSize) tileSize.hidden = !tiles;
+    for (const b of tileSteps) b.disabled = stepTileSize(state.tile, Number(b.dataset.tileStep)) === state.tile;
+  }
   for (const k of ['year', 'collection'] as const) if (!select(k)) state[k] = '';
   // A year or status option not offered here (nothing behind it, e.g. an old link) is off, like a missing filter.
   for (const k of ['year', 'status'] as const) {
@@ -205,6 +239,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     const matching = cards.filter((_, i) => matchesFilters(works[i], state));
     const { page, pages, start, end } = paginate(matching.length, state.page, pageSizeOf(state, pageSizes));
     state.page = page;
+    showView();
     const visible = new Set(matching.slice(start, end));
     for (const c of cards) c.hidden = !visible.has(c);
     const shown = matching.length;
@@ -252,7 +287,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
     // The field keeps what the visitor types; only a change from elsewhere (the "×" in the bar) rewrites it.
     if (searchInput && normalizeQuery(searchInput.value) !== state.q) searchInput.value = state.q;
     if (perPageSelect) perPageSelect.value = String(pageSizeOf(state, pageSizes));
-    // The page size matters only when the shown works do not fit the smallest page.
+    // The page size matters only when the shown works do not fit the smallest page of the view.
     if (perPageLabel) perPageLabel.hidden = matching.length <= pageSizes[0];
     countEl.textContent = `${shown} ${plural(shown)}`;
     renderBar(shown);
@@ -402,11 +437,35 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   // Picking a page size (under the grid) starts again on page 1 with paging on, from the top of the works.
   perPageSelect?.addEventListener('change', () => {
     state = withPageSize(state, Number(perPageSelect.value), pageSizes);
-    storage.set(pageSizeToRemember(Number(perPageSelect.value), pageSizes));
+    sizeStorage(state.view).set(pageSizeToRemember(Number(perPageSelect.value), pageSizes));
     apply();
     quiet(false);
     slot.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
+  // Switching the view keeps the filters; the page size becomes that of the view (remembered or its default) and the
+  // page the one with the first work shown so far (withView).
+  for (const b of viewButtons) {
+    b.addEventListener('click', () => {
+      const next = b.dataset.view ?? DEFAULT_VIEW;
+      if (next === state.view) return;
+      state = withView(state, next, sizes, sizeStorage(next).get());
+      pageSizes = viewPageSizes(state.view, sizes);
+      fillPageSizes();
+      viewStorage.set(viewToRemember(state.view));
+      showView();
+      apply();
+      quiet(false);
+    });
+  }
+  // Smaller or larger tiles: only the width of the columns changes, the works and the page stay.
+  for (const b of tileSteps) {
+    b.addEventListener('click', () => {
+      state.tile = stepTileSize(state.tile, Number(b.dataset.tileStep));
+      tileStorage.set(tileSizeToRemember(state.tile));
+      apply();
+      quiet(false);
+    });
+  }
   pager.addEventListener('click', (e) => {
     const page = pagerTarget(e);
     if (page === null) return; // let "open in new tab" work
@@ -529,4 +588,18 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
   .years .to-collections { margin-left: auto; font-size: 1rem; font-family: var(--sans); align-self: center; }
   .grid { columns: 3 300px; column-gap: 36px; }
   .grid :global(.card[hidden]) { display: none; }
+  /* Tiles (?view=tiles, set by the script): small pictures side by side, no texts (the tooltip tells them). */
+  .grid:global(.tiles) { columns: 6 150px; column-gap: 12px; }
+  /* Smaller and larger tiles (?tile=s / l, TILE_WIDTHS): narrower or wider columns, more or fewer of them. */
+  .grid:global(.tiles-s) { columns: 9 110px; column-gap: 10px; }
+  .grid:global(.tiles-l) { columns: 5 210px; column-gap: 16px; }
+  .grid:global(.tiles) :global(.card) { margin-bottom: 12px; }
+  .grid:global(.tiles) :global(.card .meta) { display: none; }
+  .grid:global(.tiles) :global(.card:hover picture) { transform: none; }
+  @media (max-width: 640px) {
+    .grid:global(.tiles) { columns: 3; column-gap: 8px; }
+    .grid:global(.tiles-s) { columns: 4; column-gap: 6px; }
+    .grid:global(.tiles-l) { columns: 2; column-gap: 10px; }
+    .grid:global(.tiles) :global(.card) { margin-bottom: 8px; }
+  }
 </style>

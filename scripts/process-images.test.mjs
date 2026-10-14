@@ -567,8 +567,8 @@ test('collections: the former names _kolekce.yaml and _uvod.jpg are refused, no 
   const r = await run(opts());
   assert.equal(r.ok, false);
   assert.deepEqual(r.problems.filter((p) => p.includes('se teď jmenuje')), [
-    'tvorba/plener/_kolekce.yaml: tento soubor se teď jmenuje _index.yaml, přejmenuj ho',
-    'tvorba/plener/_uvod.jpg: tento soubor se teď jmenuje _cover.jpg, přejmenuj ho',
+    'tvorba/plener/_kolekce.yaml: tento soubor se teď jmenuje _index.yaml, přejmenuj ho [stare-jmeno-souboru]',
+    'tvorba/plener/_uvod.jpg: tento soubor se teď jmenuje _cover.jpg, přejmenuj ho [stare-jmeno-souboru]',
   ]);
   assert.equal(await exists(collFile('plener', '_index.yaml')), false, 'no skeleton hides the old description');
   assert.equal(await exists(path.join(siteDir, 'content')), false, 'nothing reaches the site');
@@ -1055,8 +1055,12 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   assert.equal(skeleton.meta_instagram, false);
   assert.ok(await idOf('2026', 'hotovy'));
   for (const p of ['content', 'public']) assert.ok(!(await exists(path.join(siteDir, p))), p);
-  // no exports; the new draft has its previews (nothing to cut here: the whole photo) in export/draft/
-  assert.deepEqual(await fs.readdir(path.join(contentDir, 'export')), ['draft']);
+  // no exports; the new draft has its previews (nothing to cut here: the whole photo) in export/draft/, and the
+  // overview of all works is there on a branch too
+  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export'))).sort(), ['README.md', 'draft']);
+  const overview = await fs.readFile(path.join(contentDir, 'export/README.md'), 'utf8');
+  assert.match(overview, /^# Přehled všech děl\n/);
+  assert.match(overview, /### Novy · [a-z0-9]{5} · draft\n/);
   assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/novy'))).sort(), DRAFT_FILES);
 
   // problems are reported as in a full run
@@ -1173,7 +1177,7 @@ test('attributes: a former name (draft) stops the run and the file is left alone
   for (const prepareOnly of [true, false]) {
     const r = await run(opts({ prepareOnly }));
     assert.equal(r.ok, false);
-    assert.deepEqual(r.problems, ['tvorba/rano.yaml: draft: přejmenováno na meta_draft, přejmenuj ho']);
+    assert.deepEqual(r.problems, ['tvorba/rano.yaml: draft: přejmenováno na meta_draft, přejmenuj ho [prejmenovany-atribut]']);
     assert.equal(await fs.readFile(path.join(contentDir, 'tvorba/rano.yaml'), 'utf8'), old, 'never migrated silently');
     assert.equal(await exists(path.join(siteDir, 'content')), false, 'a draft under its old name never reaches the site');
   }

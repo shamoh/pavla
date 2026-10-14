@@ -7,7 +7,10 @@
 //   - no description of the content has an attribute the pipeline does not know (NEZNÁMÝ),
 //   - every image the pages of the deployed site refer to exists (scripts/lib/site-check.mjs).
 // Pure functions; the GitHub API calls live in scripts/check-health.mjs.
-// Messages are Czech: they end up on the run page and in an issue e-mailed to the owner.
+// Messages are Czech: they end up on the run page and in an issue e-mailed to the owner. A failed check ends the first
+// line of its message with its code (scripts/lib/codes.mjs, level health), like the messages of a pipeline run.
+
+import { codesOf } from './codes.mjs';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -20,19 +23,19 @@ export function parseExpiration(header) {
 
 /** `status`: HTTP status of an API call made with the token; `expiration`: its expiry header. */
 export function evaluateToken({ status, expiration, now = new Date(), warnDays = 14 }) {
-  if (status === 0) return { ok: false, message: 'Secret PAVLA_TOKEN není nastavený.' };
+  if (status === 0) return { ok: false, message: 'Secret PAVLA_TOKEN není nastavený. [token-chybi]' };
   if (status === 401) {
-    return { ok: false, message: 'Token PAVLA_TOKEN je neplatný nebo už vypršel. Automatické zpracování obsahu nefunguje.' };
+    return { ok: false, message: 'Token PAVLA_TOKEN je neplatný nebo už vypršel. Automatické zpracování obsahu nefunguje. [token-neplatny]' };
   }
   if (status !== 200) {
-    return { ok: false, message: `Kontrola tokenu PAVLA_TOKEN selhala (HTTP ${status}). Token možná nemá přístup k repu shamoh/pavla.` };
+    return { ok: false, message: `Kontrola tokenu PAVLA_TOKEN selhala (HTTP ${status}). Token možná nemá přístup k repu shamoh/pavla. [token-nedostupny]` };
   }
   const date = parseExpiration(expiration);
   if (!date) return { ok: true, message: 'Token PAVLA_TOKEN funguje a nemá nastavenou dobu platnosti.' };
   const daysLeft = Math.floor((date.getTime() - now.getTime()) / DAY);
   const when = date.toISOString().slice(0, 10);
   if (daysLeft < warnDays) {
-    return { ok: false, daysLeft, message: `Token PAVLA_TOKEN vyprší ${when} (za ${Math.max(0, daysLeft)} dní). Je potřeba ho obnovit.` };
+    return { ok: false, daysLeft, message: `Token PAVLA_TOKEN vyprší ${when} (za ${Math.max(0, daysLeft)} dní). Je potřeba ho obnovit. [token-vyprsi]` };
   }
   return { ok: true, daysLeft, message: `Token PAVLA_TOKEN funguje, vyprší ${when} (za ${daysLeft} dní).` };
 }
@@ -41,11 +44,13 @@ const FAILED = new Set(['failure', 'timed_out', 'startup_failure']);
 
 export const CONTENT_RUNS = {
   name: 'Zpracování obsahu',
+  code: 'beh-selhal',
   never: 'Zpracování obsahu zatím neproběhlo.',
   consequence: 'Na stránce běhu je nahoře napsané proč. Dokud se to neopraví, nové obrazy se na web nedostanou.',
 };
 export const DRY_RUNS = {
   name: 'Zkušební běh zpracování',
+  code: 'zkusebni-beh-selhal',
   never: 'Zkušební běh zpracování na testovacích datech zatím neproběhl.',
   consequence: 'Zpracování selhalo na testovacích datech, skutečný obsah by nejspíš selhal stejně. Opravit dřív, než Pavla nahraje nové obrazy.',
 };
@@ -62,7 +67,7 @@ export function evaluateRuns(runs, { now = new Date(), days = 7, workflow = CONT
   if (FAILED.has(latest.conclusion)) {
     return {
       ok: false,
-      message: `Poslední běh „${workflow.name}“ (${day(latest.created_at)}) selhal: ${latest.html_url}\n${workflow.consequence}`,
+      message: `Poslední běh „${workflow.name}“ (${day(latest.created_at)}) selhal: ${latest.html_url} [${workflow.code}]\n${workflow.consequence}`,
     };
   }
   const since = now.getTime() - days * DAY;
@@ -86,13 +91,13 @@ export function evaluateDeploy(commit, runs, { now = new Date(), graceHours = 1 
   }
   if (latest && latest.status !== 'completed') return { ok: true, message: `Nasazení commitu ${short} právě probíhá.` };
   if (latest && FAILED.has(latest.conclusion)) {
-    return { ok: false, message: `Nasazení webu z commitu ${short} selhalo: ${latest.html_url}
+    return { ok: false, message: `Nasazení webu z commitu ${short} selhalo: ${latest.html_url} [nasazeni-selhalo]
 Web ukazuje starší verzi.` };
   }
   if (now.getTime() - new Date(commit.date).getTime() < graceHours * 60 * 60 * 1000) {
     return { ok: true, message: `Commit ${short} je čerstvý, nasazení se teprve spustí.` };
   }
-  return { ok: false, message: `Poslední commit ${short} (${day(commit.date)}) se na web nenasadil, žádný úspěšný běh deploye pro něj není.` };
+  return { ok: false, message: `Poslední commit ${short} (${day(commit.date)}) se na web nenasadil, žádný úspěšný běh deploye pro něj není. [nasazeni-chybi]` };
 }
 
 /**
@@ -104,7 +109,7 @@ export function evaluatePullRequest(pulls, { now = new Date(), days = 1 } = {}) 
   if (!pr) return { ok: true, message: 'Žádná aktualizace obsahu nečeká na sloučení.' };
   const age = Math.floor((now.getTime() - new Date(pr.created_at).getTime()) / DAY);
   if (age > days) {
-    return { ok: false, message: `Aktualizace obsahu se nesloučila sama ani za ${age} dní: ${pr.html_url}
+    return { ok: false, message: `Aktualizace obsahu se nesloučila sama ani za ${age} dní: ${pr.html_url} [aktualizace-ceka]
 Nejspíš neprošla „Kontrola kódu“ (červený křížek v pull requestu) nebo auto-merge není zapnutý.
 Nové obrazy nejsou na webu, dokud se nesloučí.` };
   }
@@ -120,7 +125,7 @@ export function evaluateUnknownAttributes(found) {
   if (!found.length) return { ok: true, message: 'Žádný popis nemá neznámý atribut.' };
   return {
     ok: false,
-    message: `Popisy s neznámým atributem (označené NEZNÁMÝ, nejspíš překlep; web ho nepoužije):\n`
+    message: `Popisy s neznámým atributem (označené NEZNÁMÝ, nejspíš překlep; web ho nepoužije): [neznamy-atribut]\n`
       + found.map((f) => `- ${f}`).join('\n')
       + '\nOprav jeho název, nebo řádek smaž.',
   };
@@ -135,7 +140,7 @@ export function evaluateUnknownTechniques(found) {
   if (!found.length) return { ok: true, message: 'Každá technika má druh díla pro vyhledávače.' };
   return {
     ok: false,
-    message: `Nová technika bez druhu díla (vyhledávače nepoznají, jestli je to malba, kresba, nebo grafika):\n`
+    message: `Nová technika bez druhu díla (vyhledávače nepoznají, jestli je to malba, kresba, nebo grafika): [nova-technika]\n`
       + found.map((f) => `- ${f}`).join('\n')
       + '\nDoplň pravidlo do ARTFORMS v scripts/lib/seo.mjs (repo pavla), nebo oprav překlep v technice.',
   };
@@ -151,15 +156,20 @@ export const RENEW_TOKEN = [
   '3. Actions → Kontrola automatiky → Run workflow, ať se ověří, že je vše v pořádku.',
 ].join('\n');
 
-/** Markdown report for the run page and the issue. `token` is the first check; renew steps follow when it fails. */
+/**
+ * Markdown report for the run page and the issue. `token` is the first check; renew steps follow when it fails.
+ * `codes`: the codes of the failed checks (and of the problems they list), each once in order, for the title of the
+ * issue ("Automatika webu potřebuje pozornost [token-vyprsi] [obrazky-chybi]"), so e-mails can be filtered by them.
+ */
 export function formatReport(token, ...checks) {
   const all = [token, ...checks];
   const ok = all.every((c) => c.ok);
+  const codes = [...new Set(all.filter((c) => !c.ok).flatMap((c) => codesOf(c.message)))];
   const lines = [
     `## ${ok ? '✓ Automatika je v pořádku' : '✗ Automatika potřebuje pozornost'}`,
     '',
     ...all.map((c) => `- ${c.ok ? '✓' : '✗'} ${c.message.replace(/\n/g, '\n  ')}`),
   ];
   if (!token.ok) lines.push('', RENEW_TOKEN);
-  return { ok, text: lines.join('\n') + '\n' };
+  return { ok, codes, text: lines.join('\n') + '\n' };
 }

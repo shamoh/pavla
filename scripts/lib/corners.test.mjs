@@ -79,7 +79,7 @@ test('prepareCorners: corners set by hand or false are kept; ones of another pho
   const r = await prepareCorners(tmp, works);
   assert.deepEqual(r.detected, []);
   assert.equal(await fs.readFile(path.join(tmp, 'tvorba/manual.yaml'), 'utf8'), manual);
-  assert.deepEqual(r.problems, ['tvorba/other.yaml: meta_corners patří k fotce 800 × 600, ale fotka má 400 × 300: smaž meta_corners, automatika rohy najde znovu']);
+  assert.deepEqual(r.problems, ['tvorba/other.yaml: meta_corners patří k fotce 800 × 600, ale fotka má 400 × 300: smaž meta_corners, automatika rohy najde znovu [spatne-rohy]']);
 });
 
 test('prepareCorners: a file the schema check refuses is left alone (reported by that check)', async () => {

@@ -96,33 +96,33 @@ export function validateWorks(works) {
   const byId = new Map();
   for (const w of works) {
     const where = workPath(w);
-    if (!isValidSlug(w.slug)) problems.push(`${where}: „${w.slug}“ není platné jméno pro adresu (jen a-z, 0-9 a pomlčky), přejmenuj soubor`);
-    if (!isValidId(w.id)) problems.push(`${where}: neplatný kód id „${w.id}“ (kód přiděluje automatika, řádek id smaž a dostane nový)`);
-    if (!w.data?.title) problems.push(`${where}: chybí název (title)`);
-    if (!w.data?.date) problems.push(`${where}: chybí datum (date)`);
+    if (!isValidSlug(w.slug)) problems.push(`${where}: „${w.slug}“ není platné jméno pro adresu (jen a-z, 0-9 a pomlčky), přejmenuj soubor [neplatne-jmeno]`);
+    if (!isValidId(w.id)) problems.push(`${where}: neplatný kód id „${w.id}“ (kód přiděluje automatika, řádek id smaž a dostane nový) [neplatne-id]`);
+    if (!w.data?.title) problems.push(`${where}: chybí název (title) [chybi-nazev]`);
+    if (!w.data?.date) problems.push(`${where}: chybí datum (date) [chybi-datum]`);
     else if (!isValidYear(String(dateYear(w.data.date))) || !/^\d{4}-\d{2}-\d{2}/.test(formatDate(w.data.date))) {
-      problems.push(`${where}: date musí být den ve tvaru 2026-06-14 (podle něj se obraz zařadí do roku), ne „${formatDate(w.data.date)}“`);
+      problems.push(`${where}: date musí být den ve tvaru 2026-06-14 (podle něj se obraz zařadí do roku), ne „${formatDate(w.data.date)}“ [spatne-datum]`);
     }
     if (!w.data?.meta_draft && w.data?.size_cm !== undefined && w.data.size_cm !== null && !validSize(w.data.size_cm)) {
-      problems.push(`${where}: size_cm musí být [šířka, výška] v cm, obojí větší než 0`);
+      problems.push(`${where}: size_cm musí být [šířka, výška] v cm, obojí větší než 0 [spatny-rozmer]`);
     }
     if (!w.data?.meta_draft && isOnSale(w.data?.status) && !(typeof w.data.price === 'number' && w.data.price > 0)) {
-      problems.push(`${where}: stav „${w.data.status}“ potřebuje cenu (price: <Kč>)`);
+      problems.push(`${where}: stav „${w.data.status}“ potřebuje cenu (price: <Kč>) [prodej-bez-ceny]`);
     }
     problems.push(...validateDetailCaptions(w, where));
     if (w.data?.instagram !== undefined && w.data.instagram !== null && w.data.instagram !== '' && !isInstagramUrl(w.data.instagram)) {
-      problems.push(`${where}: instagram musí být odkaz na příspěvek na Instagramu (https://www.instagram.com/p/…), ne „${w.data.instagram}“`);
+      problems.push(`${where}: instagram musí být odkaz na příspěvek na Instagramu (https://www.instagram.com/p/…), ne „${w.data.instagram}“ [spatny-odkaz-instagram]`);
     }
     const grid = w.data?.meta_instagram_grid;
     if (grid !== undefined && grid !== null && grid !== '' && !parseGrid(grid)) {
-      problems.push(`${where}: meta_instagram_grid „${grid}“ musí být sloupce x řádky, např. 3x3 nebo 2x1 (od 1x1 do ${GRID_MAX}x${GRID_MAX})`);
+      problems.push(`${where}: meta_instagram_grid „${grid}“ musí být sloupce x řádky, např. 3x3 nebo 2x1 (od 1x1 do ${GRID_MAX}x${GRID_MAX}) [spatna-mrizka]`);
     }
     if (!w.data?.meta_draft) problems.push(...todoProblems(where, w.data, PUBLIC_WORK_FIELDS, ' (nebo nech meta_draft: true)'));
     problems.push(...optionProblems(where, w.data, WORK_SCHEMA));
     if (w.data?.collection !== undefined && w.data.collection !== null && w.data.collection !== '') {
-      problems.push(`${where}: „collection:“ se už nepoužívá, obraz patří do kolekce tím, že leží v její složce (tvorba/<kolekce>/); řádek smaž`);
+      problems.push(`${where}: „collection:“ se už nepoužívá, obraz patří do kolekce tím, že leží v její složce (tvorba/<kolekce>/); řádek smaž [stary-atribut-collection]`);
     }
-    if (w.id && byId.has(w.id)) problems.push(`${where}: kód id „${w.id}“ má i ${byId.get(w.id)}`);
+    if (w.id && byId.has(w.id)) problems.push(`${where}: kód id „${w.id}“ má i ${byId.get(w.id)} [duplicitni-id]`);
     else if (w.id) byId.set(w.id, where);
   }
   return problems;
@@ -156,13 +156,13 @@ function validateDetailCaptions(w, where) {
   const captions = w.data?.details;
   if (captions === undefined || captions === null) return [];
   if (typeof captions !== 'object' || Array.isArray(captions)) {
-    return [`${where}: details musí být řádky „název fotky: popisek“`];
+    return [`${where}: details musí být řádky „název fotky: popisek“ [spatne-details]`];
   }
   const found = new Set((w.details ?? []).map((d) => d.name));
   const problems = [];
   for (const [name, caption] of Object.entries(captions)) {
-    if (!found.has(detailKey(name))) problems.push(`${where}: details: ve složce tvorba/${w.dir ? `${w.dir}/` : ''}${w.slug}/ není detailní fotka „${name}“`);
-    else if (typeof caption !== 'string') problems.push(`${where}: details: popisek „${name}“ musí být text`);
+    if (!found.has(detailKey(name))) problems.push(`${where}: details: ve složce tvorba/${w.dir ? `${w.dir}/` : ''}${w.slug}/ není detailní fotka „${name}“ [popisek-bez-fotky]`);
+    else if (typeof caption !== 'string') problems.push(`${where}: details: popisek „${name}“ musí být text [popisek-neni-text]`);
   }
   return problems;
 }
@@ -182,7 +182,7 @@ export function todoTexts(data, at = '') {
 
 /** Problems of the public `fields` of `data` that still start with DOPLNIT ("<where>: title still starts with DOPLNIT…"). */
 export function todoProblems(where, data, fields, hint = '') {
-  return todoTexts(publicFields(data, fields)).map((at) => `${where}: ${at} pořád začíná „${TODO}“, přepiš ho${hint}`);
+  return todoTexts(publicFields(data, fields)).map((at) => `${where}: ${at} pořád začíná „${TODO}“, přepiš ho${hint} [doplnit-verejny]`);
 }
 
 /** True for [width, height] with two positive numbers. */

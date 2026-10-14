@@ -711,7 +711,7 @@ export const docLines = (field) => {
 export function optionProblems(where, data, schema) {
   return schema.fields
     .filter((f) => f.options && data?.[f.key] !== undefined && data[f.key] !== null && !f.options.includes(data[f.key]))
-    .map((f) => `${where}: ${f.key} „${typeof data[f.key] === 'string' ? data[f.key] : JSON.stringify(data[f.key])}“ není mezi možnostmi: ${f.options.join(', ')}`);
+    .map((f) => `${where}: ${f.key} „${typeof data[f.key] === 'string' ? data[f.key] : JSON.stringify(data[f.key])}“ není mezi možnostmi: ${f.options.join(', ')} [neplatna-moznost]`);
 }
 
 /**

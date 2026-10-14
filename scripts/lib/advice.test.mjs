@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   COLLECTION_TITLE_CHARS, TAG_ROWS, TECHNIQUE_CHARS, endsSentence, endsWithFullStop, hashtagAdvice, pageAdvice, pinterestAdvice, sameTag, startsLowercase, tagAdvice, tagKey, tagRows, tagStats, techniqueAdvice, todoAdvice, workAdvice, workTitleChars,
-  DRAFT_DAYS, FEATURED_GROUP, INSTAGRAM_LINK_DAYS, MIN_PHOTO_SIDE, careAdvice, daysBetween, draftAgeAdvice, featuredAdvice, instagramLinkAdvice, photoSizeAdvice,
+  DRAFT_DAYS, FEATURED_GROUP, INSTAGRAM_LINK_DAYS, MIN_PHOTO_SIDE, careAdvice, consistencyAdvice, daysBetween, draftAgeAdvice, featuredAdvice, instagramLinkAdvice, photoSizeAdvice,
 } from './advice.mjs';
 import { COLLECTION_SKELETON_TEXT, UNCOLLECTED_SKELETON_TEXT, yearSkeletonText } from './schema.mjs';
 
@@ -33,21 +33,21 @@ test('workAdvice: tags, title, description and detail captions, in the file of t
     tags: [], title: 'ráno u jezu.', description: 'mlha nad vodou', details: { mlha: 'hladina v mlze', most: 'Most.' },
   })]);
   assert.deepEqual(advice, [
-    'tvorba/plener/rano.yaml: nemá štítky (tags), podle nich se v galerii filtruje',
-    'tvorba/plener/rano.yaml: title začíná malým písmenem',
-    'tvorba/plener/rano.yaml: title by neměl končit tečkou',
-    'tvorba/plener/rano.yaml: description začíná malým písmenem',
-    'tvorba/plener/rano.yaml: description by měl končit tečkou',
-    'tvorba/plener/rano.yaml: popisek detailu mlha začíná malým písmenem',
-    'tvorba/plener/rano.yaml: popisek detailu mlha by měl končit tečkou',
+    'tvorba/plener/rano.yaml: nemá štítky (tags), podle nich se v galerii filtruje [bez-stitku]',
+    'tvorba/plener/rano.yaml: title začíná malým písmenem [nazev-male-pismeno]',
+    'tvorba/plener/rano.yaml: title by neměl končit tečkou [nazev-s-teckou]',
+    'tvorba/plener/rano.yaml: description začíná malým písmenem [text-male-pismeno]',
+    'tvorba/plener/rano.yaml: description by měl končit tečkou [text-bez-tecky]',
+    'tvorba/plener/rano.yaml: popisek detailu mlha začíná malým písmenem [text-male-pismeno]',
+    'tvorba/plener/rano.yaml: popisek detailu mlha by měl končit tečkou [text-bez-tecky]',
   ]);
   assert.match(workAdvice([work({ tags: undefined }, { yamlPath: 'tvorba/x.yaml' })])[0], /^tvorba\/x\.yaml: nemá štítky/);
 });
 
 test('workAdvice: a work on sale without mockups; sold, not for sale or with mockups is fine', () => {
   assert.deepEqual(workAdvice([work({ mockups: false }), work({ status: 'reserved', mockups: undefined })]).map((a) => a.slice(a.indexOf(': ') + 2)), [
-    'je na prodej, ale nemá mockupy (mockups: true ukáže obraz v interiéru na webu i na Fleru)',
-    'je na prodej, ale nemá mockupy (mockups: true ukáže obraz v interiéru na webu i na Fleru)',
+    'je na prodej, ale nemá mockupy (mockups: true ukáže obraz v interiéru na webu i na Fleru) [prodej-bez-mockupu]',
+    'je na prodej, ale nemá mockupy (mockups: true ukáže obraz v interiéru na webu i na Fleru) [prodej-bez-mockupu]',
   ]);
   assert.deepEqual(workAdvice([work({ status: 'sold', mockups: false }), work({ status: 'not-for-sale', mockups: false })]), []);
 });
@@ -67,12 +67,12 @@ test('pageAdvice: title and description of a collection, description of a year a
     home: { yamlPath: '_index.yaml', data: { description: 'maluji pro radost.' } },
   });
   assert.deepEqual(advice, [
-    'tvorba/plener/_index.yaml: title začíná malým písmenem',
-    'tvorba/plener/_index.yaml: title by neměl končit tečkou',
-    'tvorba/plener/_index.yaml: description začíná malým písmenem',
-    'tvorba/plener/_index.yaml: description by měl končit tečkou',
-    'roky/2026.yaml: description by měl končit tečkou',
-    '_index.yaml: description začíná malým písmenem',
+    'tvorba/plener/_index.yaml: title začíná malým písmenem [nazev-male-pismeno]',
+    'tvorba/plener/_index.yaml: title by neměl končit tečkou [nazev-s-teckou]',
+    'tvorba/plener/_index.yaml: description začíná malým písmenem [text-male-pismeno]',
+    'tvorba/plener/_index.yaml: description by měl končit tečkou [text-bez-tecky]',
+    'roky/2026.yaml: description by měl končit tečkou [text-bez-tecky]',
+    '_index.yaml: description začíná malým písmenem [text-male-pismeno]',
   ]);
 });
 
@@ -82,10 +82,10 @@ test('pageAdvice: alt and caption of a photo of a page, in its file', () => {
     { name: 'kontakt', data: { alt: 'Pavla maluje u potoka.', caption: 'můj ateliér' } },
     { name: 'o-mne', data: { alt: 'DOPLNIT popis fotky', caption: '' } },
   ] }), [
-    'fotky/portret.yaml: alt začíná malým písmenem',
-    'fotky/portret.yaml: alt by měl končit tečkou',
-    'fotky/kontakt.yaml: caption začíná malým písmenem',
-    'fotky/kontakt.yaml: caption by měl končit tečkou',
+    'fotky/portret.yaml: alt začíná malým písmenem [text-male-pismeno]',
+    'fotky/portret.yaml: alt by měl končit tečkou [text-bez-tecky]',
+    'fotky/kontakt.yaml: caption začíná malým písmenem [text-male-pismeno]',
+    'fotky/kontakt.yaml: caption by měl končit tečkou [text-bez-tecky]',
   ]);
 });
 
@@ -134,8 +134,8 @@ test('tagAdvice: nothing for a short, clean list', () => {
 test('tagAdvice: one tag in two spellings, once, not also as a pair together', () => {
   const advice = tagAdvice(tagged(['plenér'], ['plenér'], ['plenér'], ['plener'], ['květiny'], ['květina', 'louka']));
   assert.deepEqual(advice, [
-    'Štítky: „plenér“ (3 díla) a „plener“ (1 dílo) jsou nejspíš jeden štítek, sjednoť je na jeden tvar',
-    'Štítky: „květina“ (1 dílo) a „květiny“ (1 dílo) jsou nejspíš jeden štítek, sjednoť je na jeden tvar',
+    'Štítky: „plenér“ (3 díla) a „plener“ (1 dílo) jsou nejspíš jeden štítek, sjednoť je na jeden tvar [stitky-dva-tvary]',
+    'Štítky: „květina“ (1 dílo) a „květiny“ (1 dílo) jsou nejspíš jeden štítek, sjednoť je na jeden tvar [stitky-dva-tvary]',
   ]);
   // the same works with both forms: only the spelling advice
   assert.equal(tagAdvice(tagged(['strom', 'stromy'], ['strom', 'stromy'], ['strom', 'stromy'])).length, 1);
@@ -144,11 +144,11 @@ test('tagAdvice: one tag in two spellings, once, not also as a pair together', (
 test('tagAdvice: two tags always together (from 3 works), not when they also come apart', () => {
   const always = tagged(['město', 'ulice'], ['město', 'ulice'], ['město', 'ulice'], ['krajina']);
   assert.deepEqual(tagAdvice(always), [
-    'Štítky: „město“ a „ulice“ jsou vždy spolu (u 3 děl); jako filtr v galerii jeden nic nepřidá, zvaž, jestli potřebuješ oba',
+    'Štítky: „město“ a „ulice“ jsou vždy spolu (u 3 děl); jako filtr v galerii jeden nic nepřidá, zvaž, jestli potřebuješ oba [stitky-vzdy-spolu]',
   ]);
   const nearly = tagged(...Array.from({ length: 10 }, () => ['plenér', 'příroda']), ['příroda']);
   assert.deepEqual(tagAdvice(nearly), [
-    'Štítky: „příroda“ a „plenér“ jsou skoro vždy spolu (spolu u 10 děl, jen jeden z nich u 1 díla); jako filtr v galerii jeden nic nepřidá, zvaž, jestli potřebuješ oba',
+    'Štítky: „příroda“ a „plenér“ jsou skoro vždy spolu (spolu u 10 děl, jen jeden z nich u 1 díla); jako filtr v galerii jeden nic nepřidá, zvaž, jestli potřebuješ oba [stitky-vzdy-spolu]',
   ]);
   assert.deepEqual(tagAdvice(tagged(['město', 'ulice'], ['město', 'ulice'])), [], 'two works are no pattern yet');
   assert.deepEqual(tagAdvice(tagged(['krajina', 'voda'], ['krajina', 'voda'], ['krajina', 'voda'], ['krajina'])), [], '3 of 4 is not "always"');
@@ -160,14 +160,14 @@ test('tagAdvice: too many chips for the gallery, naming tags of one work and lon
   const advice = tagAdvice(works);
   assert.equal(advice.length, 1);
   assert.match(advice[0], new RegExp(`^Štítky: v galerii zaberou asi 5 řádků \\(41 štítků\\), přehledné je nejvýš ${TAG_ROWS}; `));
-  assert.match(advice[0], /\(jen u jednoho díla „akvarelová krajina“; dlouhé „akvarelová krajina“\)$/);
+  assert.match(advice[0], /\(jen u jednoho díla „akvarelová krajina“; dlouhé „akvarelová krajina“\) \[stitky-moc\]$/);
 });
 
 test('techniqueAdvice: a technique longer than the closed select shows, once with its works', () => {
   const w = (technique) => ({ data: { technique } });
   assert.deepEqual(techniqueAdvice([w('akvarel'), w('kresba tužkou'), w('tisk z výšky')]), [], `up to ${TECHNIQUE_CHARS} characters`);
   assert.deepEqual(techniqueAdvice([w('akvarel a kresba tuší'), w('akvarel a kresba tuší'), w('DOPLNIT'), w(undefined)]), [
-    `Technika „akvarel a kresba tuší“ (2 díla) má 21 znaků, ve výběru Technika v galerii se zkrátí (celá je vidět po rozbalení); celá se vejde do ${TECHNIQUE_CHARS} znaků`,
+    `Technika „akvarel a kresba tuší“ (2 díla) má 21 znaků, ve výběru Technika v galerii se zkrátí (celá je vidět po rozbalení); celá se vejde do ${TECHNIQUE_CHARS} znaků [dlouha-technika]`,
   ]);
 });
 
@@ -176,7 +176,7 @@ test('pageAdvice: a collection title longer than the closed select shows', () =>
   assert.deepEqual(at('Plenér Šumava 2026'), []);
   assert.deepEqual(at('X'.repeat(COLLECTION_TITLE_CHARS)), []);
   assert.deepEqual(at('Plenér Štěkeň podzim 2025'), [
-    `tvorba/k/_index.yaml: název kolekce má 25 znaků, ve výběru Kolekce v galerii se zkrátí (celý je vidět po rozbalení); celý se vejde do ${COLLECTION_TITLE_CHARS} znaků`,
+    `tvorba/k/_index.yaml: název kolekce má 25 znaků, ve výběru Kolekce v galerii se zkrátí (celý je vidět po rozbalení); celý se vejde do ${COLLECTION_TITLE_CHARS} znaků [dlouhy-nazev-kolekce]`,
   ]);
 });
 
@@ -186,7 +186,7 @@ test('workAdvice: a title too long for the page title in search results, with th
   const at = (title) => workAdvice([{ yamlPath: 'tvorba/x.yaml', data: { title, tags: ['voda'] } }], { siteTitle: site });
   assert.deepEqual(at('V'.repeat(40)), []);
   assert.deepEqual(at('Ranní mlha nad Modravskými slatěmi v září po dešti'), [
-    'tvorba/x.yaml: název má 50 znaků, ve výsledcích vyhledávání a v záložce prohlížeče se zkrátí; celý se vejde do 40 znaků',
+    'tvorba/x.yaml: název má 50 znaků, ve výsledcích vyhledávání a v záložce prohlížeče se zkrátí; celý se vejde do 40 znaků [dlouhy-nazev]',
   ]);
   assert.deepEqual(at('DOPLNIT název, který je opravdu hodně dlouhý a ještě delší'), [], 'a placeholder is not advised on');
 });
@@ -195,7 +195,7 @@ test('pageAdvice: the description of the works without a collection, like other 
   const at = (description) => pageAdvice({ uncollected: { yamlPath: 'tvorba/_index.yaml', data: { description } } });
   assert.deepEqual(at('Samostatné listy a dárky.'), []);
   assert.deepEqual(at('samostatné listy'), [
-    'tvorba/_index.yaml: description začíná malým písmenem', 'tvorba/_index.yaml: description by měl končit tečkou',
+    'tvorba/_index.yaml: description začíná malým písmenem [text-male-pismeno]', 'tvorba/_index.yaml: description by měl končit tečkou [text-bez-tecky]',
   ]);
   assert.deepEqual(at(undefined), [], 'no description = the default text');
 });
@@ -209,8 +209,8 @@ test('hashtagAdvice: only works with Instagram exports, every word without an En
     { yamlPath: 'tvorba/d.yaml', data: { meta_instagram: true, technique: 'akvarel', tags: ['krajina'] } },
   ];
   assert.deepEqual(hashtagAdvice(works, settings), [
-    'tvorba/a.yaml: štítek „mlha“ nemá v textu příspěvku pro Instagram anglický hashtag (překlad doplní Libor do nastavení webu, instagramPost.en)',
-    'tvorba/b.yaml: štítky „kvaš“, „mlha“ nemají v textu příspěvku pro Instagram anglický hashtag (překlad doplní Libor do nastavení webu, instagramPost.en)',
+    'tvorba/a.yaml: štítek „mlha“ nemá v textu příspěvku pro Instagram anglický hashtag (překlad doplní Libor do nastavení webu, instagramPost.en) [stitek-bez-prekladu]',
+    'tvorba/b.yaml: štítky „kvaš“, „mlha“ nemají v textu příspěvku pro Instagram anglický hashtag (překlad doplní Libor do nastavení webu, instagramPost.en) [stitek-bez-prekladu]',
   ]);
   assert.deepEqual(hashtagAdvice(works, { en: { akvarel: 'a', krajina: 'b', kvaš: 'c', mlha: 'd' } }), []);
 });
@@ -223,7 +223,7 @@ test('pinterestAdvice: only works in the feed for Pinterest, every word without 
     { yamlPath: 'tvorba/c.yaml', data: { meta_pinterest: true, technique: 'akvarel' } },
   ];
   assert.deepEqual(pinterestAdvice(works, dictionary), [
-    'tvorba/a.yaml: štítek „mlha“ nemá v popisu pinu pro Pinterest anglické klíčové slovo (překlad doplní Libor do nastavení webu, pinterestKeywords.en)',
+    'tvorba/a.yaml: štítek „mlha“ nemá v popisu pinu pro Pinterest anglické klíčové slovo (překlad doplní Libor do nastavení webu, pinterestKeywords.en) [stitek-bez-prekladu]',
   ]);
   assert.deepEqual(pinterestAdvice(works, { ...dictionary, mlha: 'fog' }), []);
 });
@@ -263,8 +263,8 @@ test('careAdvice: a detail photo without a caption (missing or empty), names com
     details: [{ name: '1-kvet' }, { name: 'mlha' }, { name: 'brana' }],
   };
   assert.deepEqual(careAdvice([w]), [
-    'tvorba/rano.yaml: detailní fotka „mlha“ nemá popisek (details: mlha: …)',
-    'tvorba/rano.yaml: detailní fotka „brana“ nemá popisek (details: brana: …)',
+    'tvorba/rano.yaml: detailní fotka „mlha“ nemá popisek (details: mlha: …) [detail-bez-popisku]',
+    'tvorba/rano.yaml: detailní fotka „brana“ nemá popisek (details: brana: …) [detail-bez-popisku]',
   ]);
 });
 
@@ -291,7 +291,7 @@ test('draftAgeAdvice: a draft in git longer than DRAFT_DAYS; unknown date = noth
     { where: 'hranice.yaml', added: '2026-09-12' },
   ], today);
   assert.equal(daysBetween('2026-09-12', today), DRAFT_DAYS, 'exactly DRAFT_DAYS is not yet too long');
-  assert.deepEqual(advice, ['stary.yaml: je rozpracovaný už 72 dní (od 2026-08-01); doplň ho a zveřejni (meta_draft: false), nebo ho smaž']);
+  assert.deepEqual(advice, ['stary.yaml: je rozpracovaný už 72 dní (od 2026-08-01); doplň ho a zveřejni (meta_draft: false), nebo ho smaž [dlouhy-draft]']);
 });
 
 test('instagramLinkAdvice: published, meta_instagram, no link, photos ready longer than INSTAGRAM_LINK_DAYS', () => {
@@ -339,7 +339,49 @@ test('pageAdvice: the sample sentence of a skeleton still as the description of 
     home: { yamlPath: '_index.yaml', data: { description: COLLECTION_SKELETON_TEXT } },
   }).filter((a) => a.includes('vzorová věta'));
   assert.deepEqual(advice.map((a) => a.split(':')[0]), ['tvorba/plener/_index.yaml', 'roky/2026.yaml', 'tvorba/_index.yaml']);
-  assert.equal(advice[0], `tvorba/plener/_index.yaml: description je pořád vzorová věta z kostry („${COLLECTION_SKELETON_TEXT.trim()}“), je vidět na webu; napiš místo ní vlastní text`);
+  assert.equal(advice[0], `tvorba/plener/_index.yaml: description je pořád vzorová věta z kostry („${COLLECTION_SKELETON_TEXT.trim()}“), je vidět na webu; napiš místo ní vlastní text [vzorovy-text]`);
   assert.ok(COLLECTION_SKELETON_TEXT.includes('nejvíc nejoblíbenější'), 'on purpose');
 });
 
+
+test('consistencyAdvice: every mismatch once, with its code; a consistent work says nothing', () => {
+  const at = (data, extra = {}) => consistencyAdvice([{ yamlPath: 'tvorba/a.yaml', data: { meta_draft: false, status: 'not-for-sale', ...data }, ...extra }], '2026-10-14');
+  assert.deepEqual(at({ title: 'A', date: '2026-01-02', size_cm: [30, 20] }), []);
+  const one = (data, code) => {
+    const advice = at(data);
+    assert.equal(advice.length, 1, `${code}: ${advice.join(' | ')}`);
+    assert.match(advice[0], new RegExp(`^tvorba/a\\.yaml: .* \\[${code}\\]$`));
+  };
+  one({ featured: true, meta_pinterest: false }, 'featured-bez-pinu');
+  one({ featured: true }, 'featured-bez-pinu');
+  one({ instagram: 'https://www.instagram.com/p/abc/', meta_instagram: false }, 'odkaz-instagram-bez-exportu');
+  one({ fler: 'https://www.fler.cz/zbozi/x', status: 'sold' }, 'fler-neni-na-prodej');
+  one({ status: 'reserved', price: 2500 }, 'prodej-bez-fleru');
+  one({ price: 2500 }, 'cena-neprodava');
+  one({ status: 'gifted', price: 2500 }, 'cena-neprodava');
+});
+
+test('consistencyAdvice: no advice where the attributes fit together', () => {
+  const at = (data) => consistencyAdvice([{ yamlPath: 'tvorba/a.yaml', data: { size_cm: [30, 20], ...data } }], '2026-10-14');
+  assert.deepEqual(at({ featured: true, meta_pinterest: true }), []);
+  assert.deepEqual(at({ featured: true, meta_pinterest: false, meta_draft: true }), [], 'a draft is not on the site yet');
+  assert.deepEqual(at({ instagram: 'https://www.instagram.com/p/abc/', meta_instagram: true }), []);
+  assert.deepEqual(at({ instagram: '', meta_instagram: false }), [], 'an empty link is no link');
+  assert.deepEqual(at({ status: 'available', price: 2500, fler: 'https://www.fler.cz/zbozi/x' }), []);
+  assert.deepEqual(at({ status: 'sold', price: 2500 }), [], 'a sold work keeps its price as a record');
+  assert.deepEqual(at({ status: 'available', price: 2500, meta_draft: true }), [], 'a draft is not on Fler yet');
+  assert.deepEqual(at({ mockups: true }), []);
+  assert.deepEqual(at({ meta_instagram_grid: '3x3', meta_instagram: true }), []);
+  assert.deepEqual(at({ meta_instagram_grid: false }), []);
+  assert.deepEqual(at({ date: '2026-10-14' }), [], 'today is not the future');
+});
+
+test('consistencyAdvice: mockups without a size, a grid without Instagram photos, a date in the future', () => {
+  const codes = (data) => consistencyAdvice([{ yamlPath: 'tvorba/a.yaml', data }], '2026-10-14').map((a) => /\[([a-z-]+)\]$/.exec(a)[1]);
+  assert.deepEqual(codes({ mockups: true }), ['mockupy-bez-rozmeru']);
+  assert.deepEqual(codes({ mockups: true, size_cm: [0, 0] }), ['mockupy-bez-rozmeru']);
+  assert.deepEqual(codes({ meta_instagram_grid: '3x3' }), ['mrizka-bez-instagramu']);
+  assert.deepEqual(codes({ date: '2026-10-15' }), ['datum-v-budoucnu']);
+  assert.deepEqual(codes({ date: new Date('2027-01-01T00:00:00Z') }), ['datum-v-budoucnu']);
+  assert.deepEqual(consistencyAdvice([{ yamlPath: 'tvorba/a.yaml', data: { date: '2030-01-01' } }], undefined), [], 'without today no date check');
+});

@@ -297,7 +297,7 @@ export function detectCorners(rgb, width, height, photoWidth, photoHeight, searc
 /** Problems of a `meta_corners` value (`where`: the file) for a master of width × height; [] when it is fine. */
 export function cornersProblems(value, width, height, where) {
   if (value === undefined || value === false) return [];
-  const p = (msg) => [`${where}: meta_corners ${msg}`];
+  const p = (msg) => [`${where}: meta_corners ${msg} [spatne-rohy]`];
   if (!value || typeof value !== 'object' || Array.isArray(value)) return p('musí mít photo, tl, tr, br a bl (nebo false = neořezávat)');
   const pair = (v) => Array.isArray(v) && v.length === 2 && v.every((n) => Number.isInteger(n));
   if (!pair(value.photo)) return p('photo musí být [šířka, výška] fotky v pixelech');

@@ -278,7 +278,7 @@ test('own private_ attributes: kept among the private_ ones alphabetically, with
 test('a former name or a derived_ attribute is a problem; the file stays as it is', () => {
   const old = 'title: A\ndraft: true\n';
   const r = normalizeMetadata(old, WORK_SCHEMA);
-  assert.equal(r.problem, 'draft: přejmenováno na meta_draft, přejmenuj ho');
+  assert.equal(r.problem, 'draft: přejmenováno na meta_draft, přejmenuj ho [prejmenovany-atribut]');
   assert.equal(r.text, old);
   assert.equal(r.changed, false);
   assert.match(normalizeMetadata('title: A\nderived_collection: x\n', WORK_SCHEMA).problem, /^derived_collection: údaje derived_ vyrábí automatika pro web/);
@@ -423,15 +423,15 @@ test('yamlProblem: a text not indented under its attribute says what to write in
     const text = `title: Ráno\n\n# Pár vět.\n${head}\n${long}\n`;
     assert.equal(yamlProblem(parseError(text), text),
       'description: text pod „description:“ musí být odsazený (řádek 5); správně je na konci řádku „description: |“ a každý řádek '
-      + 'textu pod ním začíná dvěma mezerami, např. „  Pohodové sluneční odpoledne babího léta…“', head);
+      + 'textu pod ním začíná dvěma mezerami, např. „  Pohodové sluneční odpoledne babího léta…“ [spatny-yaml]', head);
   }
   // a short line is quoted whole; the normalization reports the same
   const short = 'title: Ráno\ndescription:\nKrátce.\nDruhý.\n';
-  assert.match(yamlProblem(parseError(short), short), /řádek 3\).*např\. „  Krátce\.“$/);
+  assert.match(yamlProblem(parseError(short), short), /řádek 3\).*např\. „  Krátce\.“ \[spatny-yaml\]$/);
   assert.match(normalizeMetadata(short, WORK_SCHEMA).problem, /^description: text pod „description:“ musí být odsazený/);
   // other mistakes, or without the text of the file: the general message
   const other = 'title: [Ráno\n';
-  assert.match(yamlProblem(parseError(other), other), /^chybný zápis YAML na řádku \d+ \(zkontroluj odsazení, dvojtečky a uvozovky\)$/);
+  assert.match(yamlProblem(parseError(other), other), /^chybný zápis YAML na řádku \d+ \(zkontroluj odsazení, dvojtečky a uvozovky\) \[spatny-yaml\]$/);
   assert.match(yamlProblem(parseError(short)), /^chybný zápis YAML na řádku 3 /);
 });
 

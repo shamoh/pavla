@@ -98,9 +98,9 @@ export function yamlProblem(error, text = '') {
   if (loose) {
     const start = loose.line.length > QUOTE_CHARS ? `${loose.line.slice(0, QUOTE_CHARS).trimEnd()}…` : loose.line;
     return `${loose.key}: text pod „${loose.key}:“ musí být odsazený (řádek ${at.line}); správně je na konci řádku `
-      + `„${loose.key}: |“ a každý řádek textu pod ním začíná dvěma mezerami, např. „  ${start}“`;
+      + `„${loose.key}: |“ a každý řádek textu pod ním začíná dvěma mezerami, např. „  ${start}“ [spatny-yaml]`;
   }
-  return `chybný zápis YAML${at ? ` na řádku ${at.line}` : ''} (zkontroluj odsazení, dvojtečky a uvozovky)`;
+  return `chybný zápis YAML${at ? ` na řádku ${at.line}` : ''} (zkontroluj odsazení, dvojtečky a uvozovky) [spatny-yaml]`;
 }
 
 /** Comment text of the yaml library (" line\n line") as lines, and back. */
@@ -249,16 +249,16 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
   const doc = YAML.parseDocument(text);
   if (doc.errors.length) return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: yamlProblem(doc.errors[0], original) };
   if (doc.contents !== null && !YAML.isMap(doc.contents)) {
-    return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: 'musí to být seznam údajů (klíč: hodnota)' };
+    return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: 'musí to být seznam údajů (klíč: hodnota) [spatny-yaml]' };
   }
   const before = doc.toJS() ?? {};
   const pairs = doc.contents?.items ?? [];
   const byKey = new Map(pairs.map((p) => [String(p.key?.value ?? p.key), p]));
   const known = new Map(schema.fields.map((f) => [f.key, f]));
   const wrong = [
-    ...Object.entries(schema.renamed ?? {}).filter(([old]) => byKey.has(old)).map(([old, now]) => `${old}: přejmenováno na ${now}, přejmenuj ho`),
+    ...Object.entries(schema.renamed ?? {}).filter(([old]) => byKey.has(old)).map(([old, now]) => `${old}: přejmenováno na ${now}, přejmenuj ho [prejmenovany-atribut]`),
     ...[...byKey.keys()].filter((k) => attributeGroup(k) === 'derived')
-      .map((k) => `${k}: údaje derived_ vyrábí automatika pro web, sem nepatří; smaž ho`),
+      .map((k) => `${k}: údaje derived_ vyrábí automatika pro web, sem nepatří; smaž ho [derived-atribut]`),
   ];
   if (wrong.length) return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: wrong.join('; ') };
   // the author's own private_ attributes: kept like known ones, without a technical comment

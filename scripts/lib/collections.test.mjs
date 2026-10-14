@@ -66,6 +66,6 @@ test('prepareCollections: a folder whose address would be "none" (the gallery fi
   await fs.mkdir(path.join(dir, 'tvorba', 'None'), { recursive: true });
   const { collections, problems } = await prepareCollections(dir, [{ dir: 'None', slug: 'none' }]);
   assert.deepEqual(collections, []);
-  assert.deepEqual(problems, ['tvorba/None/: adresu „none“ web používá pro obrazy bez kolekce, přejmenuj složku']);
+  assert.deepEqual(problems, ['tvorba/None/: adresu „none“ web používá pro obrazy bez kolekce, přejmenuj složku [neplatne-jmeno]']);
   await fs.rm(dir, { recursive: true });
 });

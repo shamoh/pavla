@@ -61,9 +61,9 @@ test('pageProblems: missing title, description or JSON-LD, too long a descriptio
 
 test('pageProblems: structured, for both languages', () => {
   const [problem] = pageProblems([page('/dlouhy/', 'Dlouhý', 'x'.repeat(DESCRIPTION_MAX + 5))]);
-  assert.deepEqual(problem, { path: '/dlouhy/', code: 'longDescription', detail: DESCRIPTION_MAX + 5 });
+  assert.deepEqual(problem, { path: '/dlouhy/', code: 'dlouhy-popis-stranky', detail: DESCRIPTION_MAX + 5 });
   assert.equal(problemText(problem, 'cs'), `popis delší než ${DESCRIPTION_MAX} znaků (${DESCRIPTION_MAX + 5})`);
-  assert.equal(problemText({ code: 'noTitle' }, 'cs'), 'chybí titulek');
+  assert.equal(problemText({ code: 'titulek-chybi' }, 'cs'), 'chybí titulek');
 });
 
 test('evaluatePageTexts: fine, problems (in Czech, listed up to the limit), noindex pages left out, not checked', () => {
@@ -73,7 +73,7 @@ test('evaluatePageTexts: fine, problems (in Czech, listed up to the limit), noin
   });
   const bad = evaluatePageTexts([page('/a/', 'Máky', 'Stejný.'), page('/b/', 'Máky', 'Stejný.')], { limit: 3 });
   assert.equal(bad.ok, false);
-  assert.match(bad.message, /^Texty stránek pro vyhledávače mají 4 problémy:\n- \/a\/: stejný popis jako \/b\/\n/);
+  assert.match(bad.message, /^Texty stránek pro vyhledávače mají 4 problémy:\n- \/a\/: stejný popis jako \/b\/ \[stejny-popis-stranky\]\n/);
   assert.match(bad.message, /\n- … a dalších 1\n/);
   assert.match(bad.message, /npm run check:images/);
   assert.deepEqual(evaluatePageTexts(null), { ok: true, message: 'Texty stránek pro vyhledávače nebyly zkontrolovány.' });

@@ -50,7 +50,7 @@ export async function prepareUncollected(contentDir, hasWorks) {
     const { base, ext } = splitExt(f);
     return base === COVER_NAME && IMAGE_EXTENSIONS.includes(ext);
   });
-  if (photos.length > 1) problems.push(`${photos.map((f) => `${WORKS_SUBDIR}/${f}`).join(', ')}: víc úvodních fotek obrazů mimo kolekce, nech jen jednu`);
+  if (photos.length > 1) problems.push(`${photos.map((f) => `${WORKS_SUBDIR}/${f}`).join(', ')}: víc úvodních fotek obrazů mimo kolekce, nech jen jednu [vic-uvodnich-fotek]`);
   const coverPath = photos.length ? path.join(root, photos[0]) : null;
   return { uncollected: { data, yamlPath: UNCOLLECTED_FILE, coverPath }, created, updated, problems };
 }

@@ -32,7 +32,7 @@ const guarded = async (label, fn) => {
   try {
     return await fn();
   } catch (e) {
-    return { ok: false, message: `Nepodařilo se načíst ${label} (${e.message}).` };
+    return { ok: false, message: `Nepodařilo se načíst ${label} (${e.message}). [nacteni-selhalo]` };
   }
 };
 
@@ -91,5 +91,8 @@ const pageTexts = evaluatePageTexts(site?.html ?? null);
 const report = formatReport(token, runs, dryRun, deploy, pr, unknown, techniques, siteImages, pageTexts);
 console.log(report.text);
 if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, report.text);
-if (process.env.GITHUB_OUTPUT) await fs.appendFile(process.env.GITHUB_OUTPUT, `report<<EOF\n${report.text}EOF\n`);
+// codes: "[token-vyprsi] [obrazky-chybi]" for the title of the issue (e-mails filtered by code)
+if (process.env.GITHUB_OUTPUT) {
+  await fs.appendFile(process.env.GITHUB_OUTPUT, `report<<EOF\n${report.text}EOF\ncodes=${report.codes.map((c) => `[${c}]`).join(' ')}\n`);
+}
 if (!report.ok) process.exitCode = 1;

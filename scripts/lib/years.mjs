@@ -33,20 +33,20 @@ export async function prepareYears(contentDir, withWorks = []) {
   for (const e of files.sort((a, b) => a.name.localeCompare(b.name))) {
     const { base, ext } = splitExt(e.name);
     if (e.isFile() && /^\d{4}$/.test(base) && IMAGE_EXTENSIONS.includes(ext)) {
-      if (photos.has(base)) problems.push(`${YEARS_SUBDIR}/${e.name}: druhá úvodní fotka roku ${base}, nech jen jednu`);
+      if (photos.has(base)) problems.push(`${YEARS_SUBDIR}/${e.name}: druhá úvodní fotka roku ${base}, nech jen jednu [vic-uvodnich-fotek]`);
       else photos.set(base, path.join(root, e.name));
       continue;
     }
     const m = e.isFile() && e.name.match(/^(\d{4})\.ya?ml$/);
     if (!m) {
-      problems.push(`${YEARS_SUBDIR}/${e.name}: sem patří jen popisy roků (2026.yaml) a jejich úvodní fotky (2026.jpg)`);
+      problems.push(`${YEARS_SUBDIR}/${e.name}: sem patří jen popisy roků (2026.yaml) a jejich úvodní fotky (2026.jpg) [cizi-soubor]`);
       continue;
     }
-    if (byYear.has(m[1])) problems.push(`${YEARS_SUBDIR}/${e.name}: druhý popis roku ${m[1]}, nech jen jeden`);
+    if (byYear.has(m[1])) problems.push(`${YEARS_SUBDIR}/${e.name}: druhý popis roku ${m[1]}, nech jen jeden [dva-popisy]`);
     else byYear.set(m[1], e.name);
   }
   for (const year of photos.keys()) {
-    if (!byYear.has(year) && !withWorks.map(String).includes(year)) problems.push(`${YEARS_SUBDIR}/${year}: úvodní fotka roku, ve kterém není žádný obraz`);
+    if (!byYear.has(year) && !withWorks.map(String).includes(year)) problems.push(`${YEARS_SUBDIR}/${year}: úvodní fotka roku, ve kterém není žádný obraz [fotka-roku-bez-del]`);
   }
   for (const year of [...new Set(withWorks.map(String))].sort()) {
     if (byYear.has(year)) continue;
@@ -66,7 +66,7 @@ export async function prepareYears(contentDir, withWorks = []) {
       continue; // reported by keepInLine
     }
     if (data.description !== undefined && data.description !== null && typeof data.description !== 'string') {
-      problems.push(`${yamlPath}: description musí být text`);
+      problems.push(`${yamlPath}: description musí být text [popisek-neni-text]`);
       continue;
     }
     years.push({ year, data, yamlPath, coverPath: photos.get(year) ?? null });
