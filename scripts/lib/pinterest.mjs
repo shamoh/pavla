@@ -13,7 +13,10 @@ import { captionFacts } from './works.mjs';
  */
 export const pinterestProfileLink = (profile) => `${String(profile).replace(/\/+$/, '')}/_created/`;
 
-/** The pin image in the folder of a work's page (public/tvorba/<year>/<slug>-<id>/). */
+/**
+ * The former name of the pin image in the folder of a work's page (public/tvorba/<year>/<slug>-<id>/); the pipeline
+ * now writes pin-<hash>.jpg (named in info.json), this one only for folders made before.
+ */
 export const PIN_FILE = 'pin.jpg';
 
 /** The pin (images.pinterest of site.config.yaml overrides these): 2:3, margin `padding` of the width, inset like Instagram. */

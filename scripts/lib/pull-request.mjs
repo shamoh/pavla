@@ -41,11 +41,11 @@ export async function changedFiles(siteDir, paths) {
  */
 export function changedItems(files) {
   const rules = [
-    [/^(content\/_index\.yaml|public\/_cover\/|public\/og\.jpg$)/, () => 'úvodní stránka'],
+    [/^(content\/_index\.yaml|public\/_cover\/|public\/_og\/|public\/og\.jpg$)/, () => 'úvodní stránka'],
     [/^content\/tvorba\/([^/]+)\/_index\.yaml$/, (m) => `kolekce ${m[1]}`],
     [/^content\/tvorba\/(?:[^/]+\/)?([^/_][^/]*)\.yaml$/, (m) => `dílo ${m[1]}`],
     [/^public\/tvorba\/kolekce\/([^/]+)\//, (m) => `kolekce ${m[1]}`],
-    [/^public\/tvorba\/(\d{4})\/(_cover\/|og\.jpg$)/, (m) => `rok ${m[1]}`],
+    [/^public\/tvorba\/(\d{4})\/(_cover\/|_og\/|og\.jpg$)/, (m) => `rok ${m[1]}`],
     [/^public\/tvorba\/\d{4}\/([^/]+)\//, (m) => `dílo ${parseWorkKey(m[1])?.slug ?? m[1]}`],
     [/^content\/fotky\/([^/]+)\.yaml$/, (m) => `fotka ${m[1]}`],
     [/^public\/fotky\/([^/]+)\//, (m) => `fotka ${m[1]}`],

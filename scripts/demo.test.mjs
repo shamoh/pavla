@@ -48,7 +48,10 @@ test('prepareDemo builds the test data into .demo/ only and writes the assigned 
   assert.ok(id, 'id written back to demo-content/');
   assert.ok(await exists(path.join(outDir, 'content/demo-content.yaml')), 'the marker comes with the content');
   assert.ok(await exists(path.join(outDir, 'site/content/tvorba/demo-rano.yaml')));
-  assert.ok(await exists(path.join(outDir, 'site/public/tvorba/2026', `demo-rano-${id}`, 'og.jpg')));
+  const workDir = path.join(outDir, 'site/public/tvorba/2026', `demo-rano-${id}`);
+  const og = JSON.parse(await fs.readFile(path.join(workDir, 'info.json'), 'utf8')).og.file;
+  assert.match(og, /^og-[0-9a-f]{8}\.jpg$/);
+  assert.ok(await exists(path.join(workDir, og)));
   // static site files, but not the domain and not the real generated data
   assert.ok(await exists(path.join(outDir, 'site/public/favicon.svg')));
   assert.ok(!(await exists(path.join(outDir, 'site/public/CNAME'))));

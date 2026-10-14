@@ -9,12 +9,12 @@
 //   public/tvorba/<year>/<slug>-<id>/mockup-<scene>-<width>.*             the work in an interior, only with `mockups: true` (commit);
 //                                                                        from the bare sheet when the master shows surroundings
 //   public/tvorba/<year>/<slug>-<id>/detail-<name>-<width>.*              detail photos of the work (commit)
-//   public/tvorba/<year>/<slug>-<id>/og.jpg                               share image (og:image): the whole work on paper, 3:2 (commit)
-//   public/tvorba/<year>/<slug>-<id>/pin.jpg                              Pinterest pin: the work with the caption, 2:3, every work
+//   public/tvorba/<year>/<slug>-<id>/og-<hash>.jpg                        share image (og:image): the whole work on paper, 3:2 (commit)
+//   public/tvorba/<year>/<slug>-<id>/pin-<hash>.jpg                       Pinterest pin: the work with the caption, 2:3, every work
 //                                                                        ("Uložit na Pinterest"); with `meta_pinterest: true`
 //                                                                        also in the feed /pinterest.xml (commit)
 //   public/fotky/<name>/<width>.{avif,webp,jpg}, info.json                 other photos of the site (commit)
-//   public/<page>/_cover/, public/<page>/og.jpg                            own cover photo and share image of the chosen cover of a
+//   public/<page>/_cover/, public/<page>/_og/og-<hash>.jpg                 own cover photo and share image of the chosen cover of a
 //                                                                        collection (tvorba/kolekce/<slug>), year (tvorba/<year>) or
 //                                                                        the home page (the root); see scripts/lib/site-images.mjs (commit)
 //   <contentDir>/export/<platform>/[<collection>/]<slug>/  exports, a folder per work mirroring tvorba/ (exportFolder)
@@ -61,7 +61,7 @@ import { PUBLIC_HOME_FIELDS, prepareHome } from './lib/home.mjs';
 import { PUBLIC_UNCOLLECTED_FIELDS, prepareUncollected } from './lib/uncollected.mjs';
 import { NO_COLLECTION_TITLE } from './lib/gallery-filter.mjs';
 import {
-  HOME_PAGE_DIR, OUTPUT_ROOTS, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, ogFile, photoDir, staleOutputs, workImageDir, yearPageDir,
+  HOME_PAGE_DIR, OUTPUT_ROOTS, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, fingerprintedName, ogDir, photoDir, staleOutputs, workImageDir, yearPageDir,
 } from './lib/site-images.mjs';
 import { HOME_COPY, MODIFIED, UNCOLLECTED_COPY, collectionCopyPath, photoCopyPath, staleCopies, workCopyPath, yearCopyPath } from './lib/site-content.mjs';
 import { coverProblems, coverShareSource } from './lib/covers.mjs';
@@ -76,7 +76,7 @@ import {
   GRID_DEFAULTS, GRID_VERSION, captionFacts, detailLayout, detailSuffixes, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
   panoramaSuffixes, renderCaption, renderGrid, renderPanorama, renderScene, renderStory, siteHost,
 } from './lib/instagram.mjs';
-import { PIN_DEFAULTS, PIN_FILE, withParams } from './lib/pinterest.mjs';
+import { PIN_DEFAULTS, withParams } from './lib/pinterest.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
 import { PREVIEW_KINDS, cornersYaml, cutOut, masterSize, prepareCorners, previewBuffers, shrinkPreview, trimTransparent, writePreviewFiles } from './lib/corners.mjs';
@@ -95,7 +95,7 @@ import {
 } from './lib/works.mjs';
 
 /** Bump when the output format changes, so every work is regenerated once. */
-const PIPELINE_VERSION = 8;
+const PIPELINE_VERSION = 9;
 /** Bump when the cut previews of drafts in export/draft/ change, so all of them are written again once. */
 const DRAFT_VERSION = 3;
 
@@ -215,12 +215,15 @@ async function web(dir, m, img, { work, picked, details, fingerprint, xmp, pin, 
     const dw = await responsive(dm.buf, dm.width, dir, `detail-${d.name}-`, img.details.widths, img.web.quality, xmp);
     detailSets.push({ name: d.name, width: dm.width, height: dm.height, widths: dw, dominant: await dominantColor(dm.buf) });
   }
-  const og = await shareImage(path.join(dir, 'og.jpg'), m, img, xmp);
+  // share image and pin with a fingerprint in the name (og-<hash>.jpg, pin-<hash>.jpg): a changed image has a new
+  // address, so Pinterest and link previews never keep the old one; info.json names the files for the site
+  const og = await shareImage(dir, m, img, xmp);
   // the pin for Pinterest (rendered by the caller): its size and bytes go into the feed; `feed` = in the feed
   // /pinterest.xml (meta_pinterest; the flag itself never reaches the site)
-  if (pin) await fs.writeFile(path.join(dir, PIN_FILE), pin);
+  const pinFile = pin ? fingerprintedName('pin', pin) : null;
+  if (pin) await fs.writeFile(path.join(dir, pinFile), pin);
   const pinInfo = pin
-    ? { ...(await sharp(pin).metadata().then(({ width, height }) => ({ width, height }))), bytes: pin.length, ...(feed ? { feed: true } : {}) }
+    ? { ...(await sharp(pin).metadata().then(({ width, height }) => ({ width, height }))), bytes: pin.length, file: pinFile, ...(feed ? { feed: true } : {}) }
     : undefined;
   // Dimensions and placeholder colour, read by the site.
   const info = {
@@ -233,7 +236,7 @@ async function web(dir, m, img, { work, picked, details, fingerprint, xmp, pin, 
 
 /**
  * Share image of a work (og:image): the whole work on the paper background, never cropped (it is art),
- * in the 3:2 frame social networks show without cropping. Returns { width, height }.
+ * in the 3:2 frame social networks show without cropping, as og-<hash>.jpg in `dir`. Returns { width, height, file }.
  */
 /** The whole image centred on the paper background in the share image size (images.og), as a JPEG buffer. */
 async function wholeOnPaper(m, img, xmp) {
@@ -244,9 +247,11 @@ async function wholeOnPaper(m, img, xmp) {
   return (xmp ? out.withXmp(xmp) : out).jpeg({ quality, mozjpeg: true }).toBuffer();
 }
 
-async function shareImage(file, m, img, xmp) {
-  await fs.writeFile(file, await wholeOnPaper(m, img, xmp));
-  return { width: img.og.width, height: img.og.height };
+async function shareImage(dir, m, img, xmp) {
+  const buf = await wholeOnPaper(m, img, xmp);
+  const file = fingerprintedName('og', buf);
+  await fs.writeFile(path.join(dir, file), buf);
+  return { width: img.og.width, height: img.og.height, file };
 }
 
 // A detail photo is a close-up, so it fills the whole 4:5 frame (centre crop) instead of sitting on paper; one whose
@@ -430,9 +435,10 @@ export async function run({
   /**
    * Share image of a chosen cover ({ source, crop } from coverShareSource): cropped to crop.ratio around crop.focus
    * (filling the share image when the ratio is its own, 3:2, otherwise on paper), or without crop the whole image on
-   * paper like the share image of a work; written only when it changed.
+   * paper like the share image of a work. Written into `dir` (the _og folder of the page) as og-<hash>.jpg, the only
+   * file there, and only when the content changed (a new content = a new name).
    */
-  const shareCrop = async ({ source, crop }, file, label) => {
+  const shareCrop = async ({ source, crop }, dir, label) => {
     const m = await loadMaster(await fs.readFile(source), { corners: cornersOf.get(source), edges });
     const ogRatio = img.og.width / img.og.height;
     const area = crop && focusCrop(m.width, m.height, crop.ratio, crop.focus);
@@ -442,11 +448,12 @@ export async function run({
       : Math.abs(crop.ratio - ogRatio) < 0.01
         ? await sharp(m.buf).extract(area).resize(img.og.width, img.og.height).flatten({ background: img.og.background }).jpeg({ quality: img.og.quality, mozjpeg: true }).toBuffer()
         : await wholeOnPaper({ buf: await sharp(m.buf).extract(area).png().toBuffer(), width: area.width, height: area.height }, img);
-    const old = await fs.readFile(file).catch(() => null);
-    if (!old || !old.equals(buf)) {
+    const name = fingerprintedName('og', buf);
+    if (!(await exists(path.join(dir, name)))) {
       log(`→ ${label}`);
-      await fs.mkdir(path.dirname(file), { recursive: true });
-      await fs.writeFile(file, buf);
+      await fs.rm(dir, { recursive: true, force: true });
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, name), buf);
     }
   };
   contentDir ??= process.env.CONTENT_DIR || img.contentDir;
@@ -909,7 +916,7 @@ export async function run({
   }
 
   /**
-   * Own cover photo (_cover/) and share image of the chosen cover (og.jpg) in the folder of a page.
+   * Own cover photo (_cover/) and share image of the chosen cover (_og/og-<hash>.jpg) in the folder of a page.
    * `photoPath`: the own cover photo or null, `source`: coverShareSource/coverSource or null. One no longer used
    * is removed by the final prune of a full run (and so reported), right away in a run of `only`.
    */
@@ -923,15 +930,15 @@ export async function run({
       await fs.rm(dir, { recursive: true, force: true });
     }
     if (source) {
-      outputs.add(ogFile(pageDir));
-      await shareCrop(source, path.join(publicDir, ogFile(pageDir)), `og ${label}`);
+      outputs.add(ogDir(pageDir));
+      await shareCrop(source, path.join(publicDir, ogDir(pageDir)), `og ${label}`);
     } else if (only.length) {
-      await fs.rm(path.join(publicDir, ogFile(pageDir)), { force: true });
+      await fs.rm(path.join(publicDir, ogDir(pageDir)), { recursive: true, force: true });
     }
   };
 
   // Collections: content/tvorba/<slug>/_index.yaml (public fields); in public/tvorba/kolekce/<slug>/ the own cover
-  // photo (_cover/) and the share image of the cover (og.jpg) cropped exactly like the page shows it.
+  // photo (_cover/) and the share image of the cover (_og/og-<hash>.jpg) cropped exactly like the page shows it.
   // Share images are cheap to render, so always rendered; written only when the bytes change.
   for (const c of collections.collections) {
     if (only.length && !only.includes(c.slug)) continue;
@@ -940,7 +947,7 @@ export async function run({
   }
 
   // Years: content/roky/<year>.yaml (text and cover); in public/tvorba/<year>/ the own cover photo (_cover/) and the
-  // share image of a chosen cover (og.jpg, cropped around focus).
+  // share image of a chosen cover (_og/og-<hash>.jpg, cropped around focus).
   for (const y of years.years) {
     if (only.length && !only.includes(y.year)) continue;
     await writeCopy(yearCopyPath(y.year), y.data, PUBLIC_YEAR_FIELDS);
@@ -948,7 +955,7 @@ export async function run({
     await pageCover(yearPageDir(y.year), { photoPath: y.coverPath, alt: `Tvorba ${y.year}`, source, label: `roky/${y.year}` });
   }
 
-  // Home page: content/_index.yaml (text and cover); public/_cover/ (own cover photo), public/og.jpg (chosen cover).
+  // Home page: content/_index.yaml (text and cover); public/_cover/ (own cover photo), public/_og/ (chosen cover).
   if (home.home && !only.length) {
     const h = home.home;
     await writeCopy(HOME_COPY, h.data, PUBLIC_HOME_FIELDS);

@@ -26,8 +26,11 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - `npm run images` (`scripts/process-images.mjs`) z něj generuje `content/` = zrcadlo obsahového repa (stejné složky
   a jména, jen veřejné atributy, `scripts/lib/site-content.mjs`, needitovat; plný běh smaže vše, co nezapsal)
   a obrázky v `public/` ve složce své stránky (= adresa, `scripts/lib/site-images.mjs`): dílo
-  `public/tvorba/<rok>/<slug>-<id>/`, rok `public/tvorba/<rok>/_cover/` + `og.jpg`, kolekce
-  `public/tvorba/kolekce/<slug>/_cover/` + `og.jpg`, úvod `public/_cover/` + `public/og.jpg`, fotky `public/fotky/<název>/`;
+  `public/tvorba/<rok>/<slug>-<id>/`, rok `public/tvorba/<rok>/_cover/` + `_og/`, kolekce
+  `public/tvorba/kolekce/<slug>/_cover/` + `_og/`, úvod `public/_cover/` + `public/_og/`, fotky `public/fotky/<název>/`;
+  náhled pro sdílení a pin mají otisk obsahu v názvu (`og-<otisk>.jpg`, `pin-<otisk>.jpg`, `fingerprintedName`; u díla
+  jméno v `info.json` `og.file`/`pin.file`, u stránky jediný soubor ve složce `_og/`, `pageShareFile`), aby si
+  Pinterest a náhledy odkazů po změně vzaly nový; webové obrázky otisk nemají (GitHub Pages `max-age=600`);
   plný běh smaže vše, co nevyrobil (`staleOutputs`).
   Exporty pro Instagram a Fler jdou do `export/` obsahového repa.
   Web čte kopie přes `readCopies`: rok díla z `date`, kolekce ze složky (žádný atribut `collection`).
@@ -77,7 +80,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   podle atributů `instagram` / `fler`).
 - `instagram` (nepovinný, sdílený) = odkaz na příspěvek na Instagramu jako `fler` u Fleru (`isInstagramUrl`, jinak chyba):
   stránka díla ukáže „Na Instagramu“ s bublinou „Obraz na Instagramu“ (událost `instagram_click`); oba odkazy jsou `sameAs` v JSON-LD díla. `meta_instagram` (bool) dál jen řídí výrobu fotek; jsou nezávislé.
-- Pinterest (`scripts/lib/pinterest.mjs`): každé dílo má `pin.jpg` (2:3, `renderCaption` s `images.pinterest` a `snug`: popisek hned pod dílem,
+- Pinterest (`scripts/lib/pinterest.mjs`): každé dílo má pin `pin-<otisk>.jpg` (2:3, `renderCaption` s `images.pinterest` a `snug`: popisek hned pod dílem,
   XMP) veřejně ve složce stránky díla a `pin` v `info.json`; `meta_pinterest: true` = `pin.feed` (web podle něj pozná dílo pro kanál, `meta_*` se nekopíruje);
   kanál RSS `/pinterest.xml` (`src/pages/pinterest.xml.ts`, guid = `id`, odkazy s UTM `FEED_UTM`) čte Pinterest sám (firemní účet, ověření
   `site.verification.pinterest`). Popis pinu končí klíčovými slovy česky · anglicky
@@ -96,7 +99,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   komponenta `Cover.astro`): vlastní fotka (`_cover.jpg` kolekce, `roky/<rok>.jpg`, `_cover.jpg` v kořeni) > `cover: <id>` nebo
   `<id>#<detail>` > náhodně z výběru autorky > nejnovější dílo. Vše se ukáže celé; vybraný obraz (vlastní fotka nebo
   `cover`) s `aspect` nebo `focus` se ořízne (`coverCrop`, chybějící = `"1:1"` / `[50, 50]`; stejný výřez je `og:image`
-  v `og.jpg` ve složce stránky). Náhodný se neořezává, `aspect`/`focus` u něj = chyba; v kostrách prázdné. Každá výstupní složka pipeline v tomto repu musí být
+  v `_og/og-<otisk>.jpg` ve složce stránky). Náhodný se neořezává, `aspect`/`focus` u něj = chyba; v kostrách prázdné. Každá výstupní složka pipeline v tomto repu musí být
   v `OUTPUT_PATHS` (`scripts/lib/pull-request.mjs`; do PR jdou jen ty z nich, které existují nebo je git zná).
 - Detailní fotky díla: `tvorba/[<kolekce>/]<slug>/*.jpg` (obsahové repo) → `detail-<název>-<šířka>.*` a `info.json#details`;
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
@@ -162,11 +165,11 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `DOPLNIT`, ty jsou veřejné hned a `DOPLNIT` by zastavilo běh). Neodsazený text pod atributem hlásí `yamlProblem`
   přesně (`unindentedText`).
 - Testovacích děl (`pavla/demo-content/`) musí být vždy víc, než je nejmenší počet na stránku (aspoň 15 při 12).
-- Autorství v obrázcích: webové obrázky díla (originál, detaily, mockupy ve všech formátech a `og.jpg`) nesou XMP
+- Autorství v obrázcích: webové obrázky díla (originál, detaily, mockupy ve všech formátech a náhled pro sdílení) nesou XMP
   (autorka, název, © rok, kredit, odkaz na stránku díla; `scripts/lib/image-rights.mjs`, v otisku díla), JSON-LD obrázku
   díla je `ImageObject` se stejným `creditText` a `copyrightNotice`; nikdy licence. Jiné fotky webu XMP nedostanou.
-- Náhledy pro sdílení (`og:image` + rozměry): dílo = `og.jpg` celý obraz na papíře (nikdy neořezávat),
-  úvodní obraz kolekce/roku/úvodu = ořez vybraného (`aspect`/`focus`), vlastní fotka nebo detail celé na papíře, jinak `og.jpg`
+- Náhledy pro sdílení (`og:image` + rozměry): dílo = `og-<otisk>.jpg` celý obraz na papíře (nikdy neořezávat),
+  úvodní obraz kolekce/roku/úvodu = ořez vybraného (`aspect`/`focus`), vlastní fotka nebo detail celé na papíře, jinak náhled
   díla (`coverShareSource`); helpery `*ShareImage` v `src/lib/site.ts`.
 - Mockupy: scény v `mockups/scenes.yaml` (kalibrace px/cm), výběr a vykreslení `scripts/lib/mockups.mjs`.
 - Ořez pozadí (podlaha i světlá zeď / podkladový papír): `meta_corners` díla (`photo` + rohy `tl`/`tr`/`br`/`bl` v px dovnitř, `false` = neořezávat) najde

@@ -31,23 +31,24 @@ async function siteRepo() {
 
 test('pullRequestPaths: only output folders that exist or that git knows; git add then succeeds', async () => {
   const { dir, write } = await siteRepo();
-  // public/_cover and public/og.jpg never existed: the pull request step failed on paths like them
+  // public/_cover, public/_og and public/og.jpg never existed: the pull request step failed on paths like them
   assert.deepEqual(await pullRequestPaths(dir), ['content', 'public/tvorba', 'public/fotky']);
 
   // a new cover photo of a collection and a share image create the folders
   await write('public/tvorba/kolekce/plener/_cover/480.jpg', 'cover');
-  await write('public/tvorba/kolekce/plener/og.jpg', 'share');
+  await write('public/tvorba/kolekce/plener/_og/og-0123abcd.jpg', 'share');
   await write('content/roky/2026.yaml', 'description: Rok');
   await write('public/tvorba/2026/_cover/480.jpg', 'year');
   await write('content/_index.yaml', 'description: Úvod');
   await write('public/_cover/480.jpg', 'home');
-  await write('public/og.jpg', 'home share');
+  await write('public/_og/og-0123abcd.jpg', 'home share');
+  await write('public/og.jpg', 'former home share'); // the former name, until the prune removes it
   // the last photo removed: the folder is gone, but its deletion must reach the pull request
   await fs.rm(path.join(dir, 'public/fotky'), { recursive: true });
   const paths = await pullRequestPaths(dir);
-  assert.deepEqual(paths, ['content', 'public/tvorba', 'public/fotky', 'public/_cover', 'public/og.jpg']);
-  // only the current layout; the former image folders are gone from the repository
-  assert.deepEqual(OUTPUT_PATHS, ['content', 'public/tvorba', 'public/fotky', 'public/_cover', 'public/og.jpg']);
+  assert.deepEqual(paths, ['content', 'public/tvorba', 'public/fotky', 'public/_cover', 'public/_og', 'public/og.jpg']);
+  // the current layout and the former public/og.jpg (its deletion must reach the pull request)
+  assert.deepEqual(OUTPUT_PATHS, ['content', 'public/tvorba', 'public/fotky', 'public/_cover', 'public/_og', 'public/og.jpg']);
 
   // what peter-evans/create-pull-request does with add-paths
   await git(dir, 'add', '--', ...paths);
@@ -84,7 +85,9 @@ test('changedItems names each work, collection and photo once', () => {
     'public/fotky/portret/info.json',
     'content/tvorba/2026-plener-sumava/_index.yaml',
     'public/tvorba/kolekce/2026-plener-sumava/_cover/480.jpg',
-    'public/tvorba/kolekce/2026-plener-sumava/og.jpg',
+    'public/tvorba/kolekce/2026-plener-sumava/_og/og-0123abcd.jpg',
+    'public/_og/og-0123abcd.jpg',
+    'public/tvorba/2026/_og/og-0123abcd.jpg',
     'content/roky/2026.yaml',
     'content/_index.yaml',
     'public/og/somethingelse.txt',

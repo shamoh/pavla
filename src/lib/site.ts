@@ -5,7 +5,7 @@ import { PIN_FILE } from '../../scripts/lib/pinterest.mjs';
 import { coverCandidates, dateYear, detailKey, formatSizeCm, isValidId, workKey } from '../../scripts/lib/works.mjs';
 import { photoFocus } from '../../scripts/lib/photos.mjs';
 import { readCopies } from '../../scripts/lib/site-content.mjs';
-import { HOME_PAGE_DIR, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, ogFile, photoDir, workImageDir, yearPageDir } from '../../scripts/lib/site-images.mjs';
+import { HOME_PAGE_DIR, LEGACY_OG_FILE, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, pageShareFile, photoDir, workImageDir, yearPageDir } from '../../scripts/lib/site-images.mjs';
 import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
 import { HOME_TEXT, UNCOLLECTED_TEXT } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
@@ -86,12 +86,19 @@ export interface Work {
   description?: string;
   /** The day (YYYY-MM-DD) its public attributes or images last changed (derived_modified of the public copy). */
   modified?: string;
-  /** og: share image og.jpg in the work's folder (the whole work on paper, 3:2). */
   /**
-   * pin: pin.jpg in the work's folder (the work with a caption, 2:3, every work); `feed` = in the feed /pinterest.xml
-   * (meta_pinterest), scripts/lib/pinterest.mjs.
+   * og: share image og-<hash>.jpg in the work's folder (the whole work on paper, 3:2; `file` its name, missing in
+   * folders made before the fingerprints: og.jpg).
    */
-  image: ImageSet & { mockups?: Mockup[]; details?: Detail[]; og?: { width: number; height: number }; pin?: { width: number; height: number; bytes: number; feed?: boolean } };
+  /**
+   * pin: pin-<hash>.jpg in the work's folder (the work with a caption, 2:3, every work; `file` as og, pin.jpg before);
+   * `feed` = in the feed /pinterest.xml (meta_pinterest), scripts/lib/pinterest.mjs.
+   */
+  image: ImageSet & {
+    mockups?: Mockup[]; details?: Detail[];
+    og?: { width: number; height: number; file?: string };
+    pin?: { width: number; height: number; bytes: number; file?: string; feed?: boolean };
+  };
 }
 
 export interface Collection {
@@ -176,7 +183,7 @@ export function getCollections(): Collection[] {
     const members = works.filter((w) => w.collection === slug);
     if (!members.length) continue;
     const page = collectionPageDir(slug);
-    const cover = resolveCover(members, data, coverDir(page), ogFile(page), data.title ?? slug)!;
+    const cover = resolveCover(members, data, page, data.title ?? slug)!;
     collections.push({ slug, title: data.title ?? slug, description: data.description, cover, works: members });
   }
   collectionCache = sortCollections(collections);
@@ -193,7 +200,7 @@ export function getCollections(): Collection[] {
 export function getUncollected(): { title: string; description: string; cover: Cover; works: Work[] } | null {
   const works = getWorks().filter((w) => !w.collection);
   if (!works.length) return null;
-  const cover = resolveCover(works, copies().uncollected ?? {}, coverDir(UNCOLLECTED_PAGE_DIR), ogFile(UNCOLLECTED_PAGE_DIR), NO_COLLECTION_TITLE)!;
+  const cover = resolveCover(works, copies().uncollected ?? {}, UNCOLLECTED_PAGE_DIR, NO_COLLECTION_TITLE)!;
   const description = String(copies().uncollected?.description ?? '').trim() || UNCOLLECTED_TEXT;
   return { title: NO_COLLECTION_TITLE, description, cover, works };
 }
@@ -246,16 +253,18 @@ export const messages = messagesSettings(config.messages, { demo: Boolean(proces
 /** Years that have at least one published work, newest first. */
 /**
  * The cover of a place (a collection, a year, the home page), the same rule as the pipeline (scripts/lib/covers.mjs):
- * its own photo (public/<photoDir>/), otherwise `cover: <id>` or `<id>#<detail>` among `works` (both cropped only
- * with `aspect` or `focus`, coverCrop), otherwise one of the newest works of the author's selection at random. `ogFile`: the
- * share image the pipeline makes for a chosen cover. Null only without any work.
+ * its own photo (public/<pageDir>/_cover/), otherwise `cover: <id>` or `<id>#<detail>` among `works` (both cropped only
+ * with `aspect` or `focus`, coverCrop), otherwise one of the newest works of the author's selection at random. `og`: the
+ * share image the pipeline makes for a chosen cover (public/<pageDir>/_og/og-<hash>.jpg). Null only without any work.
  */
-export function resolveCover(works: Work[], data: any, photoDir: string, ogFile: string, alt: string): Cover | null {
+export function resolveCover(works: Work[], data: any, pageDir: string, alt: string): Cover | null {
+  const photoDir = coverDir(pageDir);
   const toCrop = (chosen: boolean) => {
     const cut = coverCrop(data, chosen);
     return cut ? { css: cut.css, focus: cut.focus as [number, number] } : undefined;
   };
-  const og = fs.existsSync(path.join(dataRoot, 'public', ogFile)) ? `/${ogFile}` : undefined;
+  const ogFile = pageShareFile(path.join(dataRoot, 'public'), pageDir);
+  const og = ogFile ? `/${ogFile}` : undefined;
   const info = path.join(dataRoot, 'public', photoDir, 'info.json');
   if (fs.existsSync(info)) {
     const photo = JSON.parse(fs.readFileSync(info, 'utf8'));
@@ -289,7 +298,7 @@ export function getYear(year: number): { description?: string; cover: Cover | nu
   const text = typeof data.description === 'string' && data.description.trim() ? data.description.trim() : undefined;
   const works = getWorks().filter((w) => w.year === year);
   const page = yearPageDir(year);
-  return { description: text, cover: resolveCover(works, data, coverDir(page), ogFile(page), `Tvorba ${year}`) };
+  return { description: text, cover: resolveCover(works, data, page, `Tvorba ${year}`) };
 }
 
 /**
@@ -299,7 +308,7 @@ export function getYear(year: number): { description?: string; cover: Cover | nu
 export function getHome(): { description?: string; cover: Cover | null } {
   const data = copies().home ?? { description: HOME_TEXT };
   const text = typeof data.description === 'string' && data.description.trim() ? data.description.trim() : undefined;
-  return { description: text, cover: resolveCover(getWorks(), data, coverDir(HOME_PAGE_DIR), ogFile(HOME_PAGE_DIR), site.title) };
+  return { description: text, cover: resolveCover(getWorks(), data, HOME_PAGE_DIR, site.title) };
 }
 
 export const getYears = () => [...new Set(getWorks().map((w) => w.year))].sort((a, b) => b - a);
@@ -326,7 +335,7 @@ export function detailCaption(work: Work, name: string): string {
  * falling back to the largest web size up to 1600 px while it does not exist.
  */
 export function workShareImage(w: Work): ShareImage {
-  if (w.image.og) return { src: `${workImagePath(w)}/og.jpg`, ...w.image.og };
+  if (w.image.og) return { src: `${workImagePath(w)}/${w.image.og.file ?? LEGACY_OG_FILE}`, width: w.image.og.width, height: w.image.og.height };
   const width = [...w.image.widths].filter((x) => x <= 1600).pop() ?? w.image.widths[0];
   return { src: `${workImagePath(w)}/${width}.jpg`, width, height: Math.round((w.image.height * width) / w.image.width) };
 }
@@ -336,7 +345,7 @@ export function workShareImage(w: Work): ShareImage {
  * pipeline made it), otherwise its share image. Used by the feed /pinterest.xml and "Uložit na Pinterest".
  */
 export function workPinImage(w: Work): ShareImage {
-  if (w.image.pin) return { src: `${workImagePath(w)}/${PIN_FILE}`, width: w.image.pin.width, height: w.image.pin.height };
+  if (w.image.pin) return { src: `${workImagePath(w)}/${w.image.pin.file ?? PIN_FILE}`, width: w.image.pin.width, height: w.image.pin.height };
   return workShareImage(w);
 }
 

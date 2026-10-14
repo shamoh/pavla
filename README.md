@@ -51,11 +51,11 @@ pavla/                                      (toto repo, veřejné)
     fotky/<název>.yaml                      ostatní fotka (alt, caption, focus)
   public/                                   vygenerované obrázky leží ve složce své stránky (= adresa, generuje pipeline,
                                             scripts/lib/site-images.mjs); statické soubory webu (favicon.svg, favicon.ico, apple-touch-icon.png, CNAME) vedle:
-    tvorba/<rok>/<slug>-<id>/               dílo: webové velikosti, detaily, mockupy, og.jpg + info.json
-    tvorba/<rok>/_cover/, tvorba/<rok>/og.jpg      rok: vlastní úvodní fotka, obrázek pro sdílení vybraného obalu
-    tvorba/kolekce/<slug>/_cover/, …/og.jpg totéž pro kolekci
-    _cover/, og.jpg                         totéž pro úvodní stránku
-    tvorba/_cover/                          vlastní úvodní fotka „Mimo kolekce“ (bez og.jpg, nemá vlastní stránku)
+    tvorba/<rok>/<slug>-<id>/               dílo: webové velikosti, detaily, mockupy, og-<otisk>.jpg, pin-<otisk>.jpg + info.json
+    tvorba/<rok>/_cover/, tvorba/<rok>/_og/ rok: vlastní úvodní fotka, obrázek pro sdílení vybraného obalu (og-<otisk>.jpg)
+    tvorba/kolekce/<slug>/_cover/, …/_og/   totéž pro kolekci
+    _cover/, _og/                           totéž pro úvodní stránku
+    tvorba/_cover/                          vlastní úvodní fotka „Mimo kolekce“ (bez _og/, nemá vlastní stránku)
     fotky/<název>/                          ostatní fotky (O mně, Kontakt), jen obrázky + info.json
   mockups/                                  scény pro mockupy a jejich kalibrace (scenes.yaml)
   scripts/process-images.mjs                pipeline (npm run images)
@@ -258,11 +258,11 @@ výřez je i obrázkem pro sdílení (`coverCrop`, `parseAspect`, `DEFAULT_ASPEC
 
 | Úvodní obraz | Na stránce | Obrázek pro sdílení |
 |---|---|---|
-| vlastní fotka bez ořezu | celá | celá na papíře 3:2 (`public/tvorba/kolekce/<slug>/og.jpg`, `public/tvorba/<rok>/og.jpg`, `public/og.jpg`) |
-| `cover: <id>` bez ořezu | celé dílo | `og.jpg` díla |
+| vlastní fotka bez ořezu | celá | celá na papíře 3:2 (`public/tvorba/kolekce/<slug>/_og/`, `public/tvorba/<rok>/_og/`, `public/_og/`, vždy `og-<otisk>.jpg`) |
+| `cover: <id>` bez ořezu | celé dílo | náhled pro sdílení díla (`og-<otisk>.jpg`) |
 | `cover: <id>#<detail>` bez ořezu | celý detail | celý detail na papíře 3:2 (tentýž soubor jako u vlastní fotky) |
 | vlastní fotka nebo `cover` + `aspect` a/nebo `focus` | ořez na `aspect` kolem `focus` | stejný ořez (tentýž soubor): při `"3:2"` (poměr náhledu) vyplní celý náhled, jiný poměr leží na papíře |
-| nic (náhodně / nejnovější) | celé dílo | `og.jpg` prvního (nejnovějšího) kandidáta |
+| nic (náhodně / nejnovější) | celé dílo | náhled pro sdílení prvního (nejnovějšího) kandidáta |
 
 Chyby, které zastaví běh: vlastní fotka a `cover` zároveň, `aspect` nebo `focus` bez vybraného obrazu (náhodný),
 dílo z jiného místa, rozpracované dílo, neexistující detail, neplatný `aspect` nebo `focus`. `aspect` i `focus` jsou
@@ -524,7 +524,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `meta_draft` | `true` = rozpracované: do tohoto repa se nedostane nic (popis, obrázky), ani exporty; do veřejné kopie se nekopíruje |
 | `meta_instagram` | `true` = exporty pro Instagram (výchozí `false`) |
 | `meta_instagram_grid` | nepovinné (v kostře zakomentované `# meta_instagram_grid: 3x3`): mřížka na profilu Instagramu jako `<sloupce>x<řádky>`, od `1x1` do `5x5` (`parseGrid`, např. `3x3`, `2x1`, `3x1`, `1x2`, `3x4`; i `×` nebo `X`), jiná hodnota = chyba; bez hodnoty žádná; jen s `meta_instagram: true`, jen pro aplikaci (viz *Exporty*, Mřížka na profilu) |
-| `meta_pinterest` | `true` = pin pro Pinterest: `pin.jpg` na webu a položka kanálu `/pinterest.xml` (výchozí `false`, viz *Pinterest*) |
+| `meta_pinterest` | `true` = pin pro Pinterest: pin (`pin-<otisk>.jpg`) na webu a položka kanálu `/pinterest.xml` (výchozí `false`, viz *Pinterest*) |
 | `id` | trvalý kód, doplní pipeline, NEMĚNIT |
 | `date` | den vzniku (`2026-06-14`): určuje řazení i rok díla (stránky roků, adresa, složky v `pavla`) |
 | `description` | veřejný popis na webu |
@@ -672,7 +672,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | text o roce | `/tvorba/2026/` má text (`demo-content/roky/2026.yaml`), `/tvorba/2025/` ne (`description: ""`) |
 | tlačítko „Koupit na Fleru“ | Máky |
 | export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail, na výšku), Kytice z louky (+ 1 detail, není na prodej), Máky, Na podlaze (průhledný ořez podlahy), Lípa u kaple (20 × 15: scény se přiblíží), Zimní sad (50 × 35: na stoly se nevejde, v logu „does not fit the free part of the scene“; panorama 2 snímky), Oblaka (60 × 20: panorama 3 snímky, mřížka 3); ostatní díla žádný. Mřížka na profilu: Pivoňky (`meta_instagram_grid: 3x3`), Oblaka (`3x1`) a Ráno u rybníka (`2x1`, dvojice). Panorama: Na podlaze, Ráno u rybníka, Zimní sad (2 snímky), Oblaka (3); Máky, Kytice z louky (čtverec) a Pivoňky (na výšku) žádné. Příběh `story.jpg` má každé |
-| pin pro Pinterest | `pin.jpg` má každé zveřejněné dílo („Uložit na Pinterest“ ho nabídne); `meta_pinterest: true` u Ráno u rybníka, Pivoněk (na výšku) a Oblak (60 × 20: popisek hned pod obrazem) = `pin.feed` v `info.json` a 3 položky v `/pinterest.xml` |
+| pin pro Pinterest | pin (`pin-<otisk>.jpg`) má každé zveřejněné dílo („Uložit na Pinterest“ ho nabídne); `meta_pinterest: true` u Ráno u rybníka, Pivoněk (na výšku) a Oblak (60 × 20: popisek hned pod obrazem) = `pin.feed` v `info.json` a 3 položky v `/pinterest.xml` |
 | `mockups: true`, na prodej | Ráno u rybníka (+ detaily), Zimní sad, Město v dešti, Náměstí v mlze, Kočka na okně, Rybník v zimě, Na podlaze |
 | `mockups: true`, ne na prodej | Kytice z louky (+ detail), Slunečnice, Šumava v mlze (prodáno) |
 | `mockups: false` | Pivoňky (na prodej, + detail), Bouřka nad polem, Modravské slatě (na prodej), Kvilda skica, Nádraží (prodáno), Máky (na prodej), Lípa u kaple, Jablka na stole (prodáno), Rozpracovaný obraz |
@@ -966,7 +966,7 @@ Jeden soubor se **vším o všech dílech** pro hledání v prohlížeči (Ctrl+
 ## Autorství v obrázcích (XMP)
 
 Webové obrázky každého díla (originál ve všech šířkách, detaily, mockupy, ve formátech JPEG, WebP i AVIF, a jeho
-`og.jpg`) nesou metadata XMP: autorka (`dc:creator` = `site.author`), název díla (`dc:title`), copyright
+náhled pro sdílení `og-<otisk>.jpg`) nesou metadata XMP: autorka (`dc:creator` = `site.author`), název díla (`dc:title`), copyright
 „© <rok díla> <autorka>“ (`dc:rights`), kredit (`photoshop:Credit`), příznak chráněného díla (`xmpRights:Marked`) a odkaz
 na stránku díla (`xmpRights:WebStatement`). Google Obrázky z nich umí ukázat autora a kredit a stažený obrázek je nese
 dál. Nikdy licenci (autorka prodává originály, ne práva k obrázkům). Ostatní fotky webu (portrét, ateliér, vlastní
@@ -982,12 +982,23 @@ Každá stránka s obrázkem má `og:image` s rozměry (`og:image:width`,
 Messenger…) ukázaly velký náhled hned napoprvé. Všechny náhledy jsou
 1200 × 800 (3:2, `images.og` v `site.config.yaml`).
 
+**Otisk v názvu** (`fingerprintedName` v `scripts/lib/site-images.mjs`): náhled pro sdílení i pin mají v názvu prvních
+8 znaků SHA-1 svého obsahu (`og-1a2b3c4d.jpg`, `pin-1a2b3c4d.jpg`). Změněný obrázek tak má novou adresu a služby,
+které si obrázek berou a drží podle adresy (Pinterest, náhledy odkazů na sociálních sítích), dostanou nový; stejný
+obsah = stejné jméno, nic se nepřepisuje. Jméno díla je v `info.json` (`og.file`, `pin.file`; složky vyrobené dřív
+bez něj mají `og.jpg` / `pin.jpg` a web je čte dál, dokud se dílo nepřegeneruje). Náhled stránky (rok, kolekce,
+úvod) leží jako jediný soubor ve složce `_og/` stránky (`ogDir`); web ho najde přes `pageShareFile`, pipeline při
+změně celou složku nahradí. Bývalý `public/og.jpg` úvodní stránky smaže úklid (`LEGACY_OG_FILE` v `OUTPUT_ROOTS`).
+Webové obrázky (`<šířka>.avif/webp/jpg`) otisk nemají: GitHub Pages dává všemu `Cache-Control: max-age=600`, takže
+změna je u návštěvníků nejpozději do 10 minut, a stálé adresy jsou výhoda (vyhledávání obrázků, odkazy). Už
+existující pin na Pinterestu otisk nezmění: Pinterest si obrázek při založení pinu uloží a znovu ho nestahuje.
+
 | Stránka | Náhled | Soubor |
 |---|---|---|
-| detail díla | celý obraz na papírovém pozadí, **nikdy oříznutý** | `public/tvorba/<rok>/<slug>-<id>/og.jpg` |
-| úvodní stránka | úvodní obraz podle tabulky v *Úvodní obraz* (`_cover.jpg` / `cover` + `focus` v `_index.yaml`); stránka sama ukazuje náhodné z 10, náhled pro sdílení náhodný být nemůže | `public/og.jpg`, jinak `og.jpg` díla |
-| stránka roku | totéž pro rok (`roky/<rok>.jpg` / `cover` + `focus`) | `public/tvorba/<rok>/og.jpg`, jinak `og.jpg` díla |
-| stránka kolekce | totéž pro kolekci (`_cover.jpg` / `cover` + `focus`) | `public/tvorba/kolekce/<slug>/og.jpg`, jinak `og.jpg` díla |
+| detail díla | celý obraz na papírovém pozadí, **nikdy oříznutý** | `public/tvorba/<rok>/<slug>-<id>/og-<otisk>.jpg` |
+| úvodní stránka | úvodní obraz podle tabulky v *Úvodní obraz* (`_cover.jpg` / `cover` + `focus` v `_index.yaml`); stránka sama ukazuje náhodné z 10, náhled pro sdílení náhodný být nemůže | `public/_og/og-<otisk>.jpg`, jinak náhled díla |
+| stránka roku | totéž pro rok (`roky/<rok>.jpg` / `cover` + `focus`) | `public/tvorba/<rok>/_og/og-<otisk>.jpg`, jinak náhled díla |
+| stránka kolekce | totéž pro kolekci (`_cover.jpg` / `cover` + `focus`) | `public/tvorba/kolekce/<slug>/_og/og-<otisk>.jpg`, jinak náhled díla |
 | přehled kolekcí | náhled první (nejnovější) kolekce | týž soubor |
 
 Obraz se v náhledu díla neořezává, protože jde o umělecké dílo: obraz na výšku
@@ -1057,13 +1068,13 @@ private_note: kde … # NEPOVINNÉ, soukromé, na web se nedostane
   ani panorama nerozbije hlavičku (viz *Úvodní obraz*).
 - **Obrázek pro sdílení** (`og:image`, náhled odkazu na Facebooku, WhatsAppu
   apod.) je stejný výřez: pipeline ho vyrobí jako
-  `public/tvorba/kolekce/<slug>/og.jpg` (1200 × 800, `images.og` v
+  `public/tvorba/kolekce/<slug>/_og/og-<otisk>.jpg` (1200 × 800, `images.og` v
   `site.config.yaml`) ze stejného zdroje, jaký ukazuje stránka
   (`coverSource` v `scripts/lib/collections.mjs`), a se stejným ořezem
   (`focusCrop` v `scripts/lib/photos.mjs` počítá jako CSS `object-position`).
   Vyrábí se při každém běhu jen pro vlastní fotku, detail a `cover` s ořezem (bez ořezu celé na papíře),
-  zapíše se jen při změně. Zmizí se smazanou kolekcí nebo když obal přestane být vybraný; pak stránka sdílí
-  `og.jpg` díla. Když ořez nestačí, je
+  zapíše se jen při změně (nový obsah = nový název, viz *Otisk v názvu*). Zmizí se smazanou kolekcí nebo když obal
+  přestane být vybraný; pak stránka sdílí náhled díla. Když ořez nestačí, je
   lepší připravit široký detail a použít `cover: <id>#<detail>`. Komponenta `src/components/Cover.astro`.
 - Stránka `/tvorba/kolekce/<slug>/` vznikne jen pro kolekci s aspoň jedním
   publikovaným dílem. Vedou na ni přehled `/tvorba/kolekce/` a řádek „Kolekce“
@@ -1276,7 +1287,7 @@ Návštěvník si v patičce vybere barvy webu: **Automaticky** (podle světléh
 - **Bílé okraje fotky do barvy papíru** (`--paper-blend`, `paperBlend`): na světlé paletě `multiply` (bílá převezme
   barvu papíru), na tmavé `normal` (beze změny). Používá ho `<Photo … blendEdge={10} />` (viz *Ostatní fotky*),
   zatím jen fotka `kontakt` na Kontaktu.
-- Barvy, které se s paletou nemění: prohlížeč obrazů (zvětšení díla) je vždy tmavý; obrázky z pipeline (`og.jpg`,
+- Barvy, které se s paletou nemění: prohlížeč obrazů (zvětšení díla) je vždy tmavý; obrázky z pipeline (náhledy pro sdílení,
   mockupy, `apple-touch-icon.png`) mají světlý papír natvrdo.
 - Vyzkoušení: `npm run demo`, v patičce přepnout kroužky na úvodu, v `/tvorba/`, na detailu díla, `/kontakt/`
   (formulář, chybová hláška po prázdném odeslání) a s otevřeným panelem „Napište mi“; volba zůstane po přechodu na
@@ -1307,7 +1318,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | přehled všech děl | `npm run demo:prepare`, pak `.demo/content/export/README.md`: kolekce, nadpisy `### Máky · rw4dh ★ @ 2026-07-02 [ 30 x 30 ]`, přepínače slovem (`instagram: -`), kódy hlášek (např. `featured-bez-pinu` u Máků) a „Hlášky“ s počty; v náhledu Markdownu (VS Code) hledej kód. |
 | filtry | `/tvorba/`: klikej na filtry, sleduj URL; zkopíruj URL do nového okna, musí ukázat totéž. Testovací data mají pro každou kombinaci aspoň jedno dílo. |
 | stránkování | `/tvorba/`: 12 děl a stránky 1, 2, …, 5 (mezera „…“); klikni na 2, v URL `?page=2`, zkopíruj do nového okna. Vyber filtr, vrátí tě na 1. stránku; `?page=99` se opraví na poslední. „Zobrazit vše (58)“: všech 58 děl, v URL `?page=all`; změň filtr, zůstane vše; „Zobrazit po stránkách“ vrátí 1. stránku. „Na stránku“ 24: stránky 1, 2, 3, v URL `?perPage=24`; 48: stránky 1, 2; zpět na 12 parametr zmizí; `?perPage=13` se ignoruje. Paměť: zvol 24, otevři `/tvorba/` znovu bez parametrů (nebo stránku kolekce) → 24 a `?perPage=24` v URL; otevři `/tvorba/?page=2` → 12 na stránku (odkaz má přednost); zvol 12 → paměť se smaže. Smazat ručně: DevTools → Application → Local Storage → `pavla.gallery.perPage`. Menší první hodnota `gallery.pageSizes` (např. `[4, 12]`) ukáže mezery na obou stranách aktuální stránky. |
-| náhledy pro sdílení | `grep -o '<meta property="og:image[^>]*>' dist/tvorba/2026/*/index.html` po `npm run build`; soubory `public/tvorba/*/*/og.jpg` a `public/tvorba/kolekce/*/og.jpg`. Online: po nasazení vlož odkaz do <https://www.opengraph.xyz/> nebo do Facebook Sharing Debuggeru. |
+| náhledy pro sdílení | `grep -o '<meta property="og:image[^>]*>' dist/tvorba/2026/*/index.html` po `npm run build`; soubory `public/tvorba/*/*/og-*.jpg` a `public/tvorba/kolekce/*/_og/og-*.jpg`. Online: po nasazení vlož odkaz do <https://www.opengraph.xyz/> nebo do Facebook Sharing Debuggeru. |
 | rozpracované dílo | „Rozpracovaný obraz“ nesmí být v galerii, v roce 2026 ani na adrese `/tvorba/dhsh5/` |
 | web bez děl | `mkdir -p /tmp/prazdny/public && cp public/favicon.svg /tmp/prazdny/public/ && SITE_DATA_DIR=/tmp/prazdny npx astro build`: úvodní stránka ukáže „Obrazy tu brzy přibudou.“ a odkaz na Instagram (bez `site.instagram` jen první větu) |
 | mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla s `mockups: true` do testovacích dat nebo obsahového repa, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
@@ -1326,7 +1337,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | oddělení testovacích dat | zkopíruj `demo-content/tvorba/demo-maky.yaml` do `tvorba/` obsahového repa a spusť `npm run images`: skončí chybou „test data do not belong in the real content“ a nic nezapíše (pak soubor smaž). Obráceně: dílo bez jména `demo-…` v `demo-content/` nebo smazaná značka `demo-content/demo-content.yaml` zastaví `npm run demo`. |
 | fotky stránek | `/o-mne/` (`o-mne-uvod` nahoře oříznutá na 2:1, `portret` vedle textu; bez kterékoli z nich se rozložení přizpůsobí); změň `focus` v `fotky/o-mne-uvod.yaml` (např. `[10, 10]`), `npm run images`, výřez se posune |
 | úvodní obraz kolekce | `/tvorba/kolekce/` a `/tvorba/kolekce/demo-zahrada-2025/`: „Ze zahrady 2025“ ukazuje široký detail Pivoněk (`cover: vjr39#1-kvety-nahore`). Má `aspect: "2:1"`: zkus `"3:2"` nebo `"1:1"`, pak `cover: vjr39` (celé Pivoňky oříznuté), pak smaž `aspect` i `focus` (bez ořezu), pak `cover` (náhodně z výběru, celé). Bez `aspect` se ořízne na čtverec, bez `focus` kolem středu. „Plenér Šumava 2026“ má vlastní fotku jako panorama 2400 × 1000: ukáže se celá; zkus k ní `aspect: "3:2"`. „Město 2026“: `cover` bez ořezu, celé dílo. |
-| obrázek pro sdílení kolekce | po `npm run images` otevři `public/tvorba/kolekce/*/og.jpg` (1200 × 800, stejný výřez jako na stránce, jen u vlastní fotky, detailu a `cover` s ořezem; ořez 2:1 Ze zahrady leží na papíře); změň `focus` nebo `aspect` kolekce Ze zahrady, `npm run images`, v logu `→ og kolekce/…` a výřez se posune. Na stránce kolekce je v `<meta property="og:image">`. |
+| obrázek pro sdílení kolekce | po `npm run images` otevři `public/tvorba/kolekce/*/_og/og-*.jpg` (1200 × 800, stejný výřez jako na stránce, jen u vlastní fotky, detailu a `cover` s ořezem; ořez 2:1 Ze zahrady leží na papíře); změň `focus` nebo `aspect` kolekce Ze zahrady, `npm run images`, v logu `→ og kolekce/…` a výřez se posune. Na stránce kolekce je v `<meta property="og:image">`. |
 | starý název atributu | v `demo-content/tvorba/demo-maky.yaml` přepiš `meta_draft:` na `draft:`, `npm run demo:prepare`: chyba „draft: přejmenováno na meta_draft, přejmenuj ho“, soubor se nezmění (pak vrať) |
 | `derived_` v obsahu | do `demo-content/tvorba/demo-maky.yaml` přidej `derived_x: 1`, `npm run demo:prepare`: chyba „derived_ attributes are made by the pipeline…“ (pak smaž) |
 | vyhledávače | po `npm run demo:build`: `.demo/site/dist/robots.txt`, `.demo/site/dist/sitemap.xml` (s `lastmod`), ve zdroji stránek `<meta name="description">` a `application/ld+json` (dílo `VisualArtwork` s `keywords` a `artform`, u Ráno u rybníka a Máků `sameAs` s odkazem na Instagram / Fler, výpisy `CollectionPage` s `keywords`, úvod `WebSite` + `Person`); 404 má `noindex` |
@@ -1348,7 +1359,7 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
   s *Require status checks to pass* (`check`) a výjimkou pro správce (přímé pushe do `main`).
   Pull request připraví `node scripts/pull-request.mjs <soubor-popisu>` (`scripts/lib/pull-request.mjs`):
   - do `add-paths` dá jen výstupní cesty z `OUTPUT_PATHS` (`content`, `public/tvorba`, `public/fotky`,
-    `public/_cover`, `public/og.jpg`), a to jen ty,
+    `public/_cover`, `public/_og` a bývalý `public/og.jpg`, aby se jeho smazání dostalo do pull requestu), a to jen ty,
     které existují nebo je git zná (smazaná složka). Chybějící cestu (např. `public/_cover`, dokud úvodní stránka nemá
     vlastní `_cover.jpg`) přeskočí, jinak by `git add` selhal a pull request by nevznikl; bez jediné složky se pull
     request přeskočí. Nová výstupní složka pipeline = doplnit do `OUTPUT_PATHS`,
@@ -1500,11 +1511,11 @@ roky. Web je na Pinterest dává sám, přes kanál RSS (`scripts/lib/pinterest.
 - **Pin má každé zveřejněné dílo** (pro „Uložit na Pinterest“); `meta_pinterest: true` (výchozí `false`, nezávislé na
   Instagramu i stavu prodeje) jen určuje, co jde do kanálu, tedy co Pavla připne sama. Pin má průměrně asi 200 KB
   (změřeno na skutečných obrazech), 100 děl ≈ 20 MB v repu.
-- **Obrázek pinu** `pin.jpg` (2:3, 1000 × 1500, nastavení `images.pinterest`, výchozí `PIN_DEFAULTS`): dílo s popiskem
+- **Obrázek pinu** `pin-<otisk>.jpg` (viz *Otisk v názvu*; 2:3, 1000 × 1500, nastavení `images.pinterest`, výchozí `PIN_DEFAULTS`): dílo s popiskem
   na papíru první palety, stejný vzhled jako snímek s popiskem pro Instagram (`renderCaption`), ale popisek je hned pod
   dílem a obojí je svisle vystředěné (`snug`, `captionLayout`), takže široké dílo nemá pod sebou prázdný pruh (vysoké
-  vypadá stejně jako na Instagramu); ořez `insetPercent`, s XMP autorství. Leží veřejně ve složce stránky díla (`public/tvorba/<rok>/<slug>-<id>/pin.jpg`), protože si ho Pinterest
-  stahuje; `info.json` díla má `pin: { width, height, bytes, feed }` (`feed: true` = dílo s `meta_pinterest`, jde do
+  vypadá stejně jako na Instagramu); ořez `insetPercent`, s XMP autorství. Leží veřejně ve složce stránky díla (`public/tvorba/<rok>/<slug>-<id>/pin-<otisk>.jpg`), protože si ho Pinterest
+  stahuje; `info.json` díla má `pin: { width, height, bytes, file, feed }` (`feed: true` = dílo s `meta_pinterest`, jde do
   kanálu; samotný `meta_pinterest` se do veřejné kopie nekopíruje). V otisku díla: `meta_pinterest`, `images.pinterest`,
   adresa webu, název, technika, rozměr a rok.
 - **Kanál** `/pinterest.xml` (`src/pages/pinterest.xml.ts`, `pinterestFeed`): RSS 2.0, položka na každé dílo s `pin.feed`,
@@ -1527,12 +1538,12 @@ roky. Web je na Pinterest dává sám, přes kanál RSS (`scripts/lib/pinterest.
   `https://<web>/pinterest.xml` a nástěnka. Pinterest kanál čte asi jednou denně a připne jen nové položky; úprava už
   připnutého díla se nepřenese.
 - **„Sdílet“ na stránce díla** (`scripts/lib/share.mjs`, viz *Stránka díla* nahoře): ikona Pinterestu = formulář Pinterestu
-  (`pinSaveUrl`) s adresou stránky, obrázkem (`pin.jpg`, dokud ho pipeline nevyrobí `og.jpg`, `workPinImage`) a popisem;
+  (`pinSaveUrl`) s adresou stránky, obrázkem (pin, dokud ho pipeline nevyrobí náhled pro sdílení, `workPinImage`) a popisem;
   návštěvník si obraz připne na svou nástěnku a pin vede zpět na web. Žádný skript Pinterestu, žádné cookies.
 - **Kontrola:** `npm run check:images` i týdenní kontrola přečtou `/pinterest.xml` a ověří, že každý obrázek kanálu
   na webu existuje (chybějící se hlásí u „pinterest.xml“).
-- **Vyzkoušení:** `npm run demo:build`, pak `.demo/site/dist/pinterest.xml` (3 položky) a `pin.jpg` ve složce každého díla
-  (`ls .demo/site/public/tvorba/*/*/pin.jpg`).
+- **Vyzkoušení:** `npm run demo:build`, pak `.demo/site/dist/pinterest.xml` (3 položky) a `pin-<otisk>.jpg` ve složce
+  každého díla (`ls .demo/site/public/tvorba/*/*/pin-*.jpg`).
 
 ## Vyhledávače (SEO)
 
@@ -1762,7 +1773,7 @@ výchozí `[0.003, 0.006, 0.01, 0.015, 0.02, 0.025, 0.03, 0.04, 0.05, 0.06, 0.07
 | web: AVIF a WebP | průhledné (prolne se s papírem palety); bez zástupné barvy `--ph`, stín podle tvaru listu (`filter: var(--drop-soft)` / `var(--drop-deep)` z palety, `cutout` v `Img.astro`, `transparent: true` v `info.json`) |
 | web: JPEG (záloha pro staré prohlížeče) | papír první palety (`PALETTES[0].colors.paper`) |
 | prohlížečka obrázků na stránce díla | průhledné, stín podle tvaru listu |
-| náhled pro sdílení (`og.jpg`), úvodní obraz z díla | prolne se s papírovým pozadím `images.og.background` |
+| náhled pro sdílení (`og-<otisk>.jpg`), úvodní obraz z díla | prolne se s papírovým pozadím `images.og.background` |
 | Instagram (`caption-*.jpg`, `scene-*.jpg`) | papír palety, nebo dřevo a světlo scény ateliéru |
 | Fler (originál) | bílá `images.fler.background` |
 | mockupy | jen holý papír uvnitř rohů (pasparta kryje okraje), viz *Mockupy* |

@@ -9,6 +9,7 @@ import { run } from './process-images.mjs';
 import { sheetXmp } from './lib/sheet-box.mjs';
 import { readmeFingerprint } from './lib/export-readme.mjs';
 import { PREVIEW_KINDS } from './lib/corners.mjs';
+import { fingerprintedName, pageShareFile } from './lib/site-images.mjs';
 
 /** The files of a draft's folder in export/draft/ with its previews (all PREVIEW_KINDS), sorted like readdir().sort(). */
 const DRAFT_FILES = ['README.md', ...PREVIEW_KINDS.map((k) => `${k}.jpg`)].sort();
@@ -113,10 +114,12 @@ test('pin: every work has one (2:3, with XMP) in its folder on the site; meta_pi
   await run(opts());
   const dir = path.join(siteDir, 'public/tvorba/2026', `rano-${await idOf('2026', 'rano')}`);
   const info = JSON.parse(await fs.readFile(path.join(dir, 'info.json'), 'utf8'));
-  const pin = await fs.readFile(path.join(dir, 'pin.jpg'));
+  assert.match(info.pin.file, /^pin-[0-9a-f]{8}\.jpg$/, 'a fingerprint of the content in the name');
+  const pin = await fs.readFile(path.join(dir, info.pin.file));
   const meta = await sharp(pin).metadata();
   assert.deepEqual([meta.width, meta.height], [1000, 1500]);
-  assert.deepEqual(info.pin, { width: 1000, height: 1500, bytes: pin.length, feed: true });
+  assert.deepEqual(info.pin, { width: 1000, height: 1500, bytes: pin.length, file: fingerprintedName('pin', pin), feed: true });
+  assert.ok(!(await exists(path.join(dir, 'pin.jpg'))), 'no file with the former name');
   assert.ok(meta.xmp?.toString().includes('Ráno'), 'authorship like the other images of the work');
   assert.equal(await exists(path.join(contentDir, 'export/instagram/rano')), false, 'no Instagram exports without meta_instagram');
   const other = JSON.parse(await fs.readFile(path.join(siteDir, 'public/tvorba/2026', `vecer-${await idOf('2026', 'vecer')}`, 'info.json'), 'utf8'));
@@ -127,8 +130,11 @@ test('pin: every work has one (2:3, with XMP) in its folder on the site; meta_pi
   await fs.writeFile(yaml, (await fs.readFile(yaml, 'utf8')).replace('meta_pinterest: true', 'meta_pinterest: false'));
   const again = await run(opts());
   assert.equal(again.processed, 1, 'the switch regenerates the work');
-  assert.ok(await exists(path.join(dir, 'pin.jpg')));
-  assert.equal(JSON.parse(await fs.readFile(path.join(dir, 'info.json'), 'utf8')).pin.feed, undefined);
+  const after = JSON.parse(await fs.readFile(path.join(dir, 'info.json'), 'utf8')).pin;
+  assert.ok(await exists(path.join(dir, after.file)));
+  assert.equal(after.feed, undefined);
+  assert.equal(after.file, info.pin.file, 'the same picture, the same name');
+  assert.deepEqual((await fs.readdir(dir)).filter((f) => f.startsWith('pin')), [after.file], 'one pin only');
 });
 
 test('meta_instagram_grid: the tiles and a preview of the profile grid, with the order of publishing in README.md; commented out removes them', async () => {
@@ -874,38 +880,43 @@ test('collections: a chosen cover with aspect or focus is cropped (page and shar
   await fs.writeFile(collFile('plener', 'rano.jpg'), panorama);
   await run(opts());
   const id = await idOf('2026', 'rano');
-  const og = path.join(siteDir, 'public/tvorba/kolekce/plener/og.jpg');
+  // the share image of the page: _og/og-<hash>.jpg, null without one
+  const og = () => { const f = pageShareFile(path.join(siteDir, 'public'), 'tvorba/kolekce/plener'); return f && path.join(siteDir, 'public', f); };
   const dominant = async () => {
     // read the bytes: sharp caches files by path, the same path would return the old image
-    const { channels } = await sharp(await fs.readFile(og)).stats();
+    const { channels } = await sharp(await fs.readFile(og())).stats();
     return channels.slice(0, 3).map((ch) => Math.round(ch.mean));
   };
 
   // random cover (no cover): no share crop, the site shares the work's og.jpg
-  assert.ok(!(await exists(og)));
+  assert.equal(og(), null);
   // cover without a crop: the whole work, again the work's own og.jpg
   await setCollection('plener', `title: Plenér\ncover: ${id}\n`);
   assert.equal((await run(opts())).ok, true);
-  assert.ok(!(await exists(og)));
+  assert.equal(og(), null);
 
   await setCollection('plener', `title: Plenér\ncover: ${id}\naspect: "3:2"\nfocus: [0, 50]\n`);
   await run(opts());
-  const { width, height } = await sharp(await fs.readFile(og)).metadata();
+  const { width, height } = await sharp(await fs.readFile(og())).metadata();
   assert.deepEqual([width, height], [config.images.og.width, config.images.og.height]);
   const [r, , b] = await dominant();
   assert.ok(r > 150 && b < 100, `left crop is mostly red: ${await dominant()}`);
   // unchanged input → the file is not rewritten
-  const mtime = (await fs.stat(og)).mtimeMs;
+  const before = og();
+  const mtime = (await fs.stat(before)).mtimeMs;
   await run(opts());
-  assert.equal((await fs.stat(og)).mtimeMs, mtime);
+  assert.equal(og(), before);
+  assert.equal((await fs.stat(before)).mtimeMs, mtime);
   await setCollection('plener', `title: Plenér\ncover: ${id}\naspect: "3:2"\nfocus: [100, 50]\n`);
   await run(opts());
+  assert.notEqual(og(), before, 'a new picture, a new name');
+  assert.deepEqual(await fs.readdir(path.dirname(og())), [path.basename(og())], 'the old one is gone');
   const [r2, , b2] = await dominant();
   assert.ok(b2 > 150 && r2 < 100, `right crop is mostly blue: ${await dominant()}`);
   // another aspect ratio than the share image's: the crop sits on paper (the corner is paper, the middle the crop)
   await setCollection('plener', `title: Plenér\ncover: ${id}\naspect: "1:1"\nfocus: [0, 50]\n`);
   await run(opts());
-  const pixel = async (left, top) => [...(await sharp(await fs.readFile(og)).extract({ left, top, width: 1, height: 1 }).raw().toBuffer())];
+  const pixel = async (left, top) => [...(await sharp(await fs.readFile(og())).extract({ left, top, width: 1, height: 1 }).raw().toBuffer())];
   const [cr, , cb] = await pixel(config.images.og.width / 2, config.images.og.height / 2);
   assert.ok(cr > 150 && cb < 100, `middle is the red square: ${cr},${cb}`);
   assert.ok((await pixel(2, 2)).every((c) => c > 200), 'corner is paper');
@@ -929,7 +940,7 @@ test('collections: a chosen cover with aspect or focus is cropped (page and shar
   // collection gone → share image and the empty og folders are removed
   await fs.rm(path.join(contentDir, 'tvorba/plener'), { recursive: true });
   const gone = await run(opts());
-  assert.ok(gone.pruned.includes('public/tvorba/kolekce/plener/og.jpg'));
+  assert.ok(gone.pruned.includes('public/tvorba/kolekce/plener/_og/'), gone.pruned.join(', '));
   assert.ok(!(await exists(path.join(siteDir, 'public/og'))));
 });
 
@@ -937,18 +948,18 @@ test('collections: a detail photo as cover gets a share image, cropped only with
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: 'plener' });
   await addDetail('2026', 'rano', 'kvet.jpg', '#113355');
   await run(opts());
-  const og = path.join(siteDir, 'public/tvorba/kolekce/plener/og.jpg');
+  const og = () => { const f = pageShareFile(path.join(siteDir, 'public'), 'tvorba/kolekce/plener'); return f && path.join(siteDir, 'public', f); };
   await setCollection('plener', `title: Plenér\ncover: ${await idOf('2026', 'rano')}#kvet\n`);
   await run(opts());
-  assert.ok(await exists(og), 'whole detail on paper');
+  assert.ok(og() && (await exists(og())), 'whole detail on paper');
   await setCollection('plener', `title: Plenér\ncover: ${await idOf('2026', 'rano')}#kvet\naspect: "3:2"\nfocus: [50, 50]\n`);
   await run(opts());
-  const { channels } = await sharp(await fs.readFile(og)).stats();
+  const { channels } = await sharp(await fs.readFile(og())).stats();
   // the detail is #113355 (dark blue), the work master #88aacc (light blue)
   assert.ok(channels[2].mean < 110, `share image comes from the detail: ${channels.map((c) => Math.round(c.mean))}`);
 });
 
-test('share image: every work gets og.jpg, the whole work on paper in 3:2, listed in info.json', async () => {
+test('share image: every work gets og-<hash>.jpg, the whole work on paper in 3:2, listed in info.json', async () => {
   // a tall work (addWork makes wide masters)
   const dir = path.join(contentDir, 'tvorba');
   await fs.mkdir(dir, { recursive: true });
@@ -957,8 +968,9 @@ test('share image: every work gets og.jpg, the whole work on paper in 3:2, liste
   await run(opts());
   const info = await infoOf('2026', 'vysoky');
   const { width: W, height: H, background } = config.images.og;
-  assert.deepEqual(info.og, { width: W, height: H });
-  const file = path.join(await workDir('2026', 'vysoky'), 'og.jpg');
+  assert.match(info.og.file, /^og-[0-9a-f]{8}\.jpg$/);
+  assert.deepEqual(info.og, { width: W, height: H, file: info.og.file });
+  const file = path.join(await workDir('2026', 'vysoky'), info.og.file);
   const buf = await fs.readFile(file);
   const meta = await sharp(buf).metadata();
   assert.deepEqual([meta.width, meta.height], [W, H]);
@@ -1264,7 +1276,8 @@ test('covers of years and the home page: own photo, cover, focus; share image on
   const home = YAML.parse(await fs.readFile(path.join(siteDir, 'content/_index.yaml'), 'utf8'));
   assert.match(home.description, /^Maluji pro radost, hlavně akvarelem/);
   // random covers: no share crops, no photos
-  assert.ok(!(await exists(path.join(siteDir, 'public/og.jpg'))));
+  const share = (pageDir) => pageShareFile(path.join(siteDir, 'public'), pageDir);
+  assert.equal(share(''), null);
   assert.ok(!(await exists(path.join(siteDir, 'public/og/years'))));
 
   const idRano = await idOf('2026', 'rano');
@@ -1272,8 +1285,9 @@ test('covers of years and the home page: own photo, cover, focus; share image on
   await sharp({ create: { width: 90, height: 30, channels: 3, background: '#335577' } }).jpeg().toFile(path.join(contentDir, 'roky/2025.jpg'));
   r = await run(opts());
   assert.equal(r.ok, true, r.problems.join('\n'));
-  assert.ok(await exists(path.join(siteDir, 'public/og.jpg')));
-  assert.ok(await exists(path.join(siteDir, 'public/tvorba/2025/og.jpg')));
+  assert.match(share(''), /^_og\/og-[0-9a-f]{8}\.jpg$/);
+  assert.match(share('tvorba/2025'), /^tvorba\/2025\/_og\/og-[0-9a-f]{8}\.jpg$/);
+  assert.ok(!(await exists(path.join(siteDir, 'public/og.jpg'))), 'never the former name');
   assert.ok(await exists(path.join(siteDir, 'public/tvorba/2025/_cover/info.json')));
   assert.deepEqual(YAML.parse(await fs.readFile(path.join(siteDir, 'content/_index.yaml'), 'utf8')), { description: 'Ahoj.', cover: idRano, aspect: '1:1', focus: [30, 40] });
 
@@ -1291,7 +1305,7 @@ test('covers of years and the home page: own photo, cover, focus; share image on
   await fs.writeFile(path.join(contentDir, '_index.yaml'), 'description: Ahoj.\n');
   r = await run(opts());
   assert.equal(r.ok, true, r.problems.join('\n'));
-  assert.ok(r.pruned.includes('public/og.jpg'));
+  assert.ok(r.pruned.includes('public/_og/'), r.pruned.join(', '));
   assert.ok(r.pruned.includes('public/tvorba/2025/_cover/'));
   assert.ok(!(await exists(path.join(siteDir, 'public/og/years'))));
 });
@@ -1481,7 +1495,8 @@ test('corners: the floor is transparent on the web, paper in the JPEG, white for
   const instaDir = path.join(contentDir, 'export/instagram/podlaha');
   const insta = (await fs.readdir(instaDir)).filter((f) => f.endsWith('.jpg')).map((f) => path.join(instaDir, f));
   assert.ok(insta.length >= 3, 'captions on the palettes');
-  for (const f of [fler, ...insta, path.join(dir, 'og.jpg')]) {
+  const og = JSON.parse(await fs.readFile(path.join(dir, 'info.json'), 'utf8')).og.file;
+  for (const f of [fler, ...insta, path.join(dir, og)]) {
     assert.ok((await magentaShare(await fs.readFile(f))) < 0.002, `no floor in ${path.basename(f)}`);
   }
   const mockups = (await fs.readdir(dir)).filter((f) => f.startsWith('mockup-') && f.endsWith('.jpg'));
@@ -1671,7 +1686,7 @@ test('web images of a work carry creator, copyright and its page (XMP), a new ti
   const dir = await workDir('2026', 'rano');
   const id = await idOf('2026', 'rano');
   const files = (await fs.readdir(dir)).filter((f) => /\.(jpg|webp|avif)$/.test(f));
-  assert.ok(files.some((f) => f.startsWith('detail-')) && files.includes('og.jpg'));
+  assert.ok(files.some((f) => f.startsWith('detail-')) && files.some((f) => /^og-[0-9a-f]{8}\.jpg$/.test(f)) && files.some((f) => f.startsWith('pin-')));
   for (const f of files) {
     const xmp = String((await sharp(path.join(dir, f)).metadata()).xmp ?? '');
     assert.ok(xmp.includes('<rdf:li>Pavla Kramolišová</rdf:li>'), `${f}: creator`);
