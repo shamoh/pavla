@@ -13,12 +13,14 @@
   "details": [],
   "og": {
     "width": 1200,
-    "height": 800
+    "height": 800,
+    "file": "og-23082448.jpg"
   },
   "pin": {
     "width": 1000,
     "height": 1500,
-    "bytes": 261169
+    "bytes": 261169,
+    "file": "pin-cb4100e6.jpg"
   },
-  "fingerprint": "eb2b77cf7697f033"
+  "fingerprint": "db8c696816189fd1"
 }

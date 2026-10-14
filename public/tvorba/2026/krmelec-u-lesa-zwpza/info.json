@@ -50,12 +50,14 @@
   "details": [],
   "og": {
     "width": 1200,
-    "height": 800
+    "height": 800,
+    "file": "og-06dd0c43.jpg"
   },
   "pin": {
     "width": 1000,
     "height": 1500,
-    "bytes": 190355
+    "bytes": 190355,
+    "file": "pin-d9bd5953.jpg"
   },
-  "fingerprint": "e67f61092925f231"
+  "fingerprint": "db55547d3ed3856b"
 }
