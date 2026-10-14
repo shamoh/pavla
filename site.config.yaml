@@ -44,37 +44,48 @@ instagramPost:
     kresba tužkou: pencildrawing
     kvaš: gouache
     linoryt: linocut
+    olej: oilpainting
     pastel: pastel
     tisk z výšky: reliefprint
+    tuš: ink
     # štítky
     déšť: rain
+    fantazie: fantasyart
     grafika: printmaking
     hory: mountains
     jaro: spring
     kostel: church
     krajina: landscape
+    kresba: drawing
     květina: flower
     květiny: flowers
+    kytky: flowers
     les: forest
     léto: summer
     loď: boat
     louka: meadow
     město: city
     mlha: fog
+    moře: sea
     most: bridge
     nebe: sky
     noc: night
+    opice: monkey
     ovoce: fruit
     plenér: pleinair
     podzim: autumn
     portrét: portrait
+    postavy: figures
     ptáci: birds
     řeka: river
+    skály: rocks
     sníh: snow
+    stavby: architecture
     strom: tree
     světla: lights
     ulice: street
     vesnice: village
+    vlny: waves
     voda: water
     západ slunce: sunset
     zátiší: stilllife
@@ -94,37 +105,48 @@ pinterestKeywords:
     kresba tužkou: pencil drawing
     kvaš: gouache
     linoryt: linocut
+    olej: oil painting
     pastel: pastel
     tisk z výšky: relief print
+    tuš: ink
     # štítky
     déšť: rain
+    fantazie: fantasy art
     grafika: printmaking
     hory: mountains
     jaro: spring
     kostel: church
     krajina: landscape
+    kresba: drawing
     květina: flower
     květiny: flowers
+    kytky: flowers
     les: forest
     léto: summer
     loď: boat
     louka: meadow
     město: city
     mlha: fog
+    moře: sea
     most: bridge
     nebe: sky
     noc: night
+    opice: monkey
     ovoce: fruit
     plenér: plein air
     podzim: autumn
     portrét: portrait
+    postavy: figures
     ptáci: birds
     řeka: river
+    skály: rocks
     sníh: snow
+    stavby: architecture
     strom: tree
     světla: lights
     ulice: street
     vesnice: village
+    vlny: waves
     voda: water
     západ slunce: sunset
     zátiší: still life
