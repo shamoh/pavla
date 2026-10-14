@@ -206,6 +206,15 @@ co se nevejde, jde posunout do strany (lišta nikdy nezvětší). Formulář se 
 Skrytá lišta je `inert`, při `prefers-reduced-motion` bez animace, bez JavaScriptu se neukáže nikdy. Vyzkoušet:
 `npm run demo`, v `/tvorba/` sjet dolů, kousek nahoru, „Upravit“, vybrat štítek, pak ho v liště zrušit „×“.
 
+**Zrušení všech filtrů:** dokud je zapnutý aspoň jeden filtr, ukazuje počet na konci řádku výběrů „12 z 58 děl“
+(`filteredCount`; bez filtru „58 děl“) a za ním odkaz „× Zrušit filtry“ v barvě akcentu. V liště je „Zrušit vše“ za
+čipy, jen když jsou zapnuté aspoň dva filtry (u jednoho stačí jeho „×“), v otevřeném panelu tlačítko „Zrušit filtry“
+vedle „Hotovo“ (tam odkaz u počtu není). Všechna tři vypnou najednou štítky, techniku, rok a kolekci (kde jsou to výběry),
+stav, „Doporučené“ a hledání (`withoutFilters` v `scripts/lib/filter-bar.mjs`) a vrátí 1. stránku; zobrazení, velikost
+dlaždic, počet na stránku a „Zobrazit vše“ zůstanou. Rok stránky roku a kolekce stránky kolekce jsou adresa, ne filtr,
+takže zůstanou taky. Bez zapnutého filtru jsou všechna tři skrytá. Událost GA jako u jiné změny filtru (`gallery_filter`).
+Na počítači (od 1280 px) se počet s odkazem vejde do řádku výběrů (ověřeno na testovacích datech).
+
 **Počty a nabízené volby podle aktuálního výběru** (`facetChoices`, `facetValues`): po každé změně filtru má každá
 volba výběrů Technika, Rok, Kolekce a Stav i přepínač „Doporučené“ počet děl, která by ukázala spolu s ostatními
 aktivními filtry (Technika a Kolekce česky podle abecedy, `czechOrder`; sama sebe nepočítá, takže počty u jiných voleb téhož výběru říkají, co dá přepnutí; volby Stavu se
@@ -695,6 +704,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
 | doporučení „vzorová věta z kostry“ (`sampleAdvice`) | v kopii testovacích dat nastav `description` kolekce na „Toto je moje nejvíc nejoblíbenější kolekce.“ a spusť `npm run demo:prepare` (log `? advice:`), pak `git checkout demo-content/` |
 | doporučení v souhrnu běhu: bez štítků, popis s malým písmenem a bez tečky / popisky detailů bez tečky / na prodej bez mockupů / text kolekce bez tečky / popis a popisek fotky bez tečky | Rozpracovaný obraz / Ráno u rybníka, Pivoňky / Máky, Bouřka nad polem, Modravské slatě, Pivoňky / Město 2026 / fotky stránek |
+| zrušení filtrů | `/tvorba/`: vyber techniku a štítek, vpravo „N z 59 děl × Zrušit filtry“; klik vrátí všechna díla i „59 děl“ a 1. stránku, dlaždice a počet na stránku zůstanou. `/tvorba/2025/`: rok zůstane. Lišta po posunu: se dvěma filtry „Zrušit vše“, s jedním ne. Panel „Upravit“: „Zrušit filtry“ vedle „Hotovo“. |
 | lišta filtrů při posunu nahoru, panel „Upravit“ (na úzké obrazovce zespodu) | `/tvorba/` (58 děl, stránka je dost dlouhá); úzká obrazovka: DevTools → režim zařízení |
 | počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (8 děl, Kolekce jen Kresby…, Skicák (po 2), Plenér Šumava, Portréty, Ptáci, Tatry (po 1), bez „žádná“), + kolekce Kresby, pastely a kvaš (2 díla; přepínač Doporučené zmizí, oba obrazy jsou vybrané); štítek „krajina“: Technika jen akvarel (23), kresba tužkou, kvaš, linoryt |
 | výběr více štítků („a zároveň“): čipy se zapínají a vypínají, aktivní zůstanou jen ty, které výběr zúží, ostatní zašednou | `/tvorba/`: „krajina“ (28 děl, 17 aktivních čipů), + „voda“ (9 děl, aktivní hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, aktivní jaro a léto), „Vše“ zruší |

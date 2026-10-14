@@ -115,7 +115,10 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   Výběry (Technika, Rok, Kolekce, Stav) a přepínač Výběr autorky stejně: počty s ostatními filtry, jen volby,
   které zúží a nevyprázdní (`facetChoices`), vybraná vždy, bez žádné filtr zašedne (nikdy se neskryje, `facetDisplay`, ukáže společnou hodnotu); nový filtr = do `FACETS`.
   Lišta filtrů (`scripts/lib/filter-bar.mjs`): po posunu nahoru tenký řádek s vybranými filtry jako čipy s „×“
-  (`withoutFilter`) + „Upravit“ = týž formulář jako panel (nikdy kopie); nový filtr = i do `activeFilters`.
+  (`withoutFilter`) + „Upravit“ = týž formulář jako panel (nikdy kopie); nový filtr = i do `activeFilters` a `withoutFilters`.
+  Zrušení všech filtrů (`withoutFilters`, jen filtry, ne zobrazení ani stránkování; rok/kolekce stránky jsou adresa):
+  odkaz „× Zrušit filtry“ za počtem „N z M děl“ (`filteredCount`), „Zrušit vše“ v liště od 2 filtrů, „Zrušit filtry“
+  vedle „Hotovo“ v panelu; vše `[data-filters-reset]`, bez filtru skryté.
   Prvky tvořené skriptem stylovat přes `:global(…)` (scoped CSS Astra na ně nedosáhne).
 - `featured: true` = výběr autorky: `★` za názvem na kartě i za `<h1>` stránky díla (mimo něj, v bloku `.title`;
   `FeaturedStar.astro`, barva `var(--ink)`, nikdy v textu `<h1>`, `<title>`, JSON-LD ani bublině), filtr „Výběr autorky“ (`?featured=1`) a kandidáti úvodních obrazů

@@ -33,8 +33,28 @@ export function withoutFilter(state, { key, value }) {
   };
 }
 
+/**
+ * The state after "Zrušit filtry": every filter of the form off (tags, technique, year and collection where they are
+ * selects, status, the author's selection, the search), back to the first page; the view, the tile size, the page
+ * size and "Zobrazit vše" stay. The year of a year page and the collection of a collection page are their address, not
+ * filters of the state, so they stay too.
+ */
+export function withoutFilters(state) {
+  return {
+    ...state,
+    tag: [], technique: '', year: '', collection: '', status: '', featured: '', q: '',
+    page: pageAfterFilterChange(state.page),
+  };
+}
+
 /** The number of works after the chips of the bar: "6 děl", "1 dílo". */
 export const worksCount = (count) => `${count} ${worksPlural(count)}`;
+
+/**
+ * The number of works next to the filters: "58 děl" without a filter, with one "12 z 58 děl" (shown of all on the page;
+ * the noun after "z" in the genitive: "z 1 díla", otherwise "děl").
+ */
+export const filteredCount = (shown, total, filtered) => (filtered ? `${shown} z ${total} ${total === 1 ? 'díla' : 'děl'}` : worksCount(total));
 
 /** The starting bar state: hidden, at the top of the page. */
 export const BAR_START = { visible: false, y: 0, dir: 0, turn: 0 };

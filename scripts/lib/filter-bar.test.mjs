@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BAR_START, HIDE_AFTER, REVEAL_AFTER, activeFilters, scrollBar, withoutFilter, worksCount } from './filter-bar.mjs';
+import { BAR_START, HIDE_AFTER, REVEAL_AFTER, activeFilters, filteredCount, scrollBar, withoutFilter, withoutFilters, worksCount } from './filter-bar.mjs';
 
 const none = { tag: [], technique: '', year: '', collection: '', status: '', featured: '', q: '' };
 const label = (key, value) => ({ collection: { 'demo-mesto': 'Město 2026' }, status: { unsold: 'na prodej' } }[key]?.[value] ?? value);
@@ -56,4 +56,23 @@ test('scrollBar: never while the filter form is on screen; the same position cha
   assert.equal(run([200, 100], BAR_START, true).visible, false);
   assert.deepEqual(scrollBar(shown, 900, false), shown);
   assert.equal(scrollBar(shown, 900, true).visible, false);
+});
+
+test('withoutFilters: every filter off, back to page 1; view, tile size, page size and "Zobrazit vše" stay', () => {
+  const state = {
+    tag: ['krajina', 'voda'], technique: 'akvarel', year: '2026', collection: 'demo-mesto', status: 'unsold', featured: '1', q: 'mlha',
+    page: 3, perPage: 24, view: 'tiles', tile: 's',
+  };
+  assert.deepEqual(withoutFilters(state), { ...none, page: 1, perPage: 24, view: 'tiles', tile: 's' });
+  assert.equal(withoutFilters({ ...state, page: 'all' }).page, 'all');
+  assert.deepEqual(activeFilters(withoutFilters(state), label), [], 'nothing left for the bar');
+  assert.deepEqual(withoutFilters({ ...none, page: 1 }), { ...none, page: 1 }, 'nothing to cancel: the same state');
+});
+
+test('filteredCount: the total without a filter, "shown z total" with one', () => {
+  assert.equal(filteredCount(58, 58, false), '58 děl');
+  assert.equal(filteredCount(12, 58, true), '12 z 58 děl');
+  assert.equal(filteredCount(0, 58, true), '0 z 58 děl');
+  assert.equal(filteredCount(1, 1, true), '1 z 1 díla');
+  assert.equal(filteredCount(3, 3, false), '3 díla');
 });

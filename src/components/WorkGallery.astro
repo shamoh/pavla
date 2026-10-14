@@ -56,6 +56,7 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
   <div class="filter-bar-inner">
     <span class="eyebrow">Filtry</span>
     <span class="bar-chips" id="bar-chips" role="group" aria-label="Vybrané filtry"></span>
+    <button type="button" class="bar-reset" data-filters-reset hidden>Zrušit vše</button>
     <span class="bar-count" id="bar-count"></span>
     <button type="button" class="filter-toggle" id="filter-toggle" aria-expanded="false" aria-controls="filters">Upravit</button>
   </div>
@@ -88,14 +89,20 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
     {works.length > 0 && (
       <label class="switch" title="Výběr autorky: obrazy, které sama doporučuji"><input type="checkbox" name="featured" value="1" /> <span>Doporučené (<span data-featured-count>{featuredCount}</span>)</span></label>
     )}
-    <span class="muted count" id="count" aria-live="polite">{works.length} děl</span>
+    <span class="count-group">
+      <span class="muted" id="count" aria-live="polite">{works.length} děl</span>
+      <button type="button" class="reset-link" data-filters-reset hidden><span aria-hidden="true">×</span> Zrušit filtry</button>
+    </span>
   </div>
   <!-- The selects first (one line on a computer), the tag chips under them. -->
   <div class="chips" id="chips" role="group" aria-label="Témata (lze vybrat víc najednou)">
     <button type="button" data-filter="tag" data-value="" aria-pressed="true">Vše</button>
     {tags.map(([t, n]) => <button type="button" data-filter="tag" data-value={t} aria-pressed="false">#{t} <small>{n}</small></button>)}
   </div>
-  <button type="button" class="filters-done" id="filters-done">Hotovo</button>
+  <div class="filters-actions">
+    <button type="button" class="filters-reset" data-filters-reset hidden>Zrušit filtry</button>
+    <button type="button" class="filters-done" id="filters-done">Hotovo</button>
+  </div>
 </form>
 </div>
 
@@ -126,7 +133,7 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
   import { pagerTarget, renderPager } from '../lib/pager';
   import { exactId, normalizeQuery } from '../../scripts/lib/search.mjs';
   import { selectCombobox } from '../lib/combobox';
-  import { BAR_START, activeFilters, scrollBar, withoutFilter, worksCount } from '../../scripts/lib/filter-bar.mjs';
+  import { BAR_START, activeFilters, filteredCount, scrollBar, withoutFilter, withoutFilters, worksCount } from '../../scripts/lib/filter-bar.mjs';
 
   // The year links stay on one line, older years behind "2017–2003 ▾" (src/lib/year-row.ts).
   const yearRow = document.getElementById('years');
@@ -152,6 +159,8 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
     if (searchHint) searchHint.hidden = !(searchInput && document.activeElement === searchInput && exactId(searchInput.value, cardIds));
   };
   const countEl = document.getElementById('count')!;
+  // "Zrušit filtry" next to the count, in the open panel and "Zrušit vše" in the bar: all filters off (withoutFilters)
+  const resets = [...document.querySelectorAll<HTMLButtonElement>('[data-filters-reset]')];
   const emptyEl = document.getElementById('empty')!;
   const grid = document.getElementById('grid')!;
   const pager = document.getElementById('pager')!;
@@ -227,7 +236,6 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
   // A tag without a chip here (no work of this page has it, e.g. an old link) is off.
   state.tag = state.tag.filter((t) => tagNames.includes(t));
 
-  const plural = (n: number) => (n === 1 ? 'dílo' : n >= 2 && n <= 4 ? 'díla' : 'děl');
 
   const href = (page: number | typeof ALL_PAGES) => {
     const p = stateToParams({ ...state, page });
@@ -289,7 +297,10 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
     if (perPageSelect) perPageSelect.value = String(pageSizeOf(state, pageSizes));
     // The page size matters only when the shown works do not fit the smallest page of the view.
     if (perPageLabel) perPageLabel.hidden = matching.length <= pageSizes[0];
-    countEl.textContent = `${shown} ${plural(shown)}`;
+    // "12 z 58 děl" while a filter is on, and "Zrušit filtry" (panel, open panel, bar with two filters or more)
+    const active = activeFilters(state, optionLabel).length;
+    countEl.textContent = filteredCount(shown, cards.length, active > 0);
+    for (const b of resets) b.hidden = b.classList.contains('bar-reset') ? active < 2 : active === 0;
     renderBar(shown);
     collectionCombo?.sync();
     emptyEl.hidden = shown > 0;
@@ -397,6 +408,19 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
     const next = barChips.querySelectorAll<HTMLButtonElement>('.bar-chip')[at] ?? barChips.querySelector<HTMLButtonElement>('.bar-chip:last-of-type') ?? toggle;
     next.focus({ preventScroll: true });
   });
+
+  // "Zrušit filtry" / "Zrušit vše": every filter off at once (the year or collection of its own page stays, it is
+  // the address); from the bar the focus moves to "Upravit", the button itself is gone.
+  for (const b of resets) {
+    b.addEventListener('click', () => {
+      state = withoutFilters(state);
+      trackFilter(apply());
+      if (b.classList.contains('bar-reset')) {
+        toResults(true);
+        toggle.focus({ preventScroll: true });
+      } else toResults();
+    });
+  }
 
   // Statistics: every filter change (not paging, not the page size) with the active filters and the result count.
   const trackFilter = (results: number) => trackEvent(EVENTS.filter, filterEventParams(state, results));
@@ -520,17 +544,31 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
   .bar-chips :global(.bar-chip:hover span) { opacity: 1; }
   .bar-chips :global(.bar-all) { white-space: nowrap; }
   .bar-count { flex: none; color: var(--ink-soft); white-space: nowrap; }
+  .bar-reset, .reset-link {
+    flex: none; font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap;
+  }
+  .bar-reset:hover, .reset-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .bar-reset[hidden], .reset-link[hidden], .filters-reset[hidden] { display: none; }
+  /* The count at the end of the selects, "× Zrušit filtry" after it while a filter is on. */
+  .count-group { margin-left: auto; display: flex; gap: 12px; align-items: baseline; white-space: nowrap; }
+  .reset-link { font-size: 0.9rem; }
   .filter-toggle, .filters-done {
     flex: none; font: inherit; font-size: 0.88rem; color: var(--ink); background: transparent; cursor: pointer;
     border: 1px solid var(--line); border-radius: 99px; padding: 5px 14px;
   }
-  .filters-done { display: none; align-self: flex-end; }
+  /* "Zrušit filtry" and "Hotovo" under the open panel only (in place, the link after the count does it). */
+  .filters-actions { display: none; align-self: flex-end; gap: 10px; }
+  .filters-reset {
+    flex: none; font: inherit; font-size: 0.88rem; color: var(--ink-soft); background: transparent; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 99px; padding: 5px 14px;
+  }
   .filters.floating {
     position: fixed; z-index: 29; top: var(--bar-h); left: 0; right: 0; margin: 0 auto; max-width: var(--max);
     max-height: calc(100vh - var(--bar-h) - 24px); overflow: auto; background: var(--paper);
     padding: 20px var(--gutter); border-bottom: 1px solid var(--line); box-shadow: var(--shadow-deep);
   }
-  .filters.floating .filters-done { display: block; }
+  .filters.floating .filters-actions { display: flex; }
+  .filters.floating .reset-link { display: none; }
   /* On a phone the open filters come from the bottom, within reach of the thumb, above "Napište mi". */
   @media (max-width: 700px) {
     .filters.floating { top: auto; bottom: 0; z-index: 45; max-height: 75vh; border-radius: 12px 12px 0 0; border-top: 1px solid var(--line); }
@@ -584,7 +622,6 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
   .selects :global(.combo-list li[aria-selected='true']) { font-weight: 500; }
   .selects label[hidden] { display: none; }
   .selects .switch { color: var(--ink); cursor: pointer; }
-  .count { margin-left: auto; }
   .years .to-collections { margin-left: auto; font-size: 1rem; font-family: var(--sans); align-self: center; }
   .grid { columns: 3 300px; column-gap: 36px; }
   .grid :global(.card[hidden]) { display: none; }
