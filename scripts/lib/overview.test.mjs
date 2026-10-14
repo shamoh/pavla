@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { OVERVIEW_MAX_BYTES, attributeLines, escText, formatValue, headingAnchors, notesByFile, overviewReadme, overviewSizeAdvice } from './overview.mjs';
+import { OVERVIEW_MAX_BYTES, attributeLines, escText, formatValue, headingAnchors, notesByFile, overviewReadme, overviewSizeAdvice, sizeMark, workHeading, workLines } from './overview.mjs';
 
 const works = [
   {
@@ -32,28 +32,32 @@ const noted = {
 
 test('overviewReadme: collections alphabetically, "Mimo kolekce" last, works newest first, every attribute', () => {
   const text = overviewReadme({ works, collections, uncollected, noted });
-  const order = ['## Plenér', '### Večer · b2c3d · draft', '### Ráno · a1b2c ★', '## Zima', '## Mimo kolekce', '### Sám · c3d4e', '## Ostatní'];
+  const order = ['## Plenér', '### Večer · b2c3d @ 2026-07-01', '### Ráno · a1b2c ★ @ 2026-06-14 [ 41 x 30 ]', '## Zima', '## Mimo kolekce', '### Sám · c3d4e @ 2020-01-01', '## Ostatní'];
   const at = order.map((h) => text.indexOf(h));
   assert.ok(at.every((i) => i > 0), JSON.stringify(at));
   assert.deepEqual([...at].sort((a, b) => a - b), at);
-  assert.match(text, /meta_draft: false · meta_instagram: true · id: a1b2c · date: 2026-06-14 · featured: true · size_cm: 41, 30 · tags: mlha, řeka · title: Ráno · private_note: koupila teta/);
-  assert.match(text, /\[tvorba\/plener\/rano\.yaml\]\(\.\.\/tvorba\/plener\/rano\.yaml\) · \[foto\]\(\.\.\/tvorba\/plener\/rano\.jpg\) · \[web\]\(https:\/\/x\.cz\/tvorba\/2026\/rano-a1b2c\/\)/);
-  assert.match(text, /\[tvorba\/plener\/vecer\.yaml\]\([^)]*\) · bez fotky\n/);
-  assert.match(text, /title: Plenér · private_note: jen pro nás/, 'the attributes of a collection');
+  assert.match(text, /\ninstagram: - · tags: mlha, řeka · private_note: koupila teta\n/, 'switches as words, told attributes left out');
+  assert.match(text, /\ndraft\n/, 'a draft');
+  assert.doesNotMatch(text, /(^|· )(meta_\w+|id|date|title|featured|size_cm|description|mockups): /m, 'attributes told elsewhere');
+  assert.match(text, /\n\[rano\.yaml\]\(\.\.\/tvorba\/plener\/rano\.yaml\) · \[foto\]\(\.\.\/tvorba\/plener\/rano\.jpg\) · \[web\]\(https:\/\/x\.cz\/tvorba\/2026\/rano-a1b2c\/\)/);
+  assert.match(text, /\n\[vecer\.yaml\]\(\.\.\/tvorba\/plener\/vecer\.yaml\) · bez fotky\n/, 'only the file name as the text, the whole path in the link');
+  assert.match(text, /\n## Plenér\n\n\[[^\n]*\n\nprivate_note: jen pro nás\n/, 'the attributes of a collection, its title is the heading');
+  assert.match(text, /\n## Mimo kolekce\n\n\[[^\n]*\n\nObrazy mimo kolekce\.\n/, 'a description on a line of its own');
   assert.doesNotMatch(text, /description: \n|description:\s*$/m, 'empty attributes are left out');
   assert.doesNotMatch(text, /<img/, 'no pictures');
 });
 
-test('overviewReadme: messages of a work with their codes, "stav: OK" without any, other files under "Ostatní"', () => {
+test('overviewReadme: messages of a work with their marks and codes, "✓" without any, other files under "Ostatní"', () => {
   const text = overviewReadme({ works, collections, uncollected, noted });
   const vecer = text.slice(text.indexOf('### Večer'), text.indexOf('### Ráno'));
-  assert.match(vecer, /- `chybi-nazev` chybí název \(title\)\n- `doplnit` zbývá doplnit: support, technique/);
-  assert.match(text.slice(text.indexOf('### Ráno')), /- `featured-bez-pinu` je ve výběru autorky/);
-  assert.match(text.slice(text.indexOf('### Sám')), /- `podezrely-orez` tl 1×2/);
-  assert.match(text.slice(text.indexOf('## Zima')), /^stav: OK$/m);
+  assert.match(vecer, /- ✗ `chybi-nazev` chybí název \(title\)\n- ✎ `doplnit` zbývá doplnit: support, technique/);
+  assert.match(text.slice(text.indexOf('### Ráno')), /- 💡 `featured-bez-pinu` je ve výběru autorky/);
+  assert.match(text.slice(text.indexOf('### Sám')), /- ⚠ `podezrely-orez` tl 1×2/);
+  assert.match(text.slice(text.indexOf('## Zima')), /^✓$/m);
+  assert.match(text, /Značky: ✓ bez hlášek, ✗ chyba, ⚠ ke kontrole, 💡 doporučení, ✎ zbývá doplnit\./);
   const others = text.slice(text.indexOf('## Ostatní'));
-  assert.match(others, /\*\*Štítky\*\*\n\n- `stitky-vzdy-spolu`/);
-  assert.match(others, /\*\*roky\/2026\.yaml\*\*\n\n- `text-bez-tecky`/);
+  assert.match(others, /\*\*Štítky\*\*\n\n- 💡 `stitky-vzdy-spolu`/);
+  assert.match(others, /\*\*roky\/2026\.yaml\*\*\n\n- 💡 `text-bez-tecky`/);
   assert.doesNotMatch(text, /tl 0×0/, 'corners found without suspicion are no message');
 });
 
@@ -105,4 +109,33 @@ test('notesByFile: levels by the list a message comes from, DOPLNIT lists as one
 test('overviewSizeAdvice: only above the limit', () => {
   assert.equal(overviewSizeAdvice('export/README.md', OVERVIEW_MAX_BYTES), null);
   assert.match(overviewSizeAdvice('export/README.md', OVERVIEW_MAX_BYTES + 1), /^export\/README\.md: přehled má \d+ kB.* \[prehled-velky\]$/);
+});
+
+test('workHeading: title, id, star, date and size, each only when set', () => {
+  assert.equal(workHeading({ title: 'Ráno', featured: true, date: '2026-09-27', size_cm: [21, 15] }, 'a1b2c', 'x'), 'Ráno · a1b2c ★ @ 2026-09-27 [ 21 x 15 ]');
+  assert.equal(workHeading({ title: 'Ráno', featured: false, date: new Date('2026-09-27T00:00:00Z') }, 'a1b2c', 'x'), 'Ráno · a1b2c @ 2026-09-27');
+  assert.equal(workHeading({}, '', 'tvorba/x.yaml'), 'tvorba/x.yaml');
+  assert.equal(sizeMark([21, 15]), '[ 21 x 15 ]');
+  for (const bad of [undefined, [0, 0], [21], 'DOPLNIT']) assert.equal(sizeMark(bad), '', String(bad));
+});
+
+test('workLines: the description first, switches that are on as words, nothing told elsewhere', () => {
+  const d = {
+    meta_corners: { photo: [1, 1] }, meta_draft: true, meta_instagram: true, meta_pinterest: true, id: 'a1b2c', date: '2026-09-27',
+    description: 'Ráno u jezu.', featured: true, instagram: 'https://www.instagram.com/p/x/', mockups: true, size_cm: [21, 15],
+    status: 'sold', title: 'Ráno',
+  };
+  assert.deepEqual(workLines(d), ['Ráno u jezu.', 'draft · instagram: https://www.instagram.com/p/x/ · pinterest · mockups · status: sold']);
+  assert.deepEqual(workLines({ ...d, instagram: undefined }).at(-1), 'draft · instagram: - · pinterest · mockups · status: sold', 'Instagram photos without a link yet');
+  assert.deepEqual(workLines({ meta_draft: false, meta_instagram: false, meta_pinterest: false, mockups: false, instagram: 'https://www.instagram.com/p/x/' }),
+    ['instagram: https://www.instagram.com/p/x/'], 'a link without Instagram photos is an attribute; switches that are off say nothing');
+  assert.deepEqual(workLines({}), []);
+});
+
+test('workLines: each detail photo on a line of its own under the description, the default status left out', () => {
+  const d = { description: 'Ráno u jezu.', details: { mlha: 'Mlha nad vodou.', brana: '' }, status: 'not-for-sale', technique: 'akvarel' };
+  assert.deepEqual(workLines(d), ['Ráno u jezu.', 'detail mlha: Mlha nad vodou.', 'detail brana', 'technique: akvarel']);
+  assert.deepEqual(workLines({ ...d, status: 'sold' }).at(-1), 'status: sold · technique: akvarel');
+  assert.deepEqual(workLines({ details: {}, status: 'available' }), ['status: available'], 'no details, no lines');
+  assert.deepEqual(workLines({ details: 'les' }), ['details: les'], 'a wrong value stays an attribute (the checks report it)');
 });

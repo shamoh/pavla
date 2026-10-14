@@ -1060,7 +1060,8 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   assert.deepEqual((await fs.readdir(path.join(contentDir, 'export'))).sort(), ['README.md', 'draft']);
   const overview = await fs.readFile(path.join(contentDir, 'export/README.md'), 'utf8');
   assert.match(overview, /^# Přehled všech děl\n/);
-  assert.match(overview, /### Novy · [a-z0-9]{5} · draft\n/);
+  assert.match(overview, /### Novy · [a-z0-9]{5} @ 2026-05-01\n/);
+  assert.match(overview, /\ndraft( · [^\n]*)?\n/, 'a draft says so among its switches');
   assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/novy'))).sort(), DRAFT_FILES);
 
   // problems are reported as in a full run

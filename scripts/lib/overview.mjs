@@ -41,19 +41,86 @@ const isEmpty = (v) => v === null || v === undefined || (typeof v === 'string' &
   || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date) && !Object.keys(v).length);
 
 /**
- * The attributes of a description in file order, empty ones left out: short ones in one paragraph "key: value · …",
- * long texts each in a paragraph of its own.
+ * The attributes of a description in file order, empty ones and `skip` left out: `flags` first, then short ones
+ * "key: value", all in one paragraph joined by " · ", long texts each in a paragraph of its own.
  */
-export function attributeLines(data) {
-  const short = [];
+export function attributeLines(data, { skip = [], flags = [] } = {}) {
+  const short = [...flags];
   const long = [];
   for (const [key, value] of Object.entries(data ?? {})) {
-    if (isEmpty(value)) continue;
+    if (skip.includes(key) || isEmpty(value)) continue;
     const text = escText(formatValue(value));
     (typeof value === 'string' && text.length > INLINE_CHARS ? long : short).push(`${key}: ${text}`);
   }
   return [...(short.length ? [short.join(' · ')] : []), ...long];
 }
+
+/**
+ * Attributes of a work told elsewhere or as a word (they are in the heading, the line of the description or the flags),
+ * never as "key: value": title, id, date, size_cm, featured (heading), description (its own line), meta_corners (only
+ * for the pipeline), the switches meta_draft, meta_instagram (with the link instagram), meta_pinterest, mockups (flags).
+ */
+const WORK_TOLD = ['title', 'id', 'date', 'size_cm', 'featured', 'description', 'meta_corners', 'meta_draft', 'meta_instagram', 'meta_pinterest', 'mockups'];
+
+/** The size of a work for its heading: "[ 21 x 15 ]", '' without a valid one. */
+export const sizeMark = (size) => (Array.isArray(size) && size.length === 2 && size.every((n) => Number(n) > 0) ? `[ ${size[0]} x ${size[1]} ]` : '');
+
+/** The day of a work for its heading: "2026-09-27" ('' without one). */
+const dayOf = (date) => (date instanceof Date ? date.toISOString().slice(0, 10) : typeof date === 'string' ? date.trim() : '');
+
+/**
+ * The heading of a work, Markdown ready: "<title> · <id> ★ @ <date> [ w x h ]" (star only for featured: true, date and
+ * size only when set; only the title is escaped, the brackets of the size are no link). `fallback`: the title when the
+ * work has none.
+ */
+export function workHeading(d, id, fallback) {
+  const title = escText(typeof d.title === 'string' && d.title.trim() ? d.title.trim() : fallback);
+  const day = dayOf(d.date);
+  const size = sizeMark(d.size_cm);
+  return `${title}${id ? ` · ${id}` : ''}${d.featured === true ? ' ★' : ''}${day ? ` @ ${day}` : ''}${size ? ` ${size}` : ''}`;
+}
+
+/** Status of a work that is the default (nothing to tell): left out of the attributes. */
+const DEFAULT_STATUS = 'not-for-sale';
+
+/** Detail photos of a work, each a line "detail <name>: <caption>" ("detail <name>" without a caption). */
+const detailLines = (details) => (details && typeof details === 'object' && !Array.isArray(details)
+  ? Object.entries(details).map(([name, caption]) => {
+    const text = escText(formatValue(caption));
+    return `detail ${escText(name)}${text ? `: ${text}` : ''}`;
+  })
+  : []);
+
+/**
+ * The lines of a work under its links: its description (a paragraph of its own), each detail photo with its caption
+ * (a line each), then the switches that are on as words ("draft", "instagram: <link or ->", "pinterest", "mockups")
+ * and the other attributes (attributeLines; the default status not-for-sale left out). The link `instagram` goes with
+ * meta_instagram: true; without it, it is an attribute like any other.
+ */
+export function workLines(d) {
+  const description = typeof d.description === 'string' && d.description.trim() ? [escText(d.description)] : [];
+  const details = detailLines(d.details);
+  const instagram = typeof d.instagram === 'string' && d.instagram.trim() ? escText(d.instagram) : '-';
+  const flags = [
+    ...(d.meta_draft === true ? ['draft'] : []),
+    ...(d.meta_instagram === true ? [`instagram: ${instagram}`] : []),
+    ...(d.meta_pinterest === true ? ['pinterest'] : []),
+    ...(d.mockups === true ? ['mockups'] : []),
+  ];
+  const skip = [
+    ...WORK_TOLD,
+    ...(d.meta_instagram === true ? ['instagram'] : []),
+    ...(details.length ? ['details'] : []),
+    ...(d.status === DEFAULT_STATUS ? ['status'] : []),
+  ];
+  return [...description, ...details, ...attributeLines(d, { skip, flags })];
+}
+
+/** The lines of a collection (or "Mimo kolekce") under its link: its description first, the title is the heading. */
+const collectionLines = (d) => [
+  ...(typeof d?.description === 'string' && d.description.trim() ? [escText(d.description)] : []),
+  ...attributeLines(d, { skip: ['title', 'description'] }),
+];
 
 /** The anchor GitHub gives a heading: lower case, without punctuation, spaces as "-", repeated ones numbered. */
 export function headingAnchors() {
@@ -89,13 +156,17 @@ export function notesByFile(noted) {
   return files;
 }
 
-/** "- `kód` text" lines of the messages of a file, by level; "stav: OK" without any. */
+/** Marks of the levels (the same as the READMEs of drafts, noteMarks), and of a file without messages. */
+export const LEVEL_MARKS = { error: '✗', review: '⚠', advice: '💡', todo: '✎' };
+export const OK_MARK = '✓';
+
+/** "- <mark> `kód` text" lines of the messages of a file, by level; "✓" without any. */
 function messageLines(notes) {
   const items = RUN_LEVELS.flatMap((level) => (notes?.[level] ?? []).map((m) => {
     const codes = codesOf(m);
-    return `- ${codes.length ? codes.map((c) => `\`${c}\``).join(' ') : `\`${level}\``} ${escText(withoutCodes(m))}`;
+    return `- ${LEVEL_MARKS[level]} ${codes.length ? codes.map((c) => `\`${c}\``).join(' ') : `\`${level}\``} ${escText(withoutCodes(m))}`;
   }));
-  return items.length ? items : ['stav: OK'];
+  return items.length ? items : [OK_MARK];
 }
 
 /** Counts of the codes in the given notes: Map code -> count. */
@@ -138,17 +209,16 @@ export function overviewReadme({ works, collections = [], uncollected = null, no
     body.push('', `## ${head}`, '');
     if (g.meta) {
       shown.add(g.meta.yamlPath);
-      body.push(`[${g.meta.yamlPath}](${link(g.meta.yamlPath)})`, '', ...attributeLines(g.meta.data).flatMap((l) => [l, '']), ...messageLines(notes.get(g.meta.yamlPath)));
+      body.push(`[${g.meta.yamlPath}](${link(g.meta.yamlPath)})`, '', ...collectionLines(g.meta.data).flatMap((l) => [l, '']), ...messageLines(notes.get(g.meta.yamlPath)));
     }
     for (const w of [...g.works].sort(byDate)) {
       shown.add(w.yamlPath);
       const d = w.data ?? {};
-      const title = typeof d.title === 'string' && d.title.trim() ? d.title.trim() : w.yamlPath;
-      const heading = `${title}${w.id ? ` · ${w.id}` : ''}${d.featured === true ? ' ★' : ''}${d.meta_draft === true ? ' · draft' : ''}`;
+      const heading = workHeading(d, w.id, w.yamlPath);
       anchor(heading);
-      body.push('', `### ${escText(heading)}`, '',
-        [`[${w.yamlPath}](${link(w.yamlPath)})`, w.photoPath ? `[foto](${link(w.photoPath)})` : 'bez fotky', ...(w.pageUrl ? [`[web](${w.pageUrl})`] : [])].join(' · '),
-        '', ...attributeLines(d).flatMap((l) => [l, '']), ...messageLines(notes.get(w.yamlPath)));
+      body.push('', `### ${heading}`, '',
+        [`[${escText(w.yamlPath.split('/').pop())}](${link(w.yamlPath)})`, w.photoPath ? `[foto](${link(w.photoPath)})` : 'bez fotky', ...(w.pageUrl ? [`[web](${w.pageUrl})`] : [])].join(' · '),
+        '', ...workLines(d).flatMap((l) => [l, '']), ...messageLines(notes.get(w.yamlPath)));
     }
   }
   // messages of other files (years, photos, the home page) and general ones (tags, techniques)
@@ -170,6 +240,7 @@ export function overviewReadme({ works, collections = [], uncollected = null, no
     '',
     'Všechno o každém obrazu na jedné stránce: všechny údaje z popisu a co o něm říká poslední běh zpracování. '
       + 'Hledej v prohlížeči (Ctrl+F / Cmd+F): název, kód obrazu, štítek, nebo kód hlášky (např. `bez-rozmeru`) najde všechny stejné případy. '
+      + `Značky: ${OK_MARK} bez hlášek, ${LEVEL_MARKS.error} chyba, ${LEVEL_MARKS.review} ke kontrole, ${LEVEL_MARKS.advice} doporučení, ${LEVEL_MARKS.todo} zbývá doplnit. `
       + 'Píše ho automatika při každém běhu, ručně needitovat.',
     '',
     `Děl ${works.length}: zveřejněných ${published}, rozpracovaných ${works.length - published}, s chybou ${withErrors}.`,

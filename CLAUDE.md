@@ -210,7 +210,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (`consistencyAdvice`: featured bez `meta_pinterest`, odkazy `instagram`/`fler` vs. `meta_instagram`/stav, cena u
   neprodávaného, mockupy bez rozměru, mřížka bez Instagramu, datum v budoucnu) = doporučení.
   `export/README.md` obsahového repa = přehled všech děl na jedné stránce (`overviewReadme`, `scripts/lib/overview.mjs`):
-  kolekce abecedně + „Mimo kolekce“, u díla odkazy, všechny atributy yaml (i `meta_*`/`private_*`) a hlášky s kódy, nahoře
+  kolekce abecedně + „Mimo kolekce“, u díla nadpis `<název> · <id> ★ @ <date> [ š x v ]`, odkazy, popis zvlášť, zapnuté
+  detaily po řádcích, přepínače slovem (`draft`, `instagram: <odkaz|->`, `pinterest`, `mockups`), ostatní atributy yaml
+  (i `private_*`, bez `WORK_TOLD`: co je v nadpisu a `meta_corners`, bez výchozího `status: not-for-sale`) a hlášky se značkou úrovně a kódem (`✗`/`⚠`/`💡`/`✎`, bez nich `✓`), nahoře
   počty kódů; bez obrázků a s minimem formátování (velikost, `OVERVIEW_MAX_BYTES` → `prehled-velky`); píše každý běh bez
   `--only` (i s chybami a `--prepare-only`), celý, plný běh znovu na konci s `misfits`. Pull request připravuje
   `scripts/pull-request.mjs` (`scripts/lib/pull-request.mjs`, `OUTPUT_PATHS`); text PR nikdy nejmenuje obsahové repo.

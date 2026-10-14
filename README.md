@@ -934,14 +934,19 @@ Jeden soubor se **vším o všech dílech** pro hledání v prohlížeči (Ctrl+
 
 - Nahoře počty děl (zveřejněná, rozpracovaná, s chybou), odkazy na kolekce s počty a **Hlášky**: každý použitý kód
   hlášky (viz *Kódy hlášek*) s počtem případů, úrovní a významem, seřazené podle úrovně a počtu.
-- Kolekce česky podle abecedy (`## <název>`), „Mimo kolekce“ na konci; u každé odkaz na její `_index.yaml`, všechny
-  její atributy a hlášky. Díla v kolekci od nejnovějšího (`date`).
-- Dílo: `### <název> · <id>` (+ ` ★` u výběru autorky, ` · draft` u rozpracovaného), řádek s odkazy na popis,
-  fotku („foto“, nebo „bez fotky“) a stránku na webu (jen zveřejněné), pak **všechny atributy z yaml** v pořadí
-  souboru (i `meta_*` a `private_*`, obsahové repo je soukromé; prázdné vynechá) v jednom odstavci
-  `klíč: hodnota · …`, dlouhé texty (nad 80 znaků) každý na vlastním řádku, seznamy čárkami, mapy `klíč=hodnota; …`.
-  Pod tím hlášky běhu k dílu jako `` - `kód` text `` (chyby, ke kontrole, doporučení, zbývá doplnit), bez nich
-  `stav: OK`.
+- Kolekce česky podle abecedy (`## <název>`), „Mimo kolekce“ na konci; u každé odkaz na její `_index.yaml`, popis
+  na vlastním řádku, ostatní atributy (bez `title`, ten je v nadpisu) a hlášky. Díla v kolekci od nejnovějšího (`date`).
+- Dílo (`workHeading`, `workLines`): nadpis `### <název> · <id> ★ @ <date> [ <šířka> x <výška> ]` (hvězdička jen
+  u `featured: true`, datum a rozměr jen když jsou), řádek s odkazy na popis (text = jen jméno souboru, např. `zena-v-desti.yaml`, odkaz vede na celou cestu), fotku („foto“, nebo „bez fotky“)
+  a stránku na webu (jen zveřejněné), popis (`description`) na vlastním řádku, pod ním každá detailní fotka na vlastním
+  řádku `detail <jméno>: <popisek>` (bez popisku jen `detail <jméno>`), pak jeden odstavec: zapnuté přepínače
+  slovem (`draft` = `meta_draft: true`, `instagram: <odkaz>` nebo `instagram: -` = `meta_instagram: true` s odkazem /
+  zatím bez něj, `pinterest`, `mockups`; vypnuté nic) a ostatní atributy v pořadí souboru `klíč: hodnota · …`
+  (i `private_*`; prázdné vynechá; seznamy čárkami, mapy `klíč=hodnota; …`, dlouhé texty nad 80 znaků na vlastním
+  řádku). Nikdy se nepíšou jako atribut: `title`, `id`, `date`, `size_cm`, `featured` (v nadpisu), `meta_corners`
+  (jen pro pipeline), samotný `instagram` u `meta_instagram: true` (`WORK_TOLD`) a výchozí `status: not-for-sale`. Pod tím hlášky běhu k dílu jako
+  `` - <značka> `kód` text `` se značkou úrovně (`✗` chyba, `⚠` ke kontrole, `💡` doporučení, `✎` zbývá doplnit,
+  `LEVEL_MARKS`, stejné jako v README rozpracovaných obrazů), bez hlášek jen `✓` (`OK_MARK`); legenda je v hlavičce.
 - „Ostatní“: hlášky jiných souborů (roky, fotky, úvodní stránka) a obecné (štítky, techniky).
 - Píše ho každý běh bez `--only` (i s chybami v popisech a `--prepare-only`, tedy i ve větvi), celý a vždy stejně
   ze stejných dat (git ukáže jen změněné části); plný běh ho na konci přepíše znovu s varováními exportů
@@ -1289,7 +1294,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | velikost dlaždic | v dlaždicích `−` / `+` vedle přepínače: menší (víc sloupců, `?view=tiles&tile=s`) a větší (`&tile=l`), na krajích zašedlé; střední parametr nemá. Obnov stránku bez parametrů: velikost zůstane (paměť `pavla.gallery.tileSize`); `?view=tiles&tile=m` → střední (odkaz má přednost). Na telefonu 4 / 3 / 2 sloupce. Ve velkých obrazech tlačítka nejsou. |
 | dlaždice | `/tvorba/`: vpravo dole ikona „Dlaždice“: malé obrazy bez textů, 36 na stránku, „Na stránku“ nabízí 36 / 72 / 144, v URL `?view=tiles`; z 4. stránky velkých obrazů skočí na 2. stránku dlaždic (stejné první dílo). Zvol 72, přepni na velké obrazy a zpět: každé zobrazení si pamatuje svůj počet. Změň filtr, dlaždice zůstanou. Otevři `/tvorba/` znovu bez parametrů → dlaždice a `?view=tiles` (paměť); `/tvorba/?view=grid` → velké obrazy (odkaz má přednost); „Velké obrazy“ paměť smaže (DevTools → Local Storage → `pavla.gallery.view`). Na šířce telefonu 3 sloupce. |
 | štítky v bublině | `/tvorba/`: najeď myší na obraz se štítky, bublina má řádek `#štítek …` česky podle abecedy. |
-| přehled všech děl | `npm run demo:prepare`, pak `.demo/content/export/README.md`: kolekce, atributy, kódy hlášek (např. `featured-bez-pinu` u Máků) a „Hlášky“ s počty; v náhledu Markdownu (VS Code) hledej kód. |
+| přehled všech děl | `npm run demo:prepare`, pak `.demo/content/export/README.md`: kolekce, nadpisy `### Máky · rw4dh ★ @ 2026-07-02 [ 30 x 30 ]`, přepínače slovem (`instagram: -`), kódy hlášek (např. `featured-bez-pinu` u Máků) a „Hlášky“ s počty; v náhledu Markdownu (VS Code) hledej kód. |
 | filtry | `/tvorba/`: klikej na filtry, sleduj URL; zkopíruj URL do nového okna, musí ukázat totéž. Testovací data mají pro každou kombinaci aspoň jedno dílo. |
 | stránkování | `/tvorba/`: 12 děl a stránky 1, 2, …, 5 (mezera „…“); klikni na 2, v URL `?page=2`, zkopíruj do nového okna. Vyber filtr, vrátí tě na 1. stránku; `?page=99` se opraví na poslední. „Zobrazit vše (58)“: všech 58 děl, v URL `?page=all`; změň filtr, zůstane vše; „Zobrazit po stránkách“ vrátí 1. stránku. „Na stránku“ 24: stránky 1, 2, 3, v URL `?perPage=24`; 48: stránky 1, 2; zpět na 12 parametr zmizí; `?perPage=13` se ignoruje. Paměť: zvol 24, otevři `/tvorba/` znovu bez parametrů (nebo stránku kolekce) → 24 a `?perPage=24` v URL; otevři `/tvorba/?page=2` → 12 na stránku (odkaz má přednost); zvol 12 → paměť se smaže. Smazat ručně: DevTools → Application → Local Storage → `pavla.gallery.perPage`. Menší první hodnota `gallery.pageSizes` (např. `[4, 12]`) ukáže mezery na obou stranách aktuální stránky. |
 | náhledy pro sdílení | `grep -o '<meta property="og:image[^>]*>' dist/tvorba/2026/*/index.html` po `npm run build`; soubory `public/tvorba/*/*/og.jpg` a `public/tvorba/kolekce/*/og.jpg`. Online: po nasazení vlož odkaz do <https://www.opengraph.xyz/> nebo do Facebook Sharing Debuggeru. |
