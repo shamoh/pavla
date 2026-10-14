@@ -69,7 +69,7 @@ export const sizeMark = (size) => (Array.isArray(size) && size.length === 2 && s
 const dayOf = (date) => (date instanceof Date ? date.toISOString().slice(0, 10) : typeof date === 'string' ? date.trim() : '');
 
 /**
- * The heading of a work, Markdown ready: "<title> · <id> ★ @ <date> [ w x h ]" (star only for featured: true, date and
+ * The heading of a work, Markdown ready: "<title> ★ · <id> @ <date> [ w x h ]" (star only for featured: true, date and
  * size only when set; only the title is escaped, the brackets of the size are no link). `fallback`: the title when the
  * work has none.
  */
@@ -77,7 +77,7 @@ export function workHeading(d, id, fallback) {
   const title = escText(typeof d.title === 'string' && d.title.trim() ? d.title.trim() : fallback);
   const day = dayOf(d.date);
   const size = sizeMark(d.size_cm);
-  return `${title}${id ? ` · ${id}` : ''}${d.featured === true ? ' ★' : ''}${day ? ` @ ${day}` : ''}${size ? ` ${size}` : ''}`;
+  return `${title}${d.featured === true ? ' ★' : ''}${id ? ` · ${id}` : ''}${day ? ` @ ${day}` : ''}${size ? ` ${size}` : ''}`;
 }
 
 /** Status of a work that is the default (nothing to tell): left out of the attributes. */

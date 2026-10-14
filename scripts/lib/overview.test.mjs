@@ -32,7 +32,7 @@ const noted = {
 
 test('overviewReadme: collections alphabetically, "Mimo kolekce" last, works newest first, every attribute', () => {
   const text = overviewReadme({ works, collections, uncollected, noted });
-  const order = ['## Plenér', '### Večer · b2c3d @ 2026-07-01', '### Ráno · a1b2c ★ @ 2026-06-14 [ 41 x 30 ]', '## Zima', '## Mimo kolekce', '### Sám · c3d4e @ 2020-01-01', '## Ostatní'];
+  const order = ['## Plenér', '### Večer · b2c3d @ 2026-07-01', '### Ráno ★ · a1b2c @ 2026-06-14 [ 41 x 30 ]', '## Zima', '## Mimo kolekce', '### Sám · c3d4e @ 2020-01-01', '## Ostatní'];
   const at = order.map((h) => text.indexOf(h));
   assert.ok(at.every((i) => i > 0), JSON.stringify(at));
   assert.deepEqual([...at].sort((a, b) => a - b), at);
@@ -95,7 +95,7 @@ test('escText, formatValue and attributeLines: Markdown kept plain, values in on
 test('headingAnchors: like GitHub, repeated headings numbered', () => {
   const anchor = headingAnchors();
   assert.equal(anchor('Plenér Šumava 2026'), 'plenér-šumava-2026');
-  assert.equal(anchor('Ráno · a1b2c ★'), 'ráno--a1b2c-');
+  assert.equal(anchor('Ráno ★ · a1b2c'), 'ráno---a1b2c');
   assert.equal(anchor('Plenér Šumava 2026'), 'plenér-šumava-2026-1');
 });
 
@@ -112,7 +112,7 @@ test('overviewSizeAdvice: only above the limit', () => {
 });
 
 test('workHeading: title, id, star, date and size, each only when set', () => {
-  assert.equal(workHeading({ title: 'Ráno', featured: true, date: '2026-09-27', size_cm: [21, 15] }, 'a1b2c', 'x'), 'Ráno · a1b2c ★ @ 2026-09-27 [ 21 x 15 ]');
+  assert.equal(workHeading({ title: 'Ráno', featured: true, date: '2026-09-27', size_cm: [21, 15] }, 'a1b2c', 'x'), 'Ráno ★ · a1b2c @ 2026-09-27 [ 21 x 15 ]');
   assert.equal(workHeading({ title: 'Ráno', featured: false, date: new Date('2026-09-27T00:00:00Z') }, 'a1b2c', 'x'), 'Ráno · a1b2c @ 2026-09-27');
   assert.equal(workHeading({}, '', 'tvorba/x.yaml'), 'tvorba/x.yaml');
   assert.equal(sizeMark([21, 15]), '[ 21 x 15 ]');
