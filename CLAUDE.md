@@ -251,7 +251,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `src/lib/message-form.ts`, `MessageForm.astro`, `MessagePanel.astro`). Testovací data = vždy náhled, nic neodesílá.
 - Bublina nad obrazem díla (atribut `title`, karty galerie a úvodní obrazy s dílem, ne stránka díla ani vlastní fotka):
   `workTooltip` (`scripts/lib/tooltip.mjs`) přes `workTitle` v `src/lib/site.ts`, všude stejná (název, technika · rozměr · rok,
-  podklad, stav prodeje, řádek štítků `#štítek` česky abecedně, zkrácený popis); jen text, štítky v ní nejsou odkazy.
+  podklad, stav prodeje, zkrácený popis, na konci po prázdném řádku štítky `#štítek` česky abecedně); jen text, štítky
+  v ní nejsou odkazy.
 - Patička nese verzi buildu `vRR.MMDD.HHMM` (pražský čas) s bublinou (datum, commit): `scripts/lib/build-version.mjs`.
 - „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` jen `npm test` + `npm run build`
   + `npm run check:images` (obrázky, úplnost mapy webu `unlistedPages`, unikátní titulky a popisy a platné JSON-LD

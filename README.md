@@ -412,9 +412,10 @@ Jez na Otavě                       (u úvodního detailu: „Jez na Otavě, det
 akvarel · 41 × 30 cm · 2025
 papír Canson XL Aquarelle (300 g)  (support, jen když je vyplněný)
 K prodeji                          (jen K prodeji / Rezervováno / V soukromé sbírce)
-#krajina #mlha #voda               (štítky česky podle abecedy, jen když nějaké má)
 
 Popis díla, zkrácený na 240 znaků po celém slově.
+
+#krajina #mlha #voda               (štítky česky podle abecedy, jen když nějaké má)
 ```
 
 Chybějící údaje se vynechají. Vlastní úvodní fotka (`_cover.jpg`, `roky/<rok>.jpg`) bublinu nemá, stránka díla

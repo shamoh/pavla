@@ -33,11 +33,16 @@ test('workTooltip shortens a long description after a whole word', () => {
   assert.match(description, /slovo…$/);
 });
 
-test('workTooltip ends the head with the tags in Czech alphabetical order, none without tags', () => {
+test('workTooltip ends with the tags in Czech alphabetical order after an empty line, none without tags', () => {
   assert.equal(
-    workTooltip({ ...work, description: '', tags: ['řeka', 'mlha', 'čáp', ' ', 'mlha'] }, labels),
-    'Jez na Otavě\nakvarel · 41 × 30 cm · 2025\npapír Canson XL Aquarelle (300 g)\nK prodeji\n#čáp #mlha #řeka',
+    workTooltip({ ...work, tags: ['řeka', 'mlha', 'čáp', ' ', 'mlha'] }, labels),
+    'Jez na Otavě\nakvarel · 41 × 30 cm · 2025\npapír Canson XL Aquarelle (300 g)\nK prodeji\n\nRáno u jezu, mlha nad vodou.\n\n#čáp #mlha #řeka',
   );
-  assert.match(workTooltip({ ...work, tags: ['les'] }, labels), /\nK prodeji\n#les\n\nRáno u jezu/);
+  assert.equal(
+    workTooltip({ ...work, description: '', tags: ['les'] }, labels),
+    'Jez na Otavě\nakvarel · 41 × 30 cm · 2025\npapír Canson XL Aquarelle (300 g)\nK prodeji\n\n#les',
+    'without a description one empty line only',
+  );
   assert.doesNotMatch(workTooltip({ ...work, tags: [] }, labels), /#/);
+  assert.doesNotMatch(workTooltip({ ...work, tags: [] }, labels), /\n\n$/, 'no empty line at the end');
 });

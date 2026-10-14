@@ -4,9 +4,11 @@
 //   <technique> · <size> · <year>
 //   <support>
 //   <status>                       (only for sale, reserved, sold or given away)
-//   #<tag> #<tag> …                 (its tags, Czech alphabetical order; only when it has any)
 //
 //   <description, shortened>
+//
+//   #<tag> #<tag> …                 (its tags, Czech alphabetical order; only when it has any)
+// Missing parts are left out, with their empty line.
 
 import { summarize } from './seo.mjs';
 import { formatSizeCm } from './works.mjs';
@@ -28,6 +30,6 @@ export function workTooltip(work, statusLabel, { detail } = {}) {
   const status = SHOWN_STATUSES.has(work.status) ? statusLabel[work.status] : '';
   const description = summarize(work.description, TOOLTIP_DESCRIPTION_MAX);
   const tags = sortTags(Array.isArray(work.tags) ? work.tags.map((t) => String(t).trim()) : []).map((t) => `#${t}`).join(' ');
-  const head = [heading, facts, work.support?.trim(), status, tags].filter(Boolean).join('\n');
-  return description ? `${head}\n\n${description}` : head;
+  const head = [heading, facts, work.support?.trim(), status].filter(Boolean).join('\n');
+  return [head, description, tags].filter(Boolean).join('\n\n');
 }
