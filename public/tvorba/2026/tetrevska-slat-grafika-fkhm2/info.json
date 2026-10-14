@@ -22,12 +22,14 @@
   ],
   "og": {
     "width": 1200,
-    "height": 800
+    "height": 800,
+    "file": "og-be9ba531.jpg"
   },
   "pin": {
     "width": 1000,
     "height": 1500,
-    "bytes": 190621
+    "bytes": 190621,
+    "file": "pin-268d41cd.jpg"
   },
-  "fingerprint": "ecebaaeb57084e1f"
+  "fingerprint": "840635e525dfaafe"
 }

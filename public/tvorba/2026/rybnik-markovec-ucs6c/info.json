@@ -63,13 +63,15 @@
   ],
   "og": {
     "width": 1200,
-    "height": 800
+    "height": 800,
+    "file": "og-df5b71a8.jpg"
   },
   "pin": {
     "width": 1000,
     "height": 1500,
     "bytes": 189117,
+    "file": "pin-3a54a876.jpg",
     "feed": true
   },
-  "fingerprint": "f3850b9c5fa0758a"
+  "fingerprint": "cb2c83c3b013e571"
 }
