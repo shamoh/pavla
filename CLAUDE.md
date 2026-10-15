@@ -23,6 +23,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `_index.yaml` = popis místa, kde leží (kořen = úvodní stránka, složka kolekce = kolekce), `_cover.<ext>` = jeho
   vlastní úvodní fotka. Stará jména (`RETIRED_NAMES`: `_kolekce.yaml`, `_uvod.*`, `uvod.yaml`, `uvod.*`) = chyba,
   žádná migrace a vedle nich se nezakládá kostra. Složky a jména děl zůstávají česky (`tvorba/`, `roky/`, `fotky/`).
+- Jména souborů a složek v `tvorba/`, `fotky/`, `roky/` musí být svou adresou (`slugify(jméno) === jméno`; přípona malými
+  písmeny v jedné podobě `EXTENSION_SPELLING`, `.jpg` ne `.jpeg`, i u `_cover.*` včetně kořene; výjimky `_index.yaml`, `_cover`, skryté a staré systémové): `fileNameProblems` (`scripts/lib/file-names.mjs`) na začátku
+  `run`, chyba `[neplatne-jmeno]` s návrhem jména zastaví běh dřív, než se cokoli zapíše (i `--prepare-only`).
 - `npm run images` (`scripts/process-images.mjs`) z něj generuje `content/` = zrcadlo obsahového repa (stejné složky
   a jména, jen veřejné atributy, `scripts/lib/site-content.mjs`, needitovat; plný běh smaže vše, co nezapsal)
   a obrázky v `public/` ve složce své stránky (= adresa, `scripts/lib/site-images.mjs`): dílo
@@ -105,10 +108,10 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
 - Filtry galerie (`scripts/lib/gallery-filter.mjs`): všechny se kombinují a každá změna se hned zapisuje do URL,
   aby šel odkaz poslat dál. Platí vždy, i pro každý nový filtr a pro stránku (`page`, i `page=all`).
+  Odkazy na galerii s jedním filtrem (štítky a technika na stránce díla) jen přes `galleryFilterPath`.
   Štítky: víc najednou „a zároveň“ (`state.tag` = pole, `?tag=a&tag=b`, `sortTags`/`toggleTag`), aktivní jsou jen čipy,
   které zobrazená díla zúží a nevyprázdní (`tagChoices`), vybrané vždy, ostatní zašedlé na místě; GA `tag` = spojené čárkou.
   Kolekce je combobox (`src/lib/combobox.ts` nad skrytým `<select>`, který zůstává jediným stavem; kolekce podle abecedy `czechOrder` (i Technika), smazaný text = „vše“ (nápověda, Enter ji vybere), psaní zužuje podle
-  Odkazy na galerii s jedním filtrem (štítky a technika na stránce díla) jen přes `galleryFilterPath`.
   `comboMatches`, nikdy do URL). Kolekce má za „vše“ volbu „žádná“ (`NO_COLLECTION` = `?collection=none`, díla bez kolekce; čip v liště z `data-chip`),
   přehled kolekcí končí položkou „Mimo kolekce“ (`NO_COLLECTION_TITLE`, `getUncollected`); slug `none` pipeline odmítne.
   Její text (`description`, prázdný = `UNCOLLECTED_TEXT`) a úvodní obraz: `tvorba/_index.yaml` + `tvorba/_cover.jpg` obsahového repa (`UNCOLLECTED_SCHEMA`, `scripts/lib/uncollected.mjs`,

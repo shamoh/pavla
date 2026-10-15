@@ -25,7 +25,7 @@ export const CODES = {
   'chybi-fotka': { level: 'error', text: 'popis fotky bez fotky' },
   'fotka-roku-bez-del': { level: 'error', text: 'úvodní fotka roku, ve kterém nejsou díla' },
   'cizi-soubor': { level: 'error', text: 'soubor, který do složky nepatří' },
-  'neplatne-jmeno': { level: 'error', text: 'jméno souboru nejde použít v adrese' },
+  'neplatne-jmeno': { level: 'error', text: 'jméno souboru nebo složky není ve tvaru pro web (malá písmena bez diakritiky, číslice, pomlčky)' },
   'neplatne-id': { level: 'error', text: 'neplatný kód díla (id)' },
   'duplicitni-id': { level: 'error', text: 'dva obrazy se stejným kódem (id)' },
   'chybi-nazev': { level: 'error', text: 'chybí název (title)' },

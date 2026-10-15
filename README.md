@@ -31,10 +31,20 @@ nikdy nejdou.
                                             jen díla na prodej
 
 Systémové soubory obsahu mají všude stejná dvě jména: `_index.yaml` popisuje místo, kde leží (v kořeni úvodní
-stránku, ve složce kolekce kolekci, přímo v `tvorba/` díla mimo kolekce), `_cover.<jpg|jpeg|png|webp>` je jeho vlastní úvodní fotka. Podtržítko je odliší
+stránku, ve složce kolekce kolekci, přímo v `tvorba/` díla mimo kolekce), `_cover.<jpg|png|webp>` je jeho vlastní úvodní fotka. Podtržítko je odliší
 od děl (jméno díla jím začínat nemůže). Složky (`tvorba/`, `roky/`, `fotky/`) a jména děl zůstávají česky.
 Stará jména (`_kolekce.yaml`, `_uvod.jpg`, `uvod.yaml`, `uvod.jpg`) pipeline odmítne chybou „tento soubor se teď
 jmenuje …, přejmenuj ho“ a vedle nich nezaloží kostru, takže se nic neztratí; soubory se přejmenují ručně.
+
+Jména všech ostatních souborů a složek v `tvorba/`, `fotky/` a `roky/` (i kolekcí a složek detailních fotek) musí
+už být svou adresou pro web: jen malá písmena bez diakritiky, číslice a pomlčky uvnitř, tedy `slugify(jméno) === jméno`
+(přípona zvlášť). Jinak by fotka, její popis a adresa měly různá jména (`Instagram_surf.jpg` by dostala
+`instagram-surf.yaml`). Kontroluje to `scripts/lib/file-names.mjs` (`fileNameProblems`) na začátku každého běhu
+(i `--prepare-only`), dřív než cokoli zapíše: špatné jméno (mezera, podtržítko, čárka, velké písmeno, diakritika,
+neviditelný znak, dvě pomlčky, pomlčka na kraji) = chyba `[neplatne-jmeno]` s návrhem nového jména a běh hned skončí.
+Výjimky: systémové `_index.yaml` a `_cover.<přípona>`, skryté soubory (`.DS_Store`, `.gitkeep`) a stará systémová
+jména (hlásí je jejich vlastní kontrola). Přípona jen malými písmeny a v jedné podobě (`EXTENSION_SPELLING`:
+`.jpg`, nikdy `.jpeg`); to platí i pro `_cover.<přípona>` (i v kořeni), návrh je pak `_cover.jpg`.
 
 pavla/                                      (toto repo, veřejné)
   demo-content/                             testovací data: vymyšlené obsahové repo (stejná struktura jako
@@ -853,8 +863,8 @@ tvorba/2026-plener-sumava/rano-u-rybnika/2-rakos.jpg detail 2
 ```
 
 - Název složky = název yaml díla (bez `.yaml`). Složka bez díla je chyba.
-- Ve složce smí být jen fotky (`jpg`, `jpeg`, `png`, `tif`, `webp`). Soubory
-  začínající tečkou nebo `_` se ignorují.
+- Ve složce smí být jen fotky (`jpg`, `png`, `tif`, `webp`; `.jpeg` a velká písmena odmítne kontrola jmen). Soubory
+  začínající tečkou se ignorují, jméno s `_` je chyba `[neplatne-jmeno]`.
 - **Pořadí** určuje název souboru (abecedně), proto číslo na začátku.
 - Z názvu souboru vznikne jméno detailu (`1 Mlha.jpg` → `1-mlha`). Dvě fotky se
   stejným jménem jsou chyba.
@@ -1273,7 +1283,7 @@ používají tyto názvy; dokud fotka neexistuje, na stránce prostě chybí:
 Kontakt ukazuje z `site.config.yaml` e-mail (`site.email`), Instagram (`site.instagram`), obchůdek na Fleru
 (`site.fler`) a místo, kde autorka žije a maluje (`site.location`, „Žiji a maluji“); prázdná hodnota = položka chybí.
 
-Přípona může být i `.jpeg`, `.png` apod. Další fotku lze na libovolnou stránku
+Přípona může být i `.png` apod. (ne `.jpeg`, viz kontrola jmen). Další fotku lze na libovolnou stránku
 přidat komponentou `<Photo name="…" />`.
 
 ## Ikona webu (favicon)

@@ -175,6 +175,23 @@ test('a new image without metadata becomes a draft that never leaves the content
   assert.equal(await exists(path.join(siteDir, 'public/tvorba')), false);
 });
 
+test('a bad file name stops the run before anything is written, also --prepare-only', async () => {
+  await addWork('2026', 'Ráno_u rybníka', undefined);
+  for (const prepareOnly of [false, true]) {
+    const r = await run(opts({ prepareOnly }));
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.problems.map((p) => p.slice(0, p.indexOf(': '))), ['tvorba/Ráno_u rybníka.jpg']);
+    assert.match(r.problems[0], /na „rano-u-rybnika\.jpg“.*\[neplatne-jmeno\]$/);
+    assert.deepEqual(r.created, []);
+    assert.deepEqual(await fs.readdir(path.join(contentDir, 'tvorba')), ['Ráno_u rybníka.jpg']);
+    assert.equal(await exists(path.join(contentDir, 'export')), false);
+  }
+  await fs.rename(path.join(contentDir, 'tvorba/Ráno_u rybníka.jpg'), path.join(contentDir, 'tvorba/rano-u-rybnika.jpg'));
+  const fixed = await run(opts({ prepareOnly: true }));
+  assert.equal(fixed.ok, true);
+  assert.ok(fixed.created.includes('tvorba/rano-u-rybnika.yaml'));
+});
+
 test('a draft gets no outputs; turning a published work back into a draft removes them all', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
   await addWork('2026', 'skica', 'title: Skica\ndate: 2026-06-20\nmeta_draft: true\nmeta_instagram: true\nstatus: available\nprice: 900\n');
@@ -465,7 +482,7 @@ async function addDetail(year, slug, file, color = '#aa6644') {
 test('details: detail photos get web sizes and are listed in info.json in file name order', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n');
   await addDetail('2026', 'rano', '2-lodka.jpg');
-  await addDetail('2026', 'rano', '1 Květ.jpg');
+  await addDetail('2026', 'rano', '1-kvet.jpg');
   assert.equal((await run(opts())).ok, true);
   const info = await infoOf('2026', 'rano');
   assert.deepEqual(info.details.map((d) => d.name), ['1-kvet', '2-lodka']);
@@ -530,14 +547,14 @@ async function addCover(coll) {
 
 test('collections: a folder in tvorba/ is a collection, gets a skeleton titled after it and a public copy', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: '2026-plener-sumava' });
-  await addWork('2025', 'kvet', 'title: Květ\ndate: 2025-05-01\n', { collection: '2025 Jaro na zahradě' });
+  await addWork('2025', 'kvet', 'title: Květ\ndate: 2025-05-01\n', { collection: '2025-jaro-na-zahrade' });
   await addWork('2026', 'sam', 'title: Sám\ndate: 2026-01-01\n');
   const r = await run(opts());
   assert.equal(r.ok, true, r.problems.join('\n'));
   assert.ok(r.created.includes('tvorba/2026-plener-sumava/_index.yaml'));
   // a leading year moves to the end of the title, the slug comes from the folder name
   assert.equal(YAML.parse(await fs.readFile(collFile('2026-plener-sumava', '_index.yaml'), 'utf8')).title, 'Plener sumava 2026');
-  assert.equal(YAML.parse(await fs.readFile(collFile('2025 Jaro na zahradě', '_index.yaml'), 'utf8')).title, 'Jaro na zahradě 2025');
+  assert.equal(YAML.parse(await fs.readFile(collFile('2025-jaro-na-zahrade', '_index.yaml'), 'utf8')).title, 'Jaro na zahrade 2025');
   // the public copy of a collection: _index.yaml in a folder named by its slug
   assert.ok(await exists(path.join(siteDir, 'content/tvorba/2025-jaro-na-zahrade/_index.yaml')));
   // a work lies in the folder of its collection, as in the content repository; no collection attribute
@@ -635,7 +652,8 @@ test('collections: collection:, a missing title, nested collections, clashing na
   await fs.rm(path.join(contentDir, 'tvorba/plener/podkolekce'), { recursive: true });
 
   await setCollection('Plenér', 'title: Druhý plenér\n');
-  assert.match(await problemsOf(), /dává stejnou adresu na webu „plener“/);
+  // a second folder with the same web address cannot get that far: its name is checked first
+  assert.match(await problemsOf(), /tvorba\/Plenér\/: přejmenuj složku na „plener“.*\[neplatne-jmeno\]/);
   await fs.rm(path.join(contentDir, 'tvorba/Plenér'), { recursive: true });
 
   await fs.mkdir(path.join(contentDir, 'kolekce'));
@@ -851,7 +869,7 @@ test('photos: focus goes to the public copy, an invalid focus stops the run', as
 
 test('collections: cover can be a detail photo of a work; aspect and focus reach the public copy', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n', { collection: 'plener' });
-  await addDetail('2026', 'rano', '1 Květy.jpg');
+  await addDetail('2026', 'rano', '1-kvety.jpg');
   await run(opts());
   const id = await idOf('2026', 'rano');
   await setCollection('plener', `title: Plenér\ncover: ${id}#1-kvety\naspect: "2:1"\nfocus: [30, 70]\n`);

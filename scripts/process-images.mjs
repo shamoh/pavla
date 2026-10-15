@@ -78,6 +78,7 @@ import {
 } from './lib/instagram.mjs';
 import { PIN_DEFAULTS, withParams } from './lib/pinterest.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
+import { fileNameProblems } from './lib/file-names.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
 import { PREVIEW_KINDS, cornersYaml, cutOut, masterSize, prepareCorners, previewBuffers, shrinkPreview, trimTransparent, writePreviewFiles } from './lib/corners.mjs';
 import { EDGE_DEFAULTS, cutsSheet, edgeLook, innerRegion } from './lib/edges.mjs';
@@ -461,6 +462,12 @@ export async function run({
   contentDir = path.resolve(siteDir, contentDir);
   if (!(await exists(path.join(contentDir, 'tvorba')))) {
     throw new Error(`Obsah nenalezen: ${path.join(contentDir, 'tvorba')} (zkontroluj CONTENT_DIR v .env)`);
+  }
+
+  // Bad names of files and folders stop the run before anything is written (a skeleton would get another name).
+  const nameProblems = await fileNameProblems(contentDir);
+  if (nameProblems.length) {
+    return { ok: false, problems: nameProblems, created: [], assigned: [], detected: [], updated: [], pending: [], advice: [], todo: [], tags: tagStats([]), processed: 0, skipped: 0, missing: [], pruned: [], previews: [], prepared: prepareOnly, commentedOut: [] };
   }
 
   const { works, collectionFolders, created, assigned, updated, pending, problems: scanProblems } = await prepareContent(contentDir, { today, random });
