@@ -1,19 +1,28 @@
 ---
 import Base from '../layouts/Base.astro';
-import WorkCard from '../components/WorkCard.astro';
+import WorkGrid from '../components/WorkGrid.astro';
+import ViewSwitch from '../components/ViewSwitch.astro';
 import Cover from '../components/Cover.astro';
-import { coverShareImage, coverWorkId, getHome, getWorks, photoImageUrl, site, url } from '../lib/site';
+import { config, coverShareImage, coverWorkId, getHome, getWorks, photoImageUrl, site, url } from '../lib/site';
 import { graphLd, personLd, websiteLd } from '../../scripts/lib/seo.mjs';
 import { hiddenInList } from '../../scripts/lib/random-pick.mjs';
+import { HOME_START, homeMost, homeRecent, homeScript, homeSetup } from '../../scripts/lib/home-view.mjs';
 
-const RECENT = 6;
 const works = getWorks();
 // Text and cover from _index.yaml in the root of the content repository (content/_index.yaml): its own photo, `cover`, or one of the
 // newest works of the author's selection at random per visit.
 const home = getHome();
-// "Nejnovější" below: the newest works except the one on the cover; one more is rendered for when the cover is one of them.
-const recent = works.slice(0, RECENT + 1);
-const recentHidden = hiddenInList(recent.map((w) => w.id), coverWorkId(home.cover), RECENT);
+// "Nejnovější" below: the newest works except the one on the cover, as many as the view shows (scripts/lib/home-view.mjs,
+// counts in site.config.yaml home.recent). The HTML is the default view on a wide screen (medium tiles); as many works
+// as the largest view are rendered, one more for when the cover is one of them; hidden cards load no images. The inline
+// script right after the grid (homeScript) switches to a linked or remembered view, the count of the screen (phone, tablet) and columns
+// of about the same height before the page is painted.
+const start = HOME_START;
+const counts = homeRecent(config.home?.recent);
+const RECENT = counts.wide[start.tile];
+const recent = works.slice(0, homeMost(counts) + 1);
+const coverId = coverWorkId(home.cover);
+const recentHidden = hiddenInList(recent.map((w) => w.id), coverId, RECENT);
 // For search engines: the site and its author (with her portrait and her profiles elsewhere).
 const jsonLd = graphLd(websiteLd(site), personLd(site, { image: photoImageUrl('portret') ?? undefined }));
 ---
@@ -42,20 +51,75 @@ const jsonLd = graphLd(websiteLd(site), personLd(site, { image: photoImageUrl('p
     <section>
       <div class="section-head">
         <h2>Nejnovější</h2>
+        <ViewSwitch {...start} />
         <a href={url('/tvorba')}>Celá tvorba →</a>
       </div>
-      <div class="grid" id="recent">{recent.map((w, i) => <WorkCard work={w} hidden={recentHidden[i]} />)}</div>
+      <WorkGrid works={recent} {...start} hidden={recentHidden} id="recent" data-view={JSON.stringify(homeSetup(counts, coverId))} />
+      <script is:inline set:html={homeScript} />
     </section>
   )}
 </Base>
+<script>
+  // The switch of "Nejnovější": the inline script after the grid (homeScript in scripts/lib/home-view.mjs) has already
+  // shown the linked or remembered view; here a click switches the view or the tile size, remembers it apart from the
+  // gallery, writes it to the address (only when not the default) and lays the columns out again; so does a change
+  // of the window width (columns, the screen with its own count).
+  import { homeRemember, homeScreen, homeSearch, layoutHome } from '../../scripts/lib/home-view.mjs';
+  import { stepTileSize } from '../../scripts/lib/gallery-filter.mjs';
+  import { EVENTS, trackEvent, viewEventParams } from '../../scripts/lib/analytics.mjs';
+
+  type ViewState = { view: string; tile: string };
+  const grid = document.getElementById('recent') as (HTMLElement & { viewSetup: any; viewState: ViewState }) | null;
+  if (grid?.viewSetup) {
+    const setup = grid.viewSetup;
+    const screen = () => homeScreen(setup, (query: string) => matchMedia(query).matches);
+    const layout = () => layoutHome(grid, setup, grid.viewState, screen());
+    const pick = (state: ViewState) => {
+      grid.viewState = state;
+      const remember = homeRemember(state, setup);
+      for (const [key, value] of [[setup.keys.view, remember.view], [setup.keys.tile, remember.tile]]) {
+        try { value === null ? localStorage.removeItem(key) : localStorage.setItem(key, value); } catch { /* ignore */ }
+      }
+      layout();
+      history.replaceState(history.state, '', location.pathname + homeSearch(location.search, state, setup) + location.hash);
+      trackEvent(EVENTS.view, viewEventParams('home', state));
+    };
+    for (const b of document.querySelectorAll<HTMLButtonElement>('#view button[data-view]')) {
+      b.addEventListener('click', () => {
+        if (b.dataset.view !== grid.viewState.view) pick({ ...grid.viewState, view: b.dataset.view! });
+      });
+    }
+    for (const b of document.querySelectorAll<HTMLButtonElement>('#tile-size button[data-tile-step]')) {
+      b.addEventListener('click', () => {
+        const tile = stepTileSize(grid.viewState.tile, Number(b.dataset.tileStep));
+        if (tile !== grid.viewState.tile) pick({ ...grid.viewState, tile });
+      });
+    }
+    // Another width: other columns, maybe another screen (phone, tablet, wide) with its own count.
+    let width = grid.clientWidth;
+    let queued = false;
+    addEventListener('resize', () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        if (grid.clientWidth === width) return;
+        width = grid.clientWidth;
+        layout();
+      });
+    });
+    // The titles under big pictures may wrap differently once the web fonts are in.
+    document.fonts?.ready.then(() => { if (grid.viewState.view === 'grid') layout(); });
+  }
+</script>
 <style>
   .hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: clamp(24px, 5vw, 72px); align-items: center; margin-bottom: 96px; }
   .hero-text h1 { margin-top: 0.1em; }
   .desc { white-space: pre-line; }
   .hero-text .btn { margin-top: 12px; }
-  .section-head { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: 24px; margin-bottom: 28px; }
-  .section-head h2 { margin: 0; }
-  .grid { columns: 3 300px; column-gap: 36px; }
+  .section-head { display: flex; align-items: baseline; gap: 12px 20px; border-top: 1px solid var(--line); padding-top: 24px; margin-bottom: 28px; }
+  .section-head h2 { margin: 0 auto 0 0; }
+  .section-head :global(.views) { align-self: center; }
   .empty { max-width: 36rem; padding: 48px 0 96px; }
   .empty p:not(.eyebrow):not(.muted) { font-family: var(--serif); font-size: 1.8rem; margin: 0.2em 0; }
   @media (max-width: 900px) { .hero { grid-template-columns: 1fr; margin-bottom: 64px; } }

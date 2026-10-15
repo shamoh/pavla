@@ -143,9 +143,18 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   přednost) a může stránkování jednorázově vypnout („Zobrazit vše“, `?page=all`, nepamatuje se).
   Zobrazení galerie (`VIEWS` v `gallery-filter.mjs`): velké obrazy (výchozí) nebo dlaždice (`?view=tiles`, malé obrazy bez
   textů, `sizes` přepsané skriptem), přepínač vedle „Na stránku“ (`Pager.astro` `views`); chová se jako `perPage`
-  (v URL jen nevýchozí, paměť `pavla.gallery.view`, odkaz s `view`/`page`/`perPage` má přednost); jen výpisy děl, ne
+  (v URL jen nevýchozí, paměť `pavla.gallery.view`, odkaz s `view`/`tile`/`page`/`perPage` má přednost); jen výpisy děl, ne
   přehled kolekcí. Dlaždice mají vlastní počty `gallery.tilePageSizes` a paměť `pavla.gallery.tilesPerPage`
   (`viewPageSizes`, `pageSizeStorageKey`); přepnutí = `withView` (počet nového zobrazení, stránka s prvním zobrazeným dílem).
+  Mřížka karet `WorkGrid.astro` (CSS zobrazení), přepínač `ViewSwitch.astro`, `sizes` obrázků `viewImageSizes`; v prohlížeči
+  `scripts/lib/view-layout.mjs`: `viewOf` (odkaz, pak paměť), `showViewOf`, sloupce stejné výšky `balanceGrid` (`div.col`
+  v `.grid.balanced`, pořadí karet `gridCards`) po každé změně zobrazených děl a šířky; zapamatované zobrazení před vykreslením
+  vložený skript `viewScript` za mřížkou (funkce zkopírované jako text = bez importů a uzávěrů, všechny vkládané funkce i úvodní stránky
+  jen ve `view-layout.mjs`: dev server přepisuje volání importovaných funkcí a kopie ve stránce by spadla).
+  Úvodní stránka „Nejnovější“: stejná zobrazení bez stránkování, výchozí střední dlaždice (`scripts/lib/home-view.mjs`, `HOME_DEFAULT_VIEW`),
+  počet děl podle zobrazení v `site.config.yaml` `home.recent` (`wide` / `tablet` do 1100 px / `phone` do 640 px, `homeRecent`, `HOME_SCREENS`; = stejná výška), v URL jen jiné
+  než výchozí (`?view=grid`, `?tile=s`, ostatní parametry zůstanou), vlastní paměť `pavla.home.view` / `pavla.home.tileSize`, nikdy dílo
+  z úvodního obrazu; sloupce stejné výšky. Vše před vykreslením vložený skript `homeScript` za mřížkou. Přepnutí zobrazení = událost GA `view_change`.
   Velikost dlaždic `TILE_SIZES` s/m/l (`TILE_WIDTHS`, třídy `tiles-<velikost>`, tlačítka −/+ v `Pager.astro`): `?tile=` jen s
   `view=tiles` a nevýchozí, paměť `pavla.gallery.tileSize`, odkaz má přednost.
 - **Atributy popisů (dílo, kolekce, fotka) jsou jen v `scripts/lib/schema.mjs`**: pořadí, výchozí hodnota kostry,
@@ -244,7 +253,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   + do `STATIC_PAGES` (mapa webu). `robots.txt` a 404 (`noindex`) generuje web; ověřovací kódy `site.verification`.
 - Návštěvnost: Google Analytics 4 (`analytics.googleMeasurementId` v `site.config.yaml`, `scripts/lib/analytics.mjs`,
   značka v `Base.astro`), jen produkční build skutečného webu, nikdy dev ani testovací data; URL i s parametry filtrů.
-  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `share`, `email_click`, `message_sent`); nový parametr události = zapsat do README
+  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `share`, `email_click`, `message_sent`, `palette_change`, `view_change`); nový parametr události = zapsat do README
   (tabulka událostí + seznam vlastních dimenzí k registraci v GA).
 - Zprávy od návštěvníků: Web3Forms (`messages.accessKey` v `site.config.yaml`, jedna adresa, předmět `[pavla-web] <typ>: …`),
   formulář na Kontaktu a panel „Napište mi“ na ostatních stránkách (`scripts/lib/messages.mjs`, `message-draft.mjs`,

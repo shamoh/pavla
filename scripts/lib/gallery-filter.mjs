@@ -229,9 +229,7 @@ export function stateToParams(state) {
     else if (state[key]) params.set(key, state[key]);
   }
   pagingToParams(params, state);
-  if (state.view && state.view !== DEFAULT_VIEW) params.set('view', state.view);
-  if (state.view === 'tiles' && state.tile && state.tile !== DEFAULT_TILE_SIZE) params.set('tile', state.tile);
-  return params;
+  return viewToParams(params, state);
 }
 
 /** Page size in effect: the visitor's pick, otherwise the default (first offered size). */
@@ -300,21 +298,21 @@ export const DEFAULT_VIEW = VIEWS[0];
 /** localStorage key of the view a visitor picked. */
 export const VIEW_STORAGE_KEY = 'pavla.gallery.view';
 
-/** The view from URL search params: an offered one, otherwise the default. */
-export const viewFromParams = (params) => (VIEWS.includes(params.get('view')) ? params.get('view') : DEFAULT_VIEW);
+// Every function taking `defaultView` serves the gallery (big pictures by default) and the home page (tiles by default,
+// scripts/lib/home-view.mjs) alike.
 
-/**
- * View remembered from an earlier visit that should apply now, or null: a link with `view`, `page` or `perPage` decides
- * (each view has its own page sizes, so page 2 of a link must stay the view it was sent from); `stored` is the raw
- * value from storage, only an offered, non-default view applies.
- */
-export function rememberedView(params, stored) {
-  if (params.has('view') || params.has('page') || params.has('perPage')) return null;
-  return VIEWS.includes(stored) && stored !== DEFAULT_VIEW ? stored : null;
-}
+/** The view from URL search params: an offered one, otherwise the default. */
+export const viewFromParams = (params, defaultView = DEFAULT_VIEW) => (VIEWS.includes(params.get('view')) ? params.get('view') : defaultView);
 
 /** Value to remember after the visitor picks `view`: null (forget) for the default view. */
-export const viewToRemember = (view) => (VIEWS.includes(view) && view !== DEFAULT_VIEW ? view : null);
+export const viewToRemember = (view, defaultView = DEFAULT_VIEW) => (VIEWS.includes(view) && view !== defaultView ? view : null);
+
+/** Writes the view (only when not the default) and the tile size (only with tiles, not the default) to URL search `params`. */
+export function viewToParams(params, { view, tile }, defaultView = DEFAULT_VIEW) {
+  if (view && view !== defaultView) params.set('view', view);
+  if (view === 'tiles' && tile && tile !== DEFAULT_TILE_SIZE) params.set('tile', tile);
+  return params;
+}
 
 /** Page sizes of the tiles view; the first one is the default (site.config.yaml gallery.tilePageSizes). */
 export const DEFAULT_TILE_PAGE_SIZES = [36, 72, 144];
@@ -352,17 +350,24 @@ export const DEFAULT_TILE_SIZE = 'm';
 /** Width of a tile column in px by size (the `sizes` of the pictures follow it). */
 export const TILE_WIDTHS = { s: 110, m: 150, l: 210 };
 
+/** Columns of each tile size on a phone (the same as in the CSS of WorkGrid.astro). */
+export const TILE_PHONE_COLUMNS = { s: 4, m: 3, l: 2 };
+
+/** `sizes` of the pictures of a work card with big pictures (WorkCard.astro). */
+export const CARD_IMAGE_SIZES = '(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 33vw';
+
+/** `sizes` of the pictures in `view` with `tile` size: tiles are narrow, so the browser picks smaller files. */
+export function viewImageSizes(view, tile = DEFAULT_TILE_SIZE) {
+  if (view !== 'tiles') return CARD_IMAGE_SIZES;
+  const t = TILE_SIZES.includes(tile) ? tile : DEFAULT_TILE_SIZE;
+  return `(max-width: 640px) ${Math.ceil(100 / TILE_PHONE_COLUMNS[t])}vw, ${Math.round(TILE_WIDTHS[t] * 1.2)}px`;
+}
+
 /** localStorage key of the tile size a visitor picked. */
 export const TILE_SIZE_STORAGE_KEY = 'pavla.gallery.tileSize';
 
 /** The tile size from URL search params: an offered one, otherwise the default. */
 export const tileSizeFromParams = (params) => (TILE_SIZES.includes(params.get('tile')) ? params.get('tile') : DEFAULT_TILE_SIZE);
-
-/** Tile size remembered from an earlier visit, or null: a link with `tile` decides; only an offered, non-default size. */
-export function rememberedTileSize(params, stored) {
-  if (params.has('tile')) return null;
-  return TILE_SIZES.includes(stored) && stored !== DEFAULT_TILE_SIZE ? stored : null;
-}
 
 /** Value to remember after the visitor picks `size`: null (forget) for the default size. */
 export const tileSizeToRemember = (size) => (TILE_SIZES.includes(size) && size !== DEFAULT_TILE_SIZE ? size : null);

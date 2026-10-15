@@ -1,0 +1,36 @@
+---
+// The switch of the view of works (big pictures / tiles, #view) with "smaller / larger tiles" (#tile-size, shown only
+// with tiles): under the gallery (Pager.astro with `views`) and in the head of "Nejnovější" on the home page. The page
+// script keeps it in step (showViewOf in scripts/lib/view-layout.mjs: aria-pressed, disabled at either end).
+// `view`, `tile`: the view the page starts with.
+import { DEFAULT_TILE_SIZE, DEFAULT_VIEW, stepTileSize } from '../../scripts/lib/gallery-filter.mjs';
+
+interface Props { view?: string; tile?: string }
+const { view = DEFAULT_VIEW, tile = DEFAULT_TILE_SIZE } = Astro.props;
+---
+<div class="views" id="view" role="group" aria-label="Zobrazení">
+  <button type="button" data-view="grid" title="Velké obrazy" aria-label="Velké obrazy" aria-pressed={String(view === 'grid')}>
+    <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" /><rect x="9" y="1" width="6" height="6" /><rect x="1" y="9" width="6" height="6" /><rect x="9" y="9" width="6" height="6" /></svg>
+  </button>
+  <button type="button" data-view="tiles" title="Dlaždice" aria-label="Dlaždice" aria-pressed={String(view === 'tiles')}>
+    <svg viewBox="0 0 16 16" aria-hidden="true">{[1, 6, 11].flatMap((y) => [1, 6, 11].map((x) => <rect x={x} y={y} width="4" height="4" />))}</svg>
+  </button>
+  <span class="tile-size" id="tile-size" hidden={view !== 'tiles'}>
+    <button type="button" data-tile-step="-1" title="Menší dlaždice" aria-label="Menší dlaždice" disabled={stepTileSize(tile, -1) === tile}>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="7" width="12" height="2" /></svg>
+    </button>
+    <button type="button" data-tile-step="1" title="Větší dlaždice" aria-label="Větší dlaždice" disabled={stepTileSize(tile, 1) === tile}>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="7" width="12" height="2" /><rect x="7" y="2" width="2" height="12" /></svg>
+    </button>
+  </span>
+</div>
+<style>
+  .views { display: flex; gap: 4px; }
+  .views button { display: flex; padding: 5px; color: var(--ink-soft); background: none; border: 1px solid transparent; border-radius: 2px; cursor: pointer; }
+  .views button:hover { color: var(--ink); }
+  .views button[aria-pressed='true'] { color: var(--ink); border-color: var(--line); }
+  .views svg { width: 16px; height: 16px; fill: currentColor; }
+  .views button:disabled { opacity: 0.35; cursor: default; }
+  .tile-size { display: flex; gap: 4px; margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--line); }
+  .tile-size[hidden] { display: none; }
+</style>

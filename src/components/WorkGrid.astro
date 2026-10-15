@@ -1,0 +1,40 @@
+---
+// The cards of works in columns: big pictures with their texts (view "grid") or small tiles without texts (view "tiles",
+// sizes s / m / l, TILE_SIZES). The gallery (WorkGallery.astro) and the home page render the view they start with;
+// their scripts switch it with showViewOf (scripts/lib/view-layout.mjs), which toggles the classes below and the
+// `sizes`, and lay the shown cards out in columns of about the same height (balanceGrid).
+// `hidden`: the cards hidden in the HTML (by index); `eager`: how many first cards load their images right away.
+// Any other attribute (id, data-*) goes to the grid element.
+import WorkCard from './WorkCard.astro';
+import { type Work } from '../lib/site';
+import { DEFAULT_TILE_SIZE, DEFAULT_VIEW, viewImageSizes } from '../../scripts/lib/gallery-filter.mjs';
+
+interface Props { works: Work[]; view?: string; tile?: string; hidden?: boolean[]; eager?: number; [attr: string]: unknown }
+const { works, view = DEFAULT_VIEW, tile = DEFAULT_TILE_SIZE, hidden = [], eager = 0, ...attrs } = Astro.props;
+const tiles = view === 'tiles';
+const sizes = viewImageSizes(view, tile);
+---
+<div class:list={['grid', { tiles, [`tiles-${tile}`]: tiles }]} {...attrs}>{works.map((w, i) => <WorkCard work={w} sizes={sizes} eager={i < eager} hidden={hidden[i]} />)}</div>
+<style>
+  .grid { columns: 3 300px; column-gap: 36px; }
+  .grid :global(.card[hidden]) { display: none; }
+  /* Columns of about the same height laid out by a script (balanceGrid in scripts/lib/view-layout.mjs):
+     a <div class="col"> per column, as wide as the CSS columns of the view, with the same gaps. */
+  .grid.balanced { display: flex; align-items: flex-start; }
+  .grid.balanced > :global(.col) { flex: 1 1 0; min-width: 0; }
+  /* Tiles (?view=tiles, set by the script): small pictures side by side, no texts (the tooltip tells them). */
+  .grid.tiles { columns: 6 150px; column-gap: 12px; }
+  /* Smaller and larger tiles (?tile=s / l, TILE_WIDTHS): narrower or wider columns, more or fewer of them. */
+  .grid.tiles-s { columns: 9 110px; column-gap: 10px; }
+  .grid.tiles-l { columns: 5 210px; column-gap: 16px; }
+  .grid.tiles :global(.card) { margin-bottom: 12px; }
+  .grid.tiles :global(.card .meta) { display: none; }
+  .grid.tiles :global(.card:hover picture) { transform: none; }
+  /* Phone columns of each tile size: TILE_PHONE_COLUMNS. */
+  @media (max-width: 640px) {
+    .grid.tiles { columns: 3; column-gap: 8px; }
+    .grid.tiles-s { columns: 4; column-gap: 6px; }
+    .grid.tiles-l { columns: 2; column-gap: 10px; }
+    .grid.tiles :global(.card) { margin-bottom: 8px; }
+  }
+</style>

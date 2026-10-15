@@ -274,7 +274,7 @@ nenápadnou hvězdičku `★` (na kartě v galerii i za nadpisem stránky díla;
 světlá; bublina a `aria-label` „Výběr autorky“; `src/components/FeaturedStar.astro`). Na stránce díla je za `<h1>`, ne
 v něm (blok `.title` má velikost a okraje nadpisu, `<h1>` v něm teče v řádku, takže hvězdička je hned za posledním
 slovem): text nadpisu, titulek stránky, JSON-LD ani bublina nad obrazem ji neobsahují. Na úvodní stránce
-„Nejnovější“ neopakuje dílo z úvodního obrazu (vždy 6 děl).
+„Nejnovější“ neopakuje dílo z úvodního obrazu (počet podle zobrazení, viz *Úvodní stránka*).
 
 Náhodný obraz: stránka obsahuje všechny kandidáty, první viditelný a ostatní `hidden` s líně načítanými obrázky
 (skryté se nestahují). Hned za nimi je malý vložený skript (`applyRandomPick` ze `scripts/lib/random-pick.mjs`),
@@ -315,6 +315,41 @@ Text vedle velkého obrazu na úvodní stránce a její úvodní obraz jsou v ko
 `_cover.jpg`. Když soubor chybí, pipeline založí kostru s výchozím textem úvodu (`HOME_TEXT`, stejný jako ve skutečném obsahu), takže se
 nic nezmění. Veřejná kopie je `content/_index.yaml` (web `getHome`); bez ní web ukáže výchozí text `HOME_TEXT`. Nadpis
 „Barvy, voda a trochu náhody“ je dál v `src/pages/index.astro`. Vyzkoušení: `demo-content/_index.yaml`, `/`.
+
+**Nejnovější a jejich zobrazení:** pod úvodem jsou nejnovější díla (bez díla z úvodního obrazu) se stejným přepínačem
+zobrazení jako galerie (`ViewSwitch.astro` v záhlaví „Nejnovější“: „Velké obrazy“ / „Dlaždice“ a u dlaždic `−` / `+`),
+ale **výchozí jsou střední dlaždice** a stránkování ani počet na stránku tu nejsou. Každé zobrazení ukáže tolik děl,
+aby zabrala zhruba stejnou výšku, na tabletu (do 1100 px) a telefonu (do 640 px) méně (`HOME_SCREENS`, první
+odpovídající, `homeScreen`). Počty jsou v `site.config.yaml` `home.recent` (`wide` = počítač, `tablet`, `phone`;
+klíče `grid` = velké obrazy, `s` / `m` / `l` = dlaždice; chybějící = výchozí `HOME_RECENT`, jiná hodnota než celé
+číslo ≥ 1 zastaví build, `homeRecent` v `scripts/lib/home-view.mjs`):
+
+| zobrazení | počítač | tablet | telefon | v URL |
+|---|---|---|---|---|
+| velké obrazy | 6 (3 × 2) | 4 (2 × 2) | 3 (1 sloupec) | `?view=grid` |
+| dlaždice velké | 20 (5 × 4) | 16 (4 × 4) | 10 (2 sloupce) | `?tile=l` |
+| dlaždice střední (výchozí) | 30 (6 × 5) | 25 (5 × 5) | 24 (3 sloupce) | nic, adresa zůstane `/` |
+| dlaždice malé | 63 (9 × 7) | 49 (7 × 7) | 40 (4 sloupce) | `?tile=s` |
+
+(Výšky spočítané pro průměrný poměr stran skutečných obrazů; tablet pro šířku 1024 px.)
+- **Sloupce stejné výšky** (`balanceGrid`, `balanceColumns` v `scripts/lib/view-layout.mjs`, i v galerii): díla se rozdělí do sloupců (jejich počet a šířka podle CSS zobrazení,
+  `columnCount`) tak, aby sloupce končily co nejvíc stejně: nejdřív každé dílo popořadě do nejkratšího sloupce
+  (nejnovější zůstanou nahoře), pak se mezi nejvyšším a nejnižším sloupcem přesouvají nebo prohazují díla, dokud to
+  pomáhá; ve sloupci zůstává pořadí od nejnovějšího. Výšky se měří ze skutečného vykreslení (i s textem pod velkými
+  obrazy), obrázky se kvůli tomu nemusí stahovat (rozměry jsou v HTML). Sloupce jsou `<div class="col">` v mřížce
+  s třídou `balanced` (`WorkGrid.astro`); při změně šířky okna (i přechodu na jinou obrazovku s jiným počtem) a u velkých obrazů po načtení
+  písem se rozložení spočítá znovu. Bez JavaScriptu zůstanou obyčejné sloupce CSS (výchozí zobrazení, 30 děl).
+- **Bez přeblikávání:** zobrazení odkazu nebo paměti, počet pro telefon i sloupce nastaví vložený skript hned za mřížkou
+  (`homeScript` = `startHome`, `layoutHome` a jejich pomocné funkce zkopírované jako text, proto bez importů; všechny musí být v `scripts/lib/view-layout.mjs`, protože dev server přepisuje volání importovaných funkcí na `__vite_ssr_import_…`, které by kopie ve stránce nenašla, hlídá test), ještě
+  než se stránka vykreslí. Nastavení dostane v `data-view` mřížky (`homeSetup` = `viewSetup` + počty, obrazovky a
+  dílo úvodního obrazu). Skript stránky (`src/pages/index.astro`) pak obsluhuje přepínač.
+- Do URL se píše jen jiné než výchozí zobrazení (`homeSearch`; ostatní parametry adresy, např. `utm_*`, zůstanou),
+  takže odkaz ukáže totéž. Volba se pamatuje **zvlášť od galerie** (`localStorage` `pavla.home.view` a
+  `pavla.home.tileSize`; výchozí hodnoty se mažou, `homeRemember`): úvodní stránka tak může vypadat jinak než `/tvorba/`.
+  Odkaz s `view` nebo `tile` má přednost před pamětí (`viewOf`), zapamatovaná volba se hned zapíše do URL.
+- Stránka obsahuje tolik karet, kolik ukáže nejpočetnější zobrazení, + 1 (`homeMost`; pro případ, že je mezi nimi dílo
+  z úvodního obrazu); skryté karty obrázky nestahují. HTML je ve výchozím zobrazení (i `sizes` obrázků).
+- Přepnutí zobrazení pošle do Google Analytics událost `view_change` (viz *Návštěvnost*).
 - Vyzkoušení: `npm run demo`, `/tvorba/2026/` (text z `demo-content/roky/2026.yaml`) a `/tvorba/2025/` (bez textu).
 
 ### Hledání
@@ -375,15 +410,27 @@ seznamů.
   jsou vedle přepínače tlačítka „Menší dlaždice“ / „Větší dlaždice“ (`−` / `+`, na krajích zašedlá): malé (sloupec
   110 px, na telefonu 4 sloupce), střední (výchozí, 150 px / 3) a velké (210 px / 2) (`TILE_SIZES`, `TILE_WIDTHS`,
   `stepTileSize`; třídy `tiles-s` / `tiles-m` / `tiles-l`, `sizes` obrázků podle šířky). V URL jako `tile=s` / `tile=l`
-  (jen s `view=tiles`, výchozí se nepíše) a pamatuje se (`pavla.gallery.tileSize`, `rememberedTileSize`,
+  (jen s `view=tiles`, výchozí se nepíše) a pamatuje se (`pavla.gallery.tileSize`, `viewOf`,
   `tileSizeToRemember`); odkaz s `tile` má přednost. Díla ani stránka se změnou velikosti nemění. Platí pro galerii, stránky
-  roků i kolekcí (`WorkGallery.astro`, přepínač `Pager.astro` s `views`), přehled kolekcí ho nemá. Dlaždice jsou
+  roků i kolekcí (`WorkGallery.astro`, mřížka `WorkGrid.astro`, přepínač `ViewSwitch.astro` v `Pager.astro` s `views`), přehled kolekcí ho nemá;
+  úvodní stránka má vlastní výchozí zobrazení a paměť (viz *Úvodní stránka*). Dlaždice jsou
   v URL jako `view=tiles` (výchozí se nepíše, jiná hodnota se ignoruje) a pamatují se jako počet na stránku
-  (`localStorage`, klíč `pavla.gallery.view`): odkaz s `view`, `page` nebo `perPage` má přednost (odkaz na 2. stránku
+  (`localStorage`, klíč `pavla.gallery.view`): odkaz s `view`, `tile`, `page` nebo `perPage` má přednost (odkaz na 2. stránku
   ukáže zobrazení, ze kterého přišel), zapamatovaná volba se hned zapíše do URL,
   volba velkých obrazů paměť smaže. Filtry, stránka i počet na stránku se přepnutím nemění. V dlaždicích se
   obrázkům přepíše `sizes`, aby prohlížeč stahoval menší varianty. Logika: `VIEWS`, `viewFromParams`,
-  `rememberedView`, `viewToRemember`, `viewPageSizes`, `withView` v `scripts/lib/gallery-filter.mjs`.
+  `viewToRemember`, `viewPageSizes`, `withView` v `scripts/lib/gallery-filter.mjs`; které zobrazení platí (odkaz, pak
+  paměť) `viewOf`, třídy, `sizes` a přepínač `showViewOf` v `scripts/lib/view-layout.mjs`.
+- **Bez přeblikávání:** zapamatované zobrazení a velikost dlaždic nastaví vložený skript hned za mřížkou
+  (`viewScript` = `startView`, `viewOf` a `showViewOf` zkopírované jako text, proto bez importů), ještě než se stránka
+  vykreslí; nastavení dostane v `data-view` mřížky (`viewSetup`: zobrazení, výchozí, parametry odkazu, které rozhodují
+  `linkKeys`, klíče paměti, `sizes`). Skript galerie pak převezme jeho výsledek (`grid.viewState`) a vyfiltruje,
+  rozstránkuje a rozloží díla. Přepínač pod díly nastaví až skript galerie (při vykreslení ještě není na stránce).
+- **Sloupce stejné výšky** (`balanceGrid`, `balanceColumns` v `scripts/lib/view-layout.mjs`): zobrazená díla stránky
+  (po filtrech a stránkování) se rozdělí do sloupců tak, aby končily co nejvíc stejně, stejně jako na úvodní stránce
+  (viz *Úvodní stránka*); znovu po každé změně filtru, stránky, počtu na stránku, zobrazení, šířky okna a u velkých
+  obrazů po načtení písem. Pořadí karet pro stránkování drží `gridCards` (sloupce pořadí v dokumentu mění). U velmi
+  dlouhého seznamu („Zobrazit vše“) se díla mezi sloupci jen přesouvají, neprohazují (rychlost).
 - Stránkuje se **vyfiltrovaný** seznam: filtry a stránky fungují dohromady,
   změna filtru vrátí na 1. stránku.
 - Stránka je v URL jako `page` (jen od 2. stránky), např.
@@ -1314,6 +1361,8 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 |---|---|
 | hvězdička výběru autorky | `/tvorba/`: „Máky“ má za názvem `★` (bublina „Výběr autorky“), stejně v nadpisu jeho stránky; přepni paletu Noc v patičce, hvězdička zesvětlá. Dílo bez `featured` hvězdičku nemá. |
 | velikost dlaždic | v dlaždicích `−` / `+` vedle přepínače: menší (víc sloupců, `?view=tiles&tile=s`) a větší (`&tile=l`), na krajích zašedlé; střední parametr nemá. Obnov stránku bez parametrů: velikost zůstane (paměť `pavla.gallery.tileSize`); `?view=tiles&tile=m` → střední (odkaz má přednost). Na telefonu 4 / 3 / 2 sloupce. Ve velkých obrazech tlačítka nejsou. |
+| zobrazení na úvodní stránce | `/`: „Nejnovější“ jako střední dlaždice (30, adresa bez parametrů), ikony vpravo v záhlaví; sloupce končí skoro stejně vysoko. „Velké obrazy“ → 6 děl a `?view=grid`; zpět „Dlaždice“ a `−` → malé, `?tile=s` (63, testovací data mají méně, ukážou všechna kromě úvodního obrazu), `+` `+` → velké, `?tile=l` (20). Zužuj okno: sloupců ubývá a znovu se vyrovnají; pod 1100 px méně děl (4 / 16 / 25 / 49), pod 640 px ještě méně (3 / 10 / 24 / 40). S pamětí velkých obrazů obnov `/`: rovnou velké obrazy, žádné probliknutí dlaždic. V konzoli (Verbose) `[analytics] view_change {"listing":"home","view":"grid"}`. Nikdy se neopakuje dílo z úvodního obrazu (obnovuj, obraz se střídá). Otevři `/` bez parametrů: volba zůstane (paměť `pavla.home.view` / `pavla.home.tileSize`), `/tvorba/` má dál své zobrazení. `/?view=grid` u někoho s pamětí dlaždic → velké obrazy (odkaz má přednost); `/?utm_source=x` parametr zachová. |
+| sloupce stejné výšky v galerii | `/tvorba/`, `/tvorba/2026/`, kolekce: sloupce končí skoro stejně vysoko, ve velkých obrazech i dlaždicích; změň filtr, stránku, počet na stránku, „Zobrazit vše“ i šířku okna, sloupce se vždy znovu vyrovnají. Stránkování dál podle data (2. stránka začíná dílem po posledním z 1.). Se zapamatovanými dlaždicemi obnov `/tvorba/`: rovnou dlaždice, bez probliknutí velkých obrazů. |
 | dlaždice | `/tvorba/`: vpravo dole ikona „Dlaždice“: malé obrazy bez textů, 36 na stránku, „Na stránku“ nabízí 36 / 72 / 144, v URL `?view=tiles`; z 4. stránky velkých obrazů skočí na 2. stránku dlaždic (stejné první dílo). Zvol 72, přepni na velké obrazy a zpět: každé zobrazení si pamatuje svůj počet. Změň filtr, dlaždice zůstanou. Otevři `/tvorba/` znovu bez parametrů → dlaždice a `?view=tiles` (paměť); `/tvorba/?view=grid` → velké obrazy (odkaz má přednost); „Velké obrazy“ paměť smaže (DevTools → Local Storage → `pavla.gallery.view`). Na šířce telefonu 3 sloupce. |
 | štítky v bublině | `/tvorba/`: najeď myší na obraz se štítky, bublina má řádek `#štítek …` česky podle abecedy. |
 | přehled všech děl | `npm run demo:prepare`, pak `.demo/content/export/README.md`: kolekce, nadpisy `### Máky ★ · rw4dh @ 2026-07-02 [ 30 x 30 ]`, přepínače slovem (`instagram: -`), kódy hlášek (např. `featured-bez-pinu` u Máků) a „Hlášky“ s počty; v náhledu Markdownu (VS Code) hledej kód. |
@@ -1612,13 +1661,14 @@ analytics:
   | `email_click` | jen odkazy `mailto:`: klik na e-mailovou adresu na Kontaktu (kdo píše rovnou z pošty místo formuláře); bez formuláře zpráv i klik na „Napsat autorce“ u díla. Předmět e-mailu má stejný tvar jako odeslaná zpráva (`[pavla-web] Pozdrav nebo vzkaz`, u díla `[pavla-web] Dotaz na obraz: <název> (<id>)` / `Zájem o koupi: …`) | u díla `work_id`, `work_title`, na Kontaktu žádné |
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
   | `palette_change` | návštěvník v patičce přepne barvy webu (jen skutečná změna, ne opakovaný klik na tutéž) | `palette` (`papir`, `pergamen`, `noc`, `auto`) |
+  | `view_change` | návštěvník přepne zobrazení děl (velké obrazy / dlaždice) nebo velikost dlaždic, na úvodní stránce i v galerii (`viewEventParams`) | `listing` (`home`, `gallery`), `view` (`grid`, `tiles-s`, `tiles-m`, `tiles-l`) |
 
   Tlačítka nesou `data-track="<událost>"`, `data-work-id` a `data-work-title`; posluchač kliků je v `Base.astro`,
   filtr v `WorkGallery.astro`. Nové tlačítko se sleduje přidáním stejných atributů a názvu do `EVENTS`.
 - **Jednorázově v GA** (bez toho se parametry v přehledech neukážou, jen počty událostí):
   *Administrátor → Vlastní definice → Vytvořit vlastní dimenzi*, rozsah **Událost**, pro každý parametr zvlášť:
   `tag` (Štítek), `technique` (Technika), `year` (Rok), `collection` (Kolekce), `status` (Stav filtru),
-  `featured` (Výběr autorky), `q` (Hledání), `work_id` (ID díla), `work_title` (Název díla), `method` (Způsob sdílení), `message_type` (Typ zprávy), `palette` (Barvy webu); a *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru,
+  `featured` (Výběr autorky), `q` (Hledání), `work_id` (ID díla), `work_title` (Název díla), `method` (Způsob sdílení), `message_type` (Typ zprávy), `palette` (Barvy webu), `listing` (Výpis), `view` (Zobrazení); a *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru,
   jednotka Standardní). Data se v nich ukazují až od chvíle registrace, zpětně ne.
   Přehledy: *Přehledy → Zapojení → Události* (počty a proklik na parametry) nebo *Průzkum* (tabulka např.
   Událost × Technika).

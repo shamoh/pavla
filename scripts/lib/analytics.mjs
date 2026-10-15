@@ -52,7 +52,11 @@ export const EVENTS = {
   email: 'email_click', // the address on the contact page; "Napsat autorce" of a work (work_id, work_title) without messages
   message: 'message_sent', // message_type, work_id and work_title (a message about a work)
   palette: 'palette_change', // palette: the chosen colours (papir, pergamen, noc, auto)
+  view: 'view_change', // the view of works switched: listing (home, gallery), view (grid, tiles-s, tiles-m, tiles-l)
 };
+
+/** Parameters of view_change: where (`listing`: home, gallery) and the new view (grid, or tiles with its size). */
+export const viewEventParams = (listing, { view, tile }) => ({ listing, view: view === 'tiles' ? `tiles-${tile}` : 'grid' });
 
 /**
  * Parameters of gallery_filter: the active filters (empty ones left out) and how many works match. Several picked

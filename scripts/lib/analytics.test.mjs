@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  EVENTS, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick,
+  EVENTS, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
 } from './analytics.mjs';
 
 const analytics = { googleMeasurementId: 'G-HPZNHYZ2MQ' };
@@ -68,4 +68,10 @@ test('trackEvent: sends through gtag when the Google tag is on the page, otherwi
   trackEvent('gallery_filter', { results: 3 }, { console: { debug: (...args) => logged.push(args) } });
   assert.deepEqual(logged, [['[analytics]', 'gallery_filter', { results: 3 }]]);
   assert.doesNotThrow(() => trackEvent('gallery_filter', {}, {}));
+});
+
+test('viewEventParams: where and which view, tiles with their size', () => {
+  assert.equal(EVENTS.view, 'view_change');
+  assert.deepEqual(viewEventParams('home', { view: 'grid', tile: 's' }), { listing: 'home', view: 'grid' });
+  assert.deepEqual(viewEventParams('gallery', { view: 'tiles', tile: 'l' }), { listing: 'gallery', view: 'tiles-l' });
 });

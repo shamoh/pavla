@@ -1,8 +1,9 @@
 ---
-import WorkCard from './WorkCard.astro';
+import WorkGrid from './WorkGrid.astro';
 import Pager from './Pager.astro';
 import { type Work, config, getCollections, getYears, url } from '../lib/site';
-import { NO_COLLECTION, NO_COLLECTION_TITLE, czechOrder, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
+import { DEFAULT_VIEW, NO_COLLECTION, NO_COLLECTION_TITLE, TILE_SIZE_STORAGE_KEY, VIEW_STORAGE_KEY, czechOrder, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
+import { viewScript, viewSetup } from '../../scripts/lib/view-layout.mjs';
 import { overviewLink, yearCounts, yearOptions } from '../../scripts/lib/collection-filter.mjs';
 
 interface Props { works: Work[]; year?: number; collection?: string }
@@ -43,6 +44,9 @@ const collectionsHref = overviewLink(url('/tvorba/kolekce/'), year, collectionYe
 const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
 // The tiles view has page sizes of its own (more small pictures on a page); the script switches between them.
 const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
+// The view (big pictures by default): a link with the view, the tile size, the page or the page size decides, otherwise
+// the memory; the inline script after the grid (viewScript) shows it before the page is painted.
+const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 'page', 'perPage'], keys: { view: VIEW_STORAGE_KEY, tile: TILE_SIZE_STORAGE_KEY } });
 ---
 {!collection && (
   <nav class="years" id="years" aria-label="Roky">
@@ -106,7 +110,8 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
 </form>
 </div>
 
-<div class="grid" id="grid" data-page-sizes={JSON.stringify({ grid: pageSizes, tiles: tilePageSizes })}>{works.map((w, i) => <WorkCard work={w} eager={i < 3} />)}</div>
+<WorkGrid works={works} eager={3} id="grid" data-page-sizes={JSON.stringify({ grid: pageSizes, tiles: tilePageSizes })} data-view={JSON.stringify(setup)} />
+<script is:inline set:html={viewScript} />
 <p class="muted empty" id="empty" hidden>Tomuhle výběru nic neodpovídá.</p>
 <Pager pageSizes={pageSizes} total={works.length} views />
 
@@ -124,13 +129,14 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
   // Paging happens here too: the filtered list is split into pages, cards of other pages are hidden
   // (hidden cards load no images). Without JavaScript every work is shown.
   import {
-    ALL_PAGES, DEFAULT_VIEW, FEATURED_ON, TILE_SIZES, TILE_SIZE_STORAGE_KEY, TILE_WIDTHS, rememberedTileSize, stepTileSize, tileSizeToRemember, NO_COLLECTION, VIEW_STORAGE_KEY, facetChoices, pageSizeStorageKey, viewFromParams, viewPageSizes, withView, facetDisplay, matchesFilters, pageAfterFilterChange, pageSizeOf, pageSizeToRemember, paginate,
-    rememberedPageSize, rememberedView, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, viewToRemember, withPageSize,
+    ALL_PAGES, DEFAULT_VIEW, FEATURED_ON, TILE_SIZE_STORAGE_KEY, stepTileSize, tileSizeToRemember, NO_COLLECTION, VIEW_STORAGE_KEY, facetChoices, pageSizeStorageKey, viewPageSizes, withView, facetDisplay, matchesFilters, pageAfterFilterChange, pageSizeOf, pageSizeToRemember, paginate,
+    rememberedPageSize, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, viewToRemember, withPageSize,
   } from '../../scripts/lib/gallery-filter.mjs';
-  import { EVENTS, filterEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
+  import { EVENTS, filterEventParams, trackEvent, viewEventParams } from '../../scripts/lib/analytics.mjs';
   import { rememberListing, revealReturned } from '../lib/page-return';
   import { fitYearRow } from '../lib/year-row';
   import { pagerTarget, renderPager } from '../lib/pager';
+  import { balanceGrid, gridCards, showViewOf, viewOf } from '../../scripts/lib/view-layout.mjs';
   import { exactId, normalizeQuery } from '../../scripts/lib/search.mjs';
   import { selectCombobox } from '../lib/combobox';
   import { BAR_START, activeFilters, filteredCount, scrollBar, withoutFilter, withoutFilters, worksCount } from '../../scripts/lib/filter-bar.mjs';
@@ -139,7 +145,9 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
   const yearRow = document.getElementById('years');
   if (yearRow) fitYearRow(yearRow);
   const form = document.getElementById('filters') as HTMLFormElement;
-  const cards = [...document.querySelectorAll<HTMLElement>('#grid .card')];
+  const grid = document.getElementById('grid') as HTMLElement & { viewSetup?: any; viewState?: { view: string; tile: string } };
+  // The cards in their order (the columns of the layout reorder them in the page, balanceGrid).
+  const cards = gridCards(grid) as HTMLAnchorElement[];
   const chipGroup = document.getElementById('chips')!;
   const chips = [...form.querySelectorAll<HTMLButtonElement>('[data-filter="tag"]')];
   const tagChips = chips.filter((b) => b.dataset.value);
@@ -162,7 +170,6 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
   // "Zrušit filtry" next to the count, in the open panel and "Zrušit vše" in the bar: all filters off (withoutFilters)
   const resets = [...document.querySelectorAll<HTMLButtonElement>('[data-filters-reset]')];
   const emptyEl = document.getElementById('empty')!;
-  const grid = document.getElementById('grid')!;
   const pager = document.getElementById('pager')!;
   // Page sizes of each view (big pictures, tiles); `pageSizes` = those of the current view.
   const sizes: { grid: number[]; tiles: number[] } = JSON.parse(grid.dataset.pageSizes!);
@@ -194,16 +201,17 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
     },
   });
   const viewStorage = stored(VIEW_STORAGE_KEY);
-  const viewButtons = [...document.querySelectorAll<HTMLButtonElement>('#view [data-view]')];
+  const viewButtons = [...document.querySelectorAll<HTMLButtonElement>('#view button[data-view]')];
   const sizeStorage = (view: string) => stored(pageSizeStorageKey(view));
-  const view = rememberedView(params, viewStorage.get()) ?? viewFromParams(params);
+  // The view and tile size as the inline script after the grid showed them (viewOf: a link decides, then the memory).
+  const tileStorage = stored(TILE_SIZE_STORAGE_KEY);
+  const setup = grid.viewSetup ?? JSON.parse(grid.dataset.view!);
+  const shown = grid.viewState ?? viewOf(location.search, viewStorage.get(), tileStorage.get(), setup);
+  const view = shown.view;
   let pageSizes = viewPageSizes(view, sizes);
   let state = { ...stateFromParams(params, pageSizes), view };
-  // The size of the tiles the same way: remembered, a link with ?tile decides.
-  const tileStorage = stored(TILE_SIZE_STORAGE_KEY);
-  state.tile = rememberedTileSize(params, tileStorage.get()) ?? state.tile;
-  const tileSize = document.getElementById('tile-size');
-  const tileSteps = [...document.querySelectorAll<HTMLButtonElement>('#tile-size [data-tile-step]')];
+  state.tile = shown.tile;
+  const tileSteps = [...document.querySelectorAll<HTMLButtonElement>('#tile-size button[data-tile-step]')];
   if (perPageSelect) state.perPage = rememberedPageSize(params, sizeStorage(view).get(), pageSizes) ?? state.perPage;
   /** The options of "Na stránku": the page sizes of the current view. */
   function fillPageSizes() {
@@ -211,20 +219,6 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
     perPageSelect.replaceChildren(...pageSizes.map((n) => new Option(String(n), String(n))));
   }
   fillPageSizes();
-  // The sizes of the pictures as rendered for big pictures; tiles are narrow, so the browser picks smaller files.
-  const sizesOf = new Map([...grid.querySelectorAll<HTMLElement>('img[sizes], source[sizes]')].map((el) => [el, el.getAttribute('sizes')!]));
-  // phone columns of each tile size (the same as in the CSS below)
-  const PHONE_COLUMNS: Record<string, number> = { s: 4, m: 3, l: 2 };
-  const tileSizes = (t: string) => `(max-width: 640px) ${Math.ceil(100 / PHONE_COLUMNS[t])}vw, ${Math.round(TILE_WIDTHS[t as keyof typeof TILE_WIDTHS] * 1.2)}px`;
-  function showView() {
-    const tiles = state.view === 'tiles';
-    grid.classList.toggle('tiles', tiles);
-    for (const t of TILE_SIZES) grid.classList.toggle(`tiles-${t}`, tiles && state.tile === t);
-    for (const [el, sizes] of sizesOf) el.setAttribute('sizes', tiles ? tileSizes(state.tile) : sizes);
-    for (const b of viewButtons) b.setAttribute('aria-pressed', String(b.dataset.view === state.view));
-    if (tileSize) tileSize.hidden = !tiles;
-    for (const b of tileSteps) b.disabled = stepTileSize(state.tile, Number(b.dataset.tileStep)) === state.tile;
-  }
   for (const k of ['year', 'collection'] as const) if (!select(k)) state[k] = '';
   // A year or status option not offered here (nothing behind it, e.g. an old link) is off, like a missing filter.
   for (const k of ['year', 'status'] as const) {
@@ -247,9 +241,11 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
     const matching = cards.filter((_, i) => matchesFilters(works[i], state));
     const { page, pages, start, end } = paginate(matching.length, state.page, pageSizeOf(state, pageSizes));
     state.page = page;
-    showView();
+    showViewOf(grid, setup, state);
     const visible = new Set(matching.slice(start, end));
     for (const c of cards) c.hidden = !visible.has(c);
+    // The shown cards in columns of about the same height.
+    balanceGrid(grid);
     const shown = matching.length;
     // The visitor can switch paging off for this visit ("Zobrazit vše", ?page=all) and back on.
     renderPager(pager, page, pages, matching.length, href);
@@ -476,8 +472,8 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
       pageSizes = viewPageSizes(state.view, sizes);
       fillPageSizes();
       viewStorage.set(viewToRemember(state.view));
-      showView();
       apply();
+      trackEvent(EVENTS.view, viewEventParams('gallery', state));
       quiet(false);
     });
   }
@@ -487,6 +483,7 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
       state.tile = stepTileSize(state.tile, Number(b.dataset.tileStep));
       tileStorage.set(tileSizeToRemember(state.tile));
       apply();
+      trackEvent(EVENTS.view, viewEventParams('gallery', state));
       quiet(false);
     });
   }
@@ -500,6 +497,21 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
     slot.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   apply();
+  // Another width: other columns, laid out again; the titles under big pictures may wrap differently once the web
+  // fonts are in.
+  let gridWidth = grid.clientWidth;
+  let relayout = false;
+  addEventListener('resize', () => {
+    if (relayout) return;
+    relayout = true;
+    requestAnimationFrame(() => {
+      relayout = false;
+      if (grid.clientWidth === gridWidth) return;
+      gridWidth = grid.clientWidth;
+      balanceGrid(grid);
+    });
+  });
+  document.fonts?.ready.then(() => { if (state.view === 'grid') balanceGrid(grid); });
 
   // Back from a work page (← Tvorba, its year or collection): to the card of that work, when on the shown page.
   revealReturned(cards, 'id');
@@ -623,20 +635,4 @@ const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
   .selects label[hidden] { display: none; }
   .selects .switch { color: var(--ink); cursor: pointer; }
   .years .to-collections { margin-left: auto; font-size: 1rem; font-family: var(--sans); align-self: center; }
-  .grid { columns: 3 300px; column-gap: 36px; }
-  .grid :global(.card[hidden]) { display: none; }
-  /* Tiles (?view=tiles, set by the script): small pictures side by side, no texts (the tooltip tells them). */
-  .grid:global(.tiles) { columns: 6 150px; column-gap: 12px; }
-  /* Smaller and larger tiles (?tile=s / l, TILE_WIDTHS): narrower or wider columns, more or fewer of them. */
-  .grid:global(.tiles-s) { columns: 9 110px; column-gap: 10px; }
-  .grid:global(.tiles-l) { columns: 5 210px; column-gap: 16px; }
-  .grid:global(.tiles) :global(.card) { margin-bottom: 12px; }
-  .grid:global(.tiles) :global(.card .meta) { display: none; }
-  .grid:global(.tiles) :global(.card:hover picture) { transform: none; }
-  @media (max-width: 640px) {
-    .grid:global(.tiles) { columns: 3; column-gap: 8px; }
-    .grid:global(.tiles-s) { columns: 4; column-gap: 6px; }
-    .grid:global(.tiles-l) { columns: 2; column-gap: 10px; }
-    .grid:global(.tiles) :global(.card) { margin-bottom: 8px; }
-  }
 </style>
