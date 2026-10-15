@@ -6,7 +6,7 @@ import FeaturedStar from '../../../components/FeaturedStar.astro';
 import { collectionUrl, config, detailCaption, getCollection, workPinImage, workShareImage, getWorks, messages, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
 import { isOnSale, wantsMockups, workCodeHint, workShortPath } from '../../../../scripts/lib/works.mjs';
 import { EVENTS } from '../../../../scripts/lib/analytics.mjs';
-import { galleryFilterPath } from '../../../../scripts/lib/gallery-filter.mjs';
+import { galleryFilterPath, galleryLinkTitle } from '../../../../scripts/lib/gallery-filter.mjs';
 import { pinDescription } from '../../../../scripts/lib/pinterest.mjs';
 import { shareLinks } from '../../../../scripts/lib/share.mjs';
 import { artworkLd, breadcrumbLd, graphLd, workPageDescription, workPageTitle } from '../../../../scripts/lib/seo.mjs';
@@ -80,7 +80,7 @@ const jsonLd = graphLd(
 );
 ---
 <Base title={workPageTitle(work, allWorks)} description={workPageDescription(work, allWorks, site)} image={share} type="article" jsonLd={jsonLd} message={message}>
-  <p class="back"><a href={url('/tvorba/')} data-return data-return-focus={work.id}>← Tvorba</a> · <a href={url(`/tvorba/${work.year}/`)} data-return data-return-focus={work.id}>{work.year}</a></p>
+  <p class="back"><a href={url('/tvorba/')} title={galleryLinkTitle('all')} data-return data-return-focus={work.id}>← Tvorba</a> · <a href={url(`/tvorba/${work.year}/`)} title={galleryLinkTitle('year', work.year)} data-return data-return-focus={work.id}>{work.year}</a></p>
   <article class="work">
     <a class="zoom" href={views[0].src} data-view="0" title="Zvětšit">
       <Picture work={work} sizes="(max-width: 900px) 100vw, 64vw" eager />
@@ -89,7 +89,7 @@ const jsonLd = graphLd(
       <div class="story">
         {work.description && <p class="desc">{work.description}</p>}
         {work.tags.length > 0 && (
-          <p class="tags">{work.tags.map((t) => <a href={url(galleryFilterPath('tag', t))}>#{t}</a>)}</p>
+          <p class="tags">{work.tags.map((t) => <a href={url(galleryFilterPath('tag', t))} title={galleryLinkTitle('tag', t)}>#{t}</a>)}</p>
         )}
       </div>
     )}
@@ -97,11 +97,11 @@ const jsonLd = graphLd(
       <div class="head">
         <div class="title"><h1>{work.title}</h1><FeaturedStar featured={work.featured} /></div>
         <dl>
-          <dt>Technika</dt><dd><a href={url(galleryFilterPath('technique', work.technique))} title={`Všechny obrazy s technikou ${work.technique}`}>{work.technique}</a></dd>
+          <dt>Technika</dt><dd><a href={url(galleryFilterPath('technique', work.technique))} title={galleryLinkTitle('technique', work.technique)}>{work.technique}</a></dd>
           {work.support && <><dt>Podklad</dt><dd>{work.support}</dd></>}
           {work.size_cm && <><dt>Rozměr</dt><dd>{formatSize(work.size_cm)}</dd></>}
           <dt>Vzniklo</dt><dd>{date}</dd>
-          {collection && <><dt>Kolekce</dt><dd><a href={collectionUrl(collection.slug)} data-return data-return-focus={work.id}>{collection.title}</a></dd></>}
+          {collection && <><dt>Kolekce</dt><dd><a href={collectionUrl(collection.slug)} title={galleryLinkTitle('collection', collection.title)} data-return data-return-focus={work.id}>{collection.title}</a></dd></>}
           <dt>Kód</dt><dd class="code-row">
             <a class="code" href={url(workShortPath(work.id))} title={workCodeHint(work.id, site.url)}>{work.id}</a>
             <button type="button" class="copy" data-copy={work.id} data-copy-what="Kód" title="Zkopírovat kód" aria-label="Zkopírovat kód" hidden set:html={icon('copy', 15)} />

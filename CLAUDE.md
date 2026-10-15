@@ -108,7 +108,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
 - Filtry galerie (`scripts/lib/gallery-filter.mjs`): všechny se kombinují a každá změna se hned zapisuje do URL,
   aby šel odkaz poslat dál. Platí vždy, i pro každý nový filtr a pro stránku (`page`, i `page=all`).
-  Odkazy na galerii s jedním filtrem (štítky a technika na stránce díla) jen přes `galleryFilterPath`.
+  Odkazy na galerii s jedním filtrem (štítky a technika na stránce díla) jen přes `galleryFilterPath`, bubliny odkazů
+  stránky díla na další obrazy (technika, štítek, kolekce, „← Tvorba“, rok) jen `galleryLinkTitle` („Všechny obrazy …“).
   Štítky: víc najednou „a zároveň“ (`state.tag` = pole, `?tag=a&tag=b`, `sortTags`/`toggleTag`), aktivní jsou jen čipy,
   které zobrazená díla zúží a nevyprázdní (`tagChoices`), vybrané vždy, ostatní zašedlé na místě; GA `tag` = spojené čárkou.
   Kolekce je combobox (`src/lib/combobox.ts` nad skrytým `<select>`, který zůstává jediným stavem; kolekce podle abecedy `czechOrder` (i Technika), smazaný text = „vše“ (nápověda, Enter ji vybere), psaní zužuje podle

@@ -238,6 +238,18 @@ export function stateToParams(state) {
  */
 export const galleryFilterPath = (key, value) => `/tvorba/?${new URLSearchParams({ [key]: value })}`;
 
+/** Tooltips of the links from a work page to its fellow works, one wording for all ("Všechny obrazy …"). */
+const LINK_TITLES = {
+  technique: (v) => `Všechny obrazy s technikou ${v}`,
+  tag: (v) => `Všechny obrazy se štítkem #${v}`,
+  collection: (v) => `Všechny obrazy z kolekce ${v}`,
+  year: (v) => `Všechny obrazy z roku ${v}`,
+  all: () => 'Všechny obrazy',
+};
+
+/** Tooltip of a link to the works sharing `value` of `key` (technique, tag, collection = its title, year; all = the whole gallery). */
+export const galleryLinkTitle = (key, value) => LINK_TITLES[key](value);
+
 /** Page size in effect: the visitor's pick, otherwise the default (first offered size). */
 export const pageSizeOf = (state, pageSizes = DEFAULT_PAGE_SIZES) => state.perPage ?? pageSizes[0];
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALL_PAGES, FEATURED_ON, NO_COLLECTION, czechOrder, galleryFilterPath,
+import { ALL_PAGES, FEATURED_ON, NO_COLLECTION, czechOrder, galleryFilterPath, galleryLinkTitle,
   countStatuses, matchesFilters, offersOption, statusOptions, yearFilterOptions, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
   DEFAULT_TILE_PAGE_SIZES, DEFAULT_TILE_SIZE, TILE_SIZES, TILE_WIDTHS, stepTileSize, tileSizeFromParams, tileSizeToRemember, DEFAULT_VIEW, PAGE_SIZE_STORAGE_KEY, TILE_PAGE_SIZE_STORAGE_KEY, VIEWS, pageSizeStorageKey, viewPageSizes, withView, facetChoices, facetDisplay, viewFromParams, viewToParams, viewToRemember, CARD_IMAGE_SIZES, TILE_PHONE_COLUMNS, viewImageSizes, facetValues, pagingFromParams, pagingToParams, sortTags, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
 } from './gallery-filter.mjs';
@@ -444,4 +444,12 @@ test('galleryFilterPath: the gallery filtered by one value, read back by stateFr
     assert.deepEqual(state[key], key === 'tag' ? [value] : value, href);
     assert.ok(matchesFilters({ title: 'x', tags: ['Šumava'], technique: value, year: '2026', collection: '', status: 'available', featured: false }, { ...state, tag: key === 'tag' ? [value] : [] }), href);
   }
+});
+
+test('galleryLinkTitle: one wording for the links to fellow works', () => {
+  assert.equal(galleryLinkTitle('technique', 'tuš'), 'Všechny obrazy s technikou tuš');
+  assert.equal(galleryLinkTitle('tag', 'krajina'), 'Všechny obrazy se štítkem #krajina');
+  assert.equal(galleryLinkTitle('collection', 'Plenér Šumava 2026'), 'Všechny obrazy z kolekce Plenér Šumava 2026');
+  assert.equal(galleryLinkTitle('year', '2026'), 'Všechny obrazy z roku 2026');
+  assert.equal(galleryLinkTitle('all'), 'Všechny obrazy');
 });
