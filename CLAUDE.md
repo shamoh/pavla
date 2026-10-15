@@ -157,6 +157,10 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   počet děl podle zobrazení v `site.config.yaml` `home.recent` (`wide` / `tablet` do 1100 px / `phone` do 640 px, `homeRecent`, `HOME_SCREENS`; = stejná výška), v URL jen jiné
   než výchozí (`?view=grid`, `?tile=s`, ostatní parametry zůstanou), vlastní paměť `pavla.home.view` / `pavla.home.tileSize`, nikdy dílo
   z úvodního obrazu; sloupce stejné výšky. Vše před vykreslením vložený skript `homeScript` za mřížkou. Přepnutí zobrazení = událost GA `view_change`.
+  Značky na dlaždicích (`scripts/lib/tile-marks.mjs`, `WorkCard.astro`, jen zobrazení dlaždic): hvězdička `featured` vlevo nahoře
+  (s/m/l), košík `isOnSale` vpravo dole (m/l), silueta barvy písma s lemem barvy papíru, nastavení `site.config.yaml`
+  `home.tileMarks` (jen hvězdička) a `gallery.tileMarks`, každé zvlášť (`tileMarksFor`). Prototypy zobrazení: `npm run prototypes`
+  (`scripts/lib/prototypes.mjs`, šablony `scripts/prototypes/`, výstup `.prototypes/` mimo git, funkce webu vložené jako text).
   Velikost dlaždic `TILE_SIZES` s/m/l (`TILE_WIDTHS`, třídy `tiles-<velikost>`, tlačítka −/+ v `Pager.astro`): `?tile=` jen s
   `view=tiles` a nevýchozí, paměť `pavla.gallery.tileSize`, odkaz má přednost.
 - **Atributy popisů (dílo, kolekce, fotka) jsou jen v `scripts/lib/schema.mjs`**: pořadí, výchozí hodnota kostry,

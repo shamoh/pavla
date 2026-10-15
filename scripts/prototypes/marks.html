@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Značky na dlaždicích</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* The palettes of the site (scripts/lib/palettes.mjs). */
+  :root, [data-palette='papir'] { --paper: #f7f4ee; --paper2: #efeae0; --ink: #2b2724; --ink-soft: #6d655c; --line: #ddd5c7; --accent: #487282; --shadow: 1; }
+  [data-palette='pergamen'] { --paper: #ece2cc; --paper2: #e2d6bb; --ink: #2e2720; --ink-soft: #62574a; --line: #cfbf9e; --accent: #3a6573; --shadow: 1.2; }
+  [data-palette='noc'] { --paper: #1c1a18; --paper2: #252220; --ink: #ece6dc; --ink-soft: #a89f93; --line: #3a3531; --accent: #8fb7c4; --shadow: 2.2; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Work Sans', system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1320px; margin: 0 auto; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; font-size: .88rem; }
+  .bar h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; font-size: 1.5rem; margin: 0 auto 0 0; }
+  .group { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); flex-wrap: wrap; }
+  .group button { font: inherit; font-size: .84rem; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 4px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .group button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .group button svg { width: 15px; height: 15px; }
+  .group input[type='range'] { width: 100px; accent-color: var(--accent); }
+  .group output { min-width: 11em; color: var(--ink); }
+  .note { max-width: 1320px; margin: 0 auto; padding: 0 16px 10px; font-size: .84rem; color: var(--ink-soft); }
+  main { max-width: 1320px; margin: 0 auto; padding: 8px 48px 80px; }
+  h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 400; font-size: 1.8rem; margin: 36px 0 16px; border-top: 1px solid var(--line); padding-top: 16px; display: flex; justify-content: space-between; align-items: baseline; }
+  h2 small { font-family: 'Work Sans', sans-serif; font-size: .84rem; color: var(--ink-soft); }
+  /* Tiles as on the site (WorkGrid.astro): columns of the size, no texts. */
+  .grid { columns: var(--cols) var(--colw); column-gap: var(--gap); }
+  .grid.s { --cols: 9; --colw: 110px; --gap: 10px; }
+  .grid.m { --cols: 6; --colw: 150px; --gap: 12px; }
+  .grid.l { --cols: 5; --colw: 210px; --gap: 16px; }
+  .card { display: block; break-inside: avoid; margin-bottom: 12px; }
+  .pic { position: relative; container-type: inline-size; }
+  .pic img { display: block; width: 100%; height: auto; box-shadow: 0 1px 2px rgb(0 0 0 / calc(.08 * var(--shadow))), 0 6px 18px rgb(0 0 0 / calc(.1 * var(--shadow))); background: var(--paper2); }
+  .pic.cutout img { box-shadow: none; background: none; filter: drop-shadow(0 4px 8px rgb(0 0 0 / calc(.14 * var(--shadow)))); }
+
+  /* The marks: size = a share of the tile width (cqi), between a minimum and a maximum. */
+  .badge {
+    --size: clamp(var(--min), calc(var(--share) * 1cqi), var(--max));
+    position: absolute; width: var(--size); height: var(--size); color: var(--ink); display: grid; place-items: center;
+    opacity: var(--opacity); transition: opacity .2s ease; pointer-events: none;
+  }
+  .badge svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .badge { --inset: max(4px, calc(var(--size) * .35)); }
+  .badge.tl { top: var(--inset); left: var(--inset); }
+  .badge.tr { top: var(--inset); right: var(--inset); }
+  .badge.bl { bottom: var(--inset); left: var(--inset); }
+  .badge.br { bottom: var(--inset); right: var(--inset); }
+  /* Two marks in the same corner: the second one next to the first. */
+  .badge.tr.second { right: calc(var(--inset) + var(--size) * 1.35); }
+  .badge.br.second { right: calc(var(--inset) + var(--size) * 1.35); }
+  .badge.tl.second { left: calc(var(--inset) + var(--size) * 1.35); }
+  .badge.bl.second { left: calc(var(--inset) + var(--size) * 1.35); }
+  /* Styles. */
+  .style-halo .badge svg { filter: drop-shadow(0 0 1px var(--paper)) drop-shadow(0 0 1.5px var(--paper)) drop-shadow(0 0 3px var(--paper)); }
+  .style-disc .badge { background: color-mix(in srgb, var(--paper) 88%, transparent); border-radius: 50%; padding: calc(var(--size) * .2); width: calc(var(--size) * 1.45); height: calc(var(--size) * 1.45); box-shadow: 0 1px 3px rgb(0 0 0 / .2); }
+  .style-disc .badge.tr.second, .style-disc .badge.br.second { right: calc(var(--inset) + var(--size) * 1.7); }
+  .style-disc .badge.tl.second, .style-disc .badge.bl.second { left: calc(var(--inset) + var(--size) * 1.7); }
+  .style-corner .badge { --inset: 0px; width: calc(var(--size) * 2.1); height: calc(var(--size) * 2.1); background: var(--paper); padding: calc(var(--size) * .18); }
+  .style-corner .badge svg { width: 50%; height: 50%; }
+  .style-corner .badge.tl { clip-path: polygon(0 0, 100% 0, 0 100%); place-items: start; }
+  .style-corner .badge.tr { clip-path: polygon(0 0, 100% 0, 100% 100%); place-items: start end; }
+  .style-corner .badge.bl { clip-path: polygon(0 0, 100% 100%, 0 100%); place-items: end start; }
+  .style-corner .badge.br { clip-path: polygon(100% 0, 100% 100%, 0 100%); place-items: end; }
+  .style-corner .badge.second { display: none; }
+  .style-plain .badge { }
+  /* Only on hover. */
+  .hover .card:not(:hover) .badge { opacity: 0; }
+  .legend { display: flex; gap: 18px; font-size: .84rem; color: var(--ink-soft); margin-top: 8px; }
+</style>
+</head>
+<body data-palette="papir">
+<header>
+  <div class="bar">
+    <h1>Značky na dlaždicích</h1>
+    <div class="group" role="group">Paleta
+      <button data-palette="papir">Papír</button><button data-palette="pergamen">Pergamen</button><button data-palette="noc">Noc</button>
+    </div>
+    <div class="group" role="group">Styl
+      <button data-style="halo">Silueta s lemem</button><button data-style="disc">V kroužku</button>
+      <button data-style="corner">Roh</button><button data-style="plain">Bez podkladu</button>
+    </div>
+    <label class="group">Nastavení <select id="place">
+      <option value="gallery">galerie (gallery.tileMarks)</option>
+      <option value="home">úvodní stránky (home.tileMarks)</option>
+    </select></label>
+    <div class="group" role="group" id="sale-icons">Na prodej</div>
+    <div class="group" role="group" data-mark="featured">★ roh <select data-corner></select> dlaždice
+      <button data-size="s">S</button><button data-size="m">M</button><button data-size="l">L</button>
+    </div>
+    <div class="group" role="group" data-mark="sale">Prodej roh <select data-corner></select> dlaždice
+      <button data-size="s">S</button><button data-size="m">M</button><button data-size="l">L</button>
+    </div>
+    <label class="group">Velikost <input type="range" id="share" min="6" max="22" step="1" /> <output id="share-out"></output></label>
+    <label class="group">Min. <input type="range" id="min" min="8" max="20" step="1" /> <output id="min-out" style="min-width:3em"></output></label>
+    <label class="group">Max. <input type="range" id="max" min="14" max="40" step="1" /> <output id="max-out" style="min-width:3em"></output></label>
+    <label class="group">Krytí <input type="range" id="opacity" min="40" max="100" step="5" /> <output id="opacity-out" style="min-width:3em"></output></label>
+    <label class="group"><input type="checkbox" id="hover" /> Jen při najetí myší</label>
+    <label class="group"><input type="checkbox" id="only" /> Jen obrazy se značkou</label>
+  </div>
+  <p class="note" id="note"></p>
+</header>
+<main id="main"></main>
+<script>
+  // Filled by npm run prototypes (scripts/lib/prototypes.mjs): the works, the path to their pictures and the settings
+  // of site.config.yaml with the icons of the site (scripts/lib/tile-marks.mjs).
+  const DATA = /*DATA*/{};
+  const WORKS = DATA.works;
+  const PUBLIC = DATA.public;
+  const CONFIG = DATA.config;
+/*FUNCTIONS*/
+  const ICONS = CONFIG.icons;
+  const SALE_LABELS = { cart: 'košík', tag: 'cenovka', bag: 'taška' };
+  const CORNERS = { tl: 'vlevo nahoře', tr: 'vpravo nahoře', bl: 'vlevo dole', br: 'vpravo dole' };
+  const NOTES = {
+    halo: 'Silueta v barvě písma palety s tenkým lemem v barvě papíru: čitelná na světlých i tmavých obrazech, nic dalšího nepřikrývá.',
+    disc: 'Ikona na kroužku v barvě papíru (lehce průsvitném): nejčitelnější, ale nejvíc zakrývá obraz.',
+    corner: 'Ikona v trojúhelníku v barvě papíru v rohu obrazu („ohnutý roh“); dvě značky ve stejném rohu tu nejdou.',
+    plain: 'Jen silueta v barvě písma palety, bez lemu: pro srovnání, na tmavém nebo pestrém obraze se ztratí.',
+  };
+  const SIZES = [['s', 'Dlaždice S', 110], ['m', 'Dlaždice M', 150], ['l', 'Dlaždice L', 210]];
+  // The settings of a place (site.config.yaml <place>.tileMarks) as the state of the page.
+  const fromConfig = (place) => {
+    const m = CONFIG.marks[place];
+    return {
+      place, share: m.size, min: m.min, max: m.max, opacity: m.opacity, sale: m.sale.icon,
+      featured: { corner: m.featured.corner, tiles: [...m.featured.tiles] }, forSale: { corner: m.sale.corner, tiles: [...m.sale.tiles] },
+    };
+  };
+  const state = { palette: 'papir', style: 'halo', hover: false, only: false, ...fromConfig('gallery') };
+
+  function badge(kind, corner, second) {
+    const b = document.createElement('span');
+    b.className = `badge ${corner}${second ? ' second' : ''}`;
+    b.title = kind === 'star' ? 'Výběr autorky' : 'K prodeji';
+    b.innerHTML = ICONS[kind === 'star' ? 'star' : state.sale];
+    return b;
+  }
+
+  function tile(work, columnWidth, size) {
+    const a = document.createElement('a');
+    a.className = 'card';
+    a.title = `${work.title}${work.featured ? ' ★' : ''}${work.forSale ? ' · K prodeji' : ''}`;
+    const pic = document.createElement('div');
+    pic.className = 'pic' + (work.transparent ? ' cutout' : '');
+    const base = `${PUBLIC}/${work.folder}/`;
+    const img = document.createElement('img');
+    img.srcset = work.widths.map((w) => `${base}${w}.webp ${w}w`).join(', ');
+    img.sizes = `${Math.round(columnWidth * 1.2)}px`;
+    img.src = `${base}${work.widths[0]}.webp`;
+    img.width = 1000;
+    img.height = Math.round(1000 * work.ratio);
+    img.alt = work.title;
+    img.loading = 'lazy';
+    pic.append(img);
+    // As workMarks on the site: each mark only on its tile sizes, a second one in the same corner beside the first.
+    const star = work.featured && state.featured.tiles.includes(size);
+    if (star) pic.append(badge('star', state.featured.corner, false));
+    if (work.forSale && state.forSale.tiles.includes(size)) pic.append(badge('sale', state.forSale.corner, star && state.forSale.corner === state.featured.corner));
+    a.append(pic);
+    return a;
+  }
+
+  function render() {
+    document.body.dataset.palette = state.palette;
+    const main = document.getElementById('main');
+    main.className = `style-${state.style}` + (state.hover ? ' hover' : '');
+    main.style.setProperty('--share', state.share);
+    main.style.setProperty('--min', `${state.min}px`);
+    main.style.setProperty('--max', `${state.max}px`);
+    main.style.setProperty('--opacity', state.opacity / 100);
+    const works = state.only ? WORKS.filter((w) => w.featured || w.forSale) : WORKS;
+    main.replaceChildren(...SIZES.flatMap(([size, label, width]) => {
+      const px = Math.min(state.max, Math.max(state.min, (state.share / 100) * width));
+      const h = document.createElement('h2');
+      h.innerHTML = `${label}<small>sloupec ${width} px · ikona ${Math.round(px)} px</small>`;
+      const grid = document.createElement('div');
+      grid.className = `grid ${size}`;
+      grid.append(...works.map((w) => tile(w, width, size)));
+      return [h, grid];
+    }));
+    const legend = document.createElement('div');
+    legend.className = 'legend';
+    legend.innerHTML = `<span>★ = výběr autorky (${WORKS.filter((w) => w.featured).length})</span><span>${SALE_LABELS[state.sale]} = k prodeji (${WORKS.filter((w) => w.forSale).length})</span><span>obou ${WORKS.filter((w) => w.featured && w.forSale).length}</span>`;
+    main.prepend(legend);
+    document.getElementById('note').textContent = NOTES[state.style];
+    for (const b of document.querySelectorAll('[data-palette]')) if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', String(b.dataset.palette === state.palette));
+    for (const b of document.querySelectorAll('[data-style]')) b.setAttribute('aria-pressed', String(b.dataset.style === state.style));
+    for (const b of document.querySelectorAll('[data-sale]')) b.setAttribute('aria-pressed', String(b.dataset.sale === state.sale));
+    document.getElementById('place').value = state.place;
+    for (const group of document.querySelectorAll('[data-mark]')) {
+      const mark = group.dataset.mark === 'sale' ? state.forSale : state.featured;
+      group.querySelector('[data-corner]').value = mark.corner;
+      for (const b of group.querySelectorAll('[data-size]')) b.setAttribute('aria-pressed', String(mark.tiles.includes(b.dataset.size)));
+    }
+    for (const key of ['share', 'min', 'max', 'opacity']) document.getElementById(key).value = String(state[key]);
+    document.getElementById('share-out').textContent = `${state.share} % šířky (S ${px(110)} · M ${px(150)} · L ${px(210)} px)`;
+    document.getElementById('min-out').textContent = `${state.min} px`;
+    document.getElementById('max-out').textContent = `${state.max} px`;
+    document.getElementById('opacity-out').textContent = `${state.opacity} %`;
+  }
+  const px = (width) => Math.round(Math.min(state.max, Math.max(state.min, (state.share / 100) * width)));
+
+  const saleGroup = document.getElementById('sale-icons');
+  for (const [key, label] of Object.entries(SALE_LABELS)) {
+    const b = document.createElement('button');
+    b.dataset.sale = key;
+    b.innerHTML = `${ICONS[key]}${label}`;
+    b.addEventListener('click', () => { state.sale = key; render(); });
+    saleGroup.append(b);
+  }
+  for (const b of document.querySelectorAll('button[data-palette]')) b.addEventListener('click', () => { state.palette = b.dataset.palette; render(); });
+  for (const b of document.querySelectorAll('[data-style]')) b.addEventListener('click', () => { state.style = b.dataset.style; render(); });
+  document.getElementById('place').addEventListener('change', (e) => { Object.assign(state, fromConfig(e.target.value)); render(); });
+  for (const group of document.querySelectorAll('[data-mark]')) {
+    const mark = () => (group.dataset.mark === 'sale' ? state.forSale : state.featured);
+    const corner = group.querySelector('[data-corner]');
+    corner.replaceChildren(...Object.entries(CORNERS).map(([value, label]) => new Option(label, value)));
+    corner.addEventListener('change', () => { mark().corner = corner.value; render(); });
+    for (const b of group.querySelectorAll('[data-size]')) {
+      b.addEventListener('click', () => {
+        const tiles = mark().tiles;
+        mark().tiles = tiles.includes(b.dataset.size) ? tiles.filter((t) => t !== b.dataset.size) : [...tiles, b.dataset.size];
+        render();
+      });
+    }
+  }
+  for (const key of ['share', 'min', 'max', 'opacity']) document.getElementById(key).addEventListener('input', (e) => { state[key] = Number(e.target.value); render(); });
+  document.getElementById('hover').addEventListener('change', (e) => { state.hover = e.target.checked; render(); });
+  document.getElementById('only').addEventListener('change', (e) => { state.only = e.target.checked; render(); });
+  render();
+</script>
+</body>
+</html>

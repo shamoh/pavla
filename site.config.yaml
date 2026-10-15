@@ -160,6 +160,20 @@ gallery:
     maxGap: 2
     maxTop: 12
     order: alternate
+  tileMarks:                             # značky přes obrazy v zobrazení „Dlaždice“ v galerii, rocích a kolekcích
+    # (u velkých obrazů je hvězdička u názvu a štítek stavu). Silueta v barvě písma palety s tenkým lemem barvy papíru.
+    # Chybějící = výchozí hodnota; úvodní stránka má své v home.tileMarks.
+    size: 10          # velikost v % šířky dlaždice …
+    min: 12           # … ale nejméně (px) …
+    max: 22           # … a nejvýš (px)
+    opacity: 90       # krytí v %
+    featured:         # hvězdička výběru autorky (featured: true)
+      corner: tl      # roh: tl = vlevo nahoře, tr = vpravo nahoře, bl = vlevo dole, br = vpravo dole
+      tiles: [s, m, l]  # na kterých velikostech dlaždic ([] = nikde)
+    sale:             # dílo na prodej (k prodeji nebo rezervováno)
+      corner: br
+      icon: cart      # cart = košík, tag = cenovka, bag = taška
+      tiles: [m, l]   # na malých dlaždicích jen hvězdička
 
 home:
   # Sloupce obrazů stejné výšky na úvodní stránce (galerie má své v gallery.columns): nižší sloupec nejdřív rozšíří
@@ -169,6 +183,13 @@ home:
     maxTop: 12        # největší místo nad prvním obrazem sloupce v px (zbytek zůstane dole)
     order: alternate  # pořadí sloupců podle počtu obrazů: none = beze změny, alternate = plný a prázdný střídavě,
                       # edges = nejplnější na krajích, center = nejplnější uprostřed
+  tileMarks:          # značky přes dlaždice na úvodní stránce (jako gallery.tileMarks): jen menší, průsvitnější hvězdička
+    size: 8
+    min: 10
+    max: 22
+    opacity: 60
+    featured: { corner: tl, tiles: [s, m, l] }
+    sale: { corner: br, icon: cart, tiles: [] }
   # Kolik nejnovějších děl ukáže „Nejnovější“ na úvodní stránce v každém zobrazení (grid = velké obrazy,
   # s / m / l = malé / střední / velké dlaždice), aby zabrala zhruba stejnou výšku. Chybějící = výchozí hodnota.
   recent:

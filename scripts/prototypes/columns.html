@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Zarovnání sloupců</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #f6f4ef; --paper-2: #ece8df; --ink: #2b2a27; --ink-soft: #77736b; --line: #dcd6ca; --accent: #8a5a44;
+    --guide: rgba(138, 90, 68, 0.55); --col-tint: rgba(138, 90, 68, 0.06);
+    --shadow-soft: 0 1px 2px rgba(40, 35, 25, .08), 0 6px 18px rgba(40, 35, 25, .10);
+    --drop-soft: drop-shadow(0 1px 1px rgba(40, 35, 25, .12)) drop-shadow(0 6px 10px rgba(40, 35, 25, .12));
+    --serif: 'Cormorant Garamond', Georgia, serif; --sans: 'Work Sans', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+  header { position: sticky; top: 0; z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1320px; margin: 0 auto; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: center; font-size: .9rem; }
+  .bar h1 { font-family: var(--serif); font-weight: 500; font-size: 1.5rem; margin: 0 auto 0 0; }
+  .group { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+  .group button { font: inherit; font-size: .85rem; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 4px 12px; cursor: pointer; }
+  .group button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .limits[hidden] { display: none; }
+  .limits label { display: flex; align-items: center; gap: 6px; }
+  .limits input { width: 110px; accent-color: var(--accent); }
+  .limits output { min-width: 7.5em; color: var(--ink); }
+  .group select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 3px 6px; }
+  .note { max-width: 1320px; margin: 0 auto; padding: 10px 16px 0; font-size: .85rem; color: var(--ink-soft); }
+  .note b { color: var(--ink); font-weight: 500; }
+  /* The simulated page: its width stands for the screen (wide 1320, tablet 1024, phone 390). */
+  .page { margin: 24px auto 80px; background: var(--paper); }
+  .page.framed { outline: 1px dashed var(--line); outline-offset: 0; }
+  .inner { padding: 0 var(--gutter); }
+  .head { display: flex; align-items: baseline; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 20px; margin-bottom: 24px; }
+  .head h2 { font-family: var(--serif); font-weight: 400; font-size: 2.2rem; margin: 0; }
+  .head span { font-size: .85rem; color: var(--ink-soft); }
+  .grid { display: flex; position: relative; }
+  .col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+  .card { display: block; margin-bottom: var(--mb); text-decoration: none; color: inherit; }
+  .col > .card:last-child { margin-bottom: 0; }
+  .card picture, .card img { display: block; width: 100%; height: auto; }
+  .card img { box-shadow: var(--shadow-soft); background: var(--paper-2); }
+  .card.cutout img { box-shadow: none; background: none; filter: var(--drop-soft); }
+  .meta { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 12px; }
+  .title { font-family: var(--serif); font-size: 1.35rem; width: 100%; line-height: 1.2; }
+  .sub { font-size: .85rem; color: var(--ink-soft); }
+  .no-meta .meta { display: none; }
+  /* The three alignments. */
+  .grid.top { align-items: flex-start; }
+  .grid.spread { align-items: stretch; }
+  .grid.spread .col { justify-content: space-between; }
+  .grid.center { align-items: center; }
+  /* C: each column gets its own gaps (--mb) and top offset (padding-top) from the script. */
+  .grid.hybrid { align-items: flex-start; }
+  /* Guides: the top and bottom of the grid, the columns tinted. */
+  .guides .grid::before, .guides .grid::after { content: ''; position: absolute; left: -12px; right: -12px; border-top: 1px dashed var(--guide); pointer-events: none; }
+  .guides .grid::before { top: 0; }
+  .guides .grid::after { bottom: 0; }
+  .guides .col { background: var(--col-tint); }
+  /* Measuring: one hidden column as wide as a real one. */
+  .measure { position: absolute; visibility: hidden; left: -9999px; top: 0; }
+  .stats { font-size: .85rem; color: var(--ink-soft); margin-top: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>Zarovnání sloupců</h1>
+    <div class="group" role="group" aria-label="Varianta">Varianta
+      <button data-align="top">Dnes (nahoru)</button>
+      <button data-align="spread">A: rozprostřít</button>
+      <button data-align="center">B: vycentrovat</button>
+      <button data-align="hybrid">C: hybrid</button>
+    </div>
+    <div class="group limits" id="limits">
+      <label>Max. mezera <input type="range" id="max-gap" min="1" max="6" step="0.25" /> <output id="max-gap-out"></output></label>
+      <label>Max. horní odstup <input type="range" id="max-top" min="0" max="240" step="4" /> <output id="max-top-out"></output></label>
+      <label>Nastavení <select id="place">
+        <option value="home">úvodní stránky (home.columns)</option>
+        <option value="gallery">galerie (gallery.columns)</option>
+      </select></label>
+      <label>Pořadí sloupců <select id="order">
+        <option value="none">beze změny</option>
+        <option value="alternate">plný, prázdný střídavě (A F B E C D)</option>
+        <option value="edges">nejplnější na krajích (A C E F D B)</option>
+        <option value="center">nejplnější uprostřed (E C A B D F)</option>
+      </select></label>
+    </div>
+    <div class="group" role="group" aria-label="Zobrazení">Zobrazení
+      <button data-view="grid">Velké obrazy</button>
+      <button data-view="l">Dlaždice L</button>
+      <button data-view="m">M</button>
+      <button data-view="s">S</button>
+    </div>
+    <div class="group" role="group" aria-label="Obrazovka">Obrazovka
+      <button data-screen="wide">Počítač</button>
+      <button data-screen="tablet">Tablet</button>
+      <button data-screen="phone">Telefon</button>
+    </div>
+    <label class="group">Od díla <select id="offset"></select></label>
+    <label class="group"><input type="checkbox" id="guides" /> Vodítka</label>
+  </div>
+  <p class="note" id="note"></p>
+</header>
+<div class="page" id="page">
+  <div class="inner">
+    <div class="head"><h2>Nejnovější</h2><span id="count"></span></div>
+    <div class="grid" id="grid"></div>
+    <p class="stats" id="stats"></p>
+  </div>
+</div>
+<div class="measure" id="measure"></div>
+<script>
+  // Filled by npm run prototypes (scripts/lib/prototypes.mjs): the works, the path to their pictures and the settings
+  // of site.config.yaml; below the calculations of the site (scripts/lib/view-layout.mjs) as their source text.
+  const DATA = /*DATA*/{};
+  const WORKS = DATA.works;
+  const PUBLIC = DATA.public;
+  const CONFIG = DATA.config;
+  // As on the site: page widths (max 1320 px, gutter clamp(16px, 4vw, 48px)), counts of home.recent, CSS of WorkGrid.astro.
+  const SCREENS = { wide: { width: 1320, gutter: 48 }, tablet: { width: 1024, gutter: 41 }, phone: { width: 390, gutter: 16 } };
+  const RECENT = CONFIG.recent;
+  const COLUMNS = {
+    grid: { count: 3, width: 300, gap: 36, mb: 36 }, l: { count: 5, width: 210, gap: 16, mb: 12 },
+    m: { count: 6, width: 150, gap: 12, mb: 12 }, s: { count: 9, width: 110, gap: 10, mb: 12 },
+  };
+  const PHONE_COLUMNS = { grid: { count: 3, width: 300, gap: 36, mb: 36 }, l: { count: 2, gap: 10, mb: 8 }, m: { count: 3, gap: 8, mb: 8 }, s: { count: 4, gap: 6, mb: 8 } };
+  const NOTES = {
+    top: '<b>Dnes:</b> sloupce začínají nahoře, mezery mezi obrazy stejné, dole končí sloupce různě.',
+    spread: '<b>A – rozprostřít:</b> všechny sloupce stejně vysoké (podle nejvyššího), horní obrazy zarovnané nahoře, dolní dole; v nižších sloupcích se mezery mezi obrazy rovnoměrně zvětší.',
+    center: '<b>B – vycentrovat:</b> mezery mezi obrazy stejné, každý sloupec svisle na střed (stejně volného místa nad prvním a pod posledním obrazem).',
+    hybrid: '<b>C – hybrid:</b> chybějící místo nižšího sloupce jde nejdřív do mezer mezi obrazy (každá nejvýš <i>max. mezera</i> × základní mezera), zbytek napůl nad a pod sloupec, nahoře ale nejvýš <i>max. horní odstup</i>, ostatní zůstane dole. <i>Pořadí sloupců:</i> sloupce seřazené A, B, C… podle počtu obrazů (při shodě novější dřív) a poskládané zleva podle zvolené možnosti.',
+  };
+  // Starts from the settings of the home page (site.config.yaml home.columns); "Nastavení" loads those of a place.
+  const state = { align: 'hybrid', view: 'm', screen: 'wide', offset: 0, guides: false, place: 'home', ...CONFIG.columns.home };
+
+/*FUNCTIONS*/
+
+  function card(work, columnWidth) {
+    const a = document.createElement('a');
+    a.className = 'card' + (work.transparent ? ' cutout' : '');
+    a.title = work.title;
+    const base = `${PUBLIC}/${work.folder}/`;
+    const img = document.createElement('img');
+    img.srcset = work.widths.map((w) => `${base}${w}.webp ${w}w`).join(', ');
+    img.sizes = `${Math.round(columnWidth)}px`;
+    img.src = `${base}${work.widths[0]}.webp`;
+    img.width = 1000;
+    img.height = Math.round(1000 * work.ratio);
+    img.alt = work.title;
+    img.loading = 'lazy';
+    const meta = document.createElement('span');
+    meta.className = 'meta';
+    meta.innerHTML = `<span class="title"></span><span class="sub"></span>`;
+    meta.firstChild.textContent = work.title;
+    meta.lastChild.textContent = work.sub;
+    a.append(img, meta);
+    return a;
+  }
+
+  function render() {
+    const screen = SCREENS[state.screen];
+    const columns = (state.screen === 'phone' ? PHONE_COLUMNS : COLUMNS)[state.view];
+    const page = document.getElementById('page');
+    page.style.width = `${screen.width}px`;
+    page.style.setProperty('--gutter', `${screen.gutter}px`);
+    page.classList.toggle('framed', state.screen !== 'wide');
+    page.classList.toggle('guides', state.guides);
+    const width = screen.width - 2 * screen.gutter;
+    const count = RECENT[state.screen][state.view];
+    const works = WORKS.slice(state.offset, state.offset + count);
+    const n = Math.min(works.length, columnCount(width, columns.count, columns.width, columns.gap));
+    const columnWidth = (width - (n - 1) * columns.gap) / n;
+    const grid = document.getElementById('grid');
+    const noMeta = state.view === 'grid' ? '' : ' no-meta';
+    grid.className = `grid ${state.align}${noMeta}`;
+    grid.style.gap = `0 ${columns.gap}px`;
+    grid.style.setProperty('--mb', `${columns.mb}px`);
+    // Measure each card as wide as a column (with its title under big pictures), as the site does.
+    const measure = document.getElementById('measure');
+    measure.className = `measure${noMeta}`;
+    measure.style.width = `${columnWidth}px`;
+    measure.style.setProperty('--mb', `${columns.mb}px`);
+    const cards = works.map((w) => card(w, columnWidth));
+    measure.replaceChildren(...cards);
+    const heights = cards.map((c) => c.getBoundingClientRect().height + columns.mb);
+    const balanced = balanceColumns(heights, n);
+    const groups = state.align === 'hybrid' ? orderColumns(balanced, state.order) : balanced;
+    grid.replaceChildren(...groups.map((items) => {
+      const col = document.createElement('div');
+      col.className = 'col';
+      col.append(...items.map((i) => cards[i]));
+      return col;
+    }));
+    measure.replaceChildren();
+    const totals = groups.map((items) => items.reduce((sum, i) => sum + heights[i], 0) - columns.mb);
+    const spread = Math.round(Math.max(...totals) - Math.min(...totals));
+    const tallest = Math.max(...totals);
+    const plans = groups.map((items, c) => {
+      const plan = columnPlan(items.length, tallest - totals[c], columns.mb, state);
+      return { gap: columns.mb + plan.extra, top: plan.top };
+    });
+    [...grid.children].forEach((col, c) => {
+      col.style.setProperty('--mb', state.align === 'hybrid' ? `${plans[c].gap}px` : '');
+      col.style.paddingTop = state.align === 'hybrid' ? `${plans[c].top}px` : '';
+    });
+    const limits = document.getElementById('limits');
+    limits.hidden = state.align !== 'hybrid';
+    document.getElementById('max-gap').value = String(state.maxGap);
+    document.getElementById('max-top').value = String(state.maxTop);
+    document.getElementById('order').value = state.order;
+    document.getElementById('place').value = state.place;
+    document.getElementById('max-gap-out').textContent = `${state.maxGap}× = ${Math.round(columns.mb * state.maxGap)} px`;
+    document.getElementById('max-top-out').textContent = `${state.maxTop} px`;
+    document.getElementById('count').textContent = `${works.length} děl · ${n} sloupců`;
+    document.getElementById('stats').textContent = `Výšky sloupců bez úprav: ${totals.map(Math.round).join(' / ')} px · rozdíl nejvyššího a nejnižšího ${spread} px` +
+      (state.align === 'spread' ? ` · v nejnižším sloupci se ${spread} px rozdělí do mezer` : state.align === 'center' ? ` · nejnižší sloupec má nad i pod sebou ${Math.round(spread / 2)} px navíc` :
+        state.align === 'hybrid' ? ` · obrazů ve sloupcích ${groups.map((g) => g.length).join(' / ')}, mezery ${plans.map((p) => Math.round(p.gap)).join(' / ')} px, horní odstupy ${plans.map((p) => Math.round(p.top)).join(' / ')} px` : '');
+    document.getElementById('note').innerHTML = NOTES[state.align];
+    for (const b of document.querySelectorAll('[data-align]')) b.setAttribute('aria-pressed', String(b.dataset.align === state.align));
+    for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === state.view));
+    for (const b of document.querySelectorAll('[data-screen]')) b.setAttribute('aria-pressed', String(b.dataset.screen === state.screen));
+    const offset = document.getElementById('offset');
+    const last = Math.max(0, WORKS.length - count);
+    offset.replaceChildren(...Array.from({ length: last + 1 }, (_, i) => new Option(i === 0 ? '1 (nejnovější)' : String(i + 1), String(i))));
+    state.offset = Math.min(state.offset, last);
+    offset.value = String(state.offset);
+  }
+
+  for (const b of document.querySelectorAll('[data-align]')) b.addEventListener('click', () => { state.align = b.dataset.align; render(); });
+  for (const b of document.querySelectorAll('[data-view]')) b.addEventListener('click', () => { state.view = b.dataset.view; render(); });
+  for (const b of document.querySelectorAll('[data-screen]')) b.addEventListener('click', () => { state.screen = b.dataset.screen; render(); });
+  document.getElementById('offset').addEventListener('change', (e) => { state.offset = Number(e.target.value); render(); });
+  document.getElementById('max-gap').addEventListener('input', (e) => { state.maxGap = Number(e.target.value); render(); });
+  document.getElementById('max-top').addEventListener('input', (e) => { state.maxTop = Number(e.target.value); render(); });
+  document.getElementById('order').addEventListener('change', (e) => { state.order = e.target.value; render(); });
+  document.getElementById('place').addEventListener('change', (e) => { Object.assign(state, { place: e.target.value }, CONFIG.columns[e.target.value]); render(); });
+  document.getElementById('guides').addEventListener('change', (e) => { state.guides = e.target.checked; render(); });
+  render();
+  // Titles under big pictures wrap differently once the fonts are in.
+  document.fonts?.ready.then(render);
+</script>
+</body>
+</html>

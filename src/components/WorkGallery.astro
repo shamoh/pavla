@@ -110,7 +110,7 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
 </form>
 </div>
 
-<WorkGrid works={works} eager={3} id="grid" data-page-sizes={JSON.stringify({ grid: pageSizes, tiles: tilePageSizes })} data-view={JSON.stringify(setup)} />
+<WorkGrid works={works} place="gallery" eager={3} id="grid" data-page-sizes={JSON.stringify({ grid: pageSizes, tiles: tilePageSizes })} data-view={JSON.stringify(setup)} />
 <script is:inline set:html={viewScript} />
 <p class="muted empty" id="empty" hidden>Tomuhle výběru nic neodpovídá.</p>
 <Pager pageSizes={pageSizes} total={works.length} views />

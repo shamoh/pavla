@@ -14,6 +14,7 @@ import { sortCollections } from '../../scripts/lib/collection-filter.mjs';
 import { measurementIdFor } from '../../scripts/lib/analytics.mjs';
 import { messagesSettings } from '../../scripts/lib/messages.mjs';
 import { workTooltip } from '../../scripts/lib/tooltip.mjs';
+import { tileMarksFor } from '../../scripts/lib/tile-marks.mjs';
 import { execSync } from 'node:child_process';
 
 const root = process.cwd();
@@ -240,6 +241,9 @@ function currentCommit(): string {
 export const version = buildVersion(new Date(), currentCommit());
 
 /** Google Analytics measurement ID for this build, null when it must not measure (dev server, test data). */
+/** Marks over the tiles (star of the selection, a work on sale) of each place: site.config.yaml home.tileMarks, gallery.tileMarks, checked once. */
+export const marks = { home: tileMarksFor(config, 'home'), gallery: tileMarksFor(config, 'gallery') };
+
 export const analyticsId = measurementIdFor(config.analytics, { production: import.meta.env.PROD, demo: Boolean(process.env.SITE_DATA_DIR) });
 
 /**

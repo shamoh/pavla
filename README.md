@@ -352,7 +352,7 @@ klíče `grid` = velké obrazy, `s` / `m` / `l` = dlaždice; chybějící = výc
     plný a prázdný střídavě), `edges` = střídavě k levému a pravému kraji (A C E F D B, nejplnější na krajích),
     `center` = střídavě vlevo a vpravo od středu (E C A B D F, nejplnější uprostřed), `none` = jak vyšly z vyrovnání.
     Nejnovější dílo tak nemusí být vlevo nahoře; pořadí uvnitř sloupce zůstává od nejnovějšího.
-  - Vyzkoušení hodnot: prototyp se stejným výpočtem a posuvníky pro `maxGap` a `maxTop` (mimo toto repo).
+  - Vyzkoušení hodnot: prototyp `zarovnani-sloupcu.html` (viz *Prototypy*) s posuvníky pro `maxGap`, `maxTop` a výběrem `order`.
 - **Bez přeblikávání:** zobrazení odkazu nebo paměti, počet pro telefon i sloupce nastaví vložený skript hned za mřížkou
   (`homeScript` = `startHome`, `layoutHome` a jejich pomocné funkce zkopírované jako text, proto bez importů; všechny musí být v `scripts/lib/view-layout.mjs`, protože dev server přepisuje volání importovaných funkcí na `__vite_ssr_import_…`, které by kopie ve stránce nenašla, hlídá test), ještě
   než se stránka vykreslí. Nastavení dostane v `data-view` mřížky (`homeSetup` = `viewSetup` + počty, obrazovky a
@@ -365,6 +365,21 @@ klíče `grid` = velké obrazy, `s` / `m` / `l` = dlaždice; chybějící = výc
   z úvodního obrazu); skryté karty obrázky nestahují. HTML je ve výchozím zobrazení (i `sizes` obrázků).
 - Přepnutí zobrazení pošle do Google Analytics událost `view_change` (viz *Návštěvnost*).
 - Vyzkoušení: `npm run demo`, `/tvorba/2026/` (text z `demo-content/roky/2026.yaml`) a `/tvorba/2025/` (bez textu).
+
+### Prototypy
+
+Samostatné stránky pro hledání nastavení zobrazení děl, nad daty webu (`npm run prototypes`, `scripts/prototypes.mjs`,
+`scripts/lib/prototypes.mjs`, šablony `scripts/prototypes/*.html`): zapíše je do `.prototypes/` (mimo git; jinam
+`npm run prototypes -- <složka>`), otevírají se přímo z disku a obrázky berou z `public/` dat, takže fungují jen vedle
+nich. Data jsou skutečná díla (`content/`, `public/` tohoto repa) nebo testovací (`SITE_DATA_DIR=.demo/site`, napřed
+`npm run demo:prepare`), vždy po `npm run images` aktuální. Výpočty jsou funkce webu vložené jako text
+(`PROTOTYPE_FUNCTIONS`: `columnCount`, `balanceColumns`, `columnPlan`, `orderColumns`), ikony a výchozí hodnoty ze
+`site.config.yaml` (`prototypeConfig`), takže prototyp ukazuje přesně to, co web.
+- `zarovnani-sloupcu.html`: úvodní stránka „Nejnovější“ na počítači / tabletu / telefonu, zobrazení, varianty konce
+  sloupců (dnes, rozprostřít, vycentrovat, C = web) s posuvníky `maxGap`, `maxTop`, výběrem `order` a nastavením úvodní
+  stránky nebo galerie; vodítka a výšky sloupců.
+- `znacky-dlazdic.html`: všechna díla v dlaždicích S, M a L, paleta, styl značky (web = silueta s lemem), ikona na
+  prodej, roh a velikosti dlaždic každé značky, velikost, minimum, maximum, krytí; nastavení úvodní stránky nebo galerie.
 
 ### Hledání
 
@@ -435,6 +450,20 @@ seznamů.
   obrázkům přepíše `sizes`, aby prohlížeč stahoval menší varianty. Logika: `VIEWS`, `viewFromParams`,
   `viewToRemember`, `viewPageSizes`, `withView` v `scripts/lib/gallery-filter.mjs`; které zobrazení platí (odkaz, pak
   paměť) `viewOf`, třídy, `sizes` a přepínač `showViewOf` v `scripts/lib/view-layout.mjs`.
+- **Značky na dlaždicích** (`scripts/lib/tile-marks.mjs`, `WorkCard.astro`; jen v zobrazení dlaždic, na úvodní stránce
+  i v galerii, u velkých obrazů je místo nich hvězdička u názvu a štítek stavu): hvězdička u výběru autorky
+  (`featured: true`) vlevo nahoře na všech velikostech dlaždic a košík u díla na prodej (`isOnSale`: k prodeji nebo
+  rezervováno) vpravo dole jen na středních a velkých (na malých by dvě značky rušily). Silueta v barvě písma palety
+  s tenkým lemem barvy papíru (čitelná na světlých i tmavých obrazech), velikost 10 % šířky dlaždice, nejméně 12 px
+  a nejvýš 22 px, krytí 90 %; ozdoba bez textu (`aria-hidden`), totéž říká bublina nad obrazem. Nastavení
+  `site.config.yaml`, každé místo zvlášť: `gallery.tileMarks` (galerie, roky, kolekce: hvězdička i košík jak výše)
+  a `home.tileMarks` (úvodní stránka: jen hvězdička, menší a průsvitnější: `size` 8, `min` 10, `opacity` 60,
+  `sale.tiles: []`) (`tileMarksFor`, `tileMarks`, výchozí `TILE_MARK_DEFAULTS`, neplatná nebo neznámá hodnota zastaví
+  build a chyba jmenuje místo, dřívější společné `tileMarks` v kořeni = chyba „přesunuto“; karta mimo mřížku děl,
+  např. na stránce 404, značky nemá): `size` (% šířky), `min`, `max` (px), `opacity` (%), `featured.corner` / `sale.corner` (`tl`, `tr`, `bl`, `br`;
+  dvě značky ve stejném rohu stojí vedle sebe), `featured.tiles` / `sale.tiles` (velikosti dlaždic `s`, `m`, `l`,
+  `[]` = nikde) a `sale.icon` (`cart` košík, `tag` cenovka, `bag` taška). Velikost a krytí jdou do mřížky jako
+  proměnné `--mark-*` (`WorkGrid.astro`), velikost dlaždice zná CSS z `.pic` (`container-type: inline-size`, jednotka `cqi`).
 - **Bez přeblikávání:** zapamatované zobrazení a velikost dlaždic nastaví vložený skript hned za mřížkou
   (`viewScript` = `startView`, `viewOf` a `showViewOf` zkopírované jako text, proto bez importů), ještě než se stránka
   vykreslí; nastavení dostane v `data-view` mřížky (`viewSetup`: zobrazení, výchozí, parametry odkazu, které rozhodují
@@ -1377,6 +1406,9 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | velikost dlaždic | v dlaždicích `−` / `+` vedle přepínače: menší (víc sloupců, `?view=tiles&tile=s`) a větší (`&tile=l`), na krajích zašedlé; střední parametr nemá. Obnov stránku bez parametrů: velikost zůstane (paměť `pavla.gallery.tileSize`); `?view=tiles&tile=m` → střední (odkaz má přednost). Na telefonu 4 / 3 / 2 sloupce. Ve velkých obrazech tlačítka nejsou. |
 | zobrazení na úvodní stránce | `/`: „Nejnovější“ jako střední dlaždice (30, adresa bez parametrů), ikony vpravo v záhlaví; sloupce končí skoro stejně vysoko. „Velké obrazy“ → 6 děl a `?view=grid`; zpět „Dlaždice“ a `−` → malé, `?tile=s` (63, testovací data mají méně, ukážou všechna kromě úvodního obrazu), `+` `+` → velké, `?tile=l` (20). Zužuj okno: sloupců ubývá a znovu se vyrovnají; pod 1100 px méně děl (4 / 16 / 25 / 49), pod 640 px ještě méně (3 / 10 / 24 / 40). S pamětí velkých obrazů obnov `/`: rovnou velké obrazy, žádné probliknutí dlaždic. V konzoli (Verbose) `[analytics] view_change {"listing":"home","view":"grid"}`. Nikdy se neopakuje dílo z úvodního obrazu (obnovuj, obraz se střídá). Otevři `/` bez parametrů: volba zůstane (paměť `pavla.home.view` / `pavla.home.tileSize`), `/tvorba/` má dál své zobrazení. `/?view=grid` u někoho s pamětí dlaždic → velké obrazy (odkaz má přednost); `/?utm_source=x` parametr zachová. |
 | sloupce stejné výšky v galerii | `/tvorba/`, `/tvorba/2026/`, kolekce: sloupce končí dole stejně (nižší mají mírně širší mezery, případně místo nahoře nejvýš 12 px), nejplnější a nejprázdnější sloupce se střídají (`gallery.columns` v `site.config.yaml`; zkus `order: center` nebo `maxGap: 1`, úvodní stránka se nezmění, ta má `home.columns`), ve velkých obrazech i dlaždicích; změň filtr, stránku, počet na stránku, „Zobrazit vše“ i šířku okna, sloupce se vždy znovu vyrovnají. Stránkování dál podle data (2. stránka začíná dílem po posledním z 1.). Se zapamatovanými dlaždicemi obnov `/tvorba/`: rovnou dlaždice, bez probliknutí velkých obrazů. |
+| značky na úvodní stránce | `/`: v dlaždicích jen hvězdička (menší, průsvitnější), žádné košíky (`home.tileMarks`); galerie beze změny. |
+| prototypy | `npm run prototypes` a `open .prototypes/zarovnani-sloupcu.html`, `open .prototypes/znacky-dlazdic.html`: posuvníky začínají na hodnotách ze `site.config.yaml`, „Nastavení“ přepne na úvodní stránku / galerii. Testovací data: `npm run demo:prepare`, `SITE_DATA_DIR=.demo/site npm run prototypes -- .demo/prototypes`. |
+| značky na dlaždicích | `/tvorba/?view=tiles`: obrazy z výběru autorky mají vlevo nahoře hvězdičku, obrazy na prodej vpravo dole košík; `−` na malé dlaždice: košíky zmizí, hvězdičky zůstanou; `+` na velké: značky větší (nejvýš 22 px). Přepni paletu Noc: značky světlé s tmavým lemem. Velké obrazy: žádné značky, hvězdička u názvu a štítek „K prodeji“. Totéž na úvodní stránce. Zkus `tileMarks.sale.icon: tag` nebo `sale.corner: tl` v `site.config.yaml` (košík vedle hvězdičky). |
 | dlaždice | `/tvorba/`: vpravo dole ikona „Dlaždice“: malé obrazy bez textů, 36 na stránku, „Na stránku“ nabízí 36 / 72 / 144, v URL `?view=tiles`; z 4. stránky velkých obrazů skočí na 2. stránku dlaždic (stejné první dílo). Zvol 72, přepni na velké obrazy a zpět: každé zobrazení si pamatuje svůj počet. Změň filtr, dlaždice zůstanou. Otevři `/tvorba/` znovu bez parametrů → dlaždice a `?view=tiles` (paměť); `/tvorba/?view=grid` → velké obrazy (odkaz má přednost); „Velké obrazy“ paměť smaže (DevTools → Local Storage → `pavla.gallery.view`). Na šířce telefonu 3 sloupce. |
 | štítky v bublině | `/tvorba/`: najeď myší na obraz se štítky, bublina má řádek `#štítek …` česky podle abecedy. |
 | přehled všech děl | `npm run demo:prepare`, pak `.demo/content/export/README.md`: kolekce, nadpisy `### Máky ★ · rw4dh @ 2026-07-02 [ 30 x 30 ]`, přepínače slovem (`instagram: -`), kódy hlášek (např. `featured-bez-pinu` u Máků) a „Hlášky“ s počty; v náhledu Markdownu (VS Code) hledej kód. |

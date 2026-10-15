@@ -2,11 +2,17 @@
 import Picture from './Picture.astro';
 import FeaturedStar from './FeaturedStar.astro';
 import { type Work, shownStatus, statusLabel, formatSize, workUrl } from '../lib/site';
+import { MARK_ICONS, type tileMarks, workMarks } from '../../scripts/lib/tile-marks.mjs';
+import { isOnSale } from '../../scripts/lib/works.mjs';
 import { searchText } from '../../scripts/lib/search.mjs';
 import { CARD_IMAGE_SIZES } from '../../scripts/lib/gallery-filter.mjs';
-// `sizes`: of the picture, the big pictures by default (tiles are narrower, WorkGrid.astro).
-interface Props { work: Work; eager?: boolean; hidden?: boolean; sizes?: string }
-const { work, eager, hidden, sizes = CARD_IMAGE_SIZES } = Astro.props;
+// `sizes`: of the picture, the big pictures by default (tiles are narrower, WorkGrid.astro); `marks`: the mark settings
+// of the place (tileMarksFor), none = no marks (cards outside a grid of works, e.g. on the 404 page, never show tiles).
+interface Props { work: Work; marks?: ReturnType<typeof tileMarks>; eager?: boolean; hidden?: boolean; sizes?: string }
+const { work, marks, eager, hidden, sizes = CARD_IMAGE_SIZES } = Astro.props;
+// Marks over the picture, shown only with tiles (site.config.yaml home/gallery.tileMarks): with big pictures the title has the star
+// and the card the status chip. Decorative: the tooltip of the picture and the hidden texts tell the same.
+const shownMarks = marks ? workMarks({ featured: Boolean(work.featured), onSale: isOnSale(work.status) }, marks) : [];
 ---
 <a
   class="card"
@@ -21,7 +27,14 @@ const { work, eager, hidden, sizes = CARD_IMAGE_SIZES } = Astro.props;
   data-search={searchText(work)}
   hidden={hidden}
 >
-  <Picture work={work} sizes={sizes} eager={eager} tooltip />
+  <span class="pic">
+    <Picture work={work} sizes={sizes} eager={eager} tooltip />
+    {shownMarks.map((m) => (
+      <span class:list={['mark', m.corner, { beside: m.beside }]} data-mark={m.kind} data-tiles={m.tiles.join(' ')} aria-hidden="true">
+        <svg viewBox="0 0 24 24" set:html={MARK_ICONS[m.icon]} />
+      </span>
+    ))}
+  </span>
   <span class="meta">
     <span class="title">{work.title}<FeaturedStar featured={work.featured} /></span>
     <span class="sub">{work.technique}{work.size_cm && ` · ${formatSize(work.size_cm)}`}</span>
@@ -33,6 +46,25 @@ const { work, eager, hidden, sizes = CARD_IMAGE_SIZES } = Astro.props;
   .card :global(picture) { box-shadow: var(--shadow-soft); transition: transform .25s ease; }
   .card :global(picture.cutout) { box-shadow: none; filter: var(--drop-soft); }
   .card:hover :global(picture) { transform: translateY(-3px); }
+  /* The marks (scripts/lib/tile-marks.mjs): only with tiles and on the tile sizes they are for; as large as a share of
+     the tile width (cqi of .pic) within a minimum and maximum (--mark-* from WorkGrid.astro, site.config.yaml tileMarks),
+     in the ink colour with a rim of the paper colour, so they read on light and dark pictures. */
+  .pic { display: block; position: relative; container-type: inline-size; }
+  .mark {
+    --size: clamp(var(--mark-min), calc(var(--mark-share) * 1cqi), var(--mark-max));
+    --inset: max(4px, calc(var(--size) * 0.35));
+    display: none; position: absolute; width: var(--size); height: var(--size); color: var(--ink);
+    opacity: var(--mark-opacity); pointer-events: none;
+  }
+  .mark svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 1px var(--paper)) drop-shadow(0 0 1.5px var(--paper)) drop-shadow(0 0 3px var(--paper)); }
+  :global(.grid.tiles-s) .mark[data-tiles~='s'], :global(.grid.tiles-m) .mark[data-tiles~='m'], :global(.grid.tiles-l) .mark[data-tiles~='l'] { display: block; }
+  .mark.tl { top: var(--inset); left: var(--inset); }
+  .mark.tr { top: var(--inset); right: var(--inset); }
+  .mark.bl { bottom: var(--inset); left: var(--inset); }
+  .mark.br { bottom: var(--inset); right: var(--inset); }
+  /* A second mark in the same corner: next to the first one, towards the middle. */
+  .mark.tl.beside, .mark.bl.beside { left: calc(var(--inset) + var(--size) * 1.35); }
+  .mark.tr.beside, .mark.br.beside { right: calc(var(--inset) + var(--size) * 1.35); }
   .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-top: 12px; }
   .title { font-family: var(--serif); font-size: 1.35rem; width: 100%; line-height: 1.2; }
   .sub { font-size: 0.85rem; color: var(--ink-soft); }

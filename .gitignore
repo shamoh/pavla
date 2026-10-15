@@ -6,4 +6,5 @@ dist/
 .demo/
 .env
 .previews/
+.prototypes/
 /mockups/export/
