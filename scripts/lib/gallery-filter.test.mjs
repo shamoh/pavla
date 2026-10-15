@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ALL_PAGES, FEATURED_ON, NO_COLLECTION, czechOrder,
+import { ALL_PAGES, FEATURED_ON, NO_COLLECTION, czechOrder, galleryFilterPath,
   countStatuses, matchesFilters, offersOption, statusOptions, yearFilterOptions, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
   DEFAULT_TILE_PAGE_SIZES, DEFAULT_TILE_SIZE, TILE_SIZES, TILE_WIDTHS, stepTileSize, tileSizeFromParams, tileSizeToRemember, DEFAULT_VIEW, PAGE_SIZE_STORAGE_KEY, TILE_PAGE_SIZE_STORAGE_KEY, VIEWS, pageSizeStorageKey, viewPageSizes, withView, facetChoices, facetDisplay, viewFromParams, viewToParams, viewToRemember, CARD_IMAGE_SIZES, TILE_PHONE_COLUMNS, viewImageSizes, facetValues, pagingFromParams, pagingToParams, sortTags, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
 } from './gallery-filter.mjs';
@@ -433,4 +433,15 @@ test('viewImageSizes: big pictures as the card, tiles by the column width and ph
   assert.equal(viewImageSizes('tiles', 'l'), '(max-width: 640px) 50vw, 252px');
   assert.equal(viewImageSizes('tiles', 'xl'), viewImageSizes('tiles', 'm'));
   assert.deepEqual(Object.keys(TILE_PHONE_COLUMNS), TILE_SIZES);
+});
+
+test('galleryFilterPath: the gallery filtered by one value, read back by stateFromParams', () => {
+  assert.equal(galleryFilterPath('technique', 'tuš'), '/tvorba/?technique=tu%C5%A1');
+  for (const [key, value] of [['technique', 'akvarel a tuš'], ['technique', 'kresba perem, tuš & akvarel'], ['tag', 'Šumava']]) {
+    const href = galleryFilterPath(key, value);
+    assert.ok(href.startsWith('/tvorba/?'), href);
+    const state = stateFromParams(new URL(href, 'https://example.org').searchParams);
+    assert.deepEqual(state[key], key === 'tag' ? [value] : value, href);
+    assert.ok(matchesFilters({ title: 'x', tags: ['Šumava'], technique: value, year: '2026', collection: '', status: 'available', featured: false }, { ...state, tag: key === 'tag' ? [value] : [] }), href);
+  }
 });

@@ -108,6 +108,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   Štítky: víc najednou „a zároveň“ (`state.tag` = pole, `?tag=a&tag=b`, `sortTags`/`toggleTag`), aktivní jsou jen čipy,
   které zobrazená díla zúží a nevyprázdní (`tagChoices`), vybrané vždy, ostatní zašedlé na místě; GA `tag` = spojené čárkou.
   Kolekce je combobox (`src/lib/combobox.ts` nad skrytým `<select>`, který zůstává jediným stavem; kolekce podle abecedy `czechOrder` (i Technika), smazaný text = „vše“ (nápověda, Enter ji vybere), psaní zužuje podle
+  Odkazy na galerii s jedním filtrem (štítky a technika na stránce díla) jen přes `galleryFilterPath`.
   `comboMatches`, nikdy do URL). Kolekce má za „vše“ volbu „žádná“ (`NO_COLLECTION` = `?collection=none`, díla bez kolekce; čip v liště z `data-chip`),
   přehled kolekcí končí položkou „Mimo kolekce“ (`NO_COLLECTION_TITLE`, `getUncollected`); slug `none` pipeline odmítne.
   Její text (`description`, prázdný = `UNCOLLECTED_TEXT`) a úvodní obraz: `tvorba/_index.yaml` + `tvorba/_cover.jpg` obsahového repa (`UNCOLLECTED_SCHEMA`, `scripts/lib/uncollected.mjs`,

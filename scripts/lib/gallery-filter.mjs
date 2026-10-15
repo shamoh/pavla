@@ -232,6 +232,12 @@ export function stateToParams(state) {
   return viewToParams(params, state);
 }
 
+/**
+ * Address of the whole gallery filtered by one value of one filter (e.g. a tag or the technique of a work):
+ * galleryFilterPath('technique', 'tuš') → "/tvorba/?technique=tu%C5%A1". Without the site base (url() adds it).
+ */
+export const galleryFilterPath = (key, value) => `/tvorba/?${new URLSearchParams({ [key]: value })}`;
+
 /** Page size in effect: the visitor's pick, otherwise the default (first offered size). */
 export const pageSizeOf = (state, pageSizes = DEFAULT_PAGE_SIZES) => state.perPage ?? pageSizes[0];
 

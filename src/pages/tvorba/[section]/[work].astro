@@ -6,6 +6,7 @@ import FeaturedStar from '../../../components/FeaturedStar.astro';
 import { collectionUrl, config, detailCaption, getCollection, workPinImage, workShareImage, getWorks, messages, site, statusLabel, formatSize, formatPrice, url, workUrl, workImagePath, type Work } from '../../../lib/site';
 import { isOnSale, wantsMockups, workCodeHint, workShortPath } from '../../../../scripts/lib/works.mjs';
 import { EVENTS } from '../../../../scripts/lib/analytics.mjs';
+import { galleryFilterPath } from '../../../../scripts/lib/gallery-filter.mjs';
 import { pinDescription } from '../../../../scripts/lib/pinterest.mjs';
 import { shareLinks } from '../../../../scripts/lib/share.mjs';
 import { artworkLd, breadcrumbLd, graphLd, workPageDescription, workPageTitle } from '../../../../scripts/lib/seo.mjs';
@@ -88,7 +89,7 @@ const jsonLd = graphLd(
       <div class="story">
         {work.description && <p class="desc">{work.description}</p>}
         {work.tags.length > 0 && (
-          <p class="tags">{work.tags.map((t) => <a href={url(`/tvorba/?tag=${encodeURIComponent(t)}`)}>#{t}</a>)}</p>
+          <p class="tags">{work.tags.map((t) => <a href={url(galleryFilterPath('tag', t))}>#{t}</a>)}</p>
         )}
       </div>
     )}
@@ -96,7 +97,7 @@ const jsonLd = graphLd(
       <div class="head">
         <div class="title"><h1>{work.title}</h1><FeaturedStar featured={work.featured} /></div>
         <dl>
-          <dt>Technika</dt><dd>{work.technique}</dd>
+          <dt>Technika</dt><dd><a href={url(galleryFilterPath('technique', work.technique))} title={`Všechny obrazy s technikou ${work.technique}`}>{work.technique}</a></dd>
           {work.support && <><dt>Podklad</dt><dd>{work.support}</dd></>}
           {work.size_cm && <><dt>Rozměr</dt><dd>{formatSize(work.size_cm)}</dd></>}
           <dt>Vzniklo</dt><dd>{date}</dd>

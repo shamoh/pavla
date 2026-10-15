@@ -80,7 +80,8 @@ pavla/                                      (toto repo, veřejné)
 | `/pinterest.xml` | kanál RSS pro Pinterest: díla s `meta_pinterest: true` (viz *Pinterest*) |
 
 **Stránka díla** (`src/pages/tvorba/[section]/[work].astro`): vlevo obraz a pod ním popis a štítky, vpravo název,
-údaje (technika, podklad, rozměr, vznik, kolekce a poslední „Kód“ = trvalé `id` díla tlumeným písmem s pevnou šířkou,
+údaje (technika = odkaz na celou tvorbu s filtrem té techniky `/tvorba/?technique=…`, jako štítky `?tag=…`, oba přes
+`galleryFilterPath` v `scripts/lib/gallery-filter.mjs`; podklad, rozměr, vznik, kolekce a poslední „Kód“ = trvalé `id` díla tlumeným písmem s pevnou šířkou,
 odkaz na krátkou adresu `/tvorba/<id>/` (`workShortPath`) s bublinou „Trvalý kód obrazu: platí i po přejmenování. Krátký
 odkaz: …“ (`workCodeHint` v `scripts/lib/works.mjs`) a malou ikonou „Zkopírovat kód“ vedle (`data-copy`, `applyCopyButtons`
 v `src/lib/share-button.ts`, hláška „Kód zkopírován“ `copiedText`; skrytá, dokud prohlížeč neumí kopírovat)), jeden řádek se stavem, cenou a krátkými tlačítky („Zeptat se“,
