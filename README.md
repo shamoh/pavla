@@ -89,7 +89,8 @@ pavla/                                      (toto repo, veřejné)
 | `/sitemap.xml` | mapa webu: kanonická adresa každé stránky (bez krátkých odkazů a 404) |
 | `/pinterest.xml` | kanál RSS pro Pinterest: díla s `meta_pinterest: true` (viz *Pinterest*) |
 
-**Stránka díla** (`src/pages/tvorba/[section]/[work].astro`): vlevo obraz a pod ním popis a štítky, vpravo název,
+**Stránka díla** (`src/pages/tvorba/[section]/[work].astro`): vlevo obraz a pod ním popis a štítky, vpravo název
+(hvězdička výběru autorky na pravém okraji v úrovni prvního řádku názvu, i u dlouhého zalomeného),
 údaje (technika = odkaz na celou tvorbu s filtrem té techniky `/tvorba/?technique=…`, jako štítky `?tag=…`, oba přes
 `galleryFilterPath` v `scripts/lib/gallery-filter.mjs`; technika, štítky, kolekce i navigace nahoře
 („← Tvorba“, rok) mají bublinu „Všechny obrazy [s technikou … / se štítkem #… / z kolekce … / z roku …]“ z `galleryLinkTitle`; podklad, rozměr, vznik, kolekce a poslední „Kód“ = trvalé `id` díla tlumeným písmem s pevnou šířkou,
@@ -771,7 +772,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | `not-for-sale` (17) | Kytice z louky, Kvilda skica, Slunečnice a 14 dalších (např. Babička, Houby, Lampy, Gerlach) |
 | techniky | akvarel (35), kresba tužkou (8), akvarel a tuš (6), kvaš (5), pastel (3), linoryt (1, Lípa u kaple) |
 | tagy (31, nerovnoměrně) | hodně: krajina (28), voda (15), město (12); středně: léto (9), zátiší (7), květiny (6), podzim, hory, plenér (po 5), ulice, zima, řeka, strom, les (po 4); málo: déšť, zvířata, ovoce, noc, světla, portrét, ptáci (po 3), loď, louka, nebe, sníh (po 2), jaro, kostel, květina, mlha, most, západ slunce (po 1) |
-| `featured` (výběr autorky, 15 děl, v 8 ze 16 kolekcí a 3 bez kolekce) | Máky, Ráno u rybníka, Šumava v mlze, Nádraží, Rybník v zimě… (2026 a přelom roku), Pivoňky, Zimní sad, Kočka na okně, Jablka na stole (2025), Louka s kopretinami (2024), Vltava u Zbraslavi, Oblaka, Čáp u rybníka, Buky, Babička: úvodní stránka náhodně střídá 10 nejnovějších (po Louku s kopretinami, `FEATURED_PICK`), `/tvorba/?featured=1` ukáže všech 15; kolekce bez vybraných: Skicák, Tatry, Krkonoše, Z cest, U moře, Zátiší, Noční město, Město 2026 |
+| `featured` (výběr autorky, 15 děl, v 8 ze 16 kolekcí a 3 bez kolekce) | Máky, Ráno u rybníka, Šumava v mlze, Nádraží, Rybník v zimě… (2026 a přelom roku), Pivoňky, Zimní sad, Kočka na okně, Jablka na stole (2025), Louka s kopretinami (2024), Vltava u Zbraslavi v podvečerním světle (dlouhý název: na stránce díla se zalomí a hvězdička zůstane vpravo u prvního řádku), Oblaka, Čáp u rybníka, Buky, Babička: úvodní stránka náhodně střídá 10 nejnovějších (po Louku s kopretinami, `FEATURED_PICK`), `/tvorba/?featured=1` ukáže všech 15; kolekce bez vybraných: Skicák, Tatry, Krkonoše, Z cest, U moře, Zátiší, Noční město, Město 2026 |
 | text o roce | `/tvorba/2026/` má text (`demo-content/roky/2026.yaml`), `/tvorba/2025/` ne (`description: ""`) |
 | tlačítko „Koupit na Fleru“ | Máky |
 | export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail, na výšku), Kytice z louky (+ 1 detail, není na prodej), Máky, Na podlaze (průhledný ořez podlahy), Lípa u kaple (20 × 15: scény se přiblíží), Zimní sad (50 × 35: na stoly se nevejde, v logu „does not fit the free part of the scene“; panorama 2 snímky), Oblaka (60 × 20: panorama 3 snímky, mřížka 3); ostatní díla žádný. Mřížka na profilu: Pivoňky (`meta_instagram_grid: 3x3`), Oblaka (`3x1`) a Ráno u rybníka (`2x1`, dvojice). Panorama: Na podlaze, Ráno u rybníka, Zimní sad (2 snímky), Oblaka (3); Máky, Kytice z louky (čtverec) a Pivoňky (na výšku) žádné. Příběh `story.jpg` má každé |

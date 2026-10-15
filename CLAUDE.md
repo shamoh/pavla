@@ -128,7 +128,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   odkaz „× Zrušit filtry“ za počtem „N z M děl“ (`filteredCount`), „Zrušit vše“ v liště od 2 filtrů, „Zrušit filtry“
   vedle „Hotovo“ v panelu; vše `[data-filters-reset]`, bez filtru skryté.
   Prvky tvořené skriptem stylovat přes `:global(…)` (scoped CSS Astra na ně nedosáhne).
-- `featured: true` = výběr autorky: `★` za názvem na kartě i za `<h1>` stránky díla (mimo něj, v bloku `.title`;
+- `featured: true` = výběr autorky: `★` za názvem na kartě, na stránce díla vedle `<h1>` na pravém okraji v úrovni prvního řádku (mimo něj, v bloku `.title` s flex;
   `FeaturedStar.astro`, barva `var(--ink)`, nikdy v textu `<h1>`, `<title>`, JSON-LD ani bublině), filtr „Výběr autorky“ (`?featured=1`) a kandidáti úvodních obrazů
   (`coverCandidates`, `FEATURED_PICK` = 10 nejnovějších vybraných): úvodní obraz bez vlastní fotky a `cover`
   (`Cover.astro`, vede na zobrazené dílo); stránka ukáže náhodného skriptem `scripts/lib/random-pick.mjs`
