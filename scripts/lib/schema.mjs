@@ -243,7 +243,8 @@ export const WORK_SCHEMA = {
         '- tisk z výšky',
         '- kresba tužkou',
       ],
-      value: 'akvarel',
+      // no default: DOPLNIT keeps a work from being published until people choose its technique
+      value: TODO,
       missing: '',
       previous: ['Technika, např. akvarel, kresba tužkou, linoryt, kombinovaná technika. Podle ní se filtruje v galerii.'],
     },

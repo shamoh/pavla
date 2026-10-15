@@ -41,7 +41,9 @@ instagramPost:
     akvarel: watercolor
     akvarel a tuš: inkandwatercolor
     brush pen: brushpen
+    kresba perem: pendrawing
     kresba tužkou: pencildrawing
+    kresba uhlem: charcoaldrawing
     kvaš: gouache
     linoryt: linocut
     olej: oilpainting
@@ -49,10 +51,12 @@ instagramPost:
     tisk z výšky: reliefprint
     tuš: ink
     # štítky
+    akt: lifedrawing
     déšť: rain
     fantazie: fantasyart
     grafika: printmaking
     hory: mountains
+    hudba: music
     jaro: spring
     kostel: church
     krajina: landscape
@@ -79,6 +83,7 @@ instagramPost:
     ptáci: birds
     řeka: river
     skály: rocks
+    skica: sketch
     sníh: snow
     stavby: architecture
     strom: tree
@@ -102,7 +107,9 @@ pinterestKeywords:
     akvarel: watercolor
     akvarel a tuš: ink and watercolor
     brush pen: brush pen
+    kresba perem: pen drawing
     kresba tužkou: pencil drawing
+    kresba uhlem: charcoal drawing
     kvaš: gouache
     linoryt: linocut
     olej: oil painting
@@ -110,10 +117,12 @@ pinterestKeywords:
     tisk z výšky: relief print
     tuš: ink
     # štítky
+    akt: life drawing
     déšť: rain
     fantazie: fantasy art
     grafika: printmaking
     hory: mountains
+    hudba: music
     jaro: spring
     kostel: church
     krajina: landscape
@@ -140,6 +149,7 @@ pinterestKeywords:
     ptáci: birds
     řeka: river
     skály: rocks
+    skica: sketch
     sníh: snow
     stavby: architecture
     strom: tree

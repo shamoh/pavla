@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import YAML from 'yaml';
 import { TEXT_WIDTH, commentedOutKeys, normalizeMetadata, schemaKeysIn, skeleton, todoKeys, unindentedText, yamlProblem } from './metadata-yaml.mjs';
+import { todoTexts } from './works.mjs';
 import { COLLECTION_SKELETON_TEXT, COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, UNCOLLECTED_SCHEMA, UNKNOWN_DOC, WORK_SCHEMA, YEAR_SCHEMA, fieldKeys } from './schema.mjs';
 
 // A small schema keeps the expected texts readable.
@@ -413,6 +414,14 @@ test('commentedOutKeys: commented-out lines of attributes that are not optional,
   assert.deepEqual(commentedOutKeys('# NEPOVINNÉ. Ořez.\n# crop: "3:2"\ntitle: A\n', withOff), []);
   // the real work schema: a fresh skeleton has none, its examples in comments are no such lines
   assert.deepEqual(commentedOutKeys(skeleton(WORK_SCHEMA, { id: 'k3f9a', title: 'Ráno', date: '2026-05-01' }), WORK_SCHEMA), []);
+});
+
+test('skeleton of a work: technique has no default, DOPLNIT keeps the work from being published', () => {
+  const text = skeleton(WORK_SCHEMA, { id: 'k3f9a', title: 'Ráno', date: '2026-05-01' });
+  assert.match(text, /\ntechnique: DOPLNIT\n/);
+  assert.ok(todoTexts(YAML.parse(text)).includes('technique'), 'a public text starting with DOPLNIT');
+  // the options stay in the comment above, to copy from
+  assert.match(text, /# DOPLNIT Technika, podle ní se filtruje v galerii\. Nejčastější možnosti jsou:\n# - akvarel\n/);
 });
 
 const parseError = (text) => { try { YAML.parse(text); } catch (e) { return e; } return null; };

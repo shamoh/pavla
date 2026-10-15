@@ -629,7 +629,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `status` | `available` \| `reserved` \| `sold` \| `gifted` \| `not-for-sale` |
 | `support` | podklad, nepovinné |
 | `tags` | štítky (filtr v galerii) |
-| `technique` | technika (filtr v galerii); komentář nabízí nejčastější: akvarel, brush pen, tisk z výšky, kresba tužkou |
+| `technique` | technika (filtr v galerii); komentář nabízí nejčastější: akvarel, brush pen, tisk z výšky, kresba tužkou. Kostra nemá výchozí hodnotu (`technique: DOPLNIT`): dílo se nezveřejní, dokud ji lidé nevyberou (`todoProblems`) |
 | `title` | název |
 | `private_note` | SOUKROMÉ: zůstane jen v obsahovém repu |
 
