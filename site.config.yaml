@@ -156,8 +156,19 @@ pinterestKeywords:
 gallery:
   pageSizes: [12, 24, 48]                # počty děl na stránku, které si návštěvník může vybrat; první je výchozí
   tilePageSizes: [36, 72, 144]           # totéž pro zobrazení „Dlaždice“ (malé obrazy, víc na stránku)
+  columns:                               # sloupce obrazů stejné výšky v galerii, rocích a kolekcích (jako home.columns)
+    maxGap: 2
+    maxTop: 12
+    order: alternate
 
 home:
+  # Sloupce obrazů stejné výšky na úvodní stránce (galerie má své v gallery.columns): nižší sloupec nejdřív rozšíří
+  # mezery mezi obrazy, zbytek místa se rozdělí nad a pod sloupec. Chybějící = výchozí hodnota.
+  columns:
+    maxGap: 2         # nejširší mezera mezi obrazy jako násobek obvyklé (1 = mezery se nerozšiřují)
+    maxTop: 12        # největší místo nad prvním obrazem sloupce v px (zbytek zůstane dole)
+    order: alternate  # pořadí sloupců podle počtu obrazů: none = beze změny, alternate = plný a prázdný střídavě,
+                      # edges = nejplnější na krajích, center = nejplnější uprostřed
   # Kolik nejnovějších děl ukáže „Nejnovější“ na úvodní stránce v každém zobrazení (grid = velké obrazy,
   # s / m / l = malé / střední / velké dlaždice), aby zabrala zhruba stejnou výšku. Chybějící = výchozí hodnota.
   recent:

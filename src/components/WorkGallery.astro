@@ -3,7 +3,7 @@ import WorkGrid from './WorkGrid.astro';
 import Pager from './Pager.astro';
 import { type Work, config, getCollections, getYears, url } from '../lib/site';
 import { DEFAULT_VIEW, NO_COLLECTION, NO_COLLECTION_TITLE, TILE_SIZE_STORAGE_KEY, VIEW_STORAGE_KEY, czechOrder, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
-import { viewScript, viewSetup } from '../../scripts/lib/view-layout.mjs';
+import { columnsFor, viewScript, viewSetup } from '../../scripts/lib/view-layout.mjs';
 import { overviewLink, yearCounts, yearOptions } from '../../scripts/lib/collection-filter.mjs';
 
 interface Props { works: Work[]; year?: number; collection?: string }
@@ -46,7 +46,7 @@ const pageSizes: number[] = config.gallery?.pageSizes ?? [12, 24, 48];
 const tilePageSizes: number[] = config.gallery?.tilePageSizes ?? [36, 72, 144];
 // The view (big pictures by default): a link with the view, the tile size, the page or the page size decides, otherwise
 // the memory; the inline script after the grid (viewScript) shows it before the page is painted.
-const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 'page', 'perPage'], keys: { view: VIEW_STORAGE_KEY, tile: TILE_SIZE_STORAGE_KEY } });
+const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 'page', 'perPage'], keys: { view: VIEW_STORAGE_KEY, tile: TILE_SIZE_STORAGE_KEY }, columns: columnsFor(config, 'gallery') });
 ---
 {!collection && (
   <nav class="years" id="years" aria-label="Roky">
@@ -245,7 +245,7 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     const visible = new Set(matching.slice(start, end));
     for (const c of cards) c.hidden = !visible.has(c);
     // The shown cards in columns of about the same height.
-    balanceGrid(grid);
+    balanceGrid(grid, setup.columns);
     const shown = matching.length;
     // The visitor can switch paging off for this visit ("Zobrazit vše", ?page=all) and back on.
     renderPager(pager, page, pages, matching.length, href);
@@ -508,10 +508,10 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
       relayout = false;
       if (grid.clientWidth === gridWidth) return;
       gridWidth = grid.clientWidth;
-      balanceGrid(grid);
+      balanceGrid(grid, setup.columns);
     });
   });
-  document.fonts?.ready.then(() => { if (state.view === 'grid') balanceGrid(grid); });
+  document.fonts?.ready.then(() => { if (state.view === 'grid') balanceGrid(grid, setup.columns); });
 
   // Back from a work page (← Tvorba, its year or collection): to the card of that work, when on the shown page.
   revealReturned(cards, 'id');

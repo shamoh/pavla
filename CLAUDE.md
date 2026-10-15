@@ -148,7 +148,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (`viewPageSizes`, `pageSizeStorageKey`); přepnutí = `withView` (počet nového zobrazení, stránka s prvním zobrazeným dílem).
   Mřížka karet `WorkGrid.astro` (CSS zobrazení), přepínač `ViewSwitch.astro`, `sizes` obrázků `viewImageSizes`; v prohlížeči
   `scripts/lib/view-layout.mjs`: `viewOf` (odkaz, pak paměť), `showViewOf`, sloupce stejné výšky `balanceGrid` (`div.col`
-  v `.grid.balanced`, pořadí karet `gridCards`) po každé změně zobrazených děl a šířky; zapamatované zobrazení před vykreslením
+  v `.grid.balanced`, pořadí karet `gridCards`) po každé změně zobrazených děl a šířky; konec a pořadí sloupců
+  `site.config.yaml` `home.columns` a `gallery.columns`, každé zvlášť (`maxGap`, `maxTop`, `order`; `columnsFor`, `columnSettings`,
+  `columnPlan`, `orderColumns`); zapamatované zobrazení před vykreslením
   vložený skript `viewScript` za mřížkou (funkce zkopírované jako text = bez importů a uzávěrů, všechny vkládané funkce i úvodní stránky
   jen ve `view-layout.mjs`: dev server přepisuje volání importovaných funkcí a kopie ve stránce by spadla).
   Úvodní stránka „Nejnovější“: stejná zobrazení bez stránkování, výchozí střední dlaždice (`scripts/lib/home-view.mjs`, `HOME_DEFAULT_VIEW`),

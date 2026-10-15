@@ -7,6 +7,7 @@ import { config, coverShareImage, coverWorkId, getHome, getWorks, photoImageUrl,
 import { graphLd, personLd, websiteLd } from '../../scripts/lib/seo.mjs';
 import { hiddenInList } from '../../scripts/lib/random-pick.mjs';
 import { HOME_START, homeMost, homeRecent, homeScript, homeSetup } from '../../scripts/lib/home-view.mjs';
+import { columnsFor } from '../../scripts/lib/view-layout.mjs';
 
 const works = getWorks();
 // Text and cover from _index.yaml in the root of the content repository (content/_index.yaml): its own photo, `cover`, or one of the
@@ -54,7 +55,7 @@ const jsonLd = graphLd(websiteLd(site), personLd(site, { image: photoImageUrl('p
         <ViewSwitch {...start} />
         <a href={url('/tvorba')}>Celá tvorba →</a>
       </div>
-      <WorkGrid works={recent} {...start} hidden={recentHidden} id="recent" data-view={JSON.stringify(homeSetup(counts, coverId))} />
+      <WorkGrid works={recent} {...start} hidden={recentHidden} id="recent" data-view={JSON.stringify(homeSetup(counts, coverId, columnsFor(config, 'home')))} />
       <script is:inline set:html={homeScript} />
     </section>
   )}

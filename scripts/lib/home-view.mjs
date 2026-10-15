@@ -9,7 +9,7 @@
 // homeScript are inlined by their source text, so they must stay self-contained and all in view-layout.mjs.
 import { DEFAULT_TILE_SIZE } from './gallery-filter.mjs';
 import {
-  VIEW_KINDS, balanceColumns, balanceGrid, columnCount, gridCards, homeScreen, homeSearch, homeShownCount, inlineScript, layoutHome, showViewOf,
+  VIEW_KINDS, balanceColumns, balanceGrid, columnCount, columnPlan, gridCards, homeScreen, orderColumns, homeSearch, homeShownCount, inlineScript, layoutHome, showViewOf,
   startHome, viewOf, viewSetup,
 } from './view-layout.mjs';
 
@@ -60,10 +60,13 @@ export function homeRecent(recent) {
 /** The most works any view shows (the page renders this many, plus one for when the cover is among them). */
 export const homeMost = (recent) => Math.max(...Object.values(recent).flatMap((counts) => Object.values(counts)));
 
-/** Everything the inline script needs, as data-view of the grid: the view setup, counts, screens, the cover. */
-export function homeSetup(recent, cover) {
+/**
+ * Everything the inline script needs, as data-view of the grid: the view setup (with the column settings `columns`
+ * of site.config.yaml), counts, screens, the cover.
+ */
+export function homeSetup(recent, cover, columns) {
   return {
-    ...viewSetup({ defaultView: HOME_DEFAULT_VIEW, linkKeys: ['view', 'tile'], keys: { view: HOME_VIEW_STORAGE_KEY, tile: HOME_TILE_SIZE_STORAGE_KEY } }),
+    ...viewSetup({ defaultView: HOME_DEFAULT_VIEW, linkKeys: ['view', 'tile'], keys: { view: HOME_VIEW_STORAGE_KEY, tile: HOME_TILE_SIZE_STORAGE_KEY }, columns }),
     recent,
     screens: HOME_SCREENS,
     cover: cover ?? null,
@@ -75,6 +78,6 @@ export const HOME_START = { view: HOME_DEFAULT_VIEW, tile: DEFAULT_TILE_SIZE };
 
 /** The inline script placed right after the home grid. */
 export const homeScript = inlineScript(
-  [viewOf, showViewOf, columnCount, balanceColumns, gridCards, balanceGrid, homeSearch, homeScreen, homeShownCount, layoutHome, startHome],
+  [viewOf, showViewOf, columnCount, balanceColumns, columnPlan, orderColumns, gridCards, balanceGrid, homeSearch, homeScreen, homeShownCount, layoutHome, startHome],
   startHome,
 );

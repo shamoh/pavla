@@ -21,7 +21,8 @@ const sizes = viewImageSizes(view, tile);
   /* Columns of about the same height laid out by a script (balanceGrid in scripts/lib/view-layout.mjs):
      a <div class="col"> per column, as wide as the CSS columns of the view, with the same gaps. */
   .grid.balanced { display: flex; align-items: flex-start; }
-  .grid.balanced > :global(.col) { flex: 1 1 0; min-width: 0; }
+  /* A column ends as columnPlan says: wider gaps between the works (row-gap) and space above them (padding-top). */
+  .grid.balanced > :global(.col) { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
   /* Tiles (?view=tiles, set by the script): small pictures side by side, no texts (the tooltip tells them). */
   .grid.tiles { columns: 6 150px; column-gap: 12px; }
   /* Smaller and larger tiles (?tile=s / l, TILE_WIDTHS): narrower or wider columns, more or fewer of them. */

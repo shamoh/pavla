@@ -14,11 +14,50 @@ import { DEFAULT_TILE_SIZE, TILE_SIZES, VIEWS, viewImageSizes } from './gallery-
 export const VIEW_KINDS = ['grid', ...TILE_SIZES];
 
 /**
- * The setup of a grid for the functions below (data-view of the grid, as JSON): `defaultView`, `linkKeys` (URL params
- * with which a link decides the view, never the memory), `keys` ({ view, tile } localStorage keys) and the rest.
+ * How the columns of about the same height end (columnPlan, orderColumns), site.config.yaml `home.columns` (the home
+ * page) and `gallery.columns` (galleries, years, collections), each on its own (columnsFor):
+ *   maxGap: the widest gap between works, as a multiple of the usual one (1 = gaps never widen),
+ *   maxTop: the largest space above the first work of a column, in px,
+ *   order:  the order of the columns on the page (COLUMN_ORDERS).
  */
-export function viewSetup({ defaultView, linkKeys, keys }) {
+export const COLUMN_DEFAULTS = { maxGap: 2, maxTop: 12, order: 'alternate' };
+
+/** Orders of the columns: as balanced, full and empty in turn, the fullest at the edges, the fullest in the middle. */
+export const COLUMN_ORDERS = ['none', 'alternate', 'edges', 'center'];
+
+/** Where the column settings apply: the home page, the galleries (years, collections, /tvorba/). */
+export const COLUMN_PLACES = ['home', 'gallery'];
+
+/**
+ * The column settings of `place` from site.config.yaml (`config`): its `<place>.columns`, missing ones from
+ * COLUMN_DEFAULTS. A top-level `columns` (shared by both before) is an error, so it is never silently ignored.
+ */
+export function columnsFor(config, place) {
+  if (!COLUMN_PLACES.includes(place)) throw new Error(`unknown place of columns ${JSON.stringify(place)}`);
+  if (config?.columns !== undefined) throw new Error('site.config.yaml columns: moved to home.columns and gallery.columns, each on its own');
+  return columnSettings(config?.[place]?.columns, `${place}.columns`);
+}
+
+/** The settings `columns` (at `where` in site.config.yaml), missing ones from COLUMN_DEFAULTS; a bad value = error (the build stops). */
+export function columnSettings(columns, where = 'columns') {
+  const out = { ...COLUMN_DEFAULTS, ...(columns ?? {}) };
+  const bad = (key, what) => new Error(`site.config.yaml ${where}.${key} must be ${what}, got ${JSON.stringify(out[key])}`);
+  if (typeof out.maxGap !== 'number' || !(out.maxGap >= 1)) throw bad('maxGap', 'a number of at least 1');
+  if (typeof out.maxTop !== 'number' || !(out.maxTop >= 0)) throw bad('maxTop', 'a number of at least 0');
+  if (!COLUMN_ORDERS.includes(out.order)) throw bad('order', `one of ${COLUMN_ORDERS.join(', ')}`);
+  const unknown = Object.keys(out).filter((key) => !(key in COLUMN_DEFAULTS));
+  if (unknown.length) throw new Error(`site.config.yaml ${where}: unknown ${unknown.join(', ')}`);
+  return { maxGap: out.maxGap, maxTop: out.maxTop, order: out.order };
+}
+
+/**
+ * The setup of a grid for the functions below (data-view of the grid, as JSON): `defaultView`, `linkKeys` (URL params
+ * with which a link decides the view, never the memory), `keys` ({ view, tile } localStorage keys), `columns`
+ * (columnSettings) and the rest.
+ */
+export function viewSetup({ defaultView, linkKeys, keys, columns }) {
   return {
+    columns: columnSettings(columns),
     views: VIEWS,
     tiles: TILE_SIZES,
     defaultView,
@@ -125,6 +164,45 @@ export function balanceColumns(heights, n) {
   return cols.map(function (col) { return col.items.sort(function (a, b) { return a - b; }); });
 }
 
+/**
+ * How a column of `count` works ends, `missing` px lower than the tallest column, `gap` = the usual gap between its
+ * works: { extra, top } = what each gap between its works grows by (at most up to settings.maxGap × gap) and the
+ * space above its first work (half of what is left, at most settings.maxTop; the rest stays below it).
+ */
+export function columnPlan(count, missing, gap, settings) {
+  var extra = count > 1 && missing > 0 ? Math.min(missing / (count - 1), gap * (settings.maxGap - 1)) : 0;
+  var left = Math.max(0, missing - extra * (count - 1));
+  return { extra: extra, top: Math.min(left / 2, settings.maxTop) };
+}
+
+/**
+ * The columns (lists of item indexes from balanceColumns) in their order on the page. Ranked A, B, C… by the number of
+ * works (most first), on a tie by their works from the newest; then placed from the left by `order`:
+ *   alternate: A, F, B, E, C, D (first, last, second, second to last… of the ranking: full and empty in turn),
+ *   edges:     A, C, E, F, D, B (in turn to the left and the right edge: the fullest at the edges),
+ *   center:    E, C, A, B, D, F (in turn to the left and the right of the middle: the fullest in the middle),
+ *   none:      as balanceColumns made them.
+ */
+export function orderColumns(groups, order) {
+  if (order === 'none') return groups;
+  var ranked = groups.slice().sort(function (a, b) {
+    if (b.length !== a.length) return b.length - a.length;
+    for (var i = 0; i < Math.min(a.length, b.length); i++) if (a[i] !== b[i]) return a[i] - b[i];
+    return 0;
+  });
+  var n = groups.length;
+  if (order === 'alternate') return ranked.map(function (_, i) { return ranked[i % 2 === 0 ? i / 2 : n - 1 - (i - 1) / 2]; });
+  var placed = new Array(n);
+  var center = order === 'center';
+  var left = center ? Math.floor((n - 1) / 2) : 0;
+  var right = center ? left + 1 : n - 1;
+  var step = center ? -1 : 1;
+  ranked.forEach(function (group, i) {
+    if (i % 2 === 0) { placed[left] = group; left += step; } else { placed[right] = group; right -= step; }
+  });
+  return placed;
+}
+
 /** The cards of `grid` in their order (kept as grid.cardsInOrder: once in columns, the page order is gone). */
 export function gridCards(grid) {
   return grid.cardsInOrder || (grid.cardsInOrder = Array.prototype.slice.call(grid.querySelectorAll('.card')));
@@ -133,10 +211,11 @@ export function gridCards(grid) {
 /**
  * Lays the shown (not hidden) cards of `grid` out in columns of about the same height (class `balanced`, a
  * <div class="col"> per column, hidden cards stay outside them): measured as the CSS columns of the current view lay
- * them out (pictures have their size in the HTML, so nothing waits for images), as many columns as those make. Runs
- * again after every change of the shown cards, the view or the width.
+ * them out (pictures have their size in the HTML, so nothing waits for images), as many columns as those make; the
+ * columns in the order of `settings` (orderColumns), each ending as columnPlan says (wider gaps = row-gap of the
+ * column, the space above = its padding-top). Runs again after every change of the shown cards, the view or the width.
  */
-export function balanceGrid(grid) {
+export function balanceGrid(grid, settings) {
   var cards = gridCards(grid);
   grid.classList.remove('balanced');
   cards.forEach(function (card) { grid.appendChild(card); });
@@ -147,10 +226,17 @@ export function balanceGrid(grid) {
   var n = Math.min(shown.length, columnCount(grid.clientWidth, parseInt(style.columnCount, 10), parseFloat(style.columnWidth), gap));
   if (n < 2) return;
   var heights = shown.map(function (card) { return card.getBoundingClientRect().height + (parseFloat(getComputedStyle(card).marginBottom) || 0); });
+  var margin = parseFloat(getComputedStyle(shown[0]).marginBottom) || 0;
+  var groups = orderColumns(balanceColumns(heights, n), settings.order);
+  var totals = groups.map(function (items) { return items.reduce(function (sum, i) { return sum + heights[i]; }, 0); });
+  var tallest = Math.max.apply(null, totals);
   grid.classList.add('balanced');
-  balanceColumns(heights, n).forEach(function (items) {
+  groups.forEach(function (items, c) {
+    var plan = columnPlan(items.length, tallest - totals[c], margin, settings);
     var col = document.createElement('div');
     col.className = 'col';
+    col.style.rowGap = plan.extra + 'px';
+    col.style.paddingTop = plan.top + 'px';
     items.forEach(function (i) { col.appendChild(shown[i]); });
     grid.appendChild(col);
   });
@@ -213,7 +299,7 @@ export function layoutHome(grid, setup, state, screen) {
     card.hidden = !show;
     if (show) shown++;
   });
-  balanceGrid(grid);
+  balanceGrid(grid, setup.columns);
 }
 
 /**
