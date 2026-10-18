@@ -35,6 +35,7 @@ export const CODES = {
   'prodej-bez-ceny': { level: 'error', text: 'obraz na prodej bez ceny (price)' },
   'spatny-odkaz-instagram': { level: 'error', text: 'instagram není odkaz na příspěvek' },
   'spatna-mrizka': { level: 'error', text: 'meta_instagram_grid není sloupce x řádky' },
+  'spatna-verze-pinu': { level: 'error', text: 'meta_pinterest_version není celé číslo od 1' },
   'stary-atribut-collection': { level: 'error', text: 'collection: se už nepoužívá' },
   'spatne-details': { level: 'error', text: 'details nejsou řádky „název fotky: popisek“' },
   'popisek-bez-fotky': { level: 'error', text: 'popisek v details bez detailní fotky' },

@@ -76,7 +76,7 @@ import {
   GRID_DEFAULTS, GRID_VERSION, SCENE_VERSION, captionFacts, detailLayout, detailSuffixes, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
   panoramaSuffixes, renderCaption, renderGrid, renderPanorama, renderScene, renderStory, scenePlacement, siteHost,
 } from './lib/instagram.mjs';
-import { PIN_DEFAULTS, withParams } from './lib/pinterest.mjs';
+import { PIN_DEFAULTS, PIN_FILE, withParams } from './lib/pinterest.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
 import { fileNameProblems } from './lib/file-names.mjs';
 import { boxRegion, parseSheetXmp } from './lib/sheet-box.mjs';
@@ -92,7 +92,7 @@ import {
 import { addedDates } from './lib/git-dates.mjs';
 import {
   EXPORT_FILES, PUBLIC_WORK_FIELDS, expectedExports, exportFileName, exportFolder, exportPattern, instagramGrid, isInstagramUrl, isOnSale, wantsInstagram, wantsMockups,
-  isValidId, wantsPinterest, planFolderPrune, publicFields, validSize, validateWorks, workKey, workPath,
+  isValidId, pinterestVersion, wantsPinterest, planFolderPrune, publicFields, validSize, validateWorks, workKey, workPath,
 } from './lib/works.mjs';
 
 /** Bump when the output format changes, so every work is regenerated once. */
@@ -220,11 +220,24 @@ async function web(dir, m, img, { work, picked, details, fingerprint, xmp, pin, 
   // address, so Pinterest and link previews never keep the old one; info.json names the files for the site
   const og = await shareImage(dir, m, img, xmp);
   // the pin for Pinterest (rendered by the caller): its size and bytes go into the feed; `feed` = in the feed
-  // /pinterest.xml (meta_pinterest; the flag itself never reaches the site)
+  // /pinterest.xml (meta_pinterest; the flag itself never reaches the site): { version, before: the pin of the last run }
   const pinFile = pin ? fingerprintedName('pin', pin) : null;
   if (pin) await fs.writeFile(path.join(dir, pinFile), pin);
+  // Pinterest knows a pin by the address of its image (a new address = a new pin), so the pin in the feed keeps the
+  // address it had there (feedFile; before there was one, the pin it was: file); a new one only for a work joining
+  // the feed or with a higher meta_pinterest_version. The newest pin is written under that name.
+  let feedFile = null;
+  if (pin && feed) {
+    const b = feed.before;
+    const had = b?.feed ? (b.feedFile ?? b.file ?? PIN_FILE) : null;
+    feedFile = had && (b.feedVersion ?? 1) === feed.version ? had : pinFile;
+    if (feedFile !== pinFile) await fs.writeFile(path.join(dir, feedFile), pin);
+  }
   const pinInfo = pin
-    ? { ...(await sharp(pin).metadata().then(({ width, height }) => ({ width, height }))), bytes: pin.length, file: pinFile, ...(feed ? { feed: true } : {}) }
+    ? {
+      ...(await sharp(pin).metadata().then(({ width, height }) => ({ width, height }))), bytes: pin.length, file: pinFile,
+      ...(feed ? { feed: true, feedFile, feedVersion: feed.version } : {}),
+    }
     : undefined;
   // Dimensions and placeholder colour, read by the site.
   const info = {
@@ -719,7 +732,9 @@ export async function run({
       : [];
     const folderInputs = instagram || onSale ? [exportFolder(w.yamlPath, w.slug)] : [];
     // the pin (every work) shows the caption too, in its own size
-    const pinInputs = [JSON.stringify(['snug', { feed: pinterest }, pinConfig, siteHost(config.site?.url), w.data.title, w.data.technique, w.data.size_cm, w.year])];
+    // (a version of the pin above 1 makes it again: a new address in the feed)
+    const pinVersion = pinterest && pinterestVersion(w.data) > 1 ? { version: pinterestVersion(w.data) } : {};
+    const pinInputs = [JSON.stringify(['snug', { feed: pinterest, ...pinVersion }, pinConfig, siteHost(config.site?.url), w.data.title, w.data.technique, w.data.size_cm, w.year])];
     // Fler exports carry the signature: its settings and look (a change makes them again)
     const flerInputs = onSale ? [JSON.stringify([img.fler, WATERMARK_LOOK])] : [];
     // Creator, title, copyright and page of the work in the XMP of its web images (a new title makes them again)
@@ -730,7 +745,8 @@ export async function run({
       JSON.stringify(w.data.meta_corners ?? null), JSON.stringify(cutsSheet(w.data.meta_corners) ? edgeLook(edges) : null),
       ...details.flatMap((d) => [d.name, d.buf]),
     );
-    const upToDate = (await readJson(path.join(webDir, 'info.json')))?.fingerprint === fingerprint;
+    const before = await readJson(path.join(webDir, 'info.json'));
+    const upToDate = before?.fingerprint === fingerprint;
     if (upToDate && !force) { skipped++; return false; }
 
     log(`→ ${rel}`);
@@ -745,7 +761,8 @@ export async function run({
       art: await insetWork(m.buf, pinConfig.insetPercent ?? 0), work: w.data, year: w.year, host: siteHost(config.site?.url),
       colors: PALETTES[0].colors, fonts, config: pinConfig, xmp, snug: true,
     });
-    const mockups = await web(webDir, m, img, { work: w.data, picked, details, fingerprint, xmp, pin, feed: pinterest });
+    const feed = pinterest ? { version: pinterestVersion(w.data), before: before?.pin } : null;
+    const mockups = await web(webDir, m, img, { work: w.data, picked, details, fingerprint, xmp, pin, feed });
 
     // Exports. Instagram: only when asked for (meta_instagram: true): the work with a caption on the paper of every
     // palette, the work in every studio scene and the detail photos; never the mockups of the site.

@@ -434,6 +434,16 @@ export const WORK_SCHEMA = {
       value: false,
     },
     {
+      key: 'meta_pinterest_version',
+      commented: true,
+      example: 2,
+      doc: [
+        'Verze pinu na Pinterestu (celé číslo od 1, bez něj 1). Pinterest pozná pin podle adresy obrázku, ta zůstává stejná.',
+        'Když chceš obraz připnout znovu (nová fotka, opravený název), zvyš číslo o 1; starý pin pak na Pinterestu smaž.',
+      ],
+      value: null,
+    },
+    {
       key: 'mockups',
       settled: true,
       options: [true, false],

@@ -29,7 +29,7 @@ test('every schema is in file order and has only meta_, shared and private_ attr
     assert.ok(keys.every((k) => attributeGroup(k) !== 'derived'), `${s.name}: derived_ belong to the site repository only`);
   }
   assert.deepEqual(fieldKeys(WORK_SCHEMA), [
-    'meta_corners', 'meta_draft', 'meta_edge', 'meta_instagram', 'meta_instagram_grid', 'meta_pinterest', 'id', 'date', 'description', 'details', 'featured', 'fler', 'instagram', 'mockups', 'price',
+    'meta_corners', 'meta_draft', 'meta_edge', 'meta_instagram', 'meta_instagram_grid', 'meta_pinterest', 'meta_pinterest_version', 'id', 'date', 'description', 'details', 'featured', 'fler', 'instagram', 'mockups', 'price',
     'size_cm', 'status', 'support', 'tags', 'technique', 'title', 'private_note',
   ]);
 });

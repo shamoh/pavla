@@ -118,7 +118,9 @@ test('pin: every work has one (2:3, with XMP) in its folder on the site; meta_pi
   const pin = await fs.readFile(path.join(dir, info.pin.file));
   const meta = await sharp(pin).metadata();
   assert.deepEqual([meta.width, meta.height], [1000, 1500]);
-  assert.deepEqual(info.pin, { width: 1000, height: 1500, bytes: pin.length, file: fingerprintedName('pin', pin), feed: true });
+  assert.deepEqual(info.pin, {
+    width: 1000, height: 1500, bytes: pin.length, file: fingerprintedName('pin', pin), feed: true, feedFile: fingerprintedName('pin', pin), feedVersion: 1,
+  });
   assert.ok(!(await exists(path.join(dir, 'pin.jpg'))), 'no file with the former name');
   assert.ok(meta.xmp?.toString().includes('Ráno'), 'authorship like the other images of the work');
   assert.equal(await exists(path.join(contentDir, 'export/instagram/rano')), false, 'no Instagram exports without meta_instagram');
@@ -135,6 +137,41 @@ test('pin: every work has one (2:3, with XMP) in its folder on the site; meta_pi
   assert.equal(after.feed, undefined);
   assert.equal(after.file, info.pin.file, 'the same picture, the same name');
   assert.deepEqual((await fs.readdir(dir)).filter((f) => f.startsWith('pin')), [after.file], 'one pin only');
+});
+
+test('pin in the feed: keeps its address when the pin changes, a new one only with a higher meta_pinterest_version', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_pinterest: true\nsize_cm: [40, 30]\n');
+  await run(opts());
+  const dir = path.join(siteDir, 'public/tvorba/2026', `rano-${await idOf('2026', 'rano')}`);
+  const pinOf = async () => JSON.parse(await fs.readFile(path.join(dir, 'info.json'), 'utf8')).pin;
+  const first = await pinOf();
+  const yaml = path.join(contentDir, 'tvorba/rano.yaml');
+  const change = async (from, to) => fs.writeFile(yaml, (await fs.readFile(yaml, 'utf8')).replace(from, to));
+  // a new title: a new pin (another file for "Uložit na Pinterest"), the feed keeps the address it had, with the new pin
+  await change('title: Ráno', 'title: Ráno u vody');
+  await run(opts());
+  const renamed = await pinOf();
+  assert.notEqual(renamed.file, first.file);
+  assert.deepEqual([renamed.feedFile, renamed.feedVersion], [first.file, 1]);
+  assert.deepEqual(await fs.readFile(path.join(dir, renamed.feedFile)), await fs.readFile(path.join(dir, renamed.file)), 'the newest pin there');
+  // a higher version: the feed gets the new address (Pinterest pins it again)
+  await change('meta_pinterest: true', 'meta_pinterest: true\nmeta_pinterest_version: 2');
+  const bumped = await run(opts());
+  assert.equal(bumped.processed, 1, 'the version makes the pin again');
+  const second = await pinOf();
+  assert.deepEqual([second.feedFile, second.feedVersion], [second.file, 2]);
+  assert.deepEqual((await fs.readdir(dir)).filter((f) => f.startsWith('pin')), [second.file], 'the old address is gone');
+  // the pin of an info.json from before feedFile (it was in the feed under `file`) keeps that address
+  const info = JSON.parse(await fs.readFile(path.join(dir, 'info.json'), 'utf8'));
+  delete info.pin.feedFile; delete info.pin.feedVersion; info.pin.file = 'pin-0ld0ld00.jpg'; info.fingerprint = 'old';
+  await fs.writeFile(path.join(dir, 'info.json'), JSON.stringify(info));
+  await change('meta_pinterest_version: 2', 'meta_pinterest_version: 1');
+  await run(opts());
+  assert.equal((await pinOf()).feedFile, 'pin-0ld0ld00.jpg');
+  // not a whole number from 1: an error
+  await change('meta_pinterest_version: 1', 'meta_pinterest_version: druha');
+  const bad = await run(opts());
+  assert.ok(bad.problems.some((p) => /meta_pinterest_version „druha“ musí být celé číslo od 1.*\[spatna-verze-pinu\]$/.test(p)), JSON.stringify(bad.problems));
 });
 
 test('meta_instagram_grid: the tiles and a preview of the profile grid, with the order of publishing in README.md; commented out removes them', async () => {

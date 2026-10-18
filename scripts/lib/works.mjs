@@ -117,6 +117,9 @@ export function validateWorks(works) {
     if (grid !== undefined && grid !== null && grid !== '' && !parseGrid(grid)) {
       problems.push(`${where}: meta_instagram_grid „${grid}“ musí být sloupce x řádky, např. 3x3 nebo 2x1 (od 1x1 do ${GRID_MAX}x${GRID_MAX}) [spatna-mrizka]`);
     }
+    if (!validPinVersion(w.data?.meta_pinterest_version)) {
+      problems.push(`${where}: meta_pinterest_version „${w.data.meta_pinterest_version}“ musí být celé číslo od 1, např. 2 [spatna-verze-pinu]`);
+    }
     if (!w.data?.meta_draft) problems.push(...todoProblems(where, w.data, PUBLIC_WORK_FIELDS, ' (nebo nech meta_draft: true)'));
     problems.push(...optionProblems(where, w.data, WORK_SCHEMA));
     if (w.data?.collection !== undefined && w.data.collection !== null && w.data.collection !== '') {
@@ -308,6 +311,9 @@ export const instagramGrid = (data) => (wantsInstagram(data) ? parseGrid(data?.m
 
 /** True when the author asked for a pin on Pinterest (`meta_pinterest: true`): pin.jpg on the site and the feed. */
 export const wantsPinterest = (data) => data?.meta_pinterest === true;
+/** The version of the pin of a work in the feed (meta_pinterest_version, 1 without it): a higher one = a new pin. */
+export const pinterestVersion = (data) => data?.meta_pinterest_version ?? 1;
+const validPinVersion = (v) => v === undefined || v === null || v === '' || (Number.isInteger(v) && v >= 1);
 
 /**
  * Export suffixes a work should have, per platform (file names: exportFileName; stale files: planFolderPrune).

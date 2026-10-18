@@ -98,7 +98,7 @@ export interface Work {
   image: ImageSet & {
     mockups?: Mockup[]; details?: Detail[];
     og?: { width: number; height: number; file?: string };
-    pin?: { width: number; height: number; bytes: number; file?: string; feed?: boolean };
+    pin?: { width: number; height: number; bytes: number; file?: string; feed?: boolean; feedFile?: string; feedVersion?: number };
   };
 }
 
@@ -351,6 +351,16 @@ export function workShareImage(w: Work): ShareImage {
 export function workPinImage(w: Work): ShareImage {
   if (w.image.pin) return { src: `${workImagePath(w)}/${w.image.pin.file ?? PIN_FILE}`, width: w.image.pin.width, height: w.image.pin.height };
   return workShareImage(w);
+}
+
+/**
+ * Picture of a work in the feed /pinterest.xml: the pin under the address it keeps in the feed (pin.feedFile: Pinterest
+ * knows a pin by it, a new address = a new pin), else its pin.
+ */
+export function workFeedPinImage(w: Work): ShareImage {
+  const pin = w.image.pin;
+  if (pin?.feedFile) return { src: `${workImagePath(w)}/${pin.feedFile}`, width: pin.width, height: pin.height };
+  return workPinImage(w);
 }
 
 /** Share image (og:image) of a collection: its chosen cover cropped to 3:2, otherwise its (random) cover work. */

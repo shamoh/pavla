@@ -653,7 +653,7 @@ ze sdílených:
 
 | Skupina | Kde platí | Do veřejné kopie (`content/`) |
 |---|---|---|
-| `meta_<název>` | jen obsahové repo: řídí zpracování (`meta_draft`, `meta_edge`, `meta_instagram`, `meta_instagram_grid`, `meta_pinterest`) | nikdy |
+| `meta_<název>` | jen obsahové repo: řídí zpracování (`meta_draft`, `meta_edge`, `meta_instagram`, `meta_instagram_grid`, `meta_pinterest`, `meta_pinterest_version`) | nikdy |
 | bez prefixu (sdílené) | obě repa, stejný význam | 1:1 (`publicKeys`) |
 | `private_<název>` | jen obsahové repo; vlastní `private_…` může autorka přidat kdykoli (bez `NEZNÁMÝ`, abecedně u ostatních `private_`) | nikdy |
 | `derived_<název>` | jen toto repo: odvodí pipeline (z jiných atributů, umístění souboru nebo průběhu zpracování); teď `derived_modified` u díla (viz *Mapa webu*) | v obsahovém repu = chyba |
@@ -675,6 +675,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `meta_instagram` | `true` = exporty pro Instagram (výchozí `false`) |
 | `meta_instagram_grid` | nepovinné (v kostře zakomentované `# meta_instagram_grid: 3x3`): mřížka na profilu Instagramu jako `<sloupce>x<řádky>`, od `1x1` do `5x5` (`parseGrid`, např. `3x3`, `2x1`, `3x1`, `1x2`, `3x4`; i `×` nebo `X`), jiná hodnota = chyba; bez hodnoty žádná; jen s `meta_instagram: true`, jen pro aplikaci (viz *Exporty*, Mřížka na profilu) |
 | `meta_pinterest` | `true` = pin pro Pinterest: pin (`pin-<otisk>.jpg`) na webu a položka kanálu `/pinterest.xml` (výchozí `false`, viz *Pinterest*) |
+| `meta_pinterest_version` | nepovinné (v kostře `# meta_pinterest_version: 2`): verze pinu v kanálu, celé číslo od 1 (bez něj 1, jiná hodnota = chyba `[spatna-verze-pinu]`); vyšší = nová adresa obrázku v kanálu, tedy nový pin (viz *Pinterest*, Stálá adresa v kanálu) |
 | `id` | trvalý kód, doplní pipeline, NEMĚNIT |
 | `date` | den vzniku (`2026-06-14`): určuje řazení i rok díla (stránky roků, adresa, složky v `pavla`) |
 | `description` | veřejný popis na webu |
@@ -822,7 +823,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | text o roce | `/tvorba/2026/` má text (`demo-content/roky/2026.yaml`), `/tvorba/2025/` ne (`description: ""`) |
 | tlačítko „Koupit na Fleru“ | Máky |
 | export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail, na výšku), Kytice z louky (+ 1 detail, není na prodej; `meta_edge: cut`: ve scénách čistá rovná hrana), Máky (`meta_edge: canvas`: ve scénách plátno tlusté 2 cm s okrajem v barvách malby), Na podlaze (průhledný ořez podlahy), Lípa u kaple (20 × 15: scény se přiblíží), Zimní sad (50 × 35: na stoly se nevejde, v logu „does not fit the free part of the scene“, `scene-stul-*.jpg` chybí; panorama 2 snímky; na stojanu posunutý po liště do fotky), Oblaka (60 × 20: panorama 3 snímky, mřížka 3; na stojanu širší než fotka, „does not fit into the photo of the scene stojan“; na stoly se taky nevejde, takže žádný `scene-*.jpg`), Hřeben nad údolím (70 × 50: nevejde se nikam, na stojanu přes sklenici a okraj fotky, „does not fit into the photo“; žádný `scene-*.jpg`); ostatní díla žádný. Mřížka na profilu: Pivoňky (`meta_instagram_grid: 3x3`), Oblaka (`3x1`) a Ráno u rybníka (`2x1`, dvojice). Panorama: Na podlaze, Ráno u rybníka, Zimní sad (2 snímky), Oblaka (3); Máky, Kytice z louky (čtverec) a Pivoňky (na výšku) žádné. Příběh `story.jpg` má každé |
-| pin pro Pinterest | pin (`pin-<otisk>.jpg`) má každé zveřejněné dílo („Uložit na Pinterest“ ho nabídne); `meta_pinterest: true` u Ráno u rybníka, Pivoněk (na výšku) a Oblak (60 × 20: popisek hned pod obrazem) = `pin.feed` v `info.json` a 3 položky v `/pinterest.xml` |
+| pin pro Pinterest | pin (`pin-<otisk>.jpg`) má každé zveřejněné dílo („Uložit na Pinterest“ ho nabídne); `meta_pinterest: true` u Ráno u rybníka, Pivoněk (na výšku, `meta_pinterest_version: 2`: `feedVersion: 2` v `info.json`) a Oblak (60 × 20: popisek hned pod obrazem) = `pin.feed` v `info.json` a 3 položky v `/pinterest.xml` (obrázek z `pin.feedFile`) |
 | `mockups: true`, na prodej | Ráno u rybníka (+ detaily), Zimní sad, Město v dešti, Náměstí v mlze, Kočka na okně, Rybník v zimě, Na podlaze |
 | `mockups: true`, ne na prodej | Kytice z louky (+ detail), Slunečnice, Šumava v mlze (prodáno) |
 | `mockups: false` | Pivoňky (na prodej, + detail), Bouřka nad polem, Modravské slatě (na prodej), Kvilda skica, Nádraží (prodáno), Máky (na prodej), Lípa u kaple, Jablka na stole (prodáno), Rozpracovaný obraz |
@@ -1704,9 +1705,15 @@ roky. Web je na Pinterest dává sám, přes kanál RSS (`scripts/lib/pinterest.
   na papíru první palety, stejný vzhled jako snímek s popiskem pro Instagram (`renderCaption`), ale popisek je hned pod
   dílem a obojí je svisle vystředěné (`snug`, `captionLayout`), takže široké dílo nemá pod sebou prázdný pruh (vysoké
   vypadá stejně jako na Instagramu); ořez `insetPercent`, s XMP autorství. Leží veřejně ve složce stránky díla (`public/tvorba/<rok>/<slug>-<id>/pin-<otisk>.jpg`), protože si ho Pinterest
-  stahuje; `info.json` díla má `pin: { width, height, bytes, file, feed }` (`feed: true` = dílo s `meta_pinterest`, jde do
-  kanálu; samotný `meta_pinterest` se do veřejné kopie nekopíruje). V otisku díla: `meta_pinterest`, `images.pinterest`,
+  stahuje; `info.json` díla má `pin: { width, height, bytes, file, feed, feedFile, feedVersion }` (`feed: true` = dílo s `meta_pinterest`, jde do
+  kanálu; samotný `meta_pinterest` se do veřejné kopie nekopíruje). V otisku díla: `meta_pinterest`, `meta_pinterest_version` (od 2), `images.pinterest`,
   adresa webu, název, technika, rozměr a rok.
+- **Stálá adresa v kanálu:** Pinterest pozná pin podle adresy obrázku, ne podle `guid` (zjištěno 2026-10-15: nový otisk
+  = zdvojený pin). Kanál proto bere obrázek z `pin.feedFile` (`workFeedPinImage` v `src/lib/site.ts`): adresu, kterou
+  dílo v kanálu už mělo (z předchozího `info.json`; před zavedením `feedFile` jeho `file`), a pipeline pod ní zapíše
+  nejnovější pin. Novou adresu (`file` s otiskem, tedy nový pin) dostane jen dílo, které do kanálu přibude, nebo
+  s vyšší `meta_pinterest_version` (`feedVersion`); pak starý pin na Pinterestu smazat ručně. Tlačítko „Uložit na
+  Pinterest“ a náhledy dál používají `file` s otiskem.
 - **Kanál** `/pinterest.xml` (`src/pages/pinterest.xml.ts`, `pinterestFeed`): RSS 2.0, položka na každé dílo s `pin.feed`,
   nejnovější první: `title` (nejvýš 100 znaků), `link` na stránku díla s UTM parametry
   `?utm_source=pinterest&utm_medium=social&utm_campaign=rss` (`FEED_UTM`: Google Analytics tak návštěvu z pinu pozná

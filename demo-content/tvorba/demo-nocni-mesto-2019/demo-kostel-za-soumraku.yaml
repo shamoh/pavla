@@ -34,6 +34,10 @@ meta_instagram: false
 # - false - žádný
 meta_pinterest: false
 
+# NEPOVINNÉ. Verze pinu na Pinterestu (celé číslo od 1, bez něj 1). Pinterest pozná pin podle adresy obrázku, ta zůstává stejná.
+# Když chceš obraz připnout znovu (nová fotka, opravený název), zvyš číslo o 1; starý pin pak na Pinterestu smaž.
+# meta_pinterest_version: 2
+
 # Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
 # Generuje ho pipeline, NIKDY neměnit. Hodí se napsat tužkou na zadní stranu obrazu.
 id: at44z
