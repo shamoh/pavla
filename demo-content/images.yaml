@@ -58,6 +58,7 @@ images:
   tvorba/demo-tatry-2000/demo-strbske-pleso.jpg: { size: [2400, 1700], palette: voda, seed: 77 }
   tvorba/demo-tatry-2000/demo-gerlach.jpg: { size: [1700, 2400], palette: plener, seed: 78 }
   tvorba/demo-tatry-2000/demo-smrky-pod-stitem.jpg: { size: [1600, 2200], palette: sediva, seed: 79 }
+  tvorba/demo-tatry-2000/demo-hreben-nad-udolim.jpg: { size: [2800, 2000], palette: plener, seed: 101 }
   tvorba/demo-portrety-2005/demo-babicka.jpg: { size: [1700, 2400], palette: sediva, seed: 80 }
   tvorba/demo-portrety-2005/demo-rybar.jpg: { size: [2400, 1800], palette: voda, seed: 81 }
   tvorba/demo-portrety-2005/demo-holcicka-s-kockou.jpg: { size: [2000, 2000], palette: kvetiny, seed: 82 }

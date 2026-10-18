@@ -363,6 +363,18 @@ export const WORK_SCHEMA = {
       value: '',
     },
     {
+      key: 'meta_edge',
+      settled: true,
+      options: ['deckle', 'cut', 'canvas'],
+      doc: [
+        'Hrana obrazu ve scénách ateliéru pro Instagram, možnosti:',
+        '- deckle - papír s roztřepenou hranou (akvarel na ručním nebo trhaném papíru)',
+        '- cut - papír s čistou rovnou hranou (ořezaný list, karton)',
+        '- canvas - plátno na rámu: čistá zaoblená hrana, tlusté asi 2 cm, rovné',
+      ],
+      value: 'deckle',
+    },
+    {
       key: 'meta_instagram',
       settled: true,
       options: [true, false],

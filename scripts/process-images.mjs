@@ -73,8 +73,8 @@ import { rightsXmp } from './lib/image-rights.mjs';
 import { overviewReadme, overviewSizeAdvice } from './lib/overview.mjs';
 import { DRAFT_EDGE, STORY_UTM, collectionIndexes, draftIndex, draftReadme, noteMarks, exportIndex, flerReadme, instagramReadme, publishedUrl, readmeFingerprint } from './lib/export-readme.mjs';
 import {
-  GRID_DEFAULTS, GRID_VERSION, captionFacts, detailLayout, detailSuffixes, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
-  panoramaSuffixes, renderCaption, renderGrid, renderPanorama, renderScene, renderStory, siteHost,
+  GRID_DEFAULTS, GRID_VERSION, SCENE_VERSION, captionFacts, detailLayout, detailSuffixes, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
+  panoramaSuffixes, renderCaption, renderGrid, renderPanorama, renderScene, renderStory, scenePlacement, siteHost,
 } from './lib/instagram.mjs';
 import { PIN_DEFAULTS, withParams } from './lib/pinterest.mjs';
 import { PUBLIC_PHOTO_FIELDS, focusCrop, preparePhotos } from './lib/photos.mjs';
@@ -641,6 +641,9 @@ export async function run({
   const instagramScenes = await loadInstagramScenes(instagramScenesDir);
   const captionPalettes = PALETTES.map((p) => p.id);
   const instagramVariants = instagramSuffixes(captionPalettes, instagramScenes.scenes.map((s) => s.name));
+  // the scenes a work fits into (scenePlacement = the place renderScene draws it at): only these get a photo
+  const fittingScenes = (w) => (validSize(w.data.size_cm)
+    ? instagramScenes.scenes.filter((sc) => scenePlacement(sc, w.data.size_cm, w.id).fits) : []);
   const instagramSettings = JSON.stringify({ ...img.instagram, host: siteHost(config.site?.url) });
   // the pin for Pinterest (every work): images.pinterest over the defaults
   const pinConfig = { ...PIN_DEFAULTS, ...img.pinterest };
@@ -712,7 +715,7 @@ export async function run({
     // Instagram exports also show the title, technique, size and date (caption) and depend on the scenes and settings.
     // Exports live in a folder mirroring tvorba/: a work moved to another collection gets them made again there.
     const instagramInputs = instagram
-      ? [instagramScenes.text, instagramSettings, JSON.stringify([w.data.title, w.data.technique, w.data.size_cm, w.year, instagramGrid(w.data) ? [instagramGrid(w.data), GRID_VERSION] : 0])]
+      ? [instagramScenes.text, String(SCENE_VERSION), instagramSettings, JSON.stringify([w.data.title, w.data.technique, w.data.size_cm, w.year, instagramGrid(w.data) ? [instagramGrid(w.data), GRID_VERSION] : 0, w.data.meta_edge ?? 'deckle'])]
       : [];
     const folderInputs = instagram || onSale ? [exportFolder(w.yamlPath, w.slug)] : [];
     // the pin (every work) shows the caption too, in its own size
@@ -760,14 +763,17 @@ export async function run({
         await fs.writeFile(path.join(insta, exportFileName(`-caption-${p.id}`)), buf);
       }
       if (validSize(w.data.size_cm)) {
+        // a work that does not fit into a scene gets no photo of it, only a warning in the summary
         for (const scene of instagramScenes.scenes) {
-          const { buf, placement } = await renderScene({ art, work: { ...w.data, id: w.id }, scene, config: img.instagram });
+          const placement = scenePlacement(scene, w.data.size_cm, w.id);
           if (!placement.fits) {
-            log(`  ! ${rel}: does not fit the free part of the scene ${scene.name} (see mockups/instagram/scenes.yaml)`);
-            misfits.push(`${w.yamlPath}: obraz se na „${scene.label ?? scene.name}“ nevejde mimo rekvizity, `
-              + `na fotce export/instagram/${folder}/${exportFileName(`-scene-${scene.name}`)} je částečně `
-              + 'zakrývá (tuhle fotku raději nepoužij) [nevejde-do-sceny]');
+            log(`  ! ${rel}: does not fit ${placement.cut ? 'into the photo of' : 'the free part of'} the scene ${scene.name}, no photo of it (see mockups/instagram/scenes.yaml)`);
+            misfits.push(`${w.yamlPath}: obraz se na „${scene.label ?? scene.name}“ `
+              + (placement.cut ? 'celý nevejde, okraj fotky by ho ořízl' : 'nevejde mimo rekvizity, částečně by je zakrýval')
+              + ', fotku této scény proto nevyrábím [nevejde-do-sceny]');
+            continue;
           }
+          const { buf } = await renderScene({ art, work: { ...w.data, id: w.id }, scene, config: img.instagram });
           await fs.writeFile(path.join(insta, exportFileName(`-scene-${scene.name}`)), buf);
         }
       }
@@ -833,7 +839,7 @@ export async function run({
       });
       const files = {
         captions: captionPalettes.map((p) => exportFileName(`-caption-${p}`)),
-        scenes: validSize(w.data.size_cm) ? instagramScenes.scenes.map((sc) => exportFileName(`-scene-${sc.name}`)) : [],
+        scenes: fittingScenes(w).map((sc) => exportFileName(`-scene-${sc.name}`)),
         panorama: panoramaSuffixes(panoramaSlides(w.data.size_cm, img.instagram)).map(exportFileName),
         story: exportFileName('-story'),
         grid: instagramGrid(w.data)
@@ -861,7 +867,7 @@ export async function run({
       const info = await readJson(path.join(publicDir, workImageDir(w.year, workKey(w.slug, w.id)), 'info.json'));
       const mockupScenes = info ? (info.mockups ?? []).map((m) => m.scene) : null;
       const variants = [
-        ...(validSize(w.data.size_cm) ? instagramVariants : instagramVariants.filter((v) => !v.startsWith('-scene-'))),
+        ...instagramVariants.filter((v) => !v.startsWith('-scene-')), ...fittingScenes(w).map((sc) => `-scene-${sc.name}`),
         ...panoramaSuffixes(panoramaSlides(w.data.size_cm, img.instagram)), '-story', ...gridSuffixes(instagramGrid(w.data)),
       ];
       variants.push(...instagramDetailSuffixes(w, info));

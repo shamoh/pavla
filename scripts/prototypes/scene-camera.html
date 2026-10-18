@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kamera scén</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* The palette Papír of the site (scripts/lib/palettes.mjs) and the colours of the guides. */
+  :root { --paper: #f7f4ee; --paper2: #efeae0; --ink: #2b2724; --ink-soft: #6d655c; --line: #ddd5c7; --accent: #487282;
+    --drawn: #d23c2a; --camera: #1f6fd1; --grid: rgb(255 255 255 / .45); --grid-edge: #ffd23f; --ledge: #19a35a;
+    --front: #ff8a00; --prop: #c58bff; --bounds: #a3e635; --window: #ffffff;
+    --edge-x: #ff3b30; --edge-y: #19d3ff; --work-x: #ffd60a; --work-y: #ff4fd8; --outside: #3a3633;
+    --header: 108px; /* the height of the sticky header, measured by the script */ }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Work Sans', system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1600px; margin: 0 auto; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; font-size: .86rem; }
+  .bar h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; font-size: 1.5rem; margin: 0 auto 0 0; }
+  .group { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); flex-wrap: wrap; }
+  .group select { font: inherit; max-width: 22em; }
+  .group input[type='range'] { width: 100px; accent-color: var(--accent); }
+  .note { max-width: 1600px; margin: 0 auto; padding: 0 16px 10px; font-size: .82rem; color: var(--ink-soft); }
+  main { max-width: 1600px; margin: 0 auto; padding: 8px 16px 80px; }
+  section { border-top: 1px solid var(--line); margin-top: 28px; padding-top: 12px; }
+  h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 400; font-size: 1.8rem; margin: 0 0 12px; display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+  h2 small { font-family: 'Work Sans', sans-serif; font-size: .84rem; color: var(--ink-soft); }
+  .scene { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .scene { grid-template-columns: minmax(0, 1fr); } }
+  /* the tools stay in the top right corner of the picture while the page scrolls along it */
+  .tools { position: sticky; top: var(--header); z-index: 2; height: 0; display: flex; justify-content: flex-end; align-items: flex-start; gap: 6px; padding: 0 8px; }
+  .tools button { margin-top: 8px; }
+  .tools button { background: var(--paper); border-color: var(--ink-soft); box-shadow: 0 1px 4px rgb(0 0 0 / .3); }
+  .tools button[aria-pressed='false'] { background: var(--ink); color: var(--paper); }
+  .tools .zoom { margin-top: 8px; display: flex; align-items: center; gap: 6px; font-size: .82rem; background: var(--paper); border: 1px solid var(--ink-soft); border-radius: 99px; padding: 3px 11px; box-shadow: 0 1px 4px rgb(0 0 0 / .3); }
+  .tools .zoom input { width: 140px; accent-color: var(--accent); }
+  .tools .zoom output { min-width: 2.6em; text-align: right; font-variant-numeric: tabular-nums; }
+  .viewport { overflow: auto; max-height: 92vh; border: 1px solid var(--line); background: var(--outside); }
+  .stage { position: relative; cursor: crosshair; touch-action: none; }
+  .stage.editing { cursor: default; }
+  /* where the pointer is, in px of the photo as scenes.yaml writes points */
+  .pointer { position: absolute; z-index: 1; pointer-events: none; font: .78rem/1.3 ui-monospace, monospace; color: var(--ink); background: var(--paper); border: 1px solid var(--ink-soft); border-radius: 4px; padding: 1px 5px; white-space: nowrap; box-shadow: 0 1px 3px rgb(0 0 0 / .3); }
+  .frame { position: absolute; overflow: visible; }
+  .frame > img, .frame > .clip { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  .frame > img { display: block; user-select: none; -webkit-user-drag: none; }
+  .frame .clip { overflow: hidden; pointer-events: none; }
+  .frame .clip img { position: absolute; left: 0; top: 0; transform-origin: 0 0; filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / .35)); }
+  .stage svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
+  .controls { font-size: .84rem; display: grid; gap: 7px; position: sticky; top: 100px; }
+  .row { display: grid; grid-template-columns: 8.5em 1fr 5.2em; gap: 8px; align-items: center; }
+  .row input[type='range'] { width: 100%; accent-color: var(--accent); }
+  .row input[type='number'] { width: 100%; font: inherit; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { font: inherit; font-size: .82rem; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 4px 11px; cursor: pointer; }
+  button:hover { border-color: var(--ink-soft); }
+  .facts { color: var(--ink-soft); line-height: 1.5; }
+  .facts b { color: var(--ink); font-weight: 500; }
+  .bad { color: var(--drawn); }
+  pre { margin: 0; padding: 8px 10px; background: var(--paper2); border: 1px solid var(--line); font-size: .76rem; white-space: pre-wrap; word-break: break-all; max-height: 16em; overflow: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .78rem; color: var(--ink-soft); }
+  .legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>Kamera scén</h1>
+    <label class="group">Obraz <select id="work"></select></label>
+    <label class="group" title="Jen díla, která se aspoň v jedné scéně nevejdou do volné části (pipeline je ohlásí v „Ke kontrole“); počítá se s kamerou, jak je teď nastavená"><input type="checkbox" id="misfits-only" /> jen díla, která se nevejdou</label>
+    <label class="group">Okolí fotky <select id="pad">
+      <option value="0">žádné</option><option value="0.25">25 %</option><option value="0.5" selected>50 %</option><option value="1">100 %</option><option value="2">200 %</option>
+    </select></label>
+    <label class="group">Fotka s prázdným listem <input type="range" id="sheet-photo" min="0" max="100" step="5" value="0" /></label>
+    <label class="group">Obraz <input type="range" id="work-opacity" min="0" max="100" step="5" value="100" /></label>
+    <div class="group" role="group">
+      <label><input type="checkbox" data-layer="edges" checked /> hrany podkladu</label>
+      <label><input type="checkbox" data-layer="workEdges" checked /> hrany obrazu</label>
+      <label><input type="checkbox" data-layer="vanish" checked /> úběžníky</label>
+      <label><input type="checkbox" data-layer="drawn" checked /> nakreslený list</label>
+      <label><input type="checkbox" data-layer="camera" /> list kamerou</label>
+      <label><input type="checkbox" data-layer="grid" /> mřížka</label>
+      <label><input type="checkbox" data-layer="horizon" checked /> horizont</label>
+      <label><input type="checkbox" data-layer="circles" checked /> kroužky</label>
+      <label><input type="checkbox" data-layer="ledge" checked /> lišta</label>
+      <label><input type="checkbox" data-layer="obstacles" checked /> překážky</label>
+      <label><input type="checkbox" data-layer="window" checked /> výřez 4:5</label>
+      <label><input type="checkbox" id="edit" /> <b>upravovat hrany</b></label>
+    </div>
+  </div>
+  <p class="note">Hrany podkladu (stůl, deska a lišta stojanu) jsou protažené přes celé plátno: rovnoběžné hrany se sbíhají
+    do jednoho bodu (úběžník, kroužek). Hrany obrazu (čárkovaně) míří do úběžníků kamery (křížek); když obraz leží
+    rovnoběžně s podkladem, sejdou se ve stejném bodě. „Z hran“ najde kameru, se kterou hrany míří do svých úběžníků;
+    posuvníky ji doladíš. S „upravovat hrany“ se táhnou konce hran, dvojklik na konec hranu smaže. Bez úprav se tažením
+    posouvá střed listu. Výsledek zkopíruj do <code>mockups/instagram/scenes.yaml</code> (<code>lines</code>, případně
+    <code>camera</code>). Vše se pamatuje v prohlížeči.</p>
+</header>
+<main id="main"></main>
+<script>
+  const DATA = /*DATA*/{};
+  const PUBLIC = DATA.public;
+/*FUNCTIONS*/
+
+  const PARAMS = [
+    { key: 'focalMm', label: 'Ohnisko (mm)', min: 14, max: 120, step: 0.5 },
+    { key: 'zenithDeg', label: 'Zenit (°)', min: 0, max: 85, step: 0.1 },
+    { key: 'azimuthDeg', label: 'Azimut (°)', min: -180, max: 180, step: 0.1 },
+    { key: 'rollDeg', label: 'Natočení foťáku (°)', min: -30, max: 30, step: 0.1 },
+    { key: 'distanceCm', label: 'Vzdálenost (cm)', min: 20, max: 500, step: 0.5 },
+    { key: 'cx', label: 'Střed listu x', min: 0, max: 1, step: 1 },
+    { key: 'cy', label: 'Střed listu y', min: 0, max: 1, step: 1 },
+    { key: 'sheetDeg', label: 'Nakreslený list pootočený (°)', min: -45, max: 45, step: 0.1 },
+  ];
+  const STORE = 'pavla.prototype.sceneCamera';
+  const load = () => { try { return JSON.parse(localStorage.getItem(STORE)) ?? {}; } catch { return {}; } };
+  const save = (v) => { try { localStorage.setItem(STORE, JSON.stringify(v)); } catch { /* private window */ } };
+  const memory = load();
+  const works = DATA.works.filter((w) => w.sizeCm);
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const fmt = (v, d = 1) => (+v.toFixed(d)).toString().replace('.', ',');
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const clone = (v) => JSON.parse(JSON.stringify(v));
+
+  /** The 3 × 3 homography (rows) taking 4 points src to 4 points dst. */
+  function homographyOf(src, dst) {
+    const A = [], b = [];
+    src.forEach(([x, y], i) => {
+      const [u, v] = dst[i];
+      A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u);
+      A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v);
+    });
+    for (let c = 0; c < 8; c++) {
+      let p = c;
+      for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+      [A[c], A[p]] = [A[p], A[c]]; [b[c], b[p]] = [b[p], b[c]];
+      for (let r = 0; r < 8; r++) if (r !== c) {
+        const k = A[r][c] / A[c][c];
+        for (let j = c; j < 8; j++) A[r][j] -= k * A[c][j];
+        b[r] -= k * b[c];
+      }
+    }
+    const h = b.map((v, i) => v / A[i][i]);
+    return [[h[0], h[1], h[2]], [h[3], h[4], h[5]], [h[6], h[7], 1]];
+  }
+  const matrix3d = (H) => `matrix3d(${[H[0][0], H[1][0], 0, H[2][0], H[0][1], H[1][1], 0, H[2][1], 0, 0, 1, 0, H[0][2], H[1][2], 0, H[2][2]].join(',')})`;
+
+  /** Where the lines of a group meet (least squares; null when they are about parallel or fewer than two). */
+  function meetingPoint(lines) {
+    if (lines.length < 2) return null;
+    let a11 = 0, a12 = 0, a22 = 0, b1 = 0, b2 = 0;
+    for (const [[ax, ay], [bx, by]] of lines) {
+      const nx = by - ay, ny = ax - bx, l = Math.hypot(nx, ny), a = nx / l, b = ny / l, c = -(a * ax + b * ay);
+      a11 += a * a; a12 += a * b; a22 += b * b; b1 -= a * c; b2 -= b * c;
+    }
+    const det = a11 * a22 - a12 * a12;
+    if (Math.abs(det) < 1e-6 * (a11 + a22) ** 2) return null;
+    return [(b1 * a22 - b2 * a12) / det, (a11 * b2 - a12 * b1) / det];
+  }
+
+  /** The vanishing point of the x (0) or y (1) direction of the plane under a camera, or null at infinity. */
+  function vanishingPoint(cam, j) {
+    const w = cam.R[2][j];
+    if (Math.abs(w) < 1e-9) return null;
+    return [cam.pp[0] + cam.f * cam.R[0][j] / w, cam.pp[1] + cam.f * cam.R[1][j] / w];
+  }
+
+  /** The polyline of a straight line of the plane (cm), cut where it goes behind the camera or far away. */
+  function planeLine(cam, [W, H], a, b, steps = 120) {
+    const parts = [];
+    let part = [];
+    for (let i = 0; i <= steps; i++) {
+      const X = a[0] + (b[0] - a[0]) * i / steps, Y = a[1] + (b[1] - a[1]) * i / steps;
+      const z = cam.R[2][0] * X + cam.R[2][1] * Y + cam.t[2];
+      const [x, y] = project(cam, X, Y);
+      if (z > 1 && Math.abs(x - W / 2) < W * 4 && Math.abs(y - H / 2) < H * 4) part.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+      else { if (part.length > 1) parts.push(part); part = []; }
+    }
+    if (part.length > 1) parts.push(part);
+    return parts;
+  }
+
+  const el = (tag, attrs = {}, parent) => {
+    const e = tag.startsWith('svg:') ? document.createElementNS(svgNS, tag.slice(4)) : document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (parent) parent.append(e);
+    return e;
+  };
+  const layers = () => Object.fromEntries([...document.querySelectorAll('[data-layer]')].map((c) => [c.dataset.layer, c.checked]));
+
+  const views = DATA.scenes.map((scene) => sceneView(scene));
+
+  function sceneView(scene) {
+    const [W, H] = scene.imageSize, [SW, SH] = scene.sheetCm;
+    const setupOf = (c) => ({ focalMm: c.focalMm, zenithDeg: c.zenithDeg, azimuthDeg: c.azimuthDeg, rollDeg: c.rollDeg, distanceCm: c.distanceCm, cx: c.sheetCenter[0], cy: c.sheetCenter[1], sheetDeg: c.sheetDeg ?? 0 });
+    // what was tuned here is kept only while scenes.yaml says the same as then: a new camera or new edges there win
+    const base = JSON.stringify([scene.camera, scene.lines]);
+    const saved = memory[scene.name]?.base === base ? memory[scene.name] : {};
+    let state = { ...setupOf(scene.camera), ...(saved.camera ?? {}) };
+    let lines = clone(saved.lines ?? scene.lines);
+    let pad = 0, scale = 1, guides = true, laidOut = false;
+
+    const section = el('section', {}, document.getElementById('main'));
+    const h2 = el('h2', {}, section);
+    h2.textContent = scene.label;
+    const sources = { camera: 'ruční kamera (camera)', lines: 'kamera z hran podkladu (lines)', corners: 'kamera z rohů nakresleného listu' };
+    el('small', {}, h2).textContent = `${scene.name} · ${scene.mode === 'stand' ? 'stojí na liště' : 'leží'} · pipeline: ${sources[scene.source]}`;
+    const wrap = el('div', { class: 'scene' }, section);
+    const view = el('div', {}, wrap);
+    // top right of the picture: the guides on / off (the clean look of the result) and back to the recommended setup
+    const tools = el('div', { class: 'tools' }, view);
+    const viewport = el('div', { class: 'viewport' }, view);
+    // the zoom of this scene: 1 = the whole width of the picture, more = a detail; the picture then scrolls in its frame
+    const zoomRow = el('label', { class: 'zoom', title: 'Zvětšení scény (1× = celá šířka); zvětšuje kolem středu toho, co je vidět, obrázek se pak posouvá. Nad obrázkem i Cmd + kolečko nebo sevření prstů na touchpadu, kolem místa pod kurzorem' }, tools);
+    zoomRow.append('Zvětšení');
+    const zoomRange = el('input', { type: 'range', min: 1, max: 8, step: 0.05, value: 1 }, zoomRow);
+    const zoomOut = el('output', {}, zoomRow);
+    zoomRange.addEventListener('input', () => layout());
+    zoomRange.addEventListener('dblclick', () => { zoomRange.value = 1; layout(); });
+    const guidesButton = el('button', { type: 'button', 'aria-pressed': 'true', title: 'Pomocné čáry, fotka s prázdným listem a krytí obrazu: vypnuto = obraz ve scéně čistě, jak ho umístí pipeline' }, tools);
+    guidesButton.addEventListener('click', () => { guides = !guides; update(); });
+    const resetButton = el('button', { type: 'button', title: 'Kamera, hrany a pootočení obrazu jako ve scenes.yaml (to, co dnes používá pipeline); zapomene úpravy této scény' }, tools);
+    resetButton.textContent = 'Obnovit doporučené';
+    const stage = el('div', { class: 'stage' }, viewport);
+    const frame = el('div', { class: 'frame' }, stage);
+    el('img', { src: scene.image, alt: '', draggable: 'false' }, frame);
+    const sheetImg = el('img', { src: scene.sheetImage, alt: '', draggable: 'false' }, frame);
+    const clip = el('div', { class: 'clip' }, frame);
+    const art = el('img', { alt: '' }, clip);
+    // things in front of the work (`front`, the palette on the easel): the photo again, cut to their outlines, over the work
+    for (const outline of scene.front) {
+      el('img', { src: scene.image, alt: '', draggable: 'false', style: `clip-path: polygon(${outline.map(([x, y]) => `${x / W * 100}% ${y / H * 100}%`).join(', ')})` }, frame);
+    }
+    const svg = el('svg:svg', { preserveAspectRatio: 'none' }, stage);
+    const pointer = el('div', { class: 'pointer', hidden: '' }, stage);
+
+    const controls = el('div', { class: 'controls' }, wrap);
+    const inputs = {};
+    const dollyRow = el('label', {});
+    const dolly = el('input', { type: 'checkbox' }, dollyRow);
+    dollyRow.append(' ohnisko drží velikost listu (mění i vzdálenost)');
+    for (const p of PARAMS) {
+      const row = el('label', { class: 'row' }, controls);
+      el('span', {}, row).textContent = p.label;
+      const max = p.key === 'cx' ? W : p.key === 'cy' ? H : p.max;
+      const range = el('input', { type: 'range', min: p.min, max, step: p.step }, row);
+      const num = el('input', { type: 'number', min: p.min, max, step: p.step }, row);
+      const set = (v) => {
+        // with "dolly", a new focal length moves the camera so that the sheet keeps its size: only the perspective changes
+        if (p.key === 'focalMm' && dolly.checked) state.distanceCm *= +v / state.focalMm;
+        state[p.key] = +v;
+        update();
+      };
+      range.addEventListener('input', () => set(range.value));
+      num.addEventListener('change', () => set(num.value));
+      inputs[p.key] = { range, num };
+    }
+    controls.append(dollyRow);
+    resetButton.addEventListener('click', () => {
+      state = setupOf(scene.camera);
+      lines = clone(scene.lines);
+      dolly.checked = false; fixFocal.checked = false;
+      guides = true;
+      update();
+    });
+    const buttons = el('div', { class: 'buttons' }, controls);
+    const button = (text, title, action) => { const b = el('button', { type: 'button', title }, buttons); b.textContent = text; b.addEventListener('click', action); return b; };
+    const fixRow = el('label', {});
+    const fixFocal = el('input', { type: 'checkbox' }, fixRow);
+    fixRow.append(' „Z hran“ drží ohnisko');
+    button('Z hran', 'Kamera, se kterou hrany podkladu míří do svých úběžníků (začne od současné)', () => {
+      const start = { ...state, sheetCenter: [state.cx, state.cy] };
+      const fit = fitCameraToLines({ ...scene, lines, focalMm: fixFocal.checked ? state.focalMm : scene.focalMm ?? undefined }, start);
+      state = { ...setupOf({ ...fit.setup, sheetDeg: fit.sheetDeg }) };
+      update();
+    });
+    button('Jako pipeline', 'Kamera, kterou dnes používá pipeline', () => { state = setupOf(scene.camera); update(); });
+    button('Z rohů listu', 'Kamera spočítaná z nakreslených rohů listu (focalMm / circles ze scenes.yaml)', () => { state = setupOf(scene.fitted); update(); });
+    button('Vyrovnat natočení', 'Natočení foťáku 0°: horizont stolu / horní hrana stojanu vodorovně', () => { state.rollDeg = 0; update(); });
+    controls.append(fixRow);
+    const edgeButtons = el('div', { class: 'buttons' }, controls);
+    const addLine = (axis) => () => {
+      const c = [state.cx, state.cy], d = axis === 'x' ? [120, 0] : [0, 120];
+      lines[axis].push([[Math.round(c[0] - d[0]), Math.round(c[1] - d[1])], [Math.round(c[0] + d[0]), Math.round(c[1] + d[1])]]);
+      document.getElementById('edit').checked = true;
+      update();
+    };
+    for (const [text, title, action] of [
+      ['+ hrana x', 'Nová hrana podkladu ve směru šířky listu (vodorovná)', addLine('x')],
+      ['+ hrana y', 'Nová hrana podkladu ve směru výšky listu (do hloubky stolu / svislá na stojanu)', addLine('y')],
+      ['Hrany ze scenes.yaml', 'Zahodit úpravy hran', () => { lines = clone(scene.lines); update(); }],
+    ]) { const b = el('button', { type: 'button', title }, edgeButtons); b.textContent = text; b.addEventListener('click', action); }
+    const facts = el('div', { class: 'facts' }, controls);
+    const legend = el('div', { class: 'legend' }, controls);
+    legend.innerHTML = '<span><i style="background:var(--edge-x)"></i>hrany podkladu x</span><span><i style="background:var(--edge-y)"></i>hrany podkladu y</span>'
+      + '<span><i style="background:var(--work-x)"></i>hrany obrazu x</span><span><i style="background:var(--work-y)"></i>hrany obrazu y</span>'
+      + '<span>○ úběžník hran podkladu, × úběžník kamery</span><span><i style="background:var(--drawn)"></i>nakreslený list</span>'
+      + '<span><i style="background:var(--camera)"></i>list 40 × 30 kamerou</span><span><i style="background:var(--accent)"></i>horizont</span>'
+      + (scene.mode === 'stand' ? '<span><i style="background:var(--ledge)"></i>lišta (ledge)</span>' : '')
+      + (scene.front.length ? '<span><i style="background:var(--front)"></i>před obrazem (front)</span>' : '')
+      + (scene.props.length ? '<span><i style="background:var(--prop)"></i>rekvizity, obraz je nesmí zakrýt (props)</span>' : '')
+      + (scene.bounds ? '<span><i style="background:var(--bounds)"></i>volná část stolu (bounds)</span>' : '')
+      + (scene.center ? '<span>× střed pro obraz (center)</span>' : '');
+    const out = el('pre', {}, controls);
+    const copy = el('button', { type: 'button' }, controls);
+    copy.textContent = 'Kopírovat do scenes.yaml';
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(out.textContent); copy.textContent = 'Zkopírováno'; } catch { copy.textContent = 'Označ text a zkopíruj'; }
+      setTimeout(() => { copy.textContent = 'Kopírovat do scenes.yaml'; }, 1500);
+    });
+
+    // the pointer: a point of the photo (px) from the screen
+    const toImage = (e) => { const r = stage.getBoundingClientRect(); return [(e.clientX - r.left) / scale - pad, (e.clientY - r.top) / scale - pad]; };
+    const nearestEnd = ([x, y]) => {
+      let best = null;
+      for (const axis of ['x', 'y']) lines[axis].forEach((line, i) => line.forEach(([px, py], end) => {
+        const d = Math.hypot(px - x, py - y) * scale;
+        if (d < 14 && (!best || d < best.d)) best = { axis, i, end, d };
+      }));
+      return best;
+    };
+    // a press that does not move is a click: it copies the point; only a move of a few screen px starts dragging
+    let drag = null, press = null;
+    stage.addEventListener('pointerdown', (e) => {
+      const at = toImage(e);
+      press = { x: e.clientX, y: e.clientY, at, moved: false, shift: e.shiftKey };
+      stage.setPointerCapture(e.pointerId);
+      const editing = document.getElementById('edit').checked;
+      const end = editing ? nearestEnd(at) : null;
+      if (editing && !end) return;
+      drag = end ? { end } : { at, cx: state.cx, cy: state.cy };
+    });
+    stage.addEventListener('pointermove', (e) => {
+      if (!press) return;
+      if (!press.moved && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 4) return;
+      press.moved = true;
+      if (!drag) return;
+      const [x, y] = toImage(e);
+      if (drag.end) lines[drag.end.axis][drag.end.i][drag.end.end] = [Math.round(x), Math.round(y)];
+      else { state.cx = Math.round(drag.cx + x - drag.at[0]); state.cy = Math.round(drag.cy + y - drag.at[1]); }
+      update();
+    });
+    stage.addEventListener('pointerup', () => {
+      if (press && !press.moved) copyPoint(press.at, press.shift);
+      drag = null; press = null;
+    });
+    /**
+     * The point [x, y] (px of the photo, as scenes.yaml writes it) to the clipboard; the label by the pointer says so.
+     * With Shift the point is added to the points clicked before (in this scene) and the whole outline
+     * [[x, y], [x, y], …] goes to the clipboard; a click without Shift starts again.
+     */
+    let outlinePoints = [];
+    async function copyPoint(at, append) {
+      const point = `[${at.map(Math.round).join(', ')}]`;
+      outlinePoints = append ? [...outlinePoints, point] : [point];
+      const text = outlinePoints.length > 1 ? `[${outlinePoints.join(', ')}]` : point;
+      let done = false;
+      try { await navigator.clipboard.writeText(text); done = true; } catch {
+        // a page opened from a file may have no clipboard API: the old way through a selected text field
+        const field = el('textarea', { style: 'position: fixed; opacity: 0' }, document.body);
+        field.value = text; field.select();
+        try { done = document.execCommand('copy'); } catch { /* nothing more to try */ }
+        field.remove();
+      }
+      const what = outlinePoints.length > 1 ? `${point} · ${outlinePoints.length} ${outlinePoints.length < 5 ? 'body' : 'bodů'}` : point;
+      showPointer(done ? `${what} zkopírováno` : `${what} nejde zkopírovat`);
+    }
+    // the point under the pointer as [x, y] in px of the photo (for the outlines of front, props, bounds); beside it,
+    // on the other side near the right and bottom edge of the stage
+    let pointerAt = [0, 0];
+    /** The label by the pointer with a new text, on the other side of the pointer where it would stick out. */
+    const showPointer = (text) => {
+      const [left, top] = pointerAt;
+      pointer.hidden = false;
+      pointer.textContent = text;
+      pointer.style.left = `${left + 14}px`; pointer.style.top = `${top + 14}px`;
+      pointer.style.transform = `translate(${left + 14 + pointer.offsetWidth > stage.clientWidth ? 'calc(-100% - 28px)' : '0'}, ${top + 14 + pointer.offsetHeight > stage.clientHeight ? 'calc(-100% - 28px)' : '0'})`;
+    };
+    stage.addEventListener('pointermove', (e) => {
+      const [x, y] = toImage(e).map(Math.round), r = stage.getBoundingClientRect();
+      pointerAt = [e.clientX - r.left, e.clientY - r.top];
+      showPointer(`[${x}, ${y}]${x < 0 || y < 0 || x > W || y > H ? ' mimo fotku' : ''}`);
+    });
+    stage.addEventListener('pointerleave', () => { pointer.hidden = true; });
+    stage.addEventListener('dblclick', (e) => {
+      if (!document.getElementById('edit').checked) return;
+      const end = nearestEnd(toImage(e));
+      if (end) { lines[end.axis].splice(end.i, 1); update(); }
+    });
+
+    const camera = () => cameraFromAngles({ ...state, sheetCenter: [state.cx, state.cy] }, scene.sheetCm, scene.imageSize, scene.mode);
+    /** The plane of the work under a camera, as the pipeline gives it to planPlacement: on the easel only up to the ledge. */
+    const geometry = (cam) => ({
+      width: SW, height: scene.mode === 'stand' && scene.ledge ? ledgeDepth(cam, scene.sheetCm, scene.ledge, scene.sinkPx) : SH,
+      toPlane: (x, y, z = 0) => unproject(cam, x, y, z), toImage: (X, Y, z = 0) => project(cam, X, Y, z),
+    });
+    /** Whether the pipeline finds a place for the work in this scene under the camera set here now. */
+    const fits = (work) => planPlacement(scene, geometry(camera()), work.sizeCm, work.id).fits;
+
+    // Cmd (or Ctrl) + wheel, and the pinch of a touchpad (a wheel with ctrlKey): zoom around the point under the pointer
+    viewport.addEventListener('wheel', (e) => {
+      if (!e.metaKey && !e.ctrlKey) return;
+      e.preventDefault();
+      const zoom = Math.min(8, Math.max(1, +zoomRange.value * Math.exp(-e.deltaY * (e.ctrlKey && !e.metaKey ? 0.01 : 0.003))));
+      zoomRange.value = zoom;
+      const r = viewport.getBoundingClientRect();
+      layout([e.clientX - r.left - viewport.clientLeft, e.clientY - r.top - viewport.clientTop]);
+    }, { passive: false });
+
+    /** Lays the scene out; the point of the photo at `anchor` (px in the viewport, its middle without one) stays there. */
+    function layout(anchor) {
+      document.documentElement.style.setProperty('--header', `${document.querySelector('header').offsetHeight}px`);
+      // the point of the photo in the middle of the viewport stays there
+      const [ax, ay] = anchor ?? [viewport.clientWidth / 2, viewport.clientHeight / 2];
+      const middle = [(viewport.scrollLeft + ax) / scale - pad, (viewport.scrollTop + ay) / scale - pad];
+      pad = Math.round(Math.max(W, H) * +document.getElementById('pad').value);
+      const zoom = +zoomRange.value;
+      zoomOut.textContent = `${fmt(zoom, 1)}×`;
+      const width = (viewport.clientWidth - 2) * zoom;
+      scale = width / (W + 2 * pad);
+      stage.style.width = `${width}px`;
+      stage.style.height = `${(H + 2 * pad) * scale}px`;
+      Object.assign(frame.style, { left: `${pad * scale}px`, top: `${pad * scale}px`, width: `${W * scale}px`, height: `${H * scale}px` });
+      svg.setAttribute('viewBox', `${-pad} ${-pad} ${W + 2 * pad} ${H + 2 * pad}`);
+      if (laidOut) {
+        viewport.scrollLeft = (middle[0] + pad) * scale - ax;
+        viewport.scrollTop = (middle[1] + pad) * scale - ay;
+      }
+      laidOut = true;
+      update();
+    }
+
+    function update() {
+      for (const p of PARAMS) { inputs[p.key].range.value = state[p.key]; inputs[p.key].num.value = +(+state[p.key]).toFixed(2); }
+      memory[scene.name] = { base, camera: state, lines }; save(memory);
+      stage.classList.toggle('editing', document.getElementById('edit').checked);
+      // without the guides nothing but the scene as the pipeline cuts it
+      const cam = camera(), show = guides ? layers() : {};
+      guidesButton.setAttribute('aria-pressed', String(guides));
+      guidesButton.textContent = guides ? 'Pomocné čáry: zapnuto' : 'Pomocné čáry: vypnuto';
+      sheetImg.style.opacity = guides ? +document.getElementById('sheet-photo').value / 100 : 0;
+      svg.replaceChildren();
+      const sw = 1 / scale; // one screen pixel in px of the photo
+      const line = (pts, color, width, extra = {}) => el('svg:polyline', { points: pts.join(' '), fill: 'none', stroke: color, 'stroke-width': width * sw, ...extra }, svg);
+      const far = Math.max(W, H) * 20;
+      const infinite = ([ax, ay], [bx, by], color, width, dash) => {
+        const dx = bx - ax, dy = by - ay, k = far / Math.hypot(dx, dy);
+        line([`${ax - dx * k},${ay - dy * k}`, `${bx + dx * k},${by + dy * k}`], color, width, dash ? { 'stroke-dasharray': `${dash * sw} ${dash * 0.6 * sw}` } : {});
+      };
+      // a point with its [x, y] as scenes.yaml writes it, the text a little away from it in the direction [ux, uy]
+      const pointLabel = ([x, y], [ux, uy], color) => {
+        el('svg:circle', { cx: x, cy: y, r: 3 * sw, fill: color }, svg);
+        const label = el('svg:text', {
+          x: x + ux * 8 * sw, y: y + uy * 8 * sw, 'font-size': 12 * sw, 'font-family': 'ui-monospace, monospace', fill: color,
+          stroke: css('--paper'), 'stroke-width': 3 * sw, 'paint-order': 'stroke', 'stroke-linejoin': 'round',
+          'text-anchor': ux > 0.35 ? 'start' : ux < -0.35 ? 'end' : 'middle', 'dominant-baseline': uy > 0.35 ? 'hanging' : uy < -0.35 ? 'auto' : 'middle',
+        }, svg);
+        label.textContent = `[${Math.round(x)}, ${Math.round(y)}]`;
+      };
+      const ring = ([x, y], color, r = 9) => el('svg:circle', { cx: x, cy: y, r: r * sw, fill: 'none', stroke: color, 'stroke-width': 3 * sw }, svg);
+      const cross = ([x, y], color, r = 9) => line([`${x - r * sw},${y - r * sw}`, `${x + r * sw},${y + r * sw}`, `${x},${y}`, `${x - r * sw},${y + r * sw}`, `${x + r * sw},${y - r * sw}`], color, 3);
+
+      if (show.grid) {
+        const reach = 100;
+        for (let X = -reach; X <= SW + reach; X += 10) for (const part of planeLine(cam, [W, H], [X, -reach], [X, SH + reach])) line(part, X === 0 || X === SW ? css('--grid-edge') : css('--grid'), 1);
+        for (let Y = -reach; Y <= SH + reach; Y += 10) for (const part of planeLine(cam, [W, H], [-reach, Y], [SW + reach, Y])) line(part, Y === 0 || Y === SH ? css('--grid-edge') : css('--grid'), 1);
+      }
+      const vx = vanishingPoint(cam, 0), vy = vanishingPoint(cam, 1);
+      if (show.horizon && scene.mode === 'lie' && vx && vy) infinite(vx, vy, css('--accent'), 2, 10);
+      if (show.drawn) { const c = scene.corners; line([c.tl, c.tr, c.br, c.bl, c.tl].map((p) => p.join(',')), css('--drawn'), 2); }
+      if (show.camera) {
+        const a = state.sheetDeg * Math.PI / 180, co = Math.cos(a), si = Math.sin(a);
+        line([[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]].map(([u, v]) => { const x = u * SW / 2, y = v * SH / 2; return project(cam, SW / 2 + x * co - y * si, SH / 2 + x * si + y * co).join(','); }), css('--camera'), 2);
+      }
+
+      // round things on the table: the drawn box and a true circle of the same width under this camera
+      const circleFacts = [];
+      for (const [x0, y0, x1, y1] of scene.circles) {
+        const mx = (x0 + x1) / 2, my = (y0 + y1) / 2, [X, Y] = unproject(cam, mx, my);
+        const around = (r) => Array.from({ length: 73 }, (_, i) => project(cam, X + r * Math.cos(i * Math.PI / 36), Y + r * Math.sin(i * Math.PI / 36)));
+        const xs = around(1).map((p) => p[0]), r = (x1 - x0) / (Math.max(...xs) - Math.min(...xs));
+        if (show.circles) {
+          el('svg:rect', { x: x0, y: y0, width: x1 - x0, height: y1 - y0, fill: 'none', stroke: css('--drawn'), 'stroke-width': sw, 'stroke-dasharray': `${4 * sw} ${4 * sw}` }, svg);
+          line(around(r).map((p) => p.join(',')), css('--camera'), 2);
+        }
+        circleFacts.push([(y1 - y0) / (x1 - x0), circleRatio(cam, mx, my)]);
+      }
+
+      // the work where the pipeline puts it (planPlacement, under this camera): lying around `center`, moved off the
+      // props and inside the free part of the table; standing on the ledge on the axis of the easel
+      const work = works[+document.getElementById('work').value];
+      let ledgeAngle = null, placement = null, win = null;
+      if (work) {
+        const [w, h] = work.sizeCm;
+        const geo = geometry(cam);
+        placement = planPlacement(scene, geo, work.sizeCm, work.id);
+        const quad = workQuad(geo, work.sizeCm, placement.cx, placement.cy, placement.deg);
+        win = sceneWindow(W, H, quad, scene);
+        const bw = 1000, bh = bw * h / w;
+        if (art.dataset.src !== work.src) { art.dataset.src = work.src; art.src = work.src; }
+        art.style.width = `${bw}px`; art.style.height = `${bh}px`;
+        art.style.opacity = guides ? +document.getElementById('work-opacity').value / 100 : 1;
+        art.style.transform = matrix3d(homographyOf([[0, 0], [bw, 0], [bw, bh], [0, bh]], quad.map(([x, y]) => [x * scale, y * scale])));
+        if (show.workEdges) {
+          infinite(quad[0], quad[1], css('--work-x'), 1.5, 8); infinite(quad[3], quad[2], css('--work-x'), 1.5, 8);
+          infinite(quad[0], quad[3], css('--work-y'), 1.5, 8); infinite(quad[1], quad[2], css('--work-y'), 1.5, 8);
+        }
+        if (scene.mode === 'stand' && scene.ledge) {
+          // the rail is in front of the work; the bottom edge of the work against it
+          const y = (x) => lineY(scene.ledge, x) * scale;
+          clip.style.clipPath = `polygon(0 0, 100% 0, 100% ${y(W)}px, 0 ${y(0)}px)`;
+          const bottom = Math.atan2(quad[2][1] - quad[3][1], quad[2][0] - quad[3][0]) * 180 / Math.PI;
+          // the points of the ledge may come in either order: left to right like the bottom edge of the work
+          const [[lx0, ly0], [lx1, ly1]] = [...scene.ledge].sort((p, q) => p[0] - q[0]);
+          ledgeAngle = bottom - Math.atan2(ly1 - ly0, lx1 - lx0) * 180 / Math.PI;
+        } else clip.style.clipPath = 'none';
+      }
+      // the 4:5 window of the export: its outline with the guides, the rest of the photo dimmed without them
+      if (win) {
+        const box = `M${win.left},${win.top}h${win.width}v${win.height}h${-win.width}z`;
+        if (!guides) el('svg:path', { d: `M${-pad},${-pad}h${W + 2 * pad}v${H + 2 * pad}h${-(W + 2 * pad)}z${box}`, 'fill-rule': 'evenodd', fill: css('--outside'), 'fill-opacity': 0.88 }, svg);
+        else if (show.window) el('svg:path', { d: box, fill: 'none', stroke: css('--window'), 'stroke-width': 2 * sw, 'stroke-dasharray': `${14 * sw} ${8 * sw}` }, svg);
+      }
+      // obstacles: things in front of the work (filled), props the work must not cover (dashed), the free part of the table
+      if (show.obstacles) {
+        // every point of an outline with its [x, y], pushed away from the middle of the outline
+        const outline = (pts, color, extra) => {
+          el('svg:polygon', { points: pts.map((p) => p.join(',')).join(' '), stroke: color, 'stroke-width': 2 * sw, ...extra }, svg);
+          const mx = pts.reduce((t, p) => t + p[0], 0) / pts.length, my = pts.reduce((t, p) => t + p[1], 0) / pts.length;
+          for (const [x, y] of pts) {
+            const d = Math.hypot(x - mx, y - my) || 1;
+            pointLabel([x, y], [(x - mx) / d, (y - my) / d], color);
+          }
+        };
+        if (scene.bounds) { const [x0, y0, x1, y1] = scene.bounds; outline([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], css('--bounds'), { fill: 'none', 'stroke-dasharray': `${10 * sw} ${6 * sw}` }); }
+        // `center`: where the middle of a work lying on the table ideally goes (before the shift by id and off the props)
+        if (scene.center) { cross(scene.center, css('--bounds'), 10); pointLabel(scene.center, [1.6, 0], css('--bounds')); }
+        for (const pts of scene.props) outline(pts, css('--prop'), { fill: 'none', 'stroke-dasharray': `${6 * sw} ${4 * sw}` });
+        for (const pts of scene.front) outline(pts, css('--front'), { fill: css('--front'), 'fill-opacity': 0.25 });
+      }
+      if (show.ledge && scene.ledge) {
+        line([`0,${lineY(scene.ledge, 0)}`, `${W},${lineY(scene.ledge, W)}`], css('--ledge'), 2);
+        if (scene.axis) ring(scene.axis, css('--ledge'), 7);
+        // the two points of `ledge` and the `axis` with their [x, y]: the ledge ones above the line
+        for (const p of scene.ledge) pointLabel(p, [0, -1], css('--ledge'));
+        if (scene.axis) pointLabel(scene.axis, [1.6, 0], css('--ledge'));
+      }
+
+      // the edges of the support: the segment, the whole line, where each group meets; the vanishing points of the camera
+      const editing = document.getElementById('edit').checked;
+      for (const axis of ['x', 'y']) {
+        const color = css(axis === 'x' ? '--edge-x' : '--edge-y');
+        if (show.edges) for (const [a, b] of lines[axis]) {
+          infinite(a, b, color, 1);
+          line([a.join(','), b.join(',')], color, 4);
+          if (editing) for (const p of [a, b]) el('svg:circle', { cx: p[0], cy: p[1], r: 6 * sw, fill: '#fff', stroke: color, 'stroke-width': 2 * sw }, svg);
+        }
+        if (show.vanish) {
+          const meet = meetingPoint(lines[axis]);
+          if (meet) ring(meet, color, 11);
+          const v = axis === 'x' ? vx : vy;
+          if (v) cross(v, css(axis === 'x' ? '--work-x' : '--work-y'));
+        }
+      }
+
+      // how well it agrees with the edges and with the hints the generator drew
+      const misfit = Object.fromEntries(['x', 'y'].map((axis) => [axis, lines[axis].map((l) => lineMisfit(cam, axis, l))]));
+      const all = [...misfit.x, ...misfit.y];
+      const rmsOf = (v) => Math.sqrt(v.reduce((s, x) => s + x * x, 0) / v.length);
+      const c = scene.corners, a = state.sheetDeg * Math.PI / 180, co = Math.cos(a), si = Math.sin(a);
+      const rms = Math.sqrt([[-1, -1, c.tl], [1, -1, c.tr], [1, 1, c.br], [-1, 1, c.bl]].reduce((sum, [u, v, p]) => {
+        const x = u * SW / 2, y = v * SH / 2, [px, py] = project(cam, SW / 2 + x * co - y * si, SH / 2 + x * si + y * co);
+        return sum + (px - p[0]) ** 2 + (py - p[1]) ** 2;
+      }, 0) / 4);
+      const rows = [];
+      if (all.length) rows.push(`Hrany podkladu od úběžníků kamery: <b class="${rmsOf(all) > 3 ? 'bad' : ''}">${fmt(rmsOf(all))} px</b> (${['x', 'y'].filter((k) => misfit[k].length).map((k) => `${k}: ${misfit[k].map((m) => fmt(m)).join(' / ')}`).join(', ')})`);
+      else rows.push('Žádné hrany podkladu: přidej je tlačítky „+ hrana“.');
+      rows.push(`Nakreslený list od listu kamerou: <b>${fmt(rms)} px</b> (průměr rohů)`);
+      circleFacts.forEach(([drawn, seen], i) => rows.push(`Kroužek ${i + 1}: nakreslený ${fmt(drawn, 2)}, kamerou <b class="${Math.abs(drawn - seen) > 0.05 ? 'bad' : ''}">${fmt(seen, 2)}</b> (výška / šířka)`));
+      if (placement) {
+        const moved = Math.hypot(...placement.shift);
+        rows.push(!placement.fits ? `<b class="bad">${placement.cut ? 'Obraz je širší, než se na fotku vejde, okraj ho ořízne' : scene.mode === 'stand' ? 'Obraz zakrývá rekvizitu vedle stojanu' : 'Obraz se nevejde do volné části stolu'}</b> (pipeline tuhle scénu pro dílo nevyrobí, jen ho ohlásí v „Ke kontrole“)`
+          : moved > 0.01 ? `Obraz posunutý ${scene.mode === 'stand' ? 'po liště (mimo rekvizity a celý do fotky)' : 'mimo rekvizity'} o <b>${fmt(moved)} cm</b>${placement.extraDeg ? ` a pootočený o ${fmt(placement.extraDeg)}°` : ''}`
+          : `Obraz na svém místě${scene.mode === 'lie' ? ' (střed scény a posun podle id díla)' : ' (na liště na ose stojanu)'}`);
+        rows.push(`Výřez 4:5: ${win.width} × ${win.height} px${win.zoom > 1 ? `, přiblížený ${fmt(win.zoom, 2)}×` : ''}`);
+      }
+      if (ledgeAngle !== null) rows.push(`Spodní hrana obrazu proti liště: <b class="${Math.abs(ledgeAngle) > 0.5 ? 'bad' : ''}">${fmt(ledgeAngle, 2)}°</b>`);
+      // where the camera is, in cm of the sheet (x right, y down the sheet, z away from the camera), as the prompts say it
+      const C = [0, 1, 2].map((j) => -(cam.R[0][j] * cam.t[0] + cam.R[1][j] * cam.t[1] + cam.R[2][j] * cam.t[2]));
+      const side = (cm) => `${fmt(Math.abs(cm))} cm ${cm >= 0 ? 'vpravo' : 'vlevo'}`;
+      if (scene.mode === 'stand') {
+        rows.push(`Výška kamery nad lištou (spodní hranou listu): <b>${fmt(SH - C[1])} cm</b> · ${fmt(-C[2])} cm před stojanem, `
+          + `${side(C[0] - SW / 2)} od středu listu · ${fmt(state.zenithDeg)}° od čelního pohledu`);
+      } else {
+        rows.push(`Výška kamery nad stolem: <b>${fmt(-C[2])} cm</b> · pohled dolů ${fmt(90 - state.zenithDeg)}° · `
+          + `${side(C[0] - SW / 2)} a ${fmt(C[1] - SH / 2)} cm před středem listu (po hranách stolu)`);
+      }
+      if (scene.prompt) rows.push(`Zadání generátoru: ${scene.prompt}`);
+      facts.innerHTML = rows.join('<br>');
+      worksChanged();
+      const yamlLines = ['x', 'y'].filter((k) => lines[k].length).map((k) => `    ${k}:\n${lines[k].map(([p, q]) => `      - [[${p.map(Math.round).join(', ')}], [${q.map(Math.round).join(', ')}]]`).join('\n')}`).join('\n');
+      out.textContent = `  lines:\n${yamlLines}\n  camera: { focalMm: ${+state.focalMm.toFixed(1)}, zenithDeg: ${+state.zenithDeg.toFixed(1)}, azimuthDeg: ${+state.azimuthDeg.toFixed(1)}, `
+        + `rollDeg: ${+state.rollDeg.toFixed(1)}, distanceCm: ${+state.distanceCm.toFixed(1)}, sheetCenter: [${Math.round(state.cx)}, ${Math.round(state.cy)}] }`;
+    }
+
+    return { layout, update, fits, label: scene.label };
+  }
+
+  // the works with a size, the newest first; the remembered one selected. "Only the misfits" keeps the works that do not
+  // fit into at least one scene under its camera as set now, with the scenes named
+  const select = document.getElementById('work');
+  const misfitsOnly = document.getElementById('misfits-only');
+  misfitsOnly.checked = memory.misfitsOnly === true;
+  works.forEach((w) => { w.src = `${PUBLIC}/${w.folder}/${w.widths.find((x) => x >= 1200) ?? w.widths[w.widths.length - 1]}.webp`; });
+  /** Fills the list of works; true when the selected work changed (the scenes then need drawing again). */
+  function fillWorks() {
+    const before = select.value;
+    const shown = works.map((w, i) => {
+      const misfits = misfitsOnly.checked ? views.filter((v) => !v.fits(w)).map((v) => v.label) : [];
+      return { w, i, misfits };
+    }).filter(({ misfits }) => !misfitsOnly.checked || misfits.length);
+    const signature = JSON.stringify(shown.map(({ i, misfits }) => [i, misfits]));
+    if (signature === select.dataset.signature) return false;
+    select.dataset.signature = signature;
+    select.replaceChildren();
+    for (const { w, i, misfits } of shown) {
+      el('option', { value: i }, select).textContent = `${w.title} (${w.sizeCm.join(' × ')} cm)${misfits.length ? ` · nevejde se: ${misfits.join(', ')}` : ''}`;
+    }
+    if (!shown.length) el('option', { value: -1 }, select).textContent = misfitsOnly.checked ? 'všechna díla se vejdou' : 'žádné dílo s rozměrem';
+    const keep = [before, String(memory.work)].find((v) => shown.some(({ i }) => String(i) === v));
+    select.value = keep ?? (shown.length ? String(shown[0].i) : '-1');
+    return select.value !== before;
+  }
+  // a change of a camera can let a work in or out: the list follows, a moment after the last change
+  let refill = null;
+  function worksChanged() {
+    if (!misfitsOnly.checked || !views.length) return;
+    clearTimeout(refill);
+    refill = setTimeout(() => { if (fillWorks()) views.forEach((v) => v.update()); }, 300);
+  }
+  fillWorks();
+  select.addEventListener('change', () => { memory.work = +select.value; save(memory); views.forEach((v) => v.update()); });
+  misfitsOnly.addEventListener('change', () => {
+    memory.misfitsOnly = misfitsOnly.checked; save(memory);
+    if (fillWorks()) views.forEach((v) => v.update());
+  });
+  for (const id of ['sheet-photo', 'work-opacity']) document.getElementById(id).addEventListener('input', () => views.forEach((v) => v.update()));
+  for (const id of ['pad']) document.getElementById(id).addEventListener('change', () => views.forEach((v) => v.layout()));
+  document.querySelectorAll('[data-layer], #edit').forEach((c) => c.addEventListener('change', () => views.forEach((v) => v.update())));
+  window.addEventListener('resize', () => views.forEach((v) => v.layout()));
+  views.forEach((v) => v.layout());
+</script>
+</body>
+</html>

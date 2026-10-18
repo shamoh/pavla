@@ -5,9 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import {
-  captionFacts, captionLayout, converge, detailLayout, detailSuffixes, gridLayout, gridPosts, gridSuffixes, renderGrid, extendToLedge, fitText, hashtag, homography, insetWork, instagramPost, instagramSuffixes, untranslatedWords, lineY, loadFonts, loadInstagramScenes,
-  panoramaSlides, panoramaSuffixes, planPlacement, quadFits, renderCaption, renderPanorama, renderScene, renderStory, sceneGeometry, sceneWindow, siteHost,
-  storyLayout, textPath, tiltDeg, workQuad,
+  PAPER_DEFAULTS, captionFacts, captionLayout, circleRatio, detailLayout, detailSuffixes, fitCamera, focalPx, gridLayout, gridPosts, gridSuffixes, renderGrid, fitText, hashtag, homography, insetWork, instagramPost, instagramSuffixes, untranslatedWords, ledgeDepth, lineY, loadFonts, loadInstagramScenes, noise2, paperOf, project, unproject,
+  panoramaSlides, EDGE_KINDS, facingDeg, panoramaSuffixes, planPlacement, quadFits, scenePlacement, renderCaption, renderPanorama, renderScene, renderStory, sceneGeometry, sceneWindow, siteHost,
+  sceneCamera, cameraFromAngles, cameraAngles, fitCameraToLines, lineMisfit, storyLayout, textPath, tiltDeg, workQuad,
 } from './instagram.mjs';
 import { PALETTES } from './palettes.mjs';
 
@@ -40,30 +40,230 @@ test('homography maps the corners exactly and its inverse undoes it', () => {
   close(x, 12.5); close(y, 7);
 });
 
-test('converge: shortens the far edge towards its middle, the near edge stays', () => {
-  assert.deepEqual(converge(square, 'top', 0), square);
-  const q = converge(square, 'top', 0.1);
-  assert.deepEqual(q.slice(2), square.slice(2), 'near (bottom) edge unchanged');
-  close(q[1][0] - q[0][0], 360);
-  close((q[0][0] + q[1][0]) / 2, 300, 1e-9);
-  assert.equal(q[0][1], 100);
+// a real camera: 35 mm on an image 1000 × 1250, the sheet 40 × 30 cm seen 40° from above and 15° from the side
+const W0 = 1000, H0 = 1250;
+const cameraAt = ({ mm = 35, zenith = 40, azimuth = 15, dist = 110 } = {}) => {
+  const z = zenith * Math.PI / 180, a = azimuth * Math.PI / 180;
+  // turn the plane by the azimuth (around its normal), then tilt it away from the camera by the zenith
+  const Rz = [[Math.cos(a), -Math.sin(a), 0], [Math.sin(a), Math.cos(a), 0], [0, 0, 1]];
+  const Rx = [[1, 0, 0], [0, Math.cos(z), -Math.sin(z)], [0, Math.sin(z), Math.cos(z)]];
+  const R = Rx.map((r) => [0, 1, 2].map((j) => r.reduce((sum, v, k) => sum + v * Rz[k][j], 0)));
+  const centre = [0, 1, 2].map((i) => R[i][0] * 20 + R[i][1] * 15);
+  return { f: focalPx(mm, W0, H0), pp: [W0 / 2, H0 / 2], R, t: [-centre[0], -centre[1], dist - centre[2]] };
+};
+const cornersOf = (cam) => { const [tl, tr, br, bl] = [[0, 0], [40, 0], [40, 30], [0, 30]].map(([X, Y]) => project(cam, X, Y)); return { tl, tr, br, bl }; };
+
+test('project / unproject: a point of the plane (also lifted towards the camera) and back', () => {
+  const cam = cameraAt();
+  for (const h of [0, 0.3]) {
+    const [x, y] = project(cam, 12.5, 7, h);
+    const [X, Y] = unproject(cam, x, y, h);
+    close(X, 12.5, 1e-9); close(Y, 7, 1e-9);
+  }
+  // a lifted point is closer to the camera: it looks further from the middle of the photo
+  const flat = project(cam, 40, 30), lifted = project(cam, 40, 30, 1);
+  assert.ok(Math.hypot(lifted[0] - W0 / 2, lifted[1] - H0 / 2) > Math.hypot(flat[0] - W0 / 2, flat[1] - H0 / 2));
 });
 
-test('converge: standing on a ledge keeps the bottom corner of the far side edge', () => {
-  const q = converge(square, 'left', 0.05, true);
-  assert.deepEqual(q[3], square[3], 'bottom left stays on the ledge');
-  assert.deepEqual(q.slice(1, 3), square.slice(1, 3));
-  close(q[0][1], 100 + 0.1 * 300); // the whole shortening (2 × 5 %) at the top
+test('fitCamera: finds the focal length, the angles and the distance of a real camera from the 4 corners', () => {
+  const cam = fitCamera(cornersOf(cameraAt()), [40, 30], [W0, H0]);
+  close(cam.focalMm, 35, 0.6);
+  close(cam.zenithDeg, 40, 0.5);
+  close(cam.distanceCm, 110, 2);
+  assert.ok(cam.rms < 0.5, `rms ${cam.rms}`);
+  assert.ok(Math.abs(cam.azimuthDeg) > 5, 'seen from the side');
+  close(fitCamera(cornersOf(cameraAt({ azimuth: -15 })), [40, 30], [W0, H0]).azimuthDeg, -cam.azimuthDeg, 0.5);
 });
 
-test('extendToLedge: the side edges reach the top edge of the rail and sink into it', () => {
-  const ledge = [[0, 450], [600, 510]];
-  const { quad, factor } = extendToLedge(square, ledge, 0);
-  close(quad[3][1], lineY(ledge, quad[3][0]), 1e-6);
-  close(quad[2][1], lineY(ledge, quad[2][0]), 1e-6);
-  assert.ok(factor > 1);
-  const sunk = extendToLedge(square, ledge, 6).quad;
-  close(sunk[3][1] - quad[3][1], 6, 1e-6);
+test('fitCamera: a fixed focal length; a sheet drawn too frontally is no longer a true rectangle for it', () => {
+  const corners = cornersOf(cameraAt({ mm: 70, dist: 220 }));
+  const free = fitCamera(corners, [40, 30], [W0, H0]), fixed = fitCamera(corners, [40, 30], [W0, H0], { focalMm: 28 });
+  close(free.focalMm, 70, 1);
+  assert.equal(fixed.focalMm, 28);
+  assert.ok(fixed.rms > free.rms + 1, 'the drawn corners fit worse, the perspective is stronger');
+  // stays within the range of usual lenses
+  assert.ok(fitCamera(cornersOf(cameraAt({ mm: 200, dist: 600 })), [40, 30], [W0, H0]).focalMm <= 70);
+});
+
+test('fitCamera: round things lying on the table decide the focal length', () => {
+  const real = cameraAt({ mm: 30 });
+  // a ring of a cup (r = 4 cm) on the table in front of the sheet, as drawn in the photo
+  const ring = (X, Y) => {
+    const pts = Array.from({ length: 72 }, (_, i) => project(real, X + 4 * Math.cos(i * Math.PI / 36), Y + 4 * Math.sin(i * Math.PI / 36)));
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  };
+  // the generator drew the sheet like a long lens would; the rings keep the true perspective
+  const corners = cornersOf(cameraAt({ mm: 70, dist: 220 }));
+  const cam = fitCamera(corners, [40, 30], [W0, H0], { circles: [ring(-10, 45), ring(50, -15)] });
+  assert.ok(cam.focalMm < 45, `${cam.focalMm} mm`);
+  assert.ok(cam.circleError < 0.05);
+});
+
+test('cameraFromAngles / cameraAngles: a setup and back, lying and standing', () => {
+  for (const mode of ['lie', 'stand']) {
+    for (const setup of [
+      { focalMm: 35, zenithDeg: 40, azimuthDeg: 15, rollDeg: 3, distanceCm: 110, sheetCenter: [420, 700] },
+      { focalMm: 50, zenithDeg: 5, azimuthDeg: -120, rollDeg: -7, distanceCm: 80, sheetCenter: [500, 625] },
+      { focalMm: 28, zenithDeg: 70, azimuthDeg: 170, rollDeg: 0, distanceCm: 200, sheetCenter: [900, 300] },
+    ]) {
+      const back = cameraAngles(cameraFromAngles(setup, [40, 30], [W0, H0], mode), [40, 30], mode);
+      for (const key of ['focalMm', 'zenithDeg', 'azimuthDeg', 'rollDeg', 'distanceCm']) close(back[key], setup[key], 1e-6);
+      close(back.sheetCenter[0], setup.sheetCenter[0], 1e-6); close(back.sheetCenter[1], setup.sheetCenter[1], 1e-6);
+    }
+  }
+  // the middle of the sheet where asked, the middle of the image without it
+  const cam = cameraFromAngles({ focalMm: 35, zenithDeg: 30, azimuthDeg: 0, distanceCm: 100, sheetCenter: [300, 900] }, [40, 30], [W0, H0]);
+  const [x, y] = project(cam, 20, 15);
+  close(x, 300, 1e-6); close(y, 900, 1e-6);
+  const mid = project(cameraFromAngles({ focalMm: 35, zenithDeg: 30, azimuthDeg: 0, distanceCm: 100 }, [40, 30], [W0, H0]), 20, 15);
+  close(mid[0], W0 / 2, 1e-6); close(mid[1], H0 / 2, 1e-6);
+});
+
+test('cameraFromAngles: level = the horizon of a table / the top of an easel horizontal; from the front = symmetric', () => {
+  // lying, seen from the front: the sheet is a symmetric trapezoid, its far edge shorter
+  const lie = cameraFromAngles({ focalMm: 35, zenithDeg: 45, azimuthDeg: 0, distanceCm: 100 }, [40, 30], [W0, H0]);
+  const [tl, tr, br, bl] = [[0, 0], [40, 0], [40, 30], [0, 30]].map(([X, Y]) => project(lie, X, Y));
+  close(tl[1], tr[1], 1e-6); close(bl[1], br[1], 1e-6);
+  assert.ok(tr[0] - tl[0] < br[0] - bl[0], 'the far edge is shorter');
+  // standing, seen from the right: the top and bottom edges meet on the left, but a vertical edge stays vertical
+  const stand = cameraFromAngles({ focalMm: 35, zenithDeg: 30, azimuthDeg: 90, distanceCm: 100 }, [40, 30], [W0, H0], 'stand');
+  const [a, b] = [project(stand, 20, 0), project(stand, 20, 30)];
+  close(a[0], b[0], 1e-6);
+  // a roll turns the picture
+  const rolled = cameraFromAngles({ focalMm: 35, zenithDeg: 30, azimuthDeg: 90, rollDeg: 5, distanceCm: 100 }, [40, 30], [W0, H0], 'stand');
+  const [c, d] = [project(rolled, 20, 0), project(rolled, 20, 30)];
+  close(Math.atan2(d[0] - c[0], d[1] - c[1]) * 180 / Math.PI, 5, 0.5);
+});
+
+test('fitCamera: finds the setup of a camera, which rebuilds the same camera', () => {
+  const setup = { focalMm: 35, zenithDeg: 45, azimuthDeg: -12, rollDeg: 2, distanceCm: 100, sheetCenter: [480, 700] };
+  const cam = fitCamera(cornersOf(cameraFromAngles(setup, [40, 30], [W0, H0])), [40, 30], [W0, H0], { focalMm: 35 });
+  for (const key of ['zenithDeg', 'azimuthDeg', 'rollDeg', 'distanceCm']) close(cam[key], setup[key], 0.2);
+  close(cam.sheetCenter[0], 480, 1); close(cam.sheetCenter[1], 700, 1);
+  const again = cameraFromAngles(cam, [40, 30], [W0, H0]);
+  for (const [X, Y] of [[0, 0], [40, 0], [40, 30], [0, 30]]) {
+    const [p, q] = [project(cam, X, Y), project(again, X, Y)];
+    close(p[0], q[0], 1); close(p[1], q[1], 1);
+  }
+});
+
+test('sceneCamera: a camera set by hand wins over the corners; rms tells how far the drawn corners are', () => {
+  const setup = { focalMm: 35, zenithDeg: 40, azimuthDeg: 10, rollDeg: 0, distanceCm: 110, sheetCenter: [500, 625] };
+  const exact = cornersOf(cameraFromAngles(setup, [40, 30], [W0, H0]));
+  const scene = { sheetCm: [40, 30], imageSize: [W0, H0], mode: 'lie', corners: exact, focalMm: 60, camera: setup };
+  const cam = sceneCamera(scene);
+  assert.equal(cam.focalMm, 35);
+  assert.equal(cam.zenithDeg, 40);
+  assert.ok(cam.rms < 1e-6);
+  const off = sceneCamera({ ...scene, corners: { ...exact, tl: [exact.tl[0] + 20, exact.tl[1]] } });
+  close(off.rms, 10, 1e-6);
+  // without it: fitted to the corners with the scene's focal length
+  const { camera, ...fitted } = scene;
+  assert.equal(sceneCamera(fitted).focalMm, 60);
+});
+
+// edges of a support seen by a camera: lines of the plane along x (constant Y) and along y (constant X)
+const edgesOf = (cam, { xs = [-20, 50], ys = [-10, 60] } = {}) => ({
+  x: xs.map((Y) => [project(cam, -15, Y), project(cam, 55, Y)]),
+  y: ys.map((X) => [project(cam, X, -15), project(cam, X, 45)]),
+});
+// the corners of the sheet drawn turned by deg on the support, optionally drawn a little wrong (jitter px)
+const turnedCorners = (cam, deg, jitter = 0) => {
+  const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+  const [tl, tr, br, bl] = [[-20, -15], [20, -15], [20, 15], [-20, 15]].map(([x, y], i) => {
+    const [px, py] = project(cam, 20 + x * c - y * s, 15 + x * s + y * c);
+    return [px + jitter * [1, -1, 1, -1][i], py + jitter * [1, 1, -1, -1][i]];
+  });
+  return { tl, tr, br, bl };
+};
+
+test('lineMisfit: 0 for an edge going to its vanishing point, the distance of its ends otherwise', () => {
+  const cam = cameraFromAngles({ focalMm: 35, zenithDeg: 45, azimuthDeg: 20, distanceCm: 100 }, [40, 30], [W0, H0]);
+  const [x, y] = [project(cam, -10, 5), project(cam, 60, 5)];
+  close(lineMisfit(cam, 'x', [x, y]), 0, 1e-6);
+  assert.ok(lineMisfit(cam, 'y', [x, y]) > 50, 'not a y edge');
+  const off = lineMisfit(cam, 'x', [x, [y[0], y[1] + 10]]);
+  assert.ok(off > 3 && off < 6, `${off}`);
+  // seen straight, the edges are parallel in the image: the vanishing point is at infinity
+  const straight = cameraFromAngles({ focalMm: 35, zenithDeg: 0, azimuthDeg: 0, distanceCm: 100 }, [40, 30], [W0, H0]);
+  close(lineMisfit(straight, 'x', [project(straight, 0, 0), project(straight, 40, 0)]), 0, 1e-6);
+  close(lineMisfit(straight, 'x', [[100, 100], [900, 110]]), 5, 0.01);
+});
+
+test('fitCameraToLines: the edges of the support decide the camera, the drawn sheet only where and how far', () => {
+  const setup = { focalMm: 32, zenithDeg: 50, azimuthDeg: -25, rollDeg: 4, distanceCm: 95, sheetCenter: [470, 760] };
+  const cam = cameraFromAngles(setup, [40, 30], [W0, H0]);
+  const scene = { lines: edgesOf(cam), corners: turnedCorners(cam, 12, 6), sheetCm: [40, 30], imageSize: [W0, H0], mode: 'lie' };
+  const start = { focalMm: 45, zenithDeg: 35, azimuthDeg: 0, rollDeg: 0, distanceCm: 120, sheetCenter: [500, 700] };
+  const fit = fitCameraToLines(scene, start);
+  close(fit.setup.focalMm, 32, 0.3);
+  for (const key of ['zenithDeg', 'azimuthDeg', 'rollDeg']) close(fit.setup[key], setup[key], 0.3);
+  close(fit.setup.distanceCm, 95, 3);
+  close(fit.sheetDeg, 12, 0.5);
+  assert.ok(fit.lineRms < 0.5, `lineRms ${fit.lineRms}`);
+  assert.equal(fit.lines.x.length, 2);
+  // a fixed focal length stays, the range holds the rest
+  assert.equal(fitCameraToLines({ ...scene, focalMm: 40 }, start).setup.focalMm, 40);
+  const narrow = fitCameraToLines(scene, start, { focalRange: [36, 70] });
+  assert.equal(narrow.setup.focalMm, 36);
+  assert.ok(narrow.lineRms > fit.lineRms);
+});
+
+test('fitCameraToLines: a standing board, edges only across; without lines it fits the drawn sheet', () => {
+  const setup = { focalMm: 40, zenithDeg: 15, azimuthDeg: 90, rollDeg: -8, distanceCm: 100, sheetCenter: [600, 650] };
+  const cam = cameraFromAngles(setup, [40, 30], [W0, H0], 'stand');
+  const scene = { lines: { x: edgesOf(cam).x }, corners: turnedCorners(cam, 0), sheetCm: [40, 30], imageSize: [W0, H0], mode: 'stand' };
+  const fit = fitCameraToLines(scene, { ...setup, rollDeg: 0, zenithDeg: 10, azimuthDeg: 60 });
+  assert.ok(fit.lineRms < 0.5 && fit.rms < 1, `${fit.lineRms} ${fit.rms}`);
+  close(fit.setup.rollDeg, -8, 0.5);
+  const none = fitCameraToLines({ ...scene, lines: {} }, { ...setup, rollDeg: 0 });
+  assert.equal(none.lineRms, 0);
+  assert.ok(none.rms < 1);
+});
+
+test('sceneCamera: where the camera comes from (camera > lines > corners)', () => {
+  const cam = cameraFromAngles({ focalMm: 32, zenithDeg: 50, azimuthDeg: -25, rollDeg: 4, distanceCm: 95, sheetCenter: [470, 760] }, [40, 30], [W0, H0]);
+  const base = { sheetCm: [40, 30], imageSize: [W0, H0], mode: 'lie', corners: turnedCorners(cam, 0, 8) };
+  assert.equal(sceneCamera({ ...base }).source, 'corners');
+  const lines = sceneCamera({ ...base, lines: edgesOf(cam) });
+  assert.equal(lines.source, 'lines');
+  assert.ok(lines.lineRms < 1.5, `${lines.lineRms}`);
+  close(lines.zenithDeg, 50, 1);
+  const manual = sceneCamera({ ...base, lines: edgesOf(cam), camera: { focalMm: 30, zenithDeg: 40, azimuthDeg: 0, distanceCm: 90 } });
+  assert.equal(manual.source, 'camera');
+  assert.ok(manual.lineRms > 1, 'the edges tell the hand-set camera is off');
+});
+
+test('circleRatio: a circle looks round straight from above and flat from the side', () => {
+  close(circleRatio(cameraAt({ zenith: 0, azimuth: 0 }), W0 / 2, H0 / 2), 1, 1e-3);
+  const cam = cameraAt({ zenith: 60, azimuth: 0 });
+  close(circleRatio(cam, W0 / 2, H0 / 2), Math.cos(60 * Math.PI / 180), 0.08);
+});
+
+test('ledgeDepth: the plane of an easel reaches down to the rail and sinks into it', () => {
+  const cam = fitCamera({ tl: [200, 200], tr: [800, 200], br: [800, 650], bl: [200, 650] }, [40, 30], [1000, 1000]);
+  const depth = ledgeDepth(cam, [40, 30], [[0, 700], [1000, 700]]);
+  close(project(cam, 0, depth)[1], 700, 1e-3);
+  close(project(cam, 0, ledgeDepth(cam, [40, 30], [[0, 700], [1000, 700]], 6))[1], 706, 1e-3);
+  assert.ok(depth > 30);
+});
+
+test('noise2: smooth, stable and within 0 … 1', () => {
+  for (let i = 0; i < 200; i++) {
+    const v = noise2(i * 0.37, i * 0.11, 5);
+    assert.ok(v >= 0 && v <= 1);
+    assert.equal(v, noise2(i * 0.37, i * 0.11, 5));
+    assert.ok(Math.abs(noise2(i * 0.37 + 0.01, i * 0.11, 5) - v) < 0.05);
+  }
+});
+
+test('paperOf: the paper of a scene overrides the defaults one by one', () => {
+  assert.deepEqual(paperOf({}), PAPER_DEFAULTS);
+  const p = paperOf({ paper: { thicknessMm: 1, contact: { opacity: 0.6 } } });
+  assert.equal(p.thicknessMm, 1);
+  assert.equal(p.liftMm, PAPER_DEFAULTS.liftMm);
+  assert.deepEqual(p.contact, { ...PAPER_DEFAULTS.contact, opacity: 0.6 });
 });
 
 test('tiltDeg: the same size in every scene, opposite directions on tables with opposite tiltSign', () => {
@@ -90,7 +290,7 @@ test('quadFits: inside the free part, clear of props and of their margin', () =>
 
 const table = (extra = {}) => ({
   name: 'stul', sheetCm: [40, 30], corners: { tl: [200, 300], tr: [800, 300], br: [800, 750], bl: [200, 750] },
-  mode: 'lie', convergence: 0, center: [500, 525], maxShiftCm: 0, minTiltDeg: 3, maxTiltDeg: 3, tiltSign: 1,
+  imageSize: [1000, 1000], mode: 'lie', center: [500, 525], maxShiftCm: 0, minTiltDeg: 3, maxTiltDeg: 3, tiltSign: 1,
   maxExtraTiltDeg: 6, bounds: [0, 0, 1000, 1000], ...extra,
 });
 
@@ -103,13 +303,50 @@ test('planPlacement: a lying work stays on its spot when nothing is in the way',
   close(Math.abs(p.deg), 3);
 });
 
+test('planPlacement: without tilt (minTiltDeg = maxTiltDeg = 0) the work faces the viewer, even moved off a prop (here the table is straight on)', () => {
+  const scene = table({ minTiltDeg: 0, maxTiltDeg: 0 });
+  assert.equal(tiltDeg('abcde', scene), 0);
+  const p = planPlacement(scene, sceneGeometry(scene), [20, 15], 'abcde');
+  assert.ok(p.fits);
+  assert.equal(p.deg, 0);
+  const blocked = table({ minTiltDeg: 0, maxTiltDeg: 0, props: [[[480, 400], [560, 400], [560, 480], [480, 480]]] });
+  const q = planPlacement(blocked, sceneGeometry(blocked), [20, 15], 'abcde');
+  assert.ok(q.fits);
+  assert.equal(q.deg, 0);
+  assert.equal(q.extraDeg, 0);
+  assert.notDeepEqual(q.shift, [0, 0]);
+});
+
+test('facingDeg / planPlacement: on a table turned in the photo the work faces the viewer, level across', () => {
+  // the sheet (and with it the table) turned by about 10° in the photo
+  const scene = table({ minTiltDeg: 0, maxTiltDeg: 0, corners: { tl: [260, 240], tr: [800, 335], br: [740, 780], bl: [200, 685] } });
+  const geo = sceneGeometry(scene);
+  // the line through the middle of the work, across: level (the top and bottom edges meet far away, as in perspective)
+  const level = (q) => Math.atan2(q[1][1] + q[2][1] - q[0][1] - q[3][1], q[1][0] + q[2][0] - q[0][0] - q[3][0]) * 180 / Math.PI;
+  const p = planPlacement(scene, geo, [20, 15], 'abcde');
+  assert.ok(p.fits);
+  close(p.deg, facingDeg(geo, p.cx, p.cy), 1e-9);
+  assert.ok(Math.abs(p.deg) > 5, `turned against the edges of the table: ${p.deg}`);
+  assert.ok(Math.abs(level(workQuad(geo, [20, 15], p.cx, p.cy, p.deg))) < 0.2, 'level in the photo');
+  assert.ok(Math.abs(level(workQuad(geo, [20, 15], p.cx, p.cy, 0))) > 5, 'parallel to the table it would not be');
+  // moved off a prop: facing the viewer at the new spot too
+  const blocked = { ...scene, props: [[[440, 420], [560, 420], [560, 540], [440, 540]]] };
+  const q = planPlacement(blocked, geo, [20, 15], 'abcde');
+  assert.ok(q.fits && Math.hypot(...q.shift) > 0);
+  assert.ok(Math.abs(level(workQuad(geo, [20, 15], q.cx, q.cy, q.deg))) < 0.2);
+  // the casual tilt of the id turns it from there
+  const tilted = { ...scene, minTiltDeg: 3, maxTiltDeg: 3 };
+  const t = planPlacement(tilted, geo, [20, 15], 'abcde');
+  close(t.deg - facingDeg(geo, t.cx, t.cy), tiltDeg('abcde', tilted), 1e-9);
+});
+
 test('planPlacement: moves the work off a prop, never turns it the other way', () => {
   const scene = table({ props: [[[640, 300], [1000, 300], [1000, 750], [640, 750]]], propMarginPx: 10 });
   const geo = sceneGeometry(scene);
   const p = planPlacement(scene, geo, [20, 15], 'abcde');
   assert.ok(p.fits);
   assert.ok(p.shift[0] < 0, 'moved left, away from the prop');
-  assert.equal(Math.sign(p.deg), Math.sign(tiltDeg('abcde', scene)));
+  assert.equal(Math.sign(p.deg - facingDeg(geo, p.cx, p.cy)), Math.sign(tiltDeg('abcde', scene)));
   assert.ok(quadFits(workQuad(geo, [20, 15], p.cx, p.cy, p.deg), { props: scene.props, margin: 10 }));
 });
 
@@ -121,7 +358,7 @@ test('planPlacement: reports a work that fits nowhere', () => {
 test('planPlacement: a standing work rests on the ledge, centred on the axis', () => {
   const scene = {
     name: 'stojan', sheetCm: [40, 30], corners: { tl: [200, 200], tr: [800, 200], br: [800, 650], bl: [200, 650] },
-    mode: 'stand', convergence: 0, ledge: [[0, 700], [1000, 700]], sinkPx: 0, axis: [560, 400],
+    imageSize: [1000, 1000], mode: 'stand', ledge: [[0, 700], [1000, 700]], sinkPx: 0, axis: [560, 400],
   };
   const geo = sceneGeometry(scene);
   const p = planPlacement(scene, geo, [20, 10], 'abcde');
@@ -129,6 +366,57 @@ test('planPlacement: a standing work rests on the ledge, centred on the axis', (
   const quad = workQuad(geo, [20, 10], p.cx, p.cy, 0);
   close(quad[2][1], 700, 1e-6); close(quad[3][1], 700, 1e-6);
   close((quad[0][0] + quad[1][0]) / 2, 560, 1e-6);
+  assert.equal(p.fits, true, 'no props: always fits');
+  // a prop beside the easel: a small work stays clear of it, a wide one covers it and does not fit, in the same place
+  const jar = [[0, 500], [150, 500], [150, 700], [0, 700]];
+  const beside = { ...scene, props: [jar] };
+  const small = planPlacement(beside, geo, [20, 10], 'abcde');
+  assert.equal(small.fits, true);
+  const wide = planPlacement(beside, geo, [60, 10], 'abcde');
+  assert.equal(wide.fits, false);
+  assert.deepEqual([wide.cx, wide.cy, wide.deg], [planPlacement(scene, geo, [60, 10], 'abcde').cx, planPlacement(scene, geo, [60, 10], 'abcde').cy, 0], 'it does not move');
+  // with maxSlideCm it slides along the ledge to the nearest place clear of the prop (to the right, away from it)
+  const wideJar = [[0, 500], [250, 500], [250, 700], [0, 700]];
+  const slid = planPlacement({ ...scene, props: [wideJar], maxSlideCm: 20 }, geo, [46, 10], 'abcde');
+  const still = planPlacement({ ...scene, props: [wideJar] }, geo, [46, 10], 'abcde');
+  assert.equal(still.fits, false, 'without maxSlideCm it stays');
+  assert.equal(slid.fits, true);
+  assert.ok(slid.shift[0] > 0 && slid.shift[0] <= 20 && slid.shift[1] === 0 && slid.deg === 0, JSON.stringify(slid));
+  close(slid.cy, still.cy, 1e-9);
+  const slidQuad = workQuad(geo, [46, 10], slid.cx, slid.cy, 0);
+  assert.ok(quadFits(slidQuad, { props: [wideJar] }), 'clear of the prop');
+  assert.ok(!quadFits(workQuad(geo, [46, 10], slid.cx - 0.5, slid.cy, 0), { props: [wideJar] }), 'and no further than needed');
+  close(slidQuad[2][1], 700, 1e-6); close(slidQuad[3][1], 700, 1e-6);
+  // not further than maxSlideCm, never out of the photo: then it stays on the axis and does not fit
+  assert.equal(planPlacement({ ...scene, props: [wideJar], maxSlideCm: 1 }, geo, [46, 10], 'abcde').fits, false);
+  const huge = planPlacement({ ...beside, maxSlideCm: 50 }, geo, [95, 10], 'abcde');
+  assert.deepEqual([huge.fits, huge.shift, huge.cut], [false, [0, 0], true], 'wider than the photo: cut by its edge');
+  assert.equal(still.cut, false, 'only covering a prop');
+  // wider than the photo allows on the axis, even with nothing beside it: it does not fit either (the edge cuts it off)
+  const out = planPlacement(scene, geo, [60, 10], 'abcde');
+  assert.deepEqual([out.fits, out.cut], [false, true]);
+  // a work sticking out on one side only slides back into the photo when it may
+  const offAxis = { ...scene, axis: [800, 400] };
+  assert.equal(planPlacement(offAxis, geo, [40, 10], 'abcde').fits, false);
+  const back = planPlacement({ ...offAxis, maxSlideCm: 20 }, geo, [40, 10], 'abcde');
+  assert.ok(back.fits && back.shift[0] < 0, JSON.stringify(back));
+  // the margin counts too: just clear of the prop, but not by propMarginPx
+  const edge = Math.min(...workQuad(geo, [20, 10], small.cx, small.cy, 0).map(([x]) => x));
+  const near = { ...scene, props: [[[0, 500], [edge - 5, 500], [edge - 5, 700], [0, 700]]] };
+  assert.equal(planPlacement(near, geo, [20, 10], 'abcde').fits, true);
+  assert.equal(planPlacement({ ...near, propMarginPx: 10 }, geo, [20, 10], 'abcde').fits, false);
+});
+
+test('scenePlacement: the place of planPlacement under the camera of the scene, once per work and scene', () => {
+  const scene = {
+    name: 'stojan', sheetCm: [40, 30], corners: { tl: [200, 200], tr: [800, 200], br: [800, 650], bl: [200, 650] },
+    imageSize: [1000, 1000], mode: 'stand', ledge: [[0, 700], [1000, 700]], sinkPx: 0, axis: [560, 400],
+  };
+  const p = scenePlacement(scene, [20, 10], 'abcde');
+  assert.deepEqual(p, planPlacement(scene, sceneGeometry(scene), [20, 10], 'abcde'));
+  assert.equal(scenePlacement(scene, [20, 10], 'abcde'), p, 'the same object again: cached');
+  assert.notEqual(scenePlacement(scene, [20, 11], 'abcde'), p);
+  assert.equal(scenePlacement(scene, [95, 10], 'abcde').fits, false, 'wider than the photo: no photo of this scene');
 });
 
 test('sceneWindow: 4:5 window, spare height cut by cropTop, small works zoom in (capped)', () => {
@@ -190,9 +478,9 @@ test('renderScene: places the work into a scene and crops 4:5', async () => {
     .jpeg().toFile(path.join(dir, 'stul-list.jpg'));
   const scene = {
     name: 'stul', path: path.join(dir, 'stul.jpg'), sheetPath: path.join(dir, 'stul-list.jpg'), sheetCm: [40, 30],
-    corners: { tl: [200, 350], tr: [600, 350], br: [600, 650], bl: [200, 650] }, mode: 'lie', convergence: 0.05, farEdge: 'top',
+    corners: { tl: [200, 350], tr: [600, 350], br: [600, 650], bl: [200, 650] }, imageSize: [800, 1000], mode: 'lie',
     paperWhite: 240, lightDir: [-1, -1], shadow: { dx: 3, dy: 4, blur: 4, opacity: 0.4 },
-    edge: { roughCm: 0.2, roughFreq: 2.5, softCm: 0.09, light: 0.1, shade: 0.15, widthPx: 1.5 },
+    edge: { roughCm: 0.2, roughFreq: 2.5, softCm: 0.09 },
     cropTop: 0.5, minFill: 0.45, maxZoom: 1.8, center: [400, 500], maxShiftCm: 1, minTiltDeg: 2, maxTiltDeg: 5, tiltSign: 1,
     bounds: [0, 0, 800, 1000],
   };
@@ -206,6 +494,68 @@ test('renderScene: places the work into a scene and crops 4:5', async () => {
   await fs.rm(dir, { recursive: true, force: true });
 });
 
+// a plain table seen from the front and above (the far edge of the sheet shorter): the near cut edge of a paper shows
+const slantedScene = async (dir, paper) => {
+  await sharp({ create: { width: 800, height: 1000, channels: 3, background: '#6a5a4a' } }).jpeg().toFile(path.join(dir, 'stul.jpg'));
+  // the "sheet" photo all paper: the work gets the full light everywhere
+  await sharp({ create: { width: 800, height: 1000, channels: 3, background: '#f0f0f0' } }).jpeg().toFile(path.join(dir, 'stul-list.jpg'));
+  return {
+    name: 'stul', path: path.join(dir, 'stul.jpg'), sheetPath: path.join(dir, 'stul-list.jpg'), sheetCm: [40, 30],
+    corners: { tl: [250, 350], tr: [550, 350], br: [640, 650], bl: [160, 650] }, imageSize: [800, 1000], mode: 'lie',
+    paperWhite: 240, lightDir: [-1, -1], shadow: { dx: 0, dy: 0, blur: 1, opacity: 0 }, edge: {},
+    cropTop: 0.5, center: [400, 500], maxShiftCm: 0, minTiltDeg: 1, maxTiltDeg: 1, tiltSign: 1, bounds: [0, 0, 800, 1000],
+    paper: { liftMm: 0, curlMm: 0, waveMm: 0, contact: { opacity: 0 }, ...paper },
+  };
+};
+const brightPixels = async (buf) => {
+  const { data } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
+  let n = 0;
+  for (let i = 0; i < data.length; i += 3) if (data[i + 1] > 150) n++;
+  return n;
+};
+
+test('renderScene: the paper has a thickness (its near cut edge) and may lie on a bigger blank sheet', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'insta-'));
+  const art = await artwork(), work = { id: 'abcde', size_cm: [20, 15] };
+  const render = async (paper) => brightPixels((await renderScene({ art, work, scene: await slantedScene(dir, paper), config })).buf);
+  const thin = await render({ thicknessMm: 0.01 }), thick = await render({ thicknessMm: 8 }), under = await render({ thicknessMm: 0.01, underlayCm: 2 });
+  assert.ok(thick > thin * 1.02, `the cut edge of a thick paper shows: ${thick} > ${thin}`);
+  assert.ok(under > thin * 1.3, `the blank sheet around the work: ${under} > ${thin}`);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test('renderScene: the edge of the work (meta_edge): its side repeats its edge colour; a canvas is thick, flat and clean', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'insta-'));
+  // a work painted red to its very edge (a canvas, or paper painted over), white in the middle (its white balance holds):
+  // its side shows red, not white paper
+  const red = await sharp({ create: { width: 400, height: 300, channels: 4, background: { r: 200, g: 40, b: 40, alpha: 1 } } })
+    .composite([{ input: await sharp({ create: { width: 200, height: 100, channels: 4, background: { r: 250, g: 250, b: 250, alpha: 1 } } }).png().toBuffer(), left: 100, top: 100 }])
+    .png().toBuffer();
+  const scene = await slantedScene(dir, {});
+  const reddish = async (meta_edge, paper, edge = {}) => {
+    const { data } = await sharp((await renderScene({ art: red, work: { id: 'abcde', size_cm: [20, 15], meta_edge }, scene: { ...scene, paper: { ...scene.paper, ...paper }, edge }, config })).buf)
+      .raw().toBuffer({ resolveWithObject: true });
+    let n = 0, white = 0;
+    for (let i = 0; i < data.length; i += 3) {
+      if (data[i] > data[i + 1] + 60) n++;
+      if (data[i] > 200 && data[i + 1] > 200 && data[i + 2] > 200) white++; // the white middle of the work counts too
+    }
+    return { n, white };
+  };
+  const thin = await reddish('deckle', { thicknessMm: 0.01 }), thick = await reddish('deckle', { thicknessMm: 8 });
+  assert.ok(thick.n > thin.n * 1.02, `the side of a thick paper painted to its edge is red: ${thick.n} > ${thin.n}`);
+  assert.ok(thick.white <= thin.white * 1.01, `no white cut edge: ${thick.white} <= ${thin.white}`);
+  const canvas = await reddish('canvas', {}), paper = await reddish(undefined, {});
+  assert.ok(canvas.n > paper.n * 1.05, `a canvas shows its 2 cm side: ${canvas.n} > ${paper.n}`);
+  // a clean cut edge and a torn one (the edge of the scene torn) differ only along the edge
+  const torn = { roughCm: 0.3, roughFreq: 2.5, softCm: 0.09 };
+  const cut = await reddish('cut', {}, torn), deckle = await reddish('deckle', {}, torn);
+  assert.notEqual(cut.n, deckle.n);
+  assert.ok(Math.abs(cut.n - deckle.n) < deckle.n * 0.08, `${cut.n} ~ ${deckle.n}`);
+  assert.deepEqual(Object.keys(EDGE_KINDS), ['deckle', 'cut', 'canvas']);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
 test('the scenes of the studio: complete settings and both photos with the same framing', async () => {
   const { scenes, text } = await loadInstagramScenes();
   assert.ok(text.length > 0);
@@ -215,7 +565,19 @@ test('the scenes of the studio: complete settings and both photos with the same 
     assert.deepEqual([bg.width, bg.height], [sheet.width, sheet.height], `${s.name}: same size`);
     for (const [x, y] of Object.values(s.corners)) assert.ok(x >= 0 && y >= 0 && x < sheet.width && y < sheet.height, `${s.name}: corner inside`);
     assert.ok(['lie', 'stand'].includes(s.mode), s.name);
-    assert.ok(s.convergence >= 0 && s.convergence < 0.3, s.name);
+    assert.deepEqual(s.imageSize, [sheet.width, sheet.height], s.name);
+    // the camera sees a true rectangle of the sheet close to its drawn corners, from a sensible place
+    const cam = sceneCamera(s);
+    // the drawn sheet: close to a true rectangle of this camera (generators draw it worse than the edges of the table)
+    assert.ok(cam.rms < (cam.source === 'lines' ? 40 : 20), `${s.name}: rms ${cam.rms}`);
+    assert.ok(cam.zenithDeg < 70 && cam.distanceCm > 40 && cam.distanceCm < 400, s.name);
+    for (const axis of Object.keys(s.lines ?? {})) {
+      assert.ok(['x', 'y'].includes(axis), `${s.name}: lines.${axis}`);
+      for (const line of s.lines[axis]) assert.ok(line.length === 2 && line.every((p) => p.length === 2 && p.every(Number.isFinite)), `${s.name}: lines.${axis}`);
+    }
+    if (s.lines) assert.ok(cam.source === 'camera' || cam.lineRms < 5, `${s.name}: edges ${cam.lineRms} px from their vanishing points`);
+    if (s.camera) for (const key of ['focalMm', 'zenithDeg', 'azimuthDeg', 'distanceCm']) assert.equal(typeof s.camera[key], 'number', `${s.name}: camera.${key}`);
+    for (const c of s.circles ?? []) assert.ok(c.length === 4 && c[2] > c[0] && c[3] > c[1], `${s.name}: circle`);
     if (s.mode === 'lie') {
       assert.ok(Array.isArray(s.bounds) && s.bounds.length === 4 && s.center, s.name);
       assert.ok([1, -1].includes(s.tiltSign), s.name);
@@ -225,6 +587,36 @@ test('the scenes of the studio: complete settings and both photos with the same 
   }
   const tables = scenes.filter((s) => s.mode === 'lie');
   assert.equal(new Set(tables.map((s) => s.tiltSign)).size, 2, 'the two tables turn a work opposite ways');
+});
+
+// What the prompts of mockups/instagram/README.md asked the generator for (only what it kept to): the height of the
+// camera above the table (or the ledge) ±25 % (it hangs on the size of the drawn sheet), the zenith ±5° (±7° for the
+// rough "about 20 degrees" of the easel), the side (azimuth) and the turn of the drawn sheet ±5°.
+const PROMPTED_CAMERAS = {
+  // the dark table: the generator turned the sheet by -32° (asked 6°) and looks from the right (asked from the left)
+  'stul-tmavy': { heightCm: 45, zenithDeg: [50, 55] },
+  // the light table: with its edges across and along (at right angles) the camera is a long lens from far away, 142 cm
+  // high (asked 70), a little from the left (asked from the right), the sheet not turned (asked -5°); only the tilt holds
+  'stul-svetly': { zenithDeg: [30, 35] },
+  stojan: { heightCm: 20, zenithDeg: [20, 20], azimuthDeg: [45, 135], sheetDeg: 0, above: true },
+};
+
+test('the cameras of the scenes agree with the prompts of the generator', async () => {
+  const { scenes } = await loadInstagramScenes();
+  assert.deepEqual(Object.keys(PROMPTED_CAMERAS), scenes.map((s) => s.name), 'every scene has its prompt');
+  for (const s of scenes) assert.match(s.prompt ?? '', /\d+ cm nad/, `${s.name}: prompt in scenes.yaml`);
+  for (const s of scenes) {
+    const want = PROMPTED_CAMERAS[s.name], cam = sceneCamera(s), { R, t } = cam;
+    // the camera in the plane of the sheet: x right, y down the sheet, z away from the camera
+    const C = [0, 1, 2].map((j) => -(R[0][j] * t[0] + R[1][j] * t[1] + R[2][j] * t[2]));
+    const height = s.mode === 'stand' ? s.sheetCm[1] - C[1] : -C[2];
+    const tol = s.mode === 'stand' ? 7 : 5;
+    if (want.heightCm) assert.ok(Math.abs(height / want.heightCm - 1) <= 0.25, `${s.name}: ${height.toFixed(1)} cm high, asked ${want.heightCm}`);
+    assert.ok(cam.zenithDeg >= want.zenithDeg[0] - tol && cam.zenithDeg <= want.zenithDeg[1] + tol, `${s.name}: zenith ${cam.zenithDeg.toFixed(1)}`);
+    if (want.azimuthDeg) assert.ok(cam.azimuthDeg >= want.azimuthDeg[0] && cam.azimuthDeg <= want.azimuthDeg[1], `${s.name}: azimuth ${cam.azimuthDeg.toFixed(1)}`);
+    if (want.sheetDeg !== undefined) assert.ok(Math.abs((cam.sheetDeg ?? 0) - want.sheetDeg) <= 5, `${s.name}: sheet turned ${cam.sheetDeg.toFixed(1)}°`);
+    if (want.above) assert.ok(C[1] < s.sheetCm[1] / 2, `${s.name}: seen from above`);
+  }
 });
 
 test('the scenes take every featured size of the site without covering props', async () => {

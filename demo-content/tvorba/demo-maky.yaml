@@ -14,6 +14,12 @@ meta_corners:
 # - false - zveřejnit
 meta_draft: false
 
+# Hrana obrazu ve scénách ateliéru pro Instagram, možnosti:
+# - deckle - papír s roztřepenou hranou (akvarel na ručním nebo trhaném papíru)
+# - cut - papír s čistou rovnou hranou (ořezaný list, karton)
+# - canvas - plátno na rámu: čistá zaoblená hrana, tlusté asi 2 cm, rovné
+meta_edge: canvas
+
 # testovací data: exporty pro Instagram (originál a detaily)
 # Fotky pro Instagram, možnosti:
 # - true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, panorama pro karusel, příběh, detailní fotky)

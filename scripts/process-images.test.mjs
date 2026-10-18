@@ -40,8 +40,8 @@ await sharp({ create: { width: 200, height: 250, channels: 3, background: '#6a5a
   .jpeg().toFile(path.join(instagramScenesDir, 'stul-list.jpg'));
 await fs.writeFile(path.join(instagramScenesDir, 'scenes.yaml'), YAML.stringify([{
   name: 'stul', label: 'Stůl', sheetCm: [40, 30], corners: { tl: [40, 80], tr: [160, 80], br: [160, 170], bl: [40, 170] },
-  mode: 'lie', convergence: 0.05, farEdge: 'top', paperWhite: 240, lightDir: [-1, -1], shadow: { dx: 1, dy: 1, blur: 1, opacity: 0.3 },
-  edge: { roughCm: 0.2, roughFreq: 2.5, softCm: 0.09, light: 0.1, shade: 0.15, widthPx: 1 }, cropTop: 0.5, minFill: 0, maxZoom: 1,
+  mode: 'lie', paperWhite: 240, lightDir: [-1, -1], shadow: { dx: 1, dy: 1, blur: 1, opacity: 0.3 },
+  edge: { roughCm: 0.2, roughFreq: 2.5, softCm: 0.09 }, cropTop: 0.5, minFill: 0, maxZoom: 1,
   center: [100, 125], maxShiftCm: 0, minTiltDeg: 2, maxTiltDeg: 4, tiltSign: 1, maxExtraTiltDeg: 0, bounds: [0, 0, 200, 250],
 }]));
 /** Instagram exports of a work (file names, sorted): README (with the text of the post), a caption on every palette, the scene (with a size) and `more`. */
@@ -1165,7 +1165,7 @@ test('existing files get every supported attribute on every run, on a branch too
   const r = await run(opts({ prepareOnly: true }));
   assert.equal(r.ok, true, r.problems.join('\n'));
   assert.deepEqual(r.updated.map((u) => u.split(':')[0]).sort(), ['fotky/kontakt.yaml', 'tvorba/plener/_index.yaml', 'tvorba/plener/vecer.yaml', 'tvorba/rano.yaml']);
-  assert.match(r.updated.find((u) => u.startsWith('tvorba/rano.yaml')), /doplněno description, status, technique \(DOPLNIT\); doplněno meta_draft, meta_instagram, meta_pinterest, featured, mockups, tags \(výchozí hodnota\); neznámé mockup \(NEZNÁMÝ\)/);
+  assert.match(r.updated.find((u) => u.startsWith('tvorba/rano.yaml')), /doplněno description, status, technique \(DOPLNIT\); doplněno meta_draft, meta_edge, meta_instagram, meta_pinterest, featured, mockups, tags \(výchozí hodnota\); neznámé mockup \(NEZNÁMÝ\)/);
 
   const text = await fs.readFile(path.join(contentDir, 'tvorba/rano.yaml'), 'utf8');
   const data = YAML.parse(text);
@@ -1566,13 +1566,22 @@ test('exports: the text of the Instagram post follows the description at once, m
   assert.match(text, /#akvarel #krajina/);
   assert.match(text, /#watercolor #landscape/);
   assert.equal(r.misfits.length, 1);
-  assert.match(r.misfits[0], /^tvorba\/velky\.yaml: obraz se na „Stůl“ nevejde mimo rekvizity, na fotce export\/instagram\/velky\/scene-stul\.jpg/);
+  assert.match(r.misfits[0], /^tvorba\/velky\.yaml: obraz se na „Stůl“ nevejde mimo rekvizity, částečně by je zakrýval, fotku této scény proto nevyrábím \[nevejde-do-sceny\]$/);
+  // no photo of the scene it does not fit into, nor a mention of it in its README; the work that fits has one
+  const big = path.join(contentDir, 'export/instagram/velky');
+  assert.ok((await fs.readdir(big)).includes('caption-papir.jpg'));
+  assert.ok(!(await fs.readdir(big)).includes('scene-stul.jpg'));
+  assert.doesNotMatch(await fs.readFile(path.join(big, 'README.md'), 'utf8'), /scene-stul/);
+  assert.ok((await fs.readdir(path.join(contentDir, 'export/instagram/rano'))).includes('scene-stul.jpg'));
+  // a photo of that scene from before (the work fitted then) goes with the next full run
+  await fs.writeFile(path.join(big, 'scene-stul.jpg'), 'old');
   // a new description changes only the text, the photos are not made again
   const yamlFile = path.join(contentDir, 'tvorba/rano.yaml');
   await fs.writeFile(yamlFile, (await fs.readFile(yamlFile, 'utf8')).replace(/^description:.*$/m, 'description: Mlha nad vodou.'));
   const again = await run(opts());
   assert.match(await fs.readFile(readme, 'utf8'), /```text\nRáno\n\nMlha nad vodou\.\n/);
   assert.equal(again.processed, 0);
+  assert.ok(again.pruned.includes('export/instagram/velky/scene-stul.jpg'), JSON.stringify(again.pruned));
   // switching Instagram off removes the text with the photos
   await fs.writeFile(yamlFile, (await fs.readFile(yamlFile, 'utf8')).replace('meta_instagram: true', 'meta_instagram: false'));
   await run(opts());

@@ -68,6 +68,7 @@ pavla/                                      (toto repo, veřejné)
     tvorba/_cover/                          vlastní úvodní fotka „Mimo kolekce“ (bez _og/, nemá vlastní stránku)
     fotky/<název>/                          ostatní fotky (O mně, Kontakt), jen obrázky + info.json
   mockups/                                  scény pro mockupy a jejich kalibrace (scenes.yaml)
+  mockups/instagram/                        scény ateliéru pro Instagram (scenes.yaml, README.md se zadáními generátoru)
   scripts/process-images.mjs                pipeline (npm run images)
   scripts/lib/                              logika pipeline a filtrů, každý modul má *.test.mjs
   scripts/lib/schema.mjs                    atributy popisů (díla, kolekce, fotky): pořadí, výchozí hodnoty, komentáře
@@ -219,8 +220,8 @@ co se nevejde, jde posunout do strany (lišta nikdy nezvětší). Formulář se 
 Skrytá lišta je `inert`, při `prefers-reduced-motion` bez animace, bez JavaScriptu se neukáže nikdy. Vyzkoušet:
 `npm run demo`, v `/tvorba/` sjet dolů, kousek nahoru, „Upravit“, vybrat štítek, pak ho v liště zrušit „×“.
 
-**Zrušení všech filtrů:** dokud je zapnutý aspoň jeden filtr, ukazuje počet na konci řádku výběrů „12 z 58 děl“
-(`filteredCount`; bez filtru „58 děl“) a za ním odkaz „× Zrušit filtry“ v barvě akcentu. V liště je „Zrušit vše“ za
+**Zrušení všech filtrů:** dokud je zapnutý aspoň jeden filtr, ukazuje počet na konci řádku výběrů „12 z 60 děl“
+(`filteredCount`; bez filtru „60 děl“) a za ním odkaz „× Zrušit filtry“ v barvě akcentu. V liště je „Zrušit vše“ za
 čipy, jen když jsou zapnuté aspoň dva filtry (u jednoho stačí jeho „×“), v otevřeném panelu tlačítko „Zrušit filtry“
 vedle „Hotovo“ (tam odkaz u počtu není). Všechna tři vypnou najednou štítky, techniku, rok a kolekci (kde jsou to výběry),
 stav, „Doporučené“ a hledání (`withoutFilters` v `scripts/lib/filter-bar.mjs`) a vrátí 1. stránku; zobrazení, velikost
@@ -386,13 +387,57 @@ Samostatné stránky pro hledání nastavení zobrazení děl, nad daty webu (`n
 `npm run prototypes -- <složka>`), otevírají se přímo z disku a obrázky berou z `public/` dat, takže fungují jen vedle
 nich. Data jsou skutečná díla (`content/`, `public/` tohoto repa) nebo testovací (`SITE_DATA_DIR=.demo/site`, napřed
 `npm run demo:prepare`), vždy po `npm run images` aktuální. Výpočty jsou funkce webu vložené jako text
-(`PROTOTYPE_FUNCTIONS`: `columnCount`, `balanceColumns`, `columnPlan`, `orderColumns`), ikony a výchozí hodnoty ze
-`site.config.yaml` (`prototypeConfig`), takže prototyp ukazuje přesně to, co web.
+(`PROTOTYPE_FUNCTIONS`: `columnCount`, `balanceColumns`, `columnPlan`, `orderColumns` a kamera scén `project`,
+`unproject`, `lineY`, `ledgeDepth`, `circleRatio`, `aimRotation`, `cameraFromAngles`, `cameraAngles`, `lineMisfit`,
+`fitCameraToLines`; musí být
+samostatné, bez pomocných funkcí modulu), ikony a výchozí hodnoty ze `site.config.yaml` (`prototypeConfig`), scény
+pro Instagram z `mockups/instagram/` (`prototypeScenes`), takže prototyp ukazuje přesně to, co web a pipeline.
 - `zarovnani-sloupcu.html`: úvodní stránka „Nejnovější“ na počítači / tabletu / telefonu, zobrazení, varianty konce
   sloupců (dnes, rozprostřít, vycentrovat, C = web) s posuvníky `maxGap`, `maxTop`, výběrem `order` a nastavením úvodní
   stránky nebo galerie; vodítka a výšky sloupců.
 - `znacky-dlazdic.html`: všechna díla v dlaždicích S, M a L, paleta, styl značky (web = silueta s lemem), ikona na
   prodej, roh a velikosti dlaždic každé značky, velikost, minimum, maximum, krytí; nastavení úvodní stránky nebo galerie.
+- `kamera-scen.html`: tři scény ateliéru pro Instagram pod sebou s vybraným dílem (díla s `size_cm`) ve skutečné
+  velikosti na plátně s okolím fotky („Okolí fotky“ 0–200 %, aby byly vidět úběžníky mimo ni), posuvníky kamery každé
+  scény (ohnisko, zenit, azimut, natočení foťáku, vzdálenost, střed listu, pootočení nakresleného listu; tažením myší
+  po scéně se střed posune; „ohnisko drží velikost listu“ mění se vzdáleností jen perspektivu). Dílo leží tam, kam ho dá pipeline
+  (`planPlacement` a `workQuad` pod kamerou prototypu: na stole střed scény s posunem podle `id` a mimo rekvizity,
+  na stojanu na liště na ose; čísla pod posuvníky říkají, o kolik se posunulo nebo že se nevejde), a výřez 4:5
+  exportu (`sceneWindow`, vrstva „výřez 4:5“, i s přiblížením malých děl). Hrany podkladu (`lines`) protažené přes celé plátno (x červeně, y modře) s průsečíkem každé skupiny
+  (kroužek), hrany díla protažené čárkovaně do úběžníků kamery (křížek): když dílo leží rovnoběžně s podkladem,
+  sejdou se ve stejném bodě. „Upravovat hrany“: tažení konců, dvojklik smaže, „+ hrana x / y“ přidá, „Hrany ze
+  scenes.yaml“ vrátí. Tlačítka kamery: „Z hran“ (`fitCameraToLines` od současné, volitelně s pevným ohniskem),
+  „Jako pipeline“, „Z rohů listu“, „Vyrovnat natočení“ (`rollDeg: 0`). Další vrstvy: nakreslený list, list 40 × 30 cm
+  touto kamerou, mřížka 10 cm v rovině listu, horizont, kroužky (`circles`: nakreslený obdélník a skutečný kruh stejné
+  šířky), lišta stojanu (`ledge`, `axis`; dílo je za lištou oříznuté), překážky (předměty před dílem `front`
+  vyplněně oranžově, rekvizity `props` čárkovaně fialově, volná část stolu `bounds` čárkovaně zeleně; předměty `front`
+  jsou nad dílem i v čistém pohledu, jako v pipeline); fotka s prázdným listem přes scénu a krytí díla.
+  Čísla: odchylka každé hrany od úběžníku kamery (px), odchylka od nakreslených rohů, výška / šířka kroužků, úhel
+  spodní hrany díla proti liště, kde kamera stojí (na stole výška nad stolem, pohled dolů a poloha vůči středu listu;
+  u stojanu výška nad lištou, vzdálenost před stojanem a úhel od čelního pohledu) a pod tím `prompt` scény = co po
+  kameře chtělo zadání generátoru (`mockups/instagram/README.md`), ať jde obojí porovnat. Výsledek jako `lines:` a `camera: { … }` ke zkopírování do
+  `scenes.yaml`. Nastavení i hrany se pamatují v prohlížeči (`pavla.prototype.sceneCamera`), jen dokud má
+  scéna ve `scenes.yaml` stejné `camera` a `lines` jako tehdy (po jejich změně a `npm run prototypes` platí nové). Vpravo nahoře u každé
+  scény (drží se v rohu i při posunu stránky): „Pomocné čáry: zapnuto / vypnuto“ (vypnuto = jen scéna s dílem bez čar,
+  fotky s prázdným listem a průhlednosti, jak ho umístí pipeline, mimo výřez 4:5 ztmavená; tloušťku papíru a stín kreslí až pipeline) a „Obnovit
+  doporučené“ (kamera a hrany jako ve `scenes.yaml`, tedy to, co dnes používá pipeline; zapomene úpravy
+  té scény).
+  „jen díla, která se nevejdou“ vedle výběru obrazu (pamatuje se) zúží seznam na díla, která se aspoň v jedné scéně
+  nevejdou do volné části (`planPlacement` s kamerou, jak je teď v prototypu nastavená; u díla jména těch scén);
+  po změně kamery se seznam srovná sám. Žádné takové dílo = „všechna díla se vejdou“.
+  Nad fotkou ukazuje štítek u kurzoru jeho polohu `[x, y]` v px fotky, ve stejném tvaru jako body ve `scenes.yaml`
+  (obrysy `front`, `props`, `bounds`, rohy, hrany); mimo fotku s poznámkou „mimo fotku“.
+  Kliknutí (bez tažení) zkopíruje bod `[x, y]` do schránky, štítek pak ukáže „zkopírováno“; tažení o víc než pár bodů
+  obrazovky dál posouvá střed listu nebo s „upravovat hrany“ konec hrany.
+  Kliknutí se Shiftem bod přidá k bodům kliknutým před tím (v téže scéně) a do schránky jde celý obrys
+  `[[x, y], [x, y], …]` pro `front` / `props`, štítek ukáže počet bodů; kliknutí bez Shiftu začne znovu.
+  Vrstva „překážky“ kreslí i `center` (křížek) a píše k němu, ke každému bodu obrysů `front`, `props` a k rohům `bounds` jejich `[x, y]` (barvou obrysu,
+  odsunuté ven od středu obrysu), takže je vidět, který bod ve `scenes.yaml` upravit. Stejně vrstva „lišta“ u obou
+  bodů `ledge` (nad čarou) a u `axis`.
+  Každá scéna má vpravo nahoře posuvník „Zvětšení“ (1× = celá šířka, až 8×, dvojklik vrátí 1×): zvětšuje kolem
+  středu toho, co je vidět, obrázek se pak posouvá ve svém rámu. Nad obrázkem zvětšuje i Cmd (nebo Ctrl) + kolečko
+  a sevření prstů na touchpadu, a to kolem místa pod kurzorem; obyčejné kolečko dál posouvá. Společné „Okolí fotky“
+  přidá plochu kolem fotky.
 
 ### Hledání
 
@@ -608,7 +653,7 @@ ze sdílených:
 
 | Skupina | Kde platí | Do veřejné kopie (`content/`) |
 |---|---|---|
-| `meta_<název>` | jen obsahové repo: řídí zpracování (`meta_draft`, `meta_instagram`, `meta_instagram_grid`, `meta_pinterest`) | nikdy |
+| `meta_<název>` | jen obsahové repo: řídí zpracování (`meta_draft`, `meta_edge`, `meta_instagram`, `meta_instagram_grid`, `meta_pinterest`) | nikdy |
 | bez prefixu (sdílené) | obě repa, stejný význam | 1:1 (`publicKeys`) |
 | `private_<název>` | jen obsahové repo; vlastní `private_…` může autorka přidat kdykoli (bez `NEZNÁMÝ`, abecedně u ostatních `private_`) | nikdy |
 | `derived_<název>` | jen toto repo: odvodí pipeline (z jiných atributů, umístění souboru nebo průběhu zpracování); teď `derived_modified` u díla (viz *Mapa webu*) | v obsahovém repu = chyba |
@@ -626,6 +671,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 |---|---|
 | `meta_corners` | rohy obrazu na fotce, pozadí vně nich (podlaha, zeď) bude průhledné; najde je pipeline, smí se upravit, `false` = neořezávat (viz *Ořez pozadí*) |
 | `meta_draft` | `true` = rozpracované: do tohoto repa se nedostane nic (popis, obrázky), ani exporty; do veřejné kopie se nekopíruje |
+| `meta_edge` | hrana díla ve scénách ateliéru pro Instagram (`EDGE_KINDS` v `scripts/lib/instagram.mjs`): `deckle` (výchozí) = papír s roztřepenou hranou (`edge` scény), `cut` = papír s čistou rovnou hranou, oba tenké (`paper.thicknessMm`), zvlněné, se zvednutými rohy; `canvas` = plátno na rámu: čistá zaoblená hrana, tlusté 2 cm, rovné, bez podkladového listu. Bok díla (tloušťka) opakuje barvu jeho okraje (papír; u plátna rozostřenou malbu), osvětlenou podle natočení ke světlu scény; v otisku díla |
 | `meta_instagram` | `true` = exporty pro Instagram (výchozí `false`) |
 | `meta_instagram_grid` | nepovinné (v kostře zakomentované `# meta_instagram_grid: 3x3`): mřížka na profilu Instagramu jako `<sloupce>x<řádky>`, od `1x1` do `5x5` (`parseGrid`, např. `3x3`, `2x1`, `3x1`, `1x2`, `3x4`; i `×` nebo `X`), jiná hodnota = chyba; bez hodnoty žádná; jen s `meta_instagram: true`, jen pro aplikaci (viz *Exporty*, Mřížka na profilu) |
 | `meta_pinterest` | `true` = pin pro Pinterest: pin (`pin-<otisk>.jpg`) na webu a položka kanálu `/pinterest.xml` (výchozí `false`, viz *Pinterest*) |
@@ -717,7 +763,7 @@ na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`)). V�
     ukáže souhrn běhu u souboru ve „Srovnaných popisech“ („uklizené zbloudilé komentáře: 2“),
   - neznámý atribut (např. překlep `mockup:`) nesmaže, dá ho na konec a označí komentářem `NEZNÁMÝ atribut…`;
     na web se nedostane,
-  - **atribut s konečnou výchozí hodnotou** (ve schématu `settled: true`: `meta_draft`, `tags`, `meta_instagram`, `meta_pinterest`, `mockups`,
+  - **atribut s konečnou výchozí hodnotou** (ve schématu `settled: true`: `meta_draft`, `meta_edge` (`deckle`), `tags`, `meta_instagram`, `meta_pinterest`, `mockups`,
     `featured`) nikdy nedostane `DOPLNIT` (ani v kostře, ani při doplnění), starý `DOPLNIT` u něj zmizí; souhrn běhu
     ho hlásí jako „doplněno … (výchozí hodnota)“,
   - **zakomentovaný nepovinný atribut** (ve schématu `commented: true` a ukázková hodnota `example`; teď `support`,
@@ -755,7 +801,7 @@ jen v obsahovém repu. Nové veřejné pole stačí přidat do schématu bez pre
 a fotek platí totéž (`PUBLIC_COLLECTION_FIELDS`, `PUBLIC_YEAR_FIELDS`, `PUBLIC_HOME_FIELDS`, `PUBLIC_PHOTO_FIELDS`).
 
 **Testovací data** jsou úplně oddělená od skutečných (viz *Testovací data (demo)*):
-59 děl (58 publikovaných, 1 rozpracované) z let 1998–2026 s mezerami, 16 kolekcí, 31 štítků a 3 zástupné fotky
+61 děl (60 publikovaných, 1 rozpracované) z let 1998–2026 s mezerami, 16 kolekcí, 31 štítků a 3 zástupné fotky
 v `demo-content/`, zobrazené přes `npm run demo`.
 
 | Funkce | Kde ji testovací data ukazují |
@@ -763,7 +809,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | roky | 25 let od 1998 do 2026 s mezerami (chybí 2004, 2008, 2013, 2022): 2026 (9 publikovaných), 2025 (6), 2005, 2011, 2016, 2019 (po 4), 2000, 2023, 2024 (po 3), 2006, 2021 (po 2), ostatní po jednom díle; kostry `demo-content/roky/<rok>.yaml` bez textu (kromě 2025 a 2026) |
 | kolekce přes víc let a starší kolekce | Skicák 1998–2003 (4 díla ve 4 letech), Tatry 2000, Portréty 2005, Plenér Krkonoše 2006, Z cest 2009–2012 (Vinice na prodej), Podzim v lese 2011, U moře 2014–2015, Ptáci za oknem 2016, Zátiší 2017–2020, Noční město 2019, Řeky 2021–2023 (2021 a 2023), Louky 2024 |
 | roky na jeden řádek | `/tvorba/`: na počítači část let a „<rok>–1998 ▾“, v úzkém okně (DevTools → režim zařízení) méně; klik rozbalí, „▴ méně“ (tatáž šipka otočená) sbalí; `/tvorba/1998/` začne rozbalený; totéž čipy na `/tvorba/kolekce/` (roky kolekcí) |
-| stránkování | `/tvorba/` má 58 děl = 5 stránek po 12, 3 po 24, 2 po 48; stránky roků (nejvýš 9 děl) se nestránkují |
+| stránkování | `/tvorba/` má 60 děl = 5 stránek po 12, 3 po 24, 2 po 48; stránky roků (nejvýš 9 děl) se nestránkují |
 | rozpracované dílo (`meta_draft`) | Rozpracovaný obraz: nesmí být nikde na webu |
 | `available` (14) | Pivoňky, Zimní sad, Ráno u rybníka, Město v dešti, Náměstí v mlze, Máky, Bouřka nad polem, Na podlaze, Vinice, Lesní cesta, Čáp u rybníka, Oblaka, Sázava, Louka s kopretinami |
 | `reserved` (4) | Kočka na okně, Modravské slatě, Rybník v zimě, Kostel za soumraku |
@@ -775,7 +821,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | `featured` (výběr autorky, 15 děl, v 8 ze 16 kolekcí a 3 bez kolekce) | Máky, Ráno u rybníka, Šumava v mlze, Nádraží, Rybník v zimě… (2026 a přelom roku), Pivoňky, Zimní sad, Kočka na okně, Jablka na stole (2025), Louka s kopretinami (2024), Vltava u Zbraslavi v podvečerním světle (dlouhý název: na stránce díla se zalomí a hvězdička zůstane vpravo u prvního řádku), Oblaka, Čáp u rybníka, Buky, Babička: úvodní stránka náhodně střídá 10 nejnovějších (po Louku s kopretinami, `FEATURED_PICK`), `/tvorba/?featured=1` ukáže všech 15; kolekce bez vybraných: Skicák, Tatry, Krkonoše, Z cest, U moře, Zátiší, Noční město, Město 2026 |
 | text o roce | `/tvorba/2026/` má text (`demo-content/roky/2026.yaml`), `/tvorba/2025/` ne (`description: ""`) |
 | tlačítko „Koupit na Fleru“ | Máky |
-| export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail, na výšku), Kytice z louky (+ 1 detail, není na prodej), Máky, Na podlaze (průhledný ořez podlahy), Lípa u kaple (20 × 15: scény se přiblíží), Zimní sad (50 × 35: na stoly se nevejde, v logu „does not fit the free part of the scene“; panorama 2 snímky), Oblaka (60 × 20: panorama 3 snímky, mřížka 3); ostatní díla žádný. Mřížka na profilu: Pivoňky (`meta_instagram_grid: 3x3`), Oblaka (`3x1`) a Ráno u rybníka (`2x1`, dvojice). Panorama: Na podlaze, Ráno u rybníka, Zimní sad (2 snímky), Oblaka (3); Máky, Kytice z louky (čtverec) a Pivoňky (na výšku) žádné. Příběh `story.jpg` má každé |
+| export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail, na výšku), Kytice z louky (+ 1 detail, není na prodej; `meta_edge: cut`: ve scénách čistá rovná hrana), Máky (`meta_edge: canvas`: ve scénách plátno tlusté 2 cm s okrajem v barvách malby), Na podlaze (průhledný ořez podlahy), Lípa u kaple (20 × 15: scény se přiblíží), Zimní sad (50 × 35: na stoly se nevejde, v logu „does not fit the free part of the scene“, `scene-stul-*.jpg` chybí; panorama 2 snímky; na stojanu posunutý po liště do fotky), Oblaka (60 × 20: panorama 3 snímky, mřížka 3; na stojanu širší než fotka, „does not fit into the photo of the scene stojan“; na stoly se taky nevejde, takže žádný `scene-*.jpg`), Hřeben nad údolím (70 × 50: nevejde se nikam, na stojanu přes sklenici a okraj fotky, „does not fit into the photo“; žádný `scene-*.jpg`); ostatní díla žádný. Mřížka na profilu: Pivoňky (`meta_instagram_grid: 3x3`), Oblaka (`3x1`) a Ráno u rybníka (`2x1`, dvojice). Panorama: Na podlaze, Ráno u rybníka, Zimní sad (2 snímky), Oblaka (3); Máky, Kytice z louky (čtverec) a Pivoňky (na výšku) žádné. Příběh `story.jpg` má každé |
 | pin pro Pinterest | pin (`pin-<otisk>.jpg`) má každé zveřejněné dílo („Uložit na Pinterest“ ho nabídne); `meta_pinterest: true` u Ráno u rybníka, Pivoněk (na výšku) a Oblak (60 × 20: popisek hned pod obrazem) = `pin.feed` v `info.json` a 3 položky v `/pinterest.xml` |
 | `mockups: true`, na prodej | Ráno u rybníka (+ detaily), Zimní sad, Město v dešti, Náměstí v mlze, Kočka na okně, Rybník v zimě, Na podlaze |
 | `mockups: true`, ne na prodej | Kytice z louky (+ detail), Slunečnice, Šumava v mlze (prodáno) |
@@ -808,10 +854,10 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
 | doporučení „vzorová věta z kostry“ (`sampleAdvice`) | v kopii testovacích dat nastav `description` kolekce na „Toto je moje nejvíc nejoblíbenější kolekce.“ a spusť `npm run demo:prepare` (log `? advice:`), pak `git checkout demo-content/` |
 | doporučení v souhrnu běhu: bez štítků, popis s malým písmenem a bez tečky / popisky detailů bez tečky / na prodej bez mockupů / text kolekce bez tečky / popis a popisek fotky bez tečky | Rozpracovaný obraz / Ráno u rybníka, Pivoňky / Máky, Bouřka nad polem, Modravské slatě, Pivoňky / Město 2026 / fotky stránek |
-| zrušení filtrů | `/tvorba/`: vyber techniku a štítek, vpravo „N z 59 děl × Zrušit filtry“; klik vrátí všechna díla i „59 děl“ a 1. stránku, dlaždice a počet na stránku zůstanou. `/tvorba/2025/`: rok zůstane. Lišta po posunu: se dvěma filtry „Zrušit vše“, s jedním ne. Panel „Upravit“: „Zrušit filtry“ vedle „Hotovo“. |
-| lišta filtrů při posunu nahoru, panel „Upravit“ (na úzké obrazovce zespodu) | `/tvorba/` (58 děl, stránka je dost dlouhá); úzká obrazovka: DevTools → režim zařízení |
-| počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (8 děl, Kolekce jen Kresby…, Skicák (po 2), Plenér Šumava, Portréty, Ptáci, Tatry (po 1), bez „žádná“), + kolekce Kresby, pastely a kvaš (2 díla; přepínač Doporučené zmizí, oba obrazy jsou vybrané); štítek „krajina“: Technika jen akvarel (23), kresba tužkou, kvaš, linoryt |
-| výběr více štítků („a zároveň“): čipy se zapínají a vypínají, aktivní zůstanou jen ty, které výběr zúží, ostatní zašednou | `/tvorba/`: „krajina“ (28 děl, 17 aktivních čipů), + „voda“ (9 děl, aktivní hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, aktivní jaro a léto), „Vše“ zruší |
+| zrušení filtrů | `/tvorba/`: vyber techniku a štítek, vpravo „N z 60 děl × Zrušit filtry“; klik vrátí všechna díla i „60 děl“ a 1. stránku, dlaždice a počet na stránku zůstanou. `/tvorba/2025/`: rok zůstane. Lišta po posunu: se dvěma filtry „Zrušit vše“, s jedním ne. Panel „Upravit“: „Zrušit filtry“ vedle „Hotovo“. |
+| lišta filtrů při posunu nahoru, panel „Upravit“ (na úzké obrazovce zespodu) | `/tvorba/` (60 děl, stránka je dost dlouhá); úzká obrazovka: DevTools → režim zařízení |
+| počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (8 děl, Kolekce jen Kresby…, Skicák (po 2), Plenér Šumava, Portréty, Ptáci, Tatry (po 1), bez „žádná“), + kolekce Kresby, pastely a kvaš (2 díla; přepínač Doporučené zmizí, oba obrazy jsou vybrané); štítek „krajina“: Technika jen akvarel (25), kresba tužkou, kvaš, linoryt |
+| výběr více štítků („a zároveň“): čipy se zapínají a vypínají, aktivní zůstanou jen ty, které výběr zúží, ostatní zašednou | `/tvorba/`: „krajina“ (30 děl, 17 aktivních čipů), + „voda“ (10 děl, aktivní hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, aktivní jaro a léto), „Vše“ zruší |
 | dlouhý popis o jednom odstavci zalomený do `description: >` (`foldLines`, text se nemění) | `demo-content/tvorba/demo-kresby-2025-2026/_index.yaml`: popis delší než 140 znaků v bloku `>` se dvěma řádky; další běh ho nemění |
 | péče o web v „Doporučení“ (`careAdvice`, `photoSizeAdvice`, `featuredAdvice`; stáří z gitu jen na skutečném obsahu) | `npm run demo` (log `? advice:`): díla bez rozměru nebo popisu, malé fotky a stránky s málo obrazy ve výběru autorky, podle toho, co testovací data mají |
 | zakomentovaný údaj, který není nepovinný, v „Ke kontrole“ (`commentedOutReview`) | `npm run demo` (log `! commented-out attribute:`): `tvorba/demo-rozpracovane.yaml: řádek „# title: Pracovní název“ …` |
@@ -820,7 +866,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | hledání v názvech, popisech a `id` děl | `/tvorba/`: pole vpravo od „Tvorba“, „most noc“ → Most v noci (`?q=most+noc`, v liště čip „„most noc“ ×“), „df9aa“ → Most v noci podle `id`, Enter otevře jeho stránku; `/tvorba/kolekce/demo-plener-sumava-2026/`: pole pod textem kolekce, „mlha“ → Ráno u rybníka (slovo jen v popisu), Šumava v mlze ne (jiný tvar) |
 | combobox Kolekce | `/tvorba/`: klik do „Kolekce“, napiš „plener“ → vše, žádná, Plenér Krkonoše 2006, Plenér Šumava 2026 (podle abecedy), ↓ a Enter vybere Krkonoše (`?collection=demo-plener-krkonose-2006`), Esc zavře seznam a vrátí vybranou; „xyz“ nechá jen vše a žádná |
 | přehled kolekcí: pořadí, stránkování, hledání | `/tvorba/kolekce/`: 16 kolekcí + „Mimo kolekce“ = 2 stránky po 12 (Město 2026 první, „Mimo kolekce“ poslední na 2. stránce), „Na stránku“ 24 = vše na jedné (paměť `pavla.collections.perPage`, galerie se nezmění); hledání „plener“ → Plenér Šumava 2026 a Plenér Krkonoše 2006, „strbskym“ → Tatry 2000 (slovo jen v popisu), „mimo“ → „Hledání neodpovídá žádná kolekce.“ |
-| zašedlé filtry místo schovaných | `/tvorba/2000/`: Kolekce zašedlá s „Tatry 2000 (3)“, „Doporučené (0)“ a čip „#krajina“ zašedlé, Technika a Stav aktivní; `/tvorba/2007/` (jedno dílo) vše zašedlé |
+| zašedlé filtry místo schovaných | `/tvorba/2000/`: Kolekce zašedlá s „Tatry 2000 (4)“, „Doporučené (0)“ a čip „#krajina“ zašedlé, Technika a Stav aktivní; `/tvorba/2007/` (jedno dílo) vše zašedlé |
 | doporučení ke štítkům v souhrnu: jeden štítek ve dvou tvarech / dva štítky vždy spolu / čipy přes 2 řádky; statistika štítků | „květiny“ a „květina“ (Pivoňky) / „noc“ a „světla“ (Noční město 2019) / 31 štítků asi na 3 řádky, kandidáti jen u jednoho díla; výpis `npm run demo:prepare` (`? advice: Štítky: …`) |
 | filtr bez zbytečných voleb: Stav jen „na prodej“, bez Výběru autorky (všechna díla vybraná) / bez filtru Stav | Ze zahrady 2025 / Kresby, pastely a kvaš 2025–2026 / Město 2026 |
 | řádek filtrů na jeden řádek, zkrácená volba, „Na stránku“ pod díly | `/tvorba/?collection=demo-kresby-2025-2026`: „Kresby, pastely a kva…“, rozbalený výběr ukáže celý název; `/tvorba/` dole vpravo „Na stránku“, při filtru s nejvýš 12 díly zmizí |
@@ -835,7 +881,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 - `id` je platné a unikátní, `size_cm` jsou dvě kladná čísla (u publikovaných děl),
 - dílo `available` nebo `reserved` má `price` (kladné číslo),
 - atribut s pevnými možnostmi (`options` ve schématu: `status` = `available` | `reserved` | `sold` | `gifted` | `not-for-sale`,
-  `meta_draft`, `meta_instagram`, `meta_pinterest`, `mockups`, `featured` = `true` | `false`) má jen jednu z nich, i u rozpracovaného díla
+  `meta_edge` = `deckle` | `cut` | `canvas`, `meta_draft`, `meta_instagram`, `meta_pinterest`, `mockups`, `featured` = `true` | `false`) má jen jednu z nich, i u rozpracovaného díla
   (`optionProblems` v `scripts/lib/schema.mjs`; chybějící = výchozí); jinak chyba „status „availble“ není mezi
   možnostmi: available, reserved, sold, gifted, not-for-sale“,
 - `meta_corners` je `false`, nebo `photo` (rozměr fotky, musí sedět s fotkou) a rohy `tl`, `tr`, `br`, `bl` jako dvě celá
@@ -949,21 +995,55 @@ nejdřív snímek s popiskem, pak panorama, scéna, detaily; README složky to t
   (`opentype.js`), takže snímek vypadá všude stejně (lokálně i na GitHubu).
 - **Scény ateliéru** (`scene-<scéna>.jpg`): stylizační fotky z „fotoateliéru“, vygenerované (ChatGPT, Gemini), každá
   dvakrát se stejným záběrem: `<scéna>-list.jpg` s prázdným listem 40 × 30 cm a `<scéna>.jpg` bez něj.
-  Z rohů listu se spočítá rovina stolu nebo stojanu, dílo se do ní položí ve skutečném měřítku (`size_cm`),
-  převezme světlo a barvu listu (papír díla se nejdřív vyváží na neutrální bílou), dostane mírně roztřepený okraj
-  se světlou hranou ke světlu a tmavší od něj a jemný stín. Generátory kreslí list moc „zepředu“, proto se
-  vzdálenější hrana díla ještě zkrátí (`convergence`). Malé dílo se přiblíží (`minFill`, `maxZoom`), malé úzké (proužek, např. linoryt 16,5 × 4 cm) navíc, dokud nezakryje
+  Z rohů listu se spočítá kamera scény (`fitCamera`, `sceneCamera`): skutečný obdélník 40 × 30 cm v perspektivě
+  co nejblíž nakresleným rohům, tedy ohnisko (ekvivalent 35 mm, 24–70 mm), odkud a pod jakým úhlem se kamera dívá
+  (zenit = odklon od kolmého pohledu, azimut = odklon do strany) a jak je daleko. Ohnisko určí první z: `focalMm`
+  ve scéně, kulaté věci ležící ve stejné rovině (`circles`, např. kroužky od hrnku: ohnisko, při kterém jsou stejně
+  zploštělé jako na fotce; generátory kreslí list moc „zepředu“, zbytek stolu ukazuje perspektivu věrněji), jinak
+  ohnisko, se kterým obdélník nejlépe sedí na rohy. Přesnější jsou **hrany podkladu** (`lines` ve scéně: přímé hrany
+  stolu, spáry prken, hrany desky a lišty stojanu, každá dvěma body; skupina `x` rovnoběžná se šířkou listu, `y` s jeho
+  výškou): rovnoběžné hrany se na fotce sbíhají do jednoho úběžníku, `fitCameraToLines` najde kameru, se kterou
+  všechny míří do svých úběžníků (`lineMisfit`, px), nakreslený list s malou vahou určí jen polohu a vzdálenost (smí
+  ležet vůči stolu pootočený, `sheetDeg`) a ohnisko zůstane v 24–70 mm (pevné `focalMm` platí, `circles` pomáhají).
+  Hrany, které si navzájem odporují (generátor je nakreslil nerovnoběžně), do `lines` nepatří: u stojanu stožár
+  a sloupek, platí deska. Pořadí: `camera` > `lines` > rohy (`sceneCamera`, `source`). Generátor ale mohl nakreslit špatně i list nebo kroužky:
+  `camera` ve scéně = kamera nastavená ručně (`cameraFromAngles`: `focalMm`, `zenithDeg` úhel od kolmice na list,
+  `azimuthDeg` odkud, 0 = zepředu od spodní hrany, 90 = zprava, `rollDeg` natočení foťáku kolem osy, 0 = vodorovně,
+  tj. horizont stolu / horní hrana stojanu vodorovně, `distanceCm` od středu listu, `sheetCenter` kde je střed listu
+  na fotce), přebije rohy, `focalMm` i `circles`; najde se v prototypu `kamera-scen.html` (viz *Prototypy*).
+  Odvozenou kameru popisuje `cameraAngles` stejnými čísly. Dílo se do roviny položí ve skutečném měřítku (`size_cm`) jako
+  list papíru s tloušťkou (`paper` ve scéně, výchozí `PAPER_DEFAULTS`): leží kousek nad stolem, je mírně zvlněný,
+  okraje a rohy má lehce zvednuté, jeho hrana je nakreslená jako několik vrstev papíru se skutečnou perspektivou
+  (vidět je jen strana ke kameře, ke světlu světlejší, s nepravidelnou hrubostí) a pod okrajem je kontaktní stín.
+  Volitelně (`underlayCm`) leží dílo na čistém listu o tolik většímu na každou stranu. Dílo převezme světlo a barvu
+  listu (papír díla se nejdřív vyváží na neutrální bílou), má mírně roztřepený okraj a jemný stín. Výřez scény se
+  kreslí rovnou ve velikosti snímku (dílo je ostré i u přiblížení). Malé dílo se přiblíží (`minFill`, `maxZoom`), malé úzké (proužek, např. linoryt 16,5 × 4 cm) navíc, dokud nezakryje
   `minArea` plochy snímku (skutečná plocha natočeného díla, nejvýš `maxAreaZoom`, výchozí 3×; pozadí změkne).
-  - **Stůl** (`mode: lie`): dílo leží nahodile pootočené (velikost pootočení podle `id` díla, směr podle scény:
-    na tmavém stole opačně než na světlém) kolem `center`. Když by zakrylo rekvizitu (`props`) nebo vyčnívalo
-    ze stolu (`bounds`), najde se nejbližší místo, kam se vejde, a teprve pak větší či menší pootočení na stejnou stranu.
-    Když se nevejde nikam, snímek vznikne i tak, log to ohlásí („does not fit the free part of the scene“) a souhrn
-    běhu to ukáže v „Ke kontrole“ („Obraz se nevejde do scény ateliéru pro Instagram“, jen v běhu, který snímek vyrobil).
+  - **Stůl** (`mode: lie`): dílo leží kolem `center` natočené k divákovi: čára napříč jeho středem je na fotce
+    vodorovná (`facingDeg`, nezávisle na hranách stolu; horní a spodní hrana se sbíhají jen perspektivou). Od této
+    polohy ho `minTiltDeg`/`maxTiltDeg` nahodile pootočí (velikost podle `id` díla, směr `tiltSign`; obojí 0 = jen
+    natočené k divákovi). Když by zakrylo rekvizitu (`props`) nebo vyčnívalo ze stolu (`bounds`), najde se nejbližší
+    místo, kam se vejde (i tam natočené k divákovi), s pootočením teprve pak větší či menší pootočení na stejnou
+    stranu (bez pootočení nikdy).
+    Když se nevejde nikam, snímek té scény nevznikne (ani odkaz v `README.md` díla; starý snímek smaže úklid exportů),
+    log to ohlásí („does not fit the free part of the scene …, no photo of it“) a souhrn běhu to ukáže v „Ke kontrole“
+    („Obraz se nevejde do scény ateliéru pro Instagram“, jen v běhu, který exporty díla vyrobil). Platí pro všechny
+    scény: stoly hlídá `bounds` a `props`, stojan `props` a šířka fotky (`scenePlacement` = místo z `planPlacement`
+    předem, bez kreslení).
   - **Stojan** (`mode: stand`): dílo stojí rovně spodní hranou na liště (`ledge`, spodní okraj listu je za lištou
-    schovaný), vystředěné na osu držáku (`axis`); lišta a předměty `front` (paletka) jsou před ním.
+    schovaný), vystředěné na osu držáku (`axis`); lišta a předměty `front` (paletka) jsou před ním. Rekvizity vedle
+    stojanu (`props`, sklenice) dílo nesmí zakrýt (odstup `propMarginPx`) a musí být celé v šířce fotky. Když to na ose
+    nejde, posune se po liště k nejbližšímu místu, kde to jde, nejvýš o `maxSlideCm`; když ani to ne, zůstane na ose
+    a ohlásí se „Ke kontrole“ (`planPlacement`; `cut` = širší, než se na fotku vejde: „okraj ho ořízne“).
   - Všechna nastavení scén jsou s popisem v `mockups/instagram/scenes.yaml`. Nová scéna = dvojice fotek a záznam
     tam (rohy listu, rekvizity, volná plocha, světlo); test `instagram.test.mjs` hlídá, že obě fotky mají stejný
     rozměr a že se do stolů vejdou díla běžných velikostí.
+  - Zadání, se kterými generátor scény vyrobil, jsou v `mockups/instagram/README.md`, i s porovnáním se spočítanou
+    kamerou. Test „the cameras of the scenes agree with the prompts of the generator“ (`PROMPTED_CAMERAS`) hlídá, že
+    kamera ze `sceneCamera` zůstane v rozsahu zadání (krátce ho má každá scéna v `scenes.yaml` jako `prompt`,
+    ukazuje ho prototyp `kamera-scen.html`): výška nad stolem nebo lištou ±25 %, zenit ±5° (stojan ±7°),
+    strana, ze které se dívá, a pootočení nakresleného listu ±5°. Co generátor nedodržel (u tmavého stolu strana
+    a pootočení listu), se nekontroluje. Kamera jen z rohů listu by test nesplnila u žádné scény.
 - **Panorama pro karusel** (`pano-1.jpg` … `pano-<N>.jpg`, `panoramaSlides`, `renderPanorama`): dílo přes celou
   výšku N snímků 4:5 vedle sebe (okraj `padding`), rozřezané na hranách snímků, na papíru první palety, bez textu. Karusel
   na Instagramu při listování stojí snímky těsně vedle sebe, takže dílo plynule ubíhá a je vidět mnohem větší než na
@@ -1420,20 +1500,20 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | zobrazení na úvodní stránce | `/`: „Nejnovější“ jako střední dlaždice (30, adresa bez parametrů), ikony vpravo v záhlaví; sloupce končí skoro stejně vysoko. „Velké obrazy“ → 6 děl a `?view=grid`; zpět „Dlaždice“ a `−` → malé, `?tile=s` (63, testovací data mají méně, ukážou všechna kromě úvodního obrazu), `+` `+` → velké, `?tile=l` (20). Zužuj okno: sloupců ubývá a znovu se vyrovnají; pod 1100 px méně děl (4 / 16 / 25 / 49), pod 640 px ještě méně (3 / 10 / 24 / 40). S pamětí velkých obrazů obnov `/`: rovnou velké obrazy, žádné probliknutí dlaždic. V konzoli (Verbose) `[analytics] view_change {"listing":"home","view":"grid"}`. Nikdy se neopakuje dílo z úvodního obrazu (obnovuj, obraz se střídá). Otevři `/` bez parametrů: volba zůstane (paměť `pavla.home.view` / `pavla.home.tileSize`), `/tvorba/` má dál své zobrazení. `/?view=grid` u někoho s pamětí dlaždic → velké obrazy (odkaz má přednost); `/?utm_source=x` parametr zachová. |
 | sloupce stejné výšky v galerii | `/tvorba/`, `/tvorba/2026/`, kolekce: sloupce končí dole stejně (nižší mají mírně širší mezery, případně místo nahoře nejvýš 12 px), nejplnější a nejprázdnější sloupce se střídají (`gallery.columns` v `site.config.yaml`; zkus `order: center` nebo `maxGap: 1`, úvodní stránka se nezmění, ta má `home.columns`), ve velkých obrazech i dlaždicích; změň filtr, stránku, počet na stránku, „Zobrazit vše“ i šířku okna, sloupce se vždy znovu vyrovnají. Stránkování dál podle data (2. stránka začíná dílem po posledním z 1.). Se zapamatovanými dlaždicemi obnov `/tvorba/`: rovnou dlaždice, bez probliknutí velkých obrazů. |
 | značky na úvodní stránce | `/`: v dlaždicích jen hvězdička (menší, průsvitnější), žádné košíky (`home.tileMarks`); galerie beze změny. |
-| prototypy | `npm run prototypes` a `open .prototypes/zarovnani-sloupcu.html`, `open .prototypes/znacky-dlazdic.html`: posuvníky začínají na hodnotách ze `site.config.yaml`, „Nastavení“ přepne na úvodní stránku / galerii. Testovací data: `npm run demo:prepare`, `SITE_DATA_DIR=.demo/site npm run prototypes -- .demo/prototypes`. |
+| prototypy | `npm run prototypes` a `open .prototypes/zarovnani-sloupcu.html`, `open .prototypes/znacky-dlazdic.html`: posuvníky začínají na hodnotách ze `site.config.yaml`, „Nastavení“ přepne na úvodní stránku / galerii. `open .prototypes/kamera-scen.html`: hrany stolů a stojanu protažené až za fotku, kroužek (průsečík hran) a křížek (úběžník kamery) leží u sebe a čárkované hrany díla do nich míří; „Z rohů listu“ je od sebe vzdálí, „Z hran“ je vrátí; u stojanu úhel spodní hrany díla proti liště skoro 0°; „Vyrovnat natočení“ ho změní, zaškrtni „ohnisko drží velikost listu“ a posuň ohnisko: list zůstane stejně velký, změní se perspektiva mřížky; „Pomocné čáry“ je schovají a ukážou dílo čistě, „Obnovit doporučené“ po rozladění posuvníků vrátí kameru ze `scenes.yaml`; „jen díla, která se nevejdou“ nechá v seznamu jen díla hlášená „Ke kontrole“ (na skutečných datech tři velká díla na stolech); zkopírovaný řádek `camera` vlož do `mockups/instagram/scenes.yaml` a `npm run demo:prepare` vyrobí scény s ní. Testovací data: `npm run demo:prepare`, `SITE_DATA_DIR=.demo/site npm run prototypes -- .demo/prototypes`. |
 | značky na dlaždicích | `/tvorba/?view=tiles`: obrazy z výběru autorky mají vlevo nahoře hvězdičku, obrazy na prodej vpravo dole košík; `−` na malé dlaždice: košíky zmizí, hvězdičky zůstanou; `+` na velké: značky větší (nejvýš 22 px). Přepni paletu Noc: značky světlé s tmavým lemem. Velké obrazy: žádné značky, hvězdička u názvu a štítek „K prodeji“. Totéž na úvodní stránce. Zkus `tileMarks.sale.icon: tag` nebo `sale.corner: tl` v `site.config.yaml` (košík vedle hvězdičky). |
 | dlaždice | `/tvorba/`: vpravo dole ikona „Dlaždice“: malé obrazy bez textů, 36 na stránku, „Na stránku“ nabízí 36 / 72 / 144, v URL `?view=tiles`; z 4. stránky velkých obrazů skočí na 2. stránku dlaždic (stejné první dílo). Zvol 72, přepni na velké obrazy a zpět: každé zobrazení si pamatuje svůj počet. Změň filtr, dlaždice zůstanou. Otevři `/tvorba/` znovu bez parametrů → dlaždice a `?view=tiles` (paměť); `/tvorba/?view=grid` → velké obrazy (odkaz má přednost); „Velké obrazy“ paměť smaže (DevTools → Local Storage → `pavla.gallery.view`). Na šířce telefonu 3 sloupce. |
 | štítky v bublině | `/tvorba/`: najeď myší na obraz se štítky, bublina má řádek `#štítek …` česky podle abecedy. |
 | přehled všech děl | `npm run demo:prepare`, pak `.demo/content/export/README.md`: kolekce, nadpisy `### Máky ★ · rw4dh @ 2026-07-02 [ 30 x 30 ]`, přepínače slovem (`instagram: -`), kódy hlášek (např. `featured-bez-pinu` u Máků) a „Hlášky“ s počty; v náhledu Markdownu (VS Code) hledej kód. |
 | filtry | `/tvorba/`: klikej na filtry, sleduj URL; zkopíruj URL do nového okna, musí ukázat totéž. Testovací data mají pro každou kombinaci aspoň jedno dílo. |
-| stránkování | `/tvorba/`: 12 děl a stránky 1, 2, …, 5 (mezera „…“); klikni na 2, v URL `?page=2`, zkopíruj do nového okna. Vyber filtr, vrátí tě na 1. stránku; `?page=99` se opraví na poslední. „Zobrazit vše (58)“: všech 58 děl, v URL `?page=all`; změň filtr, zůstane vše; „Zobrazit po stránkách“ vrátí 1. stránku. „Na stránku“ 24: stránky 1, 2, 3, v URL `?perPage=24`; 48: stránky 1, 2; zpět na 12 parametr zmizí; `?perPage=13` se ignoruje. Paměť: zvol 24, otevři `/tvorba/` znovu bez parametrů (nebo stránku kolekce) → 24 a `?perPage=24` v URL; otevři `/tvorba/?page=2` → 12 na stránku (odkaz má přednost); zvol 12 → paměť se smaže. Smazat ručně: DevTools → Application → Local Storage → `pavla.gallery.perPage`. Menší první hodnota `gallery.pageSizes` (např. `[4, 12]`) ukáže mezery na obou stranách aktuální stránky. |
+| stránkování | `/tvorba/`: 12 děl a stránky 1, 2, …, 5 (mezera „…“); klikni na 2, v URL `?page=2`, zkopíruj do nového okna. Vyber filtr, vrátí tě na 1. stránku; `?page=99` se opraví na poslední. „Zobrazit vše (60)“: všech 60 děl, v URL `?page=all`; změň filtr, zůstane vše; „Zobrazit po stránkách“ vrátí 1. stránku. „Na stránku“ 24: stránky 1, 2, 3, v URL `?perPage=24`; 48: stránky 1, 2; zpět na 12 parametr zmizí; `?perPage=13` se ignoruje. Paměť: zvol 24, otevři `/tvorba/` znovu bez parametrů (nebo stránku kolekce) → 24 a `?perPage=24` v URL; otevři `/tvorba/?page=2` → 12 na stránku (odkaz má přednost); zvol 12 → paměť se smaže. Smazat ručně: DevTools → Application → Local Storage → `pavla.gallery.perPage`. Menší první hodnota `gallery.pageSizes` (např. `[4, 12]`) ukáže mezery na obou stranách aktuální stránky. |
 | náhledy pro sdílení | `grep -o '<meta property="og:image[^>]*>' dist/tvorba/2026/*/index.html` po `npm run build`; soubory `public/tvorba/*/*/og-*.jpg` a `public/tvorba/kolekce/*/_og/og-*.jpg`. Online: po nasazení vlož odkaz do <https://www.opengraph.xyz/> nebo do Facebook Sharing Debuggeru. |
 | rozpracované dílo | „Rozpracovaný obraz“ nesmí být v galerii, v roce 2026 ani na adrese `/tvorba/dhsh5/` |
 | web bez děl | `mkdir -p /tmp/prazdny/public && cp public/favicon.svg /tmp/prazdny/public/ && SITE_DATA_DIR=/tmp/prazdny npx astro build`: úvodní stránka ukáže „Obrazy tu brzy přibudou.“ a odkaz na Instagram (bez `site.instagram` jen první větu) |
 | mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla s `mockups: true` do testovacích dat nebo obsahového repa, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
 | stav a mockupy | v yaml díla s `mockups: true` změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, mockupy na detailu zůstanou (nadpis „Jak vypadá na zdi“), z `export/fler` zmizí; pak `mockups: false`: mockupy zmizí i z webu. Testovací data: Ráno u rybníka (na prodej) × Slunečnice, Šumava v mlze (ne) × Pivoňky (vypnuté) |
-| exporty | `ls .demo/content/export/*/*/`: Instagram jen díla s `meta_instagram: true` (Ráno u rybníka, Pivoňky, Kytice z louky, Máky, Na podlaze, Lípa u kaple, Zimní sad, Oblaka), každé ve své složce `export/instagram/[<kolekce>/]<slug>/` (`ls -R .demo/content/export/instagram`) s `caption-papir/-pergamen/-noc.jpg`, `scene-stul-tmavy/-stul-svetly/-stojan.jpg`, `story.jpg`, `pano-*.jpg` (jen široká díla, Oblaka 3 snímky), `grid-*.jpg` + `grid-preview.jpg` (Pivoňky 9, Oblaka 3, Ráno u rybníka 2), `README.md` (s textem příspěvku, pořadím karuselu a adresou pro nálepku příběhu) a `detail-*.jpg`; Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export pro Instagram zmizí |
-| Instagram: snímky s popiskem a scény | `open .demo/content/export/instagram/demo-plener-sumava-2026/demo-rano-u-rybnika/*`: tři snímky s popiskem (název, technika · rozměr · rok, adresa webu) na papíru palet, dílo na tmavém a světlém stole (pootočené na opačné strany, mimo rekvizity) a na stojanu (na liště, za paletkou); Lípa u kaple přiblížená, Zimní sad hlášený jako nevejde se (log; souhrn „Ke kontrole“ dostane plný běh obsahového repa); `cat …/README.md`: text příspěvku s popisem, adresa webu s `id` díla, „Kolekce: …“ u Ráno u rybníka, „Obraz je na prodej.“ u Máků, hashtagy česky a anglicky; štítek bez anglického překladu = „Doporučení“ v souhrnu |
+| exporty | `ls .demo/content/export/*/*/`: Instagram jen díla s `meta_instagram: true` (Ráno u rybníka, Pivoňky, Kytice z louky, Máky, Na podlaze, Lípa u kaple, Zimní sad, Oblaka, Hřeben nad údolím), každé ve své složce `export/instagram/[<kolekce>/]<slug>/` (`ls -R .demo/content/export/instagram`) s `caption-papir/-pergamen/-noc.jpg`, `scene-stul-tmavy/-stul-svetly/-stojan.jpg`, `story.jpg`, `pano-*.jpg` (jen široká díla, Oblaka 3 snímky), `grid-*.jpg` + `grid-preview.jpg` (Pivoňky 9, Oblaka 3, Ráno u rybníka 2), `README.md` (s textem příspěvku, pořadím karuselu a adresou pro nálepku příběhu) a `detail-*.jpg`; Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export pro Instagram zmizí |
+| Instagram: snímky s popiskem a scény | `open .demo/content/export/instagram/demo-plener-sumava-2026/demo-rano-u-rybnika/*`: tři snímky s popiskem (název, technika · rozměr · rok, adresa webu) na papíru palet, dílo na tmavém a světlém stole (natočené k divákovi, vodorovně na fotce, mimo rekvizity) a na stojanu (na liště, za paletkou); Lípa u kaple přiblížená, Zimní sad hlášený jako nevejde se na stoly, Oblaka a Hřeben nad údolím (70 × 50) i na stojan („does not fit into the photo of the scene stojan“); snímek scény, do které se dílo nevejde, chybí (log; souhrn „Ke kontrole“ dostane plný běh obsahového repa); `cat …/README.md`: text příspěvku s popisem, adresa webu s `id` díla, „Kolekce: …“ u Ráno u rybníka, „Obraz je na prodej.“ u Máků, hashtagy česky a anglicky; štítek bez anglického překladu = „Doporučení“ v souhrnu |
 | náhledy exportů | `cat .demo/content/export/instagram/README.md .demo/content/export/fler/README.md`: přehledy s miniaturami; v každé složce díla `README.md` se všemi fotkami (u Instagramu i textem příspěvku, u Fleru s cenou); vykreslené je uvidíš na GitHubu obsahového repa nebo v náhledu Markdownu v editoru |
 | odkaz na Instagram | `/tvorba/2026/demo-rano-u-rybnika-pf7ru/`: v řádku „Sdílet“ odkaz „Na Instagramu“ (vymyšlený `instagram:` v testovacích datech); v `.demo/content/export/instagram/README.md` u něj „✓ na Instagramu“, u ostatních „○ zatím nezveřejněno“, skupiny podle kolekcí; `instagram: true` v popisu = chyba „instagram musí být odkaz…“ |
 | autorství v obrázcích | `node --input-type=module -e "import s from 'sharp';console.log(String((await s('.demo/site/public/tvorba/2026/demo-rano-u-rybnika-pf7ru/480.avif').metadata()).xmp))"`: autorka, „© 2026 …“, odkaz na stránku; v JSON-LD stránky díla `"image":{"@type":"ImageObject",…,"copyrightNotice":"© 2026 …"}`; fotka `public/fotky/…` XMP nemá |

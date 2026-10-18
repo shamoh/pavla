@@ -8,10 +8,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { writePrototypes } from './lib/prototypes.mjs';
+import { loadInstagramScenes } from './lib/instagram.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dataRoot = process.env.SITE_DATA_DIR ? path.resolve(root, process.env.SITE_DATA_DIR) : root;
 const outDir = path.resolve(process.argv[2] ?? path.join(root, '.prototypes'));
 const config = YAML.parse(fs.readFileSync(path.join(root, 'site.config.yaml'), 'utf8'));
-const files = writePrototypes({ dataRoot, outDir, templatesDir: path.join(root, 'scripts', 'prototypes'), config });
+const { scenes } = await loadInstagramScenes();
+const files = writePrototypes({ dataRoot, outDir, templatesDir: path.join(root, 'scripts', 'prototypes'), config, scenes });
 for (const file of files) console.log(`Written: ${path.relative(process.cwd(), file)}`);

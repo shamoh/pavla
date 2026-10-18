@@ -2,21 +2,48 @@
 # Fotky scén jsou vygenerované (ChatGPT, Gemini), každá dvakrát se stejným záběrem:
 #   <name>-list.jpg   scéna s prázdným listem akvarelového papíru 40 × 30 cm (podle něj perspektiva a světlo)
 #   <name>.jpg        stejná scéna bez listu (pozadí, na které se dílo položí)
-# Pipeline (scripts/lib/instagram.mjs) vloží dílo ve skutečném měřítku (size_cm) do roviny listu a ořízne snímek
-# na 4:5 (1080 × 1350). Pro každé dílo s meta_instagram: true vznikne snímek z každé scény.
+# Pipeline (scripts/lib/instagram.mjs) z rohů listu spočítá kameru scény (ohnisko, odkud a pod jakým úhlem se dívá),
+# vloží dílo ve skutečném měřítku (size_cm) do roviny listu jako list papíru s tloušťkou (mírně zvlněný, okraje
+# lehce zvednuté, vrstvy papíru na hraně, kontaktní stín) a ořízne snímek na 4:5 (1080 × 1350).
+# Pro každé dílo s meta_instagram: true vznikne snímek z každé scény.
 #
 # Souřadnice jsou v pixelech fotky <name>-list.jpg (obě fotky mají stejný rozměr).
 #   label         název scény (jen pro lidi)
 #   sheetCm       skutečná velikost listu [šířka, výška] v cm
 #   corners       rohy listu na fotce: tl vlevo nahoře, tr vpravo nahoře, br vpravo dole, bl vlevo dole
 #   mode          lie = dílo leží (stůl), stand = dílo stojí spodní hranou na liště (stojan)
-#   convergence   o kolik kratší je vzdálenější hrana díla (0.09 = o 9 %): generátory kreslí list moc „zepředu“
-#   farEdge       která hrana je vzdálenější: top | right | bottom | left
+#   Kamera: skutečný obdélník sheetCm v perspektivě co nejblíž nakresleným rohům; ohnisko (ekvivalent 35 mm, 24–70)
+#   určí první z:
+#   focalMm       (nepovinné) pevné ohnisko: kratší = silnější perspektiva
+#   circles       (nepovinné) kulaté věci ležící v rovině listu (kroužky od hrnku) jako obdélník kolem nich
+#                 [x0, y0, x1, y1]: ohnisko, při kterém by byly stejně zploštělé; generátory kreslí list moc
+#                 „zepředu“, zbytek stolu ukazuje perspektivu věrněji
+#                 jinak ohnisko, se kterým obdélník nejlépe sedí na rohy
+#   lines         (nepovinné) přímé hrany podkladu na fotce (stůl, deska a lišta stojanu), každá jako dva body
+#                 [[x, y], [x, y]]: x = rovnoběžné se šířkou listu (vodorovné hrany), y = s jeho výškou (na stole
+#                 do hloubky, na stojanu svislé). Rovnoběžné hrany se na fotce sbíhají do jednoho bodu (úběžník);
+#                 kamera se natočí (a z obou směrů najde i ohnisko) tak, aby do svých úběžníků mířily, nakreslený list
+#                 už jen určí, kde a jak daleko (může ležet vůči stolu pootočený). Přebije focalMm a circles ne:
+#                 focalMm zůstane pevné, circles pomáhají s ohniskem. Na stole dílo leží natočené k divákovi
+#                 (vodorovně na fotce), na stojanu rovnoběžně s lištou.
+#                 Najdou se a doladí v prototypu kamera-scen.html (npm run prototypes).
+#   prompt        (nepovinné) co chtělo zadání generátoru po kameře, krátce (celá zadání v README.md); prototyp
+#                 kamera-scen.html ho ukáže vedle spočítané výšky a polohy kamery
+#   camera        (nepovinné) kamera nastavená ručně, přebije všechno nahoře (rohy, focalMm, circles); najdi ji
+#                 v prototypu kamera-scen.html (npm run prototypes) a zkopíruj odtud:
+#                 { focalMm, zenithDeg úhel od kolmice na list, azimuthDeg odkud (0 = zepředu od spodní hrany,
+#                 90 = zprava, -90 = zleva), rollDeg natočení foťáku (0 = vodorovně), distanceCm od středu listu,
+#                 sheetCenter [x, y] kde je na fotce střed listu }
+#   paper         (nepovinné) list díla, výchozí hodnoty PAPER_DEFAULTS v instagram.mjs: thicknessMm tloušťka,
+#                 liftMm nad stolem, curlMm / curlCm zvednutí okrajů a jak daleko od hrany, waveMm / waveCm
+#                 zvlnění a délka vln, waveShade jak moc je vlny vidět ve světle, wallLight / wallShade jas hrany
+#                 papíru ke světlu / od světla, grain hrubost hrany, contact kontaktní stín (blurPx, opacity),
+#                 underlayCm dílo leží na čistém listu o tolik větším na každou stranu (0 = ne)
 #   paperWhite    jas prázdného listu, který znamená „papír v plném světle“ (světlo scény se přenese na dílo)
-#   lightDir      odkud jde světlo [x, y] (např. [-1, -0.7] = zleva zezadu): hrana díla k němu je světlejší
-#   shadow        stín díla: posun dx, dy a rozmazání v px, průhlednost (padá od světla)
-#   edge          okraj díla: roughCm roztřepení (cm), roughFreq zubů na cm, softCm měkkost,
-#                 light / shade o kolik světlejší / tmavší je hrana ke světlu / od světla, widthPx šířka té hrany
+#   lightDir      odkud jde světlo v rovině listu [x, y] (např. [-1, -0.7] = zleva zezadu): hrana papíru a vlny
+#                 k němu jsou světlejší
+#   shadow        stín díla: posun dx, dy a rozmazání v px fotky scény, průhlednost (padá od světla)
+#   edge          okraj díla: roughCm roztřepení (cm), roughFreq zubů na cm, softCm měkkost
 #   cropTop       ořez na 4:5: kolik z přebývající výšky odříznout nahoře (0 = vše dole, 1 = vše nahoře)
 #   minFill       malé dílo: snímek se přiblíží, dokud dílo nezabírá aspoň tuto část šířky (nejvýš maxZoom ×)
 #   minArea       malé úzké dílo (proužek): snímek se přiblíží, dokud dílo nezakryje aspoň tuto část plochy snímku
@@ -25,11 +52,13 @@
 # Jen pro stůl (mode: lie):
 #   center        kam ideálně položit střed díla (bod fotky ve volné části stolu)
 #   maxShiftCm    nahodilý posun od center podle id díla (cm)
-#   minTiltDeg, maxTiltDeg   nahodilé pootočení podle id díla (velikost ve stupních)
+#   minTiltDeg, maxTiltDeg   nahodilé pootočení podle id díla (velikost ve stupních) od výchozí polohy: dílo
+#                 natočené k divákovi, střední čára napříč obrazem na fotce vodorovně; obojí 0 = jen výchozí poloha)
 #   tiltSign      směr pootočení: 1 nebo -1 (dva stoly mají opačný, dílo tak leží jednou vlevo, jednou vpravo)
-#   maxExtraTiltDeg  o kolik víc smí hledání dílo pootočit, aby se vešlo (nikdy na druhou stranu)
+#   maxExtraTiltDeg  o kolik víc smí hledání dílo pootočit, aby se vešlo (nikdy na druhou stranu; bez pootočení se nepoužije)
 #   bounds        volná část stolu [x0, y0, x1, y1]: dílo z ní nesmí vyčnívat
 #   props         obrysy rekvizit (mnohoúhelníky): dílo je nesmí zakrýt; propMarginPx = odstup od nich
+#                 (platí i pro stojan, viz níže)
 #   Když se dílo na výchozí místo nevejde, hledá se nejbližší místo (a případně větší pootočení), kde se vejde.
 #
 # Jen pro stojan (mode: stand):
@@ -37,91 +66,117 @@
 #                 dílo stojí na ní a zapadne o sinkPx do drážky; lišta je před dílem
 #   axis          střed držáku (průsečík jeho úhlopříček): na něj se dílo vystředí
 #   front         obrysy předmětů před dílem (paletka): dílo je za nimi
+#   props         obrysy rekvizit vedle stojanu (sklenice), dílo je nesmí zakrýt (propMarginPx = odstup): dílo, které
+#                 by je zakrylo, se posune po liště k nejbližšímu volnému místu, nejvýš o maxSlideCm (cm) a jen
+#                 v šířce fotky; když to nejde, zůstane na ose a ohlásí se „Ke kontrole“
 
 - name: stul-tmavy
   label: Tmavý stůl (vsedě)
+  prompt: kamera 45 cm nad stolem, dolů 35–40°, mírně zleva; list pootočený o 6°
   sheetCm: [40, 30]
   corners: { tl: [133, 662], tr: [730, 598], br: [896, 919], bl: [157, 1018] }
   mode: lie
-  convergence: 0.09
-  farEdge: top
+  lines:                                                                   # hrany stolu
+    x:
+      - [[160, 350], [475, 384]]                                           # zadní hrana desky
+      - [[0, 790], [690, 955]]                                             # spára mezi prkny
+    y:
+      - [[160, 350], [3, 432]]                                             # levá hrana desky
+      - [[562, 1190], [402, 1525]]                                         # příčná spára dole
   paperWhite: 238
   lightDir: [-1, -0.7]
   shadow: { dx: 3, dy: 4, blur: 4, opacity: 0.5 }
-  edge: { roughCm: 0.2, roughFreq: 2.5, softCm: 0.09, light: 0.12, shade: 0.18, widthPx: 1.6 }
+  edge: { roughCm: 0.2, roughFreq: 2.5, softCm: 0.09 }
   cropTop: 0.4
   minFill: 0.45
   maxZoom: 1.8
   minArea: 0.08
   maxAreaZoom: 3
-  center: [470, 760]
+  center: [460, 750]
   maxShiftCm: 1.5
   minTiltDeg: 2
-  maxTiltDeg: 7
+  maxTiltDeg: 6
   tiltSign: -1
   maxExtraTiltDeg: 10
-  bounds: [20, 400, 1004, 1350]
+  bounds: [5, 400, 1004, 1350]
   propMarginPx: 14
   props:
-    - [[460, 270], [900, 270], [900, 480], [460, 480]]                   # knihy
-    - [[740, 470], [1024, 470], [1024, 620], [740, 620]]                 # kalamář s víčkem
+    - [[511, 270], [900, 270], [900, 480], [825, 529], [511, 440]]                   # knihy
+    - [[824, 640], [826, 510], [1024, 511], [1024, 677], [881, 663]]                 # kalamář s víčkem
     - [[895, 630], [1024, 630], [1024, 790], [895, 790]]                 # guma
     - [[870, 770], [1024, 770], [1024, 1000], [870, 1000]]               # brush pen
-    - [[750, 930], [1024, 1090], [1024, 1190], [730, 1010]]              # rydlo
-    - [[670, 1020], [730, 1020], [1010, 1240], [960, 1280]]              # tužka
-    - [[0, 985], [70, 985], [460, 1165], [420, 1210], [0, 1110]]         # štětce
+    - [[755, 973], [765, 938], [1024, 1104], [1024, 1190]]              # rydlo
+    - [[665, 1040], [682, 1019], [1009, 1213], [980, 1267]]              # tužka
+    - [[0, 985], [453, 1176], [435, 1218], [0, 1110]]         # štětce
     - [[0, 1130], [330, 1130], [330, 1480], [0, 1480]]                   # paleta
 
 - name: stul-svetly
   label: Světlý stůl (vestoje)
+  prompt: kamera 70 cm nad stolem, dolů 55–60°, mírně zprava; list pootočený o −5°
   sheetCm: [40, 30]
   corners: { tl: [157, 633], tr: [850, 551], br: [957, 1011], bl: [202, 1113] }
   mode: lie
-  convergence: 0.05
-  farEdge: top
+  lines:                                                                   # hrany stolu (boční jsou mimo záběr)
+    x:
+      - [[300, 282], [743, 231]]                                           # zadní hrana desky (rovná část)
+      - [[180, 1393], [1115, 1243]]
+    y:
+      - [[1118, 1239], [842, 219]]
+      - [[186, 1392], [49, 311]]
+  circles:                                                                 # kroužky od hrnku na stole
+    - [500, 338, 637, 438]
+    - [110, 1150, 305, 1350]
   paperWhite: 240
   lightDir: [1, -0.4]
   shadow: { dx: -3, dy: 4, blur: 4, opacity: 0.35 }
-  edge: { roughCm: 0.2, roughFreq: 2.5, softCm: 0.09, light: 0.12, shade: 0.18, widthPx: 1.6 }
+  edge: { roughCm: 0.2, roughFreq: 2.5, softCm: 0.09 }
   cropTop: 0.5
   minFill: 0.45
   maxZoom: 1.8
   minArea: 0.08
   maxAreaZoom: 3
-  center: [470, 840]
+  center: [470, 860]
   maxShiftCm: 1.5
   minTiltDeg: 2
-  maxTiltDeg: 7
+  maxTiltDeg: 6
   tiltSign: 1
   maxExtraTiltDeg: 10
-  bounds: [10, 300, 1110, 1240]
+  bounds: [5, 300, 1110, 1360]
   propMarginPx: 18
   props:
     - [[0, 200], [300, 200], [385, 330], [385, 390], [120, 600], [0, 600]]   # knihy
     - [[715, 155], [910, 155], [910, 440], [715, 440]]                       # sklenice s vodou
     - [[915, 325], [1122, 325], [1122, 570], [915, 570]]                     # paleta
-    - [[870, 500], [970, 500], [1122, 690], [1122, 820], [870, 620]]         # štětce
-    - [[950, 790], [1020, 790], [1122, 940], [1122, 1020]]                   # tužka
-    - [[940, 880], [1010, 880], [1120, 1180], [1060, 1220]]                  # pero
+    - [[870, 500], [970, 500], [1122, 690], [1122, 820], [884, 600]]         # štětce
+    - [[972, 857], [970, 809], [1122, 828], [1122, 1080]]                    # tužka
+    - [[960, 940], [963, 897], [991, 892], [1122, 1201], [1071, 1220]]       # pero
 
 - name: stojan
   label: Stojan
+  prompt: kamera 20 cm nad lištou, 20° od čelního pohledu, zprava, mírně shora
   sheetCm: [40, 30]
   corners: { tl: [341, 405], tr: [994, 448], br: [940, 995], bl: [278, 878] }
   mode: stand
-  convergence: 0
-  farEdge: left
+  lines:                                                                   # hrany desky a lišty stojanu
+    x:
+      - [[381, 500], [997, 598]]                                           # horní hrana desky
+      - [[314, 871], [764, 974]]                                           # horní hrana lišty
+    y:
+      - [[381, 500], [325, 870]]                                           # levá hrana desky
   paperWhite: 240
   lightDir: [-1, -0.3]
   shadow: { dx: 4, dy: 3, blur: 6, opacity: 0.35 }
-  edge: { roughCm: 0.2, roughFreq: 2.5, softCm: 0.09, light: 0.12, shade: 0.18, widthPx: 1.6 }
+  edge: { roughCm: 0.2, roughFreq: 2.5, softCm: 0.09 }
   cropTop: 0.5
   minFill: 0.45
   maxZoom: 1.8
   minArea: 0.08
   maxAreaZoom: 3
-  ledge: [[192, 866], [760, 982]]
+  ledge: [[764, 977], [314, 874]]
   sinkPx: 6
   axis: [650, 653]
+  maxSlideCm: 15
   front:
-    - [[699, 1040], [815, 976], [978, 1005], [978, 1110], [860, 1110], [699, 1046]]   # plechová paletka
+    - [[696, 1030], [807, 973], [816, 972], [978, 1006], [1080, 965], [1080, 965], [1080, 1150], [930, 1150], [710, 1090]]   # plechová paletka
+  props:
+    - [[0, 650], [143, 669], [151, 910], [0, 957]] # sklenice

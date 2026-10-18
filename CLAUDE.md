@@ -64,8 +64,10 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Exporty: Instagram jen u díla s `meta_instagram: true` (výchozí false), nikdy mockupy webu, ve složce díla
   `export/instagram/[<kolekce>/]<slug>/` (kopíruje `tvorba/`, `exportFolder`; složka je v otisku díla): `caption-<paleta>.jpg` (dílo
   na papíru každé palety s popiskem název / technika · rozměr · rok / adresa webu, písma z `fonts/` jako křivky přes
-  `opentype.js`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru `mockups/instagram/scenes.yaml`: perspektiva z rohů
-  prázdného listu, skutečné měřítko, stoly mimo rekvizity s opačným pootočením podle `id`, stojan na liště na ose;
+  `opentype.js`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru `mockups/instagram/scenes.yaml`: kamera z rohů
+  prázdného listu `fitCamera` (ohnisko `focalMm` / podle kulatých věcí na stole `circles` / nejlepší shoda, 24–70 mm), přesněji z hran podkladu `lines` (`fitCameraToLines`: hrany míří do úběžníků), nebo ruční `camera` (`cameraFromAngles`; obojí se hledá v prototypu `kamera-scen.html`), zadání generátoru scén v `mockups/instagram/README.md`, test `PROMPTED_CAMERAS` hlídá, že kamera zůstane v jejich rozsahu (nová nebo přegenerovaná scéna = zadání tam i do testu),
+  dílo jako papír s tloušťkou `paper` (hrana podle `meta_edge` díla: `deckle` roztřepená / `cut` čistá / `canvas` plátno 2 cm, `EDGE_KINDS`; bok opakuje barvu okraje díla) (`PAPER_DEFAULTS`: vrstvy hrany, zvlnění, zvednuté okraje, kontaktní stín,
+  volitelně podkladový list `underlayCm`), kreslené rovnou ve velikosti snímku, změna kreslení = zvýšit `SCENE_VERSION`; skutečné měřítko, stoly mimo rekvizity natočené k divákovi (`facingDeg`: vodorovně na fotce, ne podle hran stolu; nahodilé pootočení podle `id` od toho jen s `minTiltDeg`/`maxTiltDeg`), stojan na liště na ose (celý ve fotce a mimo `props`, jinak posun po liště nejvýš `maxSlideCm`, jinak „Ke kontrole“);
   jen se `size_cm`), `pano-<n>.jpg` (plynulý karusel: široké dílo přes celou výšku 2–3 snímků 4:5, počet ze `size_cm`
   `panoramaSlides`, jen když je aspoň `panorama.minGain`× větší než na snímku s popiskem), `story.jpg` (příběh 9:16,
   `storyLayout`: volné pruhy `images.instagram.story` a místo na nálepku s odkazem, nic se tam nekreslí; adresa
@@ -76,7 +78,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   a `README.md` (náhled pro GitHub s textem příspěvku s kolekcí a hashtagy česky a anglicky, slovník
   `instagramPost` v `site.config.yaml`, kolekce i jako hashtag, píše se každým během; štítek bez překladu = doporučení
   `hashtagAdvice`); před tím ořez `images.instagram.insetPercent`; `scripts/lib/instagram.mjs`.
-  Nevejde-li se dílo do volné části scény: snímek vznikne, souhrn běhu „Ke kontrole“ (`misfits`).
+  Nevejde-li se dílo do scény (stoly `bounds`/`props`, stojan `props`/šířka fotky; `scenePlacement` předem): snímek té scény nevznikne, souhrn běhu „Ke kontrole“ (`misfits`).
   Každá složka díla (obě platformy) má `README.md` s náhledy (GitHub ho vykreslí), platformy přehled `export/<platforma>/README.md`
   (a týž přehled jen kolekce v každé složce kolekce, `collectionIndexes`; stejně `export/draft/`)
   seskupený podle kolekcí (`scripts/lib/export-readme.mjs`; Instagram i s textem příspěvku, Fler s cenou; stav zveřejnění
@@ -172,7 +174,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `missing` (hodnota pro doplnění do existujícího souboru, musí znamenat totéž co chybějící atribut) a technický
   komentář (česky, typ, hodnoty, příklady). Pipeline z něj staví kostry a při každém běhu srovná všechny popisy
   (`scripts/lib/metadata-yaml.mjs`): doplní chybějící atributy s `DOPLNIT`, srovná pořadí a technické komentáře,
-  neznámé označí `NEZNÁMÝ`. Povinný atribut s konečnou výchozí hodnotou (`settled: true`: `meta_draft`, `tags`, `meta_instagram`, `meta_pinterest`,
+  neznámé označí `NEZNÁMÝ`. Povinný atribut s konečnou výchozí hodnotou (`settled: true`: `meta_draft`, `meta_edge`, `tags`, `meta_instagram`, `meta_pinterest`,
   `mockups`, `featured`) nikdy nemá `DOPLNIT`. Nepovinný atribut (`commented: true` + `example`: `support`, `details`,
   `caption`, `private_note`, `price`, `fler`, `instagram`, `meta_instagram_grid`, `cover`, `aspect`, `focus`) je v souboru zakomentovaný (`# price: 2500`) pod technickým komentářem s `NEPOVINNÉ.`, bez
   `DOPLNIT`; prázdná hodnota = zakomentovat. Nový atribut = záznam ve schématu (prefix určí skupinu), README obou rep
