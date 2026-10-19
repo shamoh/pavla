@@ -335,7 +335,7 @@ export function draftReadme({ work, year, files, corners = '', collection = '', 
     '',
     (files
       ? `${escMd(captionFacts(work, year))}. Náhledy ořezu pozadí (podlahy nebo zdi kolem obrazu), než obraz zveřejníš (\`meta_draft: false\`): pak tahle složka sama zmizí.`
-        + ` Zmenšené na ${DRAFT_EDGE} px, v plné velikosti jsou ke stažení jako „nahledy-orezu“ dole na stránce běhu zpracování. Klikni na obrázek pro plnou velikost.`
+        + ` Zmenšené na ${DRAFT_EDGE} px. Klikni na obrázek pro plnou velikost.`
       : `${escMd(captionFacts(work, year))}. Rozpracovaný obraz: až ho zveřejníš (\`meta_draft: false\`), tahle složka sama zmizí.`),
     ...(work.id || collection ? ['', about({ collection, code: work.id }).join('  \n')] : []),
     ...text,

@@ -222,7 +222,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   mockup přepočítá rohy i `pavla:sheet` o posun `offset`): web AVIF/WebP průhledné (`transparent` v `info.json`, třída `cutout`:
   bez `--ph`, stín jen `filter: var(--drop-…)`, nikdy `box-shadow`), JPEG na papíře první palety, og/Instagram na
   svém pozadí, Fler bílá, mockup jen vnitřní obdélník (průnik s `pavla:sheet`). Náhledy ořezu draftů (všechny tři, `writePreviews`, stejně jako `npm run preview`) do
-  `.previews/` (mimo git), workflow obsahového repa i `dry-run.yml` je nahrají jako artefakt `nahledy-orezu`; zmenšené
+  `.previews/` (mimo git; workflow je nikam nenahrávají, žádný artefakt běhu: úložiště Actions účtu má jen 0,5 GB zdarma); zmenšené
   (`DRAFT_EDGE`, `shrinkPreview`) i v `export/draft/[<kolekce>/]<slug>/` obsahového repa s `README.md` (`draftReadme`,
   přehled `draftIndex`), i ve větvi, přepsané jen při změně otisku v README; zveřejněním zmizí (`EXPORT_FILES.draft`).
   Složku má každý draft, s fotkou vždy všechny tři náhledy (i `meta_corners: false` / samé nuly = celá fotka), bez fotky

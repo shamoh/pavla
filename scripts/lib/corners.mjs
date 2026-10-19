@@ -591,8 +591,7 @@ export async function writePreviewFiles(dir, key, buffers) {
 
 /**
  * The three cut previews written into `dir` as <key>-<kind>.jpg (`key`: <slug>-<id> like the work's folder on the
- * site); returns the file names in their order. Locally (npm run preview) and in the pipeline (previews of drafts,
- * the artifact "nahledy-orezu") alike.
+ * site); returns the file names in their order. Locally (npm run preview) and in the pipeline (previews of drafts) alike.
  */
 export async function writePreviews(dir, key, file, value, edges) {
   return writePreviewFiles(dir, key, await previewBuffers(file, value, edges));

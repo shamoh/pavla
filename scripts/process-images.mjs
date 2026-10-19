@@ -35,8 +35,8 @@
 //     mockup-<scene>.jpg      the mockups with the same watermark
 //   (Fler exports only for works on sale: available or reserved; otherwise they are removed)
 //   <contentDir>/tvorba/…/<slug>.yaml  meta_corners (corners of the sheet) written when missing (scripts/lib/corners.mjs)
-//   .previews/<slug>-<id>-*.jpg        cut previews of drafts: -backgrounds, -cut, -frames (outside git; on GitHub the
-//                                      artifact "nahledy-orezu" of the content workflow's run)
+//   .previews/<slug>-<id>-*.jpg        cut previews of drafts: -backgrounds, -cut, -frames (outside git, full size;
+//                                      on GitHub only the smaller ones in export/draft/ are kept)
 //   <contentDir>/export/draft/[<collection>/]<slug>/   the same previews of a draft, smaller (DRAFT_EDGE), in git:
 //     backgrounds.jpg, cut.jpg, frames.jpg, README.md   (also on a branch; removed once the work is published)
 //

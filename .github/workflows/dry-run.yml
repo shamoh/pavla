@@ -1,7 +1,7 @@
 # Dry run of the content workflow (the one that runs the pipeline on the real content) on the test data (demo-content/):
 #   1. the test content is built from demo-content/ into .demo/content (like a checkout of the content repository),
-#   2. the pipeline runs on it as on a branch (--prepare-only, with the cut previews of drafts as the artifact
-#      "nahledy-orezu" in full size, smaller in export/draft/ of the test content) and as on main, writing into this checkout,
+#   2. the pipeline runs on it as on a branch (--prepare-only, with the cut previews of drafts smaller in export/draft/
+#      of the test content) and as on main, writing into this checkout,
 #   3. the pull request is prepared by the same script as the content workflow (scripts/pull-request.mjs) and its
 #      paths are added and committed the way peter-evans/create-pull-request does it,
 #   in two rounds: first without the cover photos of collections (so no public/tvorba/kolekce/<slug>/_cover exists, like
@@ -65,19 +65,6 @@ jobs:
       - name: Pipeline as on a branch (prepare only)
         id: pipeline
         run: npm run images -- --demo --prepare-only
-
-      # kept also when the pipeline fails on the descriptions (as in the workflow of the content repository)
-      - name: Cut previews of drafts
-        if: ${{ !cancelled() && steps.pipeline.outcome != 'skipped' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: nahledy-orezu
-          path: .previews/
-          # nobody downloads the previews of the test data: one day keeps the Actions storage of the account small
-          retention-days: 1
-          if-no-files-found: ignore
-          # the folder starts with a dot: upload-artifact skips such "hidden" files unless asked to (only previews in it)
-          include-hidden-files: true
 
       - name: Pipeline as on main
         run: npm run images -- --demo

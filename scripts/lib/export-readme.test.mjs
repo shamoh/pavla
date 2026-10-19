@@ -130,7 +130,7 @@ test('draftReadme: title, facts, the three previews, the corners used and the fi
   });
   assert.match(text, /^# Rozpracováno: Ráno &lt;u&gt; rybníka\n/);
   assert.ok(text.includes('akvarel · 40 × 30 cm · 2026') && text.includes('Kolekce: Plenér Šumava 2026'));
-  assert.ok(text.includes(`${DRAFT_EDGE} px`) && text.includes('nahledy-orezu'));
+  assert.ok(text.includes(`${DRAFT_EDGE} px`) && !text.includes('nahledy-orezu'), 'no artifact of the run any more');
   for (const f of Object.values(draftFiles)) assert.ok(text.includes(`<a href="${f}"><img src="${f}"`), f);
   assert.match(text, /```yaml\nmeta_corners:\n {2}photo: \[400, 300\]\n```/);
   assert.equal(readmeFingerprint(text), 'abc123');

@@ -138,7 +138,7 @@ export function formatSummary(result, error, { link = null } = {}) {
     ['Nové popisy k doplnění (doplň hodnoty s DOPLNIT, u obrazu pak meta_draft: false)', result.created],
     ['Přidělené kódy obrazů', result.assigned],
     ['Nalezené rohy obrazu (meta_corners; pozadí vně nich, podlaha nebo zeď, bude průhledné, hodnoty smíš upravit; ⚠ = podezřelý ořez)', result.detected ?? []],
-    ['Náhledy ořezu rozpracovaných obrazů (zmenšené v export/draft/, v plné velikosti ke stažení jako „nahledy-orezu“ dole na stránce tohoto běhu)', result.previews ?? []],
+    ['Náhledy ořezu rozpracovaných obrazů (zmenšené v export/draft/)', result.previews ?? []],
     ['Srovnané popisy (nové údaje mají u komentáře DOPLNIT, neznámé NEZNÁMÝ)', result.updated ?? []],
     ['Odstraněno (web a exporty smazaných či přejmenovaných obrazů, náhledy ořezu zveřejněných)', result.pruned],
   ].filter(([, items]) => items.length);
