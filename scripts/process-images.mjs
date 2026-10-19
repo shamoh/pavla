@@ -58,7 +58,7 @@ import YAML from 'yaml';
 import { PUBLIC_COLLECTION_FIELDS, coverSource, prepareCollections, validateCollectionCovers } from './lib/collections.mjs';
 import { PUBLIC_YEAR_FIELDS, prepareYears } from './lib/years.mjs';
 import { PUBLIC_HOME_FIELDS, prepareHome } from './lib/home.mjs';
-import { preparePages, publicPageFields } from './lib/pages.mjs';
+import { PAGES_SUBDIR, preparePages, publicPageFields } from './lib/pages.mjs';
 import { PUBLIC_UNCOLLECTED_FIELDS, prepareUncollected } from './lib/uncollected.mjs';
 import { NO_COLLECTION_TITLE } from './lib/gallery-filter.mjs';
 import {
@@ -71,7 +71,7 @@ import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
 import { rightsXmp } from './lib/image-rights.mjs';
-import { overviewReadme, overviewSizeAdvice } from './lib/overview.mjs';
+import { overviewReadme, overviewSizeAdvice, pagesReadme } from './lib/overview.mjs';
 import { DRAFT_EDGE, STORY_UTM, collectionIndexes, draftIndex, draftReadme, noteMarks, exportIndex, flerReadme, instagramReadme, publishedUrl, readmeFingerprint } from './lib/export-readme.mjs';
 import {
   GRID_DEFAULTS, GRID_VERSION, SCENE_VERSION, captionFacts, detailLayout, detailSuffixes, gridPosts, gridSuffixes, insetWork, instagramPost, instagramSuffixes, loadFonts, loadInstagramScenes, panoramaSlides,
@@ -633,6 +633,10 @@ export async function run({
   if (!only.length) {
     const tooBig = await writeOverview();
     if (tooBig) advice.push(tooBig);
+    // export/stranky/README.md: the texts of the home page, the pages in stranky/ and the years as on the site
+    await writeIfChanged(path.join(exportRoot, PAGES_SUBDIR, README), pagesReadme({
+      pages: pages.pages, home: home.home, years: years.years, siteUrl: overviewSite,
+    }));
   }
   const draftPruned = [];
   // The overview (and one in every collection folder) is written by every run without `only`, also when it fails: a

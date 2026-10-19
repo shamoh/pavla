@@ -57,7 +57,6 @@ test('the text on the page is "text" everywhere, formatted, and description (whe
     const description = s.fields.find((f) => f.key === 'description');
     if (description) assert.ok(description.commented && description.block && !description.rich, `${s.name}: description optional, plain`);
   }
-  for (const s of [WORK_SCHEMA, COLLECTION_SCHEMA, YEAR_SCHEMA, HOME_SCHEMA, UNCOLLECTED_SCHEMA]) assert.deepEqual(s.moved, { description: 'text' }, s.name);
 });
 
 test('an attribute with options lists exactly them in its technical comment, one per line', () => {

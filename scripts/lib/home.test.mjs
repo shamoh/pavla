@@ -31,13 +31,13 @@ test('prepareHome writes a skeleton with the text the home page had, every attri
 });
 
 test('prepareHome finds _cover.jpg and keeps a hand-written file', async () => {
-  await fs.writeFile(path.join(dir, '_index.yaml'), 'description: Ahoj.\n');
+  await fs.writeFile(path.join(dir, '_index.yaml'), 'text: Ahoj.\n');
   await fs.writeFile(path.join(dir, '_cover.jpg'), 'x');
   const r = await prepareHome(dir);
-  assert.equal(r.home.data.text, 'Ahoj.\n', 'the former description is the text now, as a block');
+  assert.equal(r.home.data.text, 'Ahoj.\n', 'as a block');
   assert.equal(r.home.data.description, undefined);
   assert.equal(r.home.coverPath, path.join(dir, '_cover.jpg'));
-  assert.ok(r.updated.some((u) => u.startsWith('_index.yaml') && u.includes('přesunuto description → text')), 'brought in line with the schema');
+  assert.ok(r.updated.some((u) => u.startsWith('_index.yaml')), 'brought in line with the schema');
   assert.equal(r.home.data.empty_closing, '', 'no Instagram given: no sentence');
 });
 
@@ -51,14 +51,14 @@ test('prepareHome reports two home photos; a text that is not text is a problem 
 });
 
 test('prepareHome refuses the former names uvod.yaml and uvod.jpg and writes no skeleton next to them', async () => {
-  await fs.writeFile(path.join(dir, 'uvod.yaml'), 'description: Můj text.\n');
+  await fs.writeFile(path.join(dir, 'uvod.yaml'), 'text: Můj text.\n');
   await fs.writeFile(path.join(dir, 'uvod.jpg'), 'x');
   const r = await prepareHome(dir);
   assert.deepEqual(r.problems, ['uvod.jpg: tento soubor se teď jmenuje _cover.jpg, přejmenuj ho [stare-jmeno-souboru]', 'uvod.yaml: tento soubor se teď jmenuje _index.yaml, přejmenuj ho [stare-jmeno-souboru]']);
   assert.equal(r.home, null);
   assert.deepEqual(r.created, []);
   assert.equal(await fs.access(path.join(dir, '_index.yaml')).then(() => true, () => false), false, 'no skeleton hides the text');
-  assert.equal(await fs.readFile(path.join(dir, 'uvod.yaml'), 'utf8'), 'description: Můj text.\n', 'the old file is left alone');
+  assert.equal(await fs.readFile(path.join(dir, 'uvod.yaml'), 'utf8'), 'text: Můj text.\n', 'the old file is left alone');
 
   // renamed: fine again; a leftover old photo next to the new file is still reported
   await fs.rename(path.join(dir, 'uvod.yaml'), path.join(dir, '_index.yaml'));
@@ -68,7 +68,7 @@ test('prepareHome refuses the former names uvod.yaml and uvod.jpg and writes no 
 });
 
 test('prepareHome: the heading of the home page, added with its default and required', async () => {
-  await fs.writeFile(path.join(dir, '_index.yaml'), 'description: Ahoj.\n');
+  await fs.writeFile(path.join(dir, '_index.yaml'), 'text: Ahoj.\n');
   const r = await prepareHome(dir);
   assert.equal(r.home.data.heading, HOME_HEADING, 'a file from before the heading gets the heading the page had');
   assert.ok(r.updated.some((u) => /doplněno [a-z_, ]*\bheading\b[a-z_, ]* \(výchozí hodnota\)/.test(u)), r.updated.join('\n'));

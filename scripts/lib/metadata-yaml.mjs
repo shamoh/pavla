@@ -21,9 +21,6 @@
 //     whatever style the file had (plain, quoted, ">", ">-", "|-"), lines longer than TEXT_WIDTH broken at a space,
 //     the author's own line breaks kept. A text means its paragraphs (rich-text.mjs normalizeText: a line break is a
 //     space, an empty line a new paragraph), so for these attributes the check compares that meaning,
-//   - an attribute whose meaning moved to another name (`moved` in the schema, e.g. description → text in 2026-10:
-//     description became the text for search engines) is renamed when the file has no attribute of the new name;
-//     the one exception to "never migrated", so files from before (also in other branches) keep their text.
 // Files written before technical comments existed are converted: comments at the end of a line become the author's
 // own comment above the attribute, unless they come from the old templates (LEGACY_COMMENTS).
 
@@ -261,18 +258,6 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
   if (doc.contents !== null && !YAML.isMap(doc.contents)) {
     return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: 'musí to být seznam údajů (klíč: hodnota) [spatny-yaml]' };
   }
-  // an attribute whose meaning moved to another name (`moved`): renamed while the new name is not there yet
-  const moved = [];
-  for (const [from, to] of Object.entries(schema.moved ?? {})) {
-    const items = doc.contents?.items ?? [];
-    const pair = items.find((p) => String(p.key?.value ?? p.key) === from);
-    if (!pair || items.some((p) => String(p.key?.value ?? p.key) === to)) continue;
-    const key = doc.createNode(to);
-    key.commentBefore = pair.key.commentBefore;
-    key.spaceBefore = pair.key.spaceBefore;
-    pair.key = key;
-    moved.push(`${from} → ${to}`);
-  }
   const before = doc.toJS() ?? {};
   const pairs = doc.contents?.items ?? [];
   const byKey = new Map(pairs.map((p) => [String(p.key?.value ?? p.key), p]));
@@ -410,7 +395,7 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
   if (!isDeepStrictEqual(meaning(after), meaning(expected))) {
     return { text: original, changed: false, added: [], unknown, stray: 0, problem: 'automatika tento soubor neumí srovnat, aniž by změnila hodnotu; dej prosím vědět správci webu' };
   }
-  return { text: result, changed: result !== original, added, unknown, stray, moved, problem: null };
+  return { text: result, changed: result !== original, added, unknown, stray, problem: null };
 }
 
 /** A new file of `schema`: every attribute with its default or given value, all marked DOPLNIT except generated ones. */

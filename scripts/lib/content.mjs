@@ -217,7 +217,6 @@ export async function keepInLine(text, schema, file, absPath, updated, problems,
   const final = r.added.filter((k) => settled.has(k));
   if (toCheck.length) notes.push(`doplněno ${toCheck.join(', ')} (DOPLNIT)`);
   if (final.length) notes.push(`doplněno ${final.join(', ')} (výchozí hodnota)`);
-  if (r.moved?.length) notes.push(`přesunuto ${r.moved.join(', ')} (nový význam: description je popis pro vyhledávače)`);
   if (r.unknown.length) notes.push(`neznámé ${r.unknown.join(', ')} (NEZNÁMÝ)`);
   if (r.stray) notes.push(`uklizené zbloudilé komentáře: ${r.stray}`);
   updated.push(`${file}: ${notes.length ? notes.join('; ') : 'srovnány komentáře a pořadí'}`);

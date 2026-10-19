@@ -338,11 +338,9 @@ Každý popis s textem na webu (dílo, kolekce, rok, úvod, „Mimo kolekce“, 
   text (`[popisek-neni-text]`), špatný odkaz, dlouhý `description`.
 - **Technický komentář** u `text` je strukturovaný (řádky s `  - `): jak psát, co znamená zalomení a prázdný řádek,
   a seznam formátování; u `closing` odkaz na něj.
-- **Převod z 2026-10** (`moved: { description: 'text' }` ve schématu díla, kolekce, roku, úvodu a „Mimo kolekce“):
-  dřív byl `description` text na stránce. Soubor s `description` a bez `text` ho pipeline přejmenuje na `text`
-  (souhrn „přesunuto description → text“) i s jeho komentářem (starší znění jsou v `previous` obou atributů); jediná
-  výjimka z pravidla „žádná migrace“, aby texty přežily i ve větvích založených dřív. Soubor, který už `text` má,
-  se nemění: jeho `description` je popis pro vyhledávače.
+- Do 2026-10 byl `description` text na stránce; obsah je převedený (jednorázově, i ve větvích), dnes je
+  `description` vždy jen popis pro vyhledávače a nic se nepřejmenovává. Starší znění jeho komentáře zůstávají
+  v `previous` (`description` i `text`), takže je pipeline pozná a nahradí.
 
 ### Text o roce
 
@@ -1222,6 +1220,17 @@ jen s díly kolekce je i v její složce: `export/<platforma>/<kolekce>/README.m
 u Instagramu i „Příběh kolekce“), úklid je nechá (`wanted`). Kód
 `scripts/lib/export-readme.mjs`; složky děl se píšou každým během (hned následují popis, cenu i štítky), přehledy
 plným během. Úklid je bere jako vlastní soubory pipeline (`EXPORT_FILES`).
+
+### Texty stránek (`export/stranky/README.md`)
+
+Vedle přehledu děl píše každý běh bez `--only` (i ve větvi, i s chybami a `--prepare-only`) soubor
+`export/stranky/README.md` obsahového repa (`pagesReadme` v `scripts/lib/overview.mjs`) ve třech částech oddělených čarou:
+úvodní stránka (`##`, zvláštní: její soubor je `_index.yaml` v kořeni), `## Stránky` ze `stranky/` (O mně, Kontakt, Kurzy,
+404; pořadí pevné, `###`) a `## Roky` od nejnovějšího (`###`; prázdná část chybí), u každé odkaz na její yaml a na stránku
+na webu (404 bez odkazu: ukáže se na každé neexistující adrese), jednořádkové texty jako „Nadpis: …“, „Titulek: …“,
+„Tlačítko: …“, „Popisek místa: …“, „Prázdný web: …“, text a `closing` („Závěr: …“) formátované jako na webu
+(`richTextMarkdown`, odkazy na web s celou adresou), „Google: …“; bez textu „(bez textu)“. Úklid exportů složku
+nemaže (pracuje jen v `draft/`, `instagram/`, `fler/`). Vyzkoušení: `npm run demo`, `.demo/content/export/stranky/README.md`.
 
 ### Přehled všech děl (`export/README.md`)
 

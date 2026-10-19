@@ -283,3 +283,67 @@ export function overviewReadme({ works, collections = [], uncollected = null, no
 export const overviewSizeAdvice = (file, bytes) => (bytes > OVERVIEW_MAX_BYTES
   ? coded('prehled-velky', `${file}: přehled má ${Math.round(bytes / 1000)} kB, GitHub velké soubory nemusí zobrazit (nad ${Math.round(OVERVIEW_MAX_BYTES / 1000)} kB); dej vědět Liborovi`)
   : null);
+
+/** The pages with a text in stranky/, in the order of the overview of pages: their label and address on the site. */
+const PAGE_LABELS = {
+  'o-mne': { label: 'O mně', path: '/o-mne/' },
+  kontakt: { label: 'Kontakt', path: '/kontakt/' },
+  kurzy: { label: 'Kurzy', path: '/kurzy/' },
+  404: { label: 'Stránka nenalezena (404)', path: null },
+};
+
+/** A one-line text of a description, escaped for Markdown ('' for anything else or an empty one). */
+const plainLine = (value) => (typeof value === 'string' && value.trim() ? escText(value) : '');
+
+/**
+ * The lines of one page of the overview of pages: its one-line texts as "label: value" (`head` above the text, `tail`
+ * under it: [[key, label]]), the paragraphs of `text` and `closing` formatted as on the site (richTextMarkdown), the
+ * description for search engines as "Google: …" (textLines). Lines of more lines (the heading of the home page) joined
+ * by " / ".
+ */
+function pageLines(data, siteUrl, { head = [], tail = [] } = {}) {
+  const url = siteAddress(siteUrl);
+  const line = ([key, label]) => {
+    const value = typeof data?.[key] === 'string' ? data[key].split('\n').map((l) => l.trim()).filter(Boolean).join(' / ') : '';
+    return value ? `${label}: ${escText(value)}` : '';
+  };
+  const closing = paragraphs(data?.closing).map((p) => `Závěr: ${richTextMarkdown(p, { url })}`);
+  const empty = paragraphs(data?.empty_closing).map((p) => `Prázdný web, pod ní: ${richTextMarkdown(p, { url })}`);
+  const texts = textLines(data, url);
+  const text = texts.filter((l) => !l.startsWith('Google: '));
+  const google = texts.filter((l) => l.startsWith('Google: '));
+  return [...head.map(line), ...(text.length ? text : ['_(bez textu)_']), ...closing, ...tail.map(line), ...empty, ...google].filter(Boolean);
+}
+
+/**
+ * The overview of the texts of the pages (export/stranky/README.md of the content repository), in three parts split by
+ * a rule: the home page (special: its file is _index.yaml in the root), "Stránky" (every page in stranky/) and "Roky"
+ * (every year), each page with links to its description and its page on the site, its texts formatted as on the site. `pages` [{ name, data, yamlPath }] (preparePages), `home` { data, yamlPath } or null, `years`
+ * [{ year, data, yamlPath }], `siteUrl` the address of the site (without a trailing slash).
+ */
+export function pagesReadme({ pages = [], home = null, years = [], siteUrl = '' }) {
+  const link = (p) => `../../${p.split('/').map(encodeURIComponent).join('/')}`;
+  const web = (p) => (siteUrl && p ? ` · [web](${siteUrl}${p})` : '');
+  const section = (level, title, yamlPath, path, lines) => [`${level} ${title}`, '', `[${escText(yamlPath.split('/').pop())}](${link(yamlPath)})${web(path)}`, '', ...lines.flatMap((l) => [l, ''])];
+  const part = (title, sections) => (sections.length ? ['---', '', `## ${title}`, '', ...sections] : []);
+  // an array, not the keys of PAGE_LABELS: JavaScript puts the key 404 first
+  const known = ['o-mne', 'kontakt', 'kurzy', '404'];
+  const sorted = [...pages].sort((a, b) => known.indexOf(a.name) - known.indexOf(b.name));
+  return `${[
+    '# Texty stránek',
+    '',
+    'Texty úvodní stránky, stránek ze složky `stranky/` a roků tak, jak budou vypadat na webu (tučně, kurzívou, odkazy fungují),',
+    's odkazem na jejich popis a na stránku na webu; „Google: …“ je vlastní popis pro vyhledávače. Píše ho automatika při',
+    'každém zpracování, i ve větvi; jak texty psát, je v README tohoto repa („Jak psát texty“).',
+    '',
+    ...(home ? section('##', 'Úvodní stránka', home.yamlPath, '/', pageLines(home.data, siteUrl, { head: [['heading', 'Nadpis']], tail: [['button', 'Tlačítko'], ['empty_text', 'Prázdný web']] })) : []),
+    ...part('Stránky', sorted.flatMap((p) => {
+      const { label, path } = PAGE_LABELS[p.name] ?? { label: p.name, path: `/${p.name}/` };
+      const title = p.name === 'kurzy' && typeof p.data?.title === 'string' && p.data.title.trim() ? p.data.title.trim() : label;
+      const lines = pageLines(p.data, siteUrl, { head: [['title', 'Titulek'], ['heading', 'Nadpis']], tail: [['location_label', 'Popisek místa']] });
+      return section('###', title, p.yamlPath, path, path ? lines : ['Ukáže se na každé adrese, která na webu neexistuje.', ...lines]);
+    })),
+    ...part('Roky', [...years].sort((a, b) => String(b.year).localeCompare(String(a.year)))
+      .flatMap((y) => section('###', `Rok ${y.year}`, y.yamlPath, `/tvorba/${y.year}/`, pageLines(y.data, siteUrl)))),
+  ].join('\n').replace(/\n+$/, '')}\n`;
+}

@@ -550,7 +550,7 @@ test('private note: never reaches the site repository, not even through comments
     '# koupila teta, nikomu neříkat',
     'title: Ráno',
     'date: 2026-06-14',
-    'description: Veřejný popis.',
+    'text: Veřejný popis.',
     'private_note: |',
     '  Soukromá poznámka.',
     'poznamka: vymyšlené pole',
@@ -600,10 +600,10 @@ test('collections: a folder in tvorba/ is a collection, gets a skeleton titled a
   assert.ok(await exists(path.join(siteDir, 'content/tvorba/2025-jaro-na-zahrade/kvet.yaml')));
   assert.ok(await exists(path.join(siteDir, 'content/tvorba/sam.yaml')));
 
-  await setCollection('2026-plener-sumava', 'title: Plenér Šumava 2026\ndescription: Týden na Kvildě.\nprivate_note: tajné\n');
+  await setCollection('2026-plener-sumava', 'title: Plenér Šumava 2026\ntext: Týden na Kvildě.\nprivate_note: tajné\n');
   await run(opts());
   const copy = await fs.readFile(path.join(siteDir, 'content/tvorba/2026-plener-sumava/_index.yaml'), 'utf8');
-  assert.deepEqual(YAML.parse(copy), { title: 'Plenér Šumava 2026', text: 'Týden na Kvildě.\n' }, 'the former description is the text now');
+  assert.deepEqual(YAML.parse(copy), { title: 'Plenér Šumava 2026', text: 'Týden na Kvildě.\n' });
   assert.doesNotMatch(copy, /tajné/);
   // no cover photo, no cover folder
   assert.ok(!(await exists(path.join(siteDir, 'public/tvorba/kolekce/2026-plener-sumava/_cover'))));
@@ -1124,7 +1124,8 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   for (const p of ['content', 'public']) assert.ok(!(await exists(path.join(siteDir, p))), p);
   // no exports; the new draft has its previews (nothing to cut here: the whole photo) in export/draft/, and the
   // overview of all works is there on a branch too
-  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export'))).sort(), ['README.md', 'draft']);
+  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export'))).sort(), ['README.md', 'draft', 'stranky']);
+  assert.match(await fs.readFile(path.join(contentDir, 'export/stranky/README.md'), 'utf8'), /\n### O mně\n\n\[o-mne\.yaml\]\(\.\.\/\.\.\/stranky\/o-mne\.yaml\) · \[web\]\(https:\/\/[^)]*\/o-mne\/\)\n\nMaluji pro radost\./, 'the texts of the pages also on a branch');
   const overview = await fs.readFile(path.join(contentDir, 'export/README.md'), 'utf8');
   assert.match(overview, /^# Přehled všech děl\n/);
   assert.match(overview, /### Novy · [a-z0-9]{5} @ 2026-05-01\n/);
@@ -1308,10 +1309,10 @@ test('years: a skeleton per year, the public text reaches the site, the private 
   const copyPath = path.join(siteDir, 'content/roky/2026.yaml');
   assert.equal(YAML.parse(await fs.readFile(copyPath, 'utf8')).text, 'Můj oblíbený rok, rok 2026.\n', 'the sample text is public');
 
-  await fs.writeFile(path.join(contentDir, 'roky/2026.yaml'), 'description: |\n  Rok plenérů.\nprivate_note: tajné\n');
+  await fs.writeFile(path.join(contentDir, 'roky/2026.yaml'), 'text: |\n  Rok plenérů.\nprivate_note: tajné\n');
   r = await run(opts());
   const copy = await fs.readFile(copyPath, 'utf8');
-  assert.deepEqual(YAML.parse(copy), { text: 'Rok plenérů.\n' }, 'the former description is the text now');
+  assert.deepEqual(YAML.parse(copy), { text: 'Rok plenérů.\n' });
   assert.doesNotMatch(copy, /tajné/);
 
   await fs.rm(path.join(contentDir, 'roky/2026.yaml'));
@@ -1356,7 +1357,7 @@ test('covers of years and the home page: own photo, cover, focus; share image on
   assert.ok(!(await exists(path.join(siteDir, 'public/og/years'))));
 
   const idRano = await idOf('2026', 'rano');
-  await fs.writeFile(path.join(contentDir, '_index.yaml'), `description: Ahoj.\ncover: ${idRano}\naspect: "1:1"\nfocus: [30, 40]\n`);
+  await fs.writeFile(path.join(contentDir, '_index.yaml'), `text: Ahoj.\ncover: ${idRano}\naspect: "1:1"\nfocus: [30, 40]\n`);
   await sharp({ create: { width: 90, height: 30, channels: 3, background: '#335577' } }).jpeg().toFile(path.join(contentDir, 'roky/2025.jpg'));
   r = await run(opts());
   assert.equal(r.ok, true, r.problems.join('\n'));
@@ -1379,8 +1380,8 @@ test('covers of years and the home page: own photo, cover, focus; share image on
   assert.match(r.problems.join('\n'), /roky\/2025\.yaml: cover .*\(Ráno\) nepatří do 2025/);
 
   // back to random: share crops and photos are removed
-  await fs.writeFile(path.join(contentDir, 'roky/2025.yaml'), 'description: ""\n');
-  await fs.writeFile(path.join(contentDir, '_index.yaml'), 'description: Ahoj.\n');
+  await fs.writeFile(path.join(contentDir, 'roky/2025.yaml'), 'text: ""\n');
+  await fs.writeFile(path.join(contentDir, '_index.yaml'), 'text: Ahoj.\n');
   r = await run(opts());
   assert.equal(r.ok, true, r.problems.join('\n'));
   assert.ok(r.pruned.includes('public/_og/'), r.pruned.join(', '));
@@ -1802,7 +1803,7 @@ test('todo: descriptions still marked DOPLNIT are listed apart ("Zbývá doplnit
 });
 
 test('care of the site: a published work without size or text is a recommendation; without git history no age', async () => {
-  await addWork('2026', 'bez-rozmeru', 'meta_draft: false\ntitle: Bez rozměru\ndate: 2026-06-14\ntechnique: akvarel\ndescription: ""\ntags: [voda]\n');
+  await addWork('2026', 'bez-rozmeru', 'meta_draft: false\ntitle: Bez rozměru\ndate: 2026-06-14\ntechnique: akvarel\ntext: ""\ntags: [voda]\n');
   const r = await run(opts({ prepareOnly: true }));
   assert.equal(r.ok, true, r.problems.join('\n'));
   const mine = r.advice.filter((a) => a.startsWith('tvorba/bez-rozmeru.yaml: '));

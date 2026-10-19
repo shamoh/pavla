@@ -236,7 +236,7 @@ const closingField = (previous = []) => ({
 /**
  * The description for search engines (and link previews), optional: without it they get the beginning of the text.
  * Plain text, never shown on the page. `previous`: former wordings of `description` (also of the time it was the text
- * shown on the page, so the comment of a moved one is recognized).
+ * shown on the page, before 2026-10), so an old comment is recognized and replaced.
  */
 const searchDescriptionField = (previous = []) => ({
   key: 'description',
@@ -272,7 +272,6 @@ export const WORK_SCHEMA = {
   // (`instagram` was the former name of meta_instagram; it is a link to the post now, and a leftover `instagram: true`
   // is reported by the check of that link)
   renamed: { draft: 'meta_draft' },
-  moved: { description: 'text' },
   fields: ordered([
     {
       key: 'id',
@@ -625,7 +624,6 @@ const COLLECTION_DESCRIPTION_BEFORE = [
 
 export const COLLECTION_SCHEMA = {
   name: 'collection',
-  moved: { description: 'text' },
   header: [
     'Kolekce - kostru vytvořila pipeline pro tuto složku.',
     'Obrazy kolekce jsou soubory v této složce. Adresa kolekce na webu je název složky (bez diakritiky).',
@@ -696,7 +694,6 @@ const YEAR_DESCRIPTION_BEFORE = [[
 
 export const YEAR_SCHEMA = {
   name: 'year',
-  moved: { description: 'text' },
   header: [
     'Rok - kostru vytvořila pipeline pro rok, ve kterém jsou obrazy (název souboru je rok).',
     'Text i úvodní obraz jsou nepovinné. Po vyplnění slovo DOPLNIT smaž.',
@@ -725,7 +722,6 @@ export const UNCOLLECTED_TEXT = 'Obrazy, které nepatří do žádné kolekce.';
 
 export const UNCOLLECTED_SCHEMA = {
   name: 'uncollected',
-  moved: { description: 'text' },
   header: [
     'Obrazy mimo kolekce (obrazy přímo ve složce tvorba/) - kostru vytvořila pipeline.',
     'Na přehledu kolekcí jsou poslední položkou „Mimo kolekce“. Úvodní obraz je nepovinný.',
@@ -786,7 +782,6 @@ export const HOME_HEADING = 'Barvy, voda\na trochu náhody\n';
 
 export const HOME_SCHEMA = {
   name: 'home',
-  moved: { description: 'text' },
   header: [
     'Úvodní stránka webu - kostru vytvořila pipeline.',
     'Úvodní obraz je nepovinný. Po kontrole hodnot slovo DOPLNIT smaž.',

@@ -392,20 +392,14 @@ test('blockText: the text of a block, trimmed lines up to TEXT_WIDTH, one empty 
   assert.equal(blockText(`${'x'.repeat(TEXT_WIDTH + 10)} y`), `${'x'.repeat(TEXT_WIDTH + 10)}\ny\n`, 'a word longer than the width stays whole');
 });
 
-test('the real schemas: a former description (the text on the page) moves to text, once; the meaning stays', () => {
-  const long = 'Slovo a ještě jedno slovo, '.repeat(8).trim();
-  for (const schema of [WORK_SCHEMA, COLLECTION_SCHEMA, YEAR_SCHEMA, HOME_SCHEMA, UNCOLLECTED_SCHEMA]) {
-    const r = normalizeMetadata(`description: >-\n  ${long}\n`, schema);
+test('the real schemas: description is only for search engines, never moved to text; a text is added beside it', () => {
+  for (const schema of [WORK_SCHEMA, COLLECTION_SCHEMA, YEAR_SCHEMA, HOME_SCHEMA]) {
+    const r = normalizeMetadata('description: Pro Google.\n', schema);
     assert.equal(r.problem, null, schema.name);
-    assert.deepEqual(r.moved, ['description → text'], schema.name);
-    assert.match(r.text, /\ntext: \|\n {2}Slovo/, schema.name);
+    assert.equal(r.moved, undefined, `${schema.name}: no renaming any more`);
     const data = YAML.parse(r.text);
-    assert.equal(normalizeText(data.text), long, schema.name);
-    assert.equal(data.description, undefined, `${schema.name}: the description for search engines is a new, empty one`);
-    assert.deepEqual(normalizeMetadata(r.text, schema).moved, [], `${schema.name}: nothing moves again`);
-    // with a text already there, a description is the one for search engines and stays
-    const both = normalizeMetadata('text: Text.\ndescription: Pro Google.\n', schema);
-    assert.deepEqual([both.moved, YAML.parse(both.text).description], [[], schema === UNCOLLECTED_SCHEMA ? 'Pro Google.' : 'Pro Google.\n'], schema.name);
+    assert.equal(data.description, 'Pro Google.\n', schema.name);
+    assert.notEqual(data.text, 'Pro Google.\n', `${schema.name}: the text is its own attribute`);
   }
 });
 
@@ -487,10 +481,9 @@ test('skeletons: text ready as a block, a work with DOPLNIT, a collection with a
     const r = normalizeMetadata('title: Ráno\n', schema);
     assert.equal(YAML.parse(r.text).text, null, schema === WORK_SCHEMA ? 'work' : 'collection');
   }
-  // a former wording of the comment of the moved description goes with it
+  // a former wording of the comment of description (from the time it was the text on the page) is replaced
   const old = '# Pár vět o obraze, zobrazí se na jeho stránce. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.\ndescription: Ráno.\n';
-  const moved = normalizeMetadata(old, WORK_SCHEMA).text;
-  assert.ok(moved.includes('# Pár vět o obraze, zobrazí se na jeho stránce.\n# Piš ho pod „text: |“'));
-  assert.ok(!moved.includes('Stačí v uvozovkách'));
-  assert.match(moved, /\ntext: \|\n {2}Ráno\.\n/);
+  const fixed = normalizeMetadata(old, WORK_SCHEMA).text;
+  assert.ok(!fixed.includes('Stačí v uvozovkách'));
+  assert.match(fixed, /# NEPOVINNÉ\. Popis pro vyhledávače[^\n]*\n[^\n]*\ndescription: \|\n {2}Ráno\.\n/);
 });

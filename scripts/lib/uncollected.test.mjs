@@ -32,11 +32,11 @@ test('prepareUncollected writes a skeleton only once a work lies right in tvorba
 });
 
 test('prepareUncollected reads a hand-written file and the own cover photo, also without works', async () => {
-  await fs.writeFile(path.join(dir, 'tvorba', '_index.yaml'), 'cover: k3f9a\naspect: "3:2"\ndescription: Samostatné listy.\n');
+  await fs.writeFile(path.join(dir, 'tvorba', '_index.yaml'), 'cover: k3f9a\naspect: "3:2"\ntext: Samostatné listy.\n');
   await fs.writeFile(path.join(dir, 'tvorba', '_cover.jpg'), 'x');
   const r = await prepareUncollected(dir, false);
   assert.equal(r.uncollected.data.cover, 'k3f9a');
-  assert.equal(r.uncollected.data.text, 'Samostatné listy.\n', 'the former description moved to text');
+  assert.equal(r.uncollected.data.text, 'Samostatné listy.\n');
   assert.equal(r.uncollected.coverPath, path.join(dir, 'tvorba', '_cover.jpg'));
   assert.ok(r.updated.some((u) => u.startsWith('tvorba/_index.yaml')), 'brought in line with the schema');
 });

@@ -32,9 +32,9 @@ test('prepareYears: a skeleton for each year with works, every attribute, a samp
 
 test('prepareYears keeps a text of a year without works and reads it', async () => {
   await fs.mkdir(path.join(dir, 'roky'));
-  await fs.writeFile(file('2024.yaml'), 'description: |\n  Rok plenérů.\n');
+  await fs.writeFile(file('2024.yaml'), 'text: |\n  Rok plenérů.\n');
   const r = await prepareYears(dir, ['2025']);
-  assert.deepEqual(r.years.map((y) => [y.year, y.data.text]), [['2024', 'Rok plenérů.\n'], ['2025', yearSkeletonText('2025')]], 'the former description moved to text');
+  assert.deepEqual(r.years.map((y) => [y.year, y.data.text]), [['2024', 'Rok plenérů.\n'], ['2025', yearSkeletonText('2025')]]);
   assert.ok(r.updated.some((u) => u.startsWith('roky/2024.yaml')), 'brought in line with the schema');
 });
 

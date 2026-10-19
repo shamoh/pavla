@@ -48,9 +48,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `private_*` (jen obsahové repo; vlastní `private_…` smí přidat kdokoli, bez `NEZNÁMÝ`) / `derived_*` (jen toto repo,
   odvozuje pipeline; v obsahovém repu = chyba; teď `derived_modified` díla = den poslední změny veřejných údajů
   nebo obrázků, `lastmod` v mapě webu). Uvnitř skupiny abecedně. Přejmenovaný atribut (`renamed` ve schématu,
-  `draft` → `meta_draft`) = chyba, soubor se nemění, žádná migrace. Jediná výjimka: `moved: { description: 'text' }`
-  (2026-10, dílo, kolekce, rok, úvod, „Mimo kolekce“): soubor s `description` a bez `text` pipeline přejmenuje (změna významu,
-  texty ve větvích by jinak tiše zmizely). (`instagram` byl dřív název `meta_instagram`, dnes
+  `draft` → `meta_draft`) = chyba, soubor se nemění, žádná migrace. (Jednorázový převod `description` → `text`
+  z 2026-10 už proběhl a je odstraněný: `description` je jen popis pro vyhledávače.) (`instagram` byl dřív název `meta_instagram`, dnes
   je to odkaz na příspěvek; zapomenuté `instagram: true` ohlásí kontrola odkazu.)
 - Veřejná kopie yaml obsahuje jen sdílené atributy (`publicKeys(<schéma>)` = `PUBLIC_WORK_FIELDS` / `PUBLIC_COLLECTION_FIELDS`
   / `PUBLIC_YEAR_FIELDS` / `PUBLIC_HOME_FIELDS` / `PUBLIC_PHOTO_FIELDS`, nikdy ručně),
@@ -257,6 +256,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `formatReport` vrací `codes`, výstup `codes` jde do titulku issue v obsahovém repu). Nesoulad atributů díla
   (`consistencyAdvice`: featured bez `meta_pinterest`, odkazy `instagram`/`fler` vs. `meta_instagram`/stav, cena u
   neprodávaného, mockupy bez rozměru, mřížka bez Instagramu, datum v budoucnu) = doporučení.
+  `export/stranky/README.md` obsahového repa = texty úvodu, stránek ze `stranky/` a roků formátované jako na webu (`pagesReadme`,
+  každý běh bez `--only`, i ve větvi).
   `export/README.md` obsahového repa = přehled všech děl na jedné stránce (`overviewReadme`, `scripts/lib/overview.mjs`):
   kolekce abecedně + „Mimo kolekce“, u díla nadpis `<název> ★ · <id> @ <date> [ š x v ]`, odkazy, popis zvlášť, zapnuté
   detaily po řádcích, přepínače slovem (`draft`, `instagram: <odkaz|->`, `pinterest`, `mockups`), ostatní atributy yaml
