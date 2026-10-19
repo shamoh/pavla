@@ -1670,7 +1670,7 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
   rohy listu (`meta_corners`), srovnání popisů, kontroly a náhledy ořezu rozpracovaných děl (`.previews/` a zmenšené
   v `export/draft/` obsahového repa), bez obrázků webu, ostatních exportů a zápisu do tohoto repa.
 - **náhledy ořezu** (`.previews/`) nahraje workflow obsahového repa (na `main` i ve větvi) jako artefakt běhu
-  `nahledy-orezu` v plné velikosti (14 dní, mimo git); zmenšené v `export/draft/` commitne zpět s ostatními změnami
+  `nahledy-orezu` v plné velikosti (1 den, mimo git); zmenšené v `export/draft/` commitne zpět s ostatními změnami
   (viz *Ořez pozadí*); zkušební běh totéž s testovacími daty.
 - Souhrn běhu (`scripts/lib/summary.mjs`) jde do `GITHUB_STEP_SUMMARY`, celý česky (čte ho autorka). Jména souborů
   obsahového repa v něm jsou odkazy na GitHub do větve běhu (`fileLinks` v `scripts/lib/summary-links.mjs`, adresu dává
@@ -2094,7 +2094,7 @@ obojí stejnou funkcí): `<slug>-<id>-cut.jpg` a `<slug>-<id>-frames.jpg` popsan
 (zleva/zprava v % šířky, shora/zdola v % výšky fotky a v px fotky = hodnota `meta_corners`; `cutLabelLines`). Řádek nad
 `images.edges.suspicious` (výchozí 5 %) je červeně, druhý řádek téhož rohu ne. Na světlém je vidět zbylá podlaha, na tmavém i to, kolik papíru se odřízlo. Plný běh
 složku vždy vyprázdní a naplní znovu (zveřejněné dílo náhled nemá). Na GitHubu ji workflow obsahového repa
-nahraje jako artefakt **„nahledy-orezu“** na stránku běhu (dole, *Artifacts*, ke stažení jako zip, 14 dní);
+nahraje jako artefakt **„nahledy-orezu“** na stránku běhu (dole, *Artifacts*, ke stažení jako zip, 1 den: plné náhledy zabírají hodně místa v úložišti Actions účtu);
 souhrn běhu náhledy vyjmenuje. Jinou složku dá `run({ previewDir })`.
 
 **Náhledy rozpracovaných děl v gitu (`export/draft/`):** tytéž tři náhledy (`previewBuffers`) zmenšené na delší stranu
