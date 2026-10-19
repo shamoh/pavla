@@ -3,6 +3,8 @@
 // never a regular expression), whatever the case and diacritics ("stek" finds "Štěkeň"); spaces between words
 // do not matter. Shared by the browser scripts and the tests.
 
+import { plainText } from './rich-text.mjs';
+
 /** Longest query kept (a longer one is cut): enough for any name, short enough for a URL. */
 export const SEARCH_MAX = 80;
 
@@ -26,7 +28,7 @@ export function matchesQuery(name, q) {
  * text carries) as one searchKey, ready for matchesQuery.
  * Computed once at build time into the card (data-search), so typing never normalizes hundreds of texts again.
  */
-export const searchText = (work) => searchKey([work.title, work.description, work.id].filter(Boolean).join(' '));
+export const searchText = (work) => searchKey([work.title, plainText(work.text), plainText(work.description), work.id].filter(Boolean).join(' '));
 
 /**
  * The id of a work when query `q` is exactly one of `ids` (the works of the listing) and nothing else: one word,

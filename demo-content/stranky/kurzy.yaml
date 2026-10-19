@@ -1,0 +1,41 @@
+# Textová stránka webu (adresa = název souboru, např. stranky/kurzy.yaml = /kurzy/).
+# Stránka je na webu, dokud tento soubor existuje; do menu ji přidá správce webu.
+
+# NEPOVINNÉ. Závěrečný odstavec pod textem, menším tlumeným písmem (např. pozvání, ať mi lidé napíšou).
+# Piš ho pod „closing: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez závěrečného odstavce.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+closing: |
+  Tlumený závěr obecné stránky.
+
+# NEPOVINNÉ. Popis pro vyhledávače a náhled odkazu (Google, Facebook, WhatsApp): jedna nebo dvě věty, nejvýš
+# 160 znaků, bez formátování; na stránce se neukáže. Prázdné = začátek textu.
+description: |
+  Testovací obecná textová stránka /kurzy/ z demo-content/stranky/kurzy.yaml.
+
+# Text stránky pod nadpisem.
+# Piš ho pod „text: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez textu.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+text: |
+  Obecná textová stránka: existuje jen díky souboru **demo-content/stranky/kurzy.yaml**.
+
+  Druhý odstavec s [odkazem na kontakt](/kontakt/).
+
+# Nadpis stránky, zároveň titulek v záložce prohlížeče, např. „Kurzy“. Povinné.
+title: Kurzy
+
+# NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+# private_note: co jsem na stránce změnila a proč

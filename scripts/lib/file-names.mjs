@@ -10,12 +10,13 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { COVER_NAME, INDEX_FILE, RETIRED_NAMES, WORKS_SUBDIR } from './content.mjs';
+import { PAGES_SUBDIR } from './pages.mjs';
 import { PHOTOS_SUBDIR } from './photos.mjs';
 import { YEARS_SUBDIR } from './years.mjs';
 import { IMAGE_EXTENSIONS, slugify, splitExt } from './works.mjs';
 
 /** Folders of the content whose names are checked, recursively (and the system files of the content root). */
-export const NAMED_FOLDERS = [WORKS_SUBDIR, PHOTOS_SUBDIR, YEARS_SUBDIR];
+export const NAMED_FOLDERS = [WORKS_SUBDIR, PHOTOS_SUBDIR, YEARS_SUBDIR, PAGES_SUBDIR];
 
 /** The one spelling of an extension that has two: the other one is refused, with the proposal to rename. */
 export const EXTENSION_SPELLING = { jpeg: 'jpg' };

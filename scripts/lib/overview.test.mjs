@@ -9,7 +9,7 @@ const works = [
   },
   {
     yamlPath: 'tvorba/plener/vecer.yaml', photoPath: null, id: 'b2c3d', collection: 'plener', pageUrl: '',
-    data: { meta_draft: true, id: 'b2c3d', date: '2026-07-01', title: 'Večer', description: '' },
+    data: { meta_draft: true, id: 'b2c3d', date: '2026-07-01', title: 'Večer', text: '' },
   },
   { yamlPath: 'tvorba/sam.yaml', photoPath: 'tvorba/sam.jpg', id: 'c3d4e', collection: null, pageUrl: '', data: { id: 'c3d4e', date: '2020-01-01', title: 'Sám' } },
 ];
@@ -17,7 +17,7 @@ const collections = [
   { slug: 'zima', yamlPath: 'tvorba/zima/_index.yaml', data: { title: 'Zima' } },
   { slug: 'plener', yamlPath: 'tvorba/plener/_index.yaml', data: { title: 'Plenér', private_note: 'jen pro nás' } },
 ];
-const uncollected = { yamlPath: 'tvorba/_index.yaml', data: { description: 'Obrazy mimo kolekce.' } };
+const uncollected = { yamlPath: 'tvorba/_index.yaml', data: { text: 'Obrazy mimo kolekce.\n' } };
 const noted = {
   problems: ['tvorba/plener/vecer.yaml: chybí název (title) [chybi-nazev]'],
   advice: [
@@ -38,7 +38,7 @@ test('overviewReadme: collections alphabetically, "Mimo kolekce" last, works new
   assert.deepEqual([...at].sort((a, b) => a - b), at);
   assert.match(text, /\ninstagram: - · tags: mlha, řeka · private_note: koupila teta\n/, 'switches as words, told attributes left out');
   assert.match(text, /\ndraft\n/, 'a draft');
-  assert.doesNotMatch(text, /(^|· )(meta_\w+|id|date|title|featured|size_cm|description|mockups): /m, 'attributes told elsewhere');
+  assert.doesNotMatch(text, /(^|· )(meta_\w+|id|date|title|featured|size_cm|text|description|mockups): /m, 'attributes told elsewhere');
   assert.match(text, /\n\[rano\.yaml\]\(\.\.\/tvorba\/plener\/rano\.yaml\) · \[foto\]\(\.\.\/tvorba\/plener\/rano\.jpg\) · \[web\]\(https:\/\/x\.cz\/tvorba\/2026\/rano-a1b2c\/\)/);
   assert.match(text, /\n\[vecer\.yaml\]\(\.\.\/tvorba\/plener\/vecer\.yaml\) · bez fotky\n/, 'only the file name as the text, the whole path in the link');
   assert.match(text, /\n## Plenér\n\n\[[^\n]*\n\nprivate_note: jen pro nás\n/, 'the attributes of a collection, its title is the heading');
@@ -119,13 +119,14 @@ test('workHeading: title, id, star, date and size, each only when set', () => {
   for (const bad of [undefined, [0, 0], [21], 'DOPLNIT']) assert.equal(sizeMark(bad), '', String(bad));
 });
 
-test('workLines: the description first, switches that are on as words, nothing told elsewhere', () => {
+test('workLines: the text first, then its description for search engines, switches that are on as words, nothing told elsewhere', () => {
   const d = {
     meta_corners: { photo: [1, 1] }, meta_draft: true, meta_instagram: true, meta_pinterest: true, id: 'a1b2c', date: '2026-09-27',
-    description: 'Ráno u jezu.', featured: true, instagram: 'https://www.instagram.com/p/x/', mockups: true, size_cm: [21, 15],
+    text: 'Ráno u jezu.', description: 'Pro Google.', featured: true, instagram: 'https://www.instagram.com/p/x/', mockups: true, size_cm: [21, 15],
     status: 'sold', title: 'Ráno',
   };
-  assert.deepEqual(workLines(d), ['Ráno u jezu.', 'draft · instagram: https://www.instagram.com/p/x/ · pinterest · mockups · status: sold']);
+  assert.deepEqual(workLines(d), ['Ráno u jezu.', 'Google: Pro Google.', 'draft · instagram: https://www.instagram.com/p/x/ · pinterest · mockups · status: sold']);
+  assert.deepEqual(workLines({ ...d, description: undefined, text: 'Řádek\n  dva.\n' })[0], 'Řádek dva.', 'a text of more lines on one line');
   assert.deepEqual(workLines({ ...d, instagram: undefined }).at(-1), 'draft · instagram: - · pinterest · mockups · status: sold', 'Instagram photos without a link yet');
   assert.deepEqual(workLines({ meta_draft: false, meta_instagram: false, meta_pinterest: false, mockups: false, instagram: 'https://www.instagram.com/p/x/' }),
     ['instagram: https://www.instagram.com/p/x/'], 'a link without Instagram photos is an attribute; switches that are off say nothing');
@@ -133,9 +134,19 @@ test('workLines: the description first, switches that are on as words, nothing t
 });
 
 test('workLines: each detail photo on a line of its own under the description, the default status left out', () => {
-  const d = { description: 'Ráno u jezu.', details: { mlha: 'Mlha nad vodou.', brana: '' }, status: 'not-for-sale', technique: 'akvarel' };
+  const d = { text: 'Ráno u jezu.', details: { mlha: 'Mlha nad vodou.', brana: '' }, status: 'not-for-sale', technique: 'akvarel' };
   assert.deepEqual(workLines(d), ['Ráno u jezu.', 'detail mlha: Mlha nad vodou.', 'detail brana', 'technique: akvarel']);
   assert.deepEqual(workLines({ ...d, status: 'sold' }).at(-1), 'status: sold · technique: akvarel');
   assert.deepEqual(workLines({ details: {}, status: 'available' }), ['status: available'], 'no details, no lines');
   assert.deepEqual(workLines({ details: 'les' }), ['details: les'], 'a wrong value stays an attribute (the checks report it)');
+});
+
+test('workLines: text and captions of details formatted as on the site, links to the site with its full address', () => {
+  const d = { text: 'Ráno **u jezu**.\n\nDruhý odstavec, [kolekce](/tvorba/kolekce/x/).\n', description: 'Pro *Google*.', details: { mlha: 'Mlha *nad* vodou.' } };
+  assert.deepEqual(workLines(d, { siteUrl: 'https://pavla.example' }), [
+    'Ráno **u jezu**.',
+    'Druhý odstavec, [kolekce](https://pavla.example/tvorba/kolekce/x/).',
+    'Google: Pro \\*Google\\*.',
+    'detail mlha: Mlha *nad* vodou.',
+  ]);
 });

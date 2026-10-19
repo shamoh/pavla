@@ -1,0 +1,42 @@
+# Stránka, která se ukáže na neexistující adrese (chyba 404) - kostru vytvořila pipeline s textem, který stránka měla.
+# Pod textem jsou vždy tři obrazy z výběru autorky. Vyhledávače tuto stránku neindexují.
+
+# NEPOVINNÉ. Závěrečný odstavec pod textem, menším tlumeným písmem (např. pozvání, ať mi lidé napíšou).
+# Piš ho pod „closing: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez závěrečného odstavce.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+closing: |
+  Zkuste [výběr autorky](/tvorba/?featured=1) nebo [celou tvorbu](/tvorba/).
+
+# NEPOVINNÉ. Popis pro vyhledávače a náhled odkazu (Google, Facebook, WhatsApp): jedna nebo dvě věty, nejvýš
+# 160 znaků, bez formátování; na stránce se neukáže. Prázdné = začátek textu.
+description: |
+  Testovací stránka 404 z demo-content/stranky/404.yaml.
+
+# Velký nadpis stránky, např. „Tento obraz ještě nebyl namalován“. Povinné.
+heading: Testovací nadpis stránky 404
+
+# Text stránky pod nadpisem.
+# Piš ho pod „text: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez textu.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+text: |
+  Na téhle adrese nic není (testovací text z demo-content/stranky/404.yaml).
+
+# Titulek v záložce prohlížeče, např. „Obraz, který ještě nevznikl“. Povinné.
+title: Testovací obraz, který nevznikl
+
+# NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+# private_note: co jsem na stránce změnila a proč

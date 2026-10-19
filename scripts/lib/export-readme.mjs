@@ -5,6 +5,8 @@
 // export/draft/ is the same for the cut previews of drafts (draftReadme, draftIndex).
 
 import { captionFacts } from './instagram.mjs';
+import { textPreviewLines } from './overview.mjs';
+import { ownText } from './rich-text.mjs';
 import { withParams } from './pinterest.mjs';
 
 /**
@@ -128,7 +130,7 @@ export function flerReadme({ work, year, files, collection = '', pageUrl = '' })
   const info = [publishedLine(work, 'fler'), ...about({ collection, pageUrl, code: work.id })];
   const facts = [captionFacts(work, year), work.support].filter(Boolean).join(', ');
   const price = typeof work.price === 'number' ? `${work.price.toLocaleString('cs-CZ')} Kč` : '';
-  const description = typeof work.description === 'string' && !/^\s*DOPLNIT/.test(work.description) ? work.description.trim() : '';
+  const description = ownText(work.text);
   const parts = [
     `# Fler: ${escMd(work.title)}`,
     '',
@@ -278,9 +280,20 @@ export const readmeFingerprint = (text) => /<!-- otisk: ([0-9a-f]+) -->/.exec(St
 /**
  * README of the folder of a draft in export/draft/: { work, year, files: { backgrounds, cut, frames } (file names; null
  * = no previews yet), corners (meta_corners as YAML lines), collection (title), fingerprint (of the previews, kept as
- * a comment), notes (workNotes in scripts/lib/summary.mjs: what the run summary says about this work; null = none) }.
+ * a comment), notes (workNotes in scripts/lib/summary.mjs: what the run summary says about this work; null = none),
+ * siteUrl (for full addresses of links to the site in its texts) }. Its texts are shown as on the site (textPreviewLines).
  */
-export function draftReadme({ work, year, files, corners = '', collection = '', fingerprint = '', notes = null, noPreviews = 'errors' }) {
+export function draftReadme({ work, year, files, corners = '', collection = '', fingerprint = '', notes = null, noPreviews = 'errors', siteUrl = '' }) {
+  // the texts as they will look on its page (formatted like the overview export/README.md)
+  const texts = textPreviewLines(work, siteUrl);
+  const text = [
+    '',
+    '## Text na webu',
+    '',
+    ...(texts.length
+      ? ['Text obrazu tak, jak bude vypadat na jeho stránce (tučně, kurzívou, odkazy), vlastní popis pro Google a popisky detailů.', '', ...texts.flatMap((l) => [l, ''])].slice(0, -1)
+      : ['Obraz zatím nemá text (`text` v jeho popisu).']),
+  ];
   const sections = notes ? [
     ['✗ Chyby', 'Brání zveřejnění, oprav je v popisu obrazu.', notes.errors],
     ['⚠ Ke kontrole', 'Nic nezastaví, ale stojí za pohled.', notes.review],
@@ -325,6 +338,7 @@ export function draftReadme({ work, year, files, corners = '', collection = '', 
         + ` Zmenšené na ${DRAFT_EDGE} px, v plné velikosti jsou ke stažení jako „nahledy-orezu“ dole na stránce běhu zpracování. Klikni na obrázek pro plnou velikost.`
       : `${escMd(captionFacts(work, year))}. Rozpracovaný obraz: až ho zveřejníš (\`meta_draft: false\`), tahle složka sama zmizí.`),
     ...(work.id || collection ? ['', about({ collection, code: work.id }).join('  \n')] : []),
+    ...text,
     ...state,
     ...images,
     ...(corners ? ['', '## Použité rohy', '', '```yaml', corners, '```'] : []),

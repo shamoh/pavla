@@ -5,10 +5,13 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
-import { DETAIL_CAPTION_TODO, commentedOutReview, findUnknownAttributes, placeholderProblems, schemaOfFile, findUnknownTechniques, prepareContent, readTree, withId } from './content.mjs';
+import {
+  DETAIL_CAPTION_TODO, allTextProblems, commentedOutReview, findUnknownAttributes, placeholderProblems, schemaOfFile, findUnknownTechniques, prepareContent, readTree,
+  textProblems, withId,
+} from './content.mjs';
 import { todoKeys } from './metadata-yaml.mjs';
 import { isValidId, validateWorks } from './works.mjs';
-import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, UNCOLLECTED_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA } from './schema.mjs';
+import { COLLECTION_SCHEMA, HOME_SCHEMA, PAGE_SCHEMAS, PHOTO_SCHEMA, UNCOLLECTED_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA } from './schema.mjs';
 
 let dir;
 const worksDir = () => path.join(dir, 'tvorba');
@@ -239,16 +242,16 @@ test('findUnknownTechniques lists techniques without an art form with their work
 test('placeholderProblems: texts starting with DOPLNIT in collections, years, the home page and photos of pages', () => {
   const problems = placeholderProblems({
     collections: [{ yamlPath: 'tvorba/plener/_index.yaml', data: { title: 'DOPLNIT název', private_note: 'DOPLNIT' } }],
-    years: [{ yamlPath: 'roky/2026.yaml', data: { description: 'DOPLNIT pár vět' } }, { yamlPath: 'roky/2025.yaml', data: { description: 'Rok.' } }],
+    years: [{ yamlPath: 'roky/2026.yaml', data: { text: 'DOPLNIT pár vět' } }, { yamlPath: 'roky/2025.yaml', data: { text: 'Rok.' } }],
     home: { yamlPath: '_index.yaml', data: { description: ' DOPLNIT' } },
-    uncollected: { yamlPath: 'tvorba/_index.yaml', data: { description: 'DOPLNIT text' } },
+    uncollected: { yamlPath: 'tvorba/_index.yaml', data: { text: 'DOPLNIT text' } },
     photos: [{ name: 'portret', data: { alt: 'Portrét', caption: 'DOPLNIT popisek' } }],
   });
   assert.deepEqual(problems, [
     'tvorba/plener/_index.yaml: title pořád začíná „DOPLNIT“, přepiš ho [doplnit-verejny]',
-    'roky/2026.yaml: description pořád začíná „DOPLNIT“, přepiš ho [doplnit-verejny]',
+    'roky/2026.yaml: text pořád začíná „DOPLNIT“, přepiš ho [doplnit-verejny]',
     '_index.yaml: description pořád začíná „DOPLNIT“, přepiš ho [doplnit-verejny]',
-    'tvorba/_index.yaml: description pořád začíná „DOPLNIT“, přepiš ho [doplnit-verejny]',
+    'tvorba/_index.yaml: text pořád začíná „DOPLNIT“, přepiš ho [doplnit-verejny]',
     'fotky/portret.yaml: caption pořád začíná „DOPLNIT“, přepiš ho [doplnit-verejny]',
   ]);
   assert.deepEqual(placeholderProblems({}), []);
@@ -274,17 +277,33 @@ test('schemaOfFile: the schema of a description by its place in the content repo
   assert.equal(schemaOfFile('roky/2026.yaml'), YEAR_SCHEMA);
   assert.equal(schemaOfFile('fotky/portret.yaml'), PHOTO_SCHEMA);
   assert.equal(schemaOfFile('_index.yaml'), HOME_SCHEMA);
+  assert.equal(schemaOfFile('stranky/o-mne.yaml'), PAGE_SCHEMAS['o-mne']);
+  assert.equal(schemaOfFile('stranky/kontakt.yaml'), PAGE_SCHEMAS.kontakt);
+  assert.equal(schemaOfFile('stranky/blog.yaml'), null);
   assert.equal(schemaOfFile('export/draft/README.yaml'), null);
 });
 
 test('commentedOutReview: commented-out attributes that are not optional, with what to do', () => {
   const r = commentedOutReview([
     { file: 'tvorba/rano.yaml', text: 'id: k3f9a\n# id: TODO\n# title: Ráno\n# price: 2500\n' },
-    { file: 'roky/2026.yaml', text: '# description: Rok.\n' },
+    { file: 'roky/2026.yaml', text: '# text: Rok.\n# description: Pro Google.\n' },
     { file: 'jinde.yaml', text: '# id: TODO\n' },
   ]);
   assert.equal(r.length, 3);
   assert.match(r[0], /^tvorba\/rano\.yaml: řádek „# id: TODO“ je zakomentovaný údaj id, který už v souboru je; .*smaž ho \[zakomentovany-udaj\]$/);
   assert.match(r[1], /^tvorba\/rano\.yaml: řádek „# title: Ráno“ je zakomentovaný údaj title; .*odkomentuj ho/);
-  assert.match(r[2], /^roky\/2026\.yaml: .*údaj description;/);
+  assert.match(r[2], /^roky\/2026\.yaml: .*údaj text;/, 'a commented-out description for search engines is optional, no review');
+});
+
+test('textProblems and allTextProblems: texts that are no text, bad links, a long description of every kind of description', () => {
+  const work = { yamlPath: 'tvorba/rano.yaml', data: { text: 'Viz [Fler](www.fler.cz).', description: 'a'.repeat(161) } };
+  const year = { yamlPath: 'roky/2026.yaml', data: { text: ['a'] } };
+  const home = { yamlPath: '_index.yaml', data: { text: 'Ahoj **světe**, [tvorba](/tvorba/).', empty_closing: '[x](instagram.com)' } };
+  const problems = allTextProblems({ works: [work], years: [year], home, collections: [], uncollected: null });
+  assert.deepEqual(problems.map((p) => p.match(/^(\S+): .*\[([a-z-]+)\]$/).slice(1).join(' ')), [
+    'tvorba/rano.yaml popis-stranky-dlouhy', 'tvorba/rano.yaml spatny-odkaz-v-textu', 'roky/2026.yaml popisek-neni-text', '_index.yaml spatny-odkaz-v-textu',
+  ]);
+  assert.deepEqual(textProblems('tvorba/x.yaml', { text: 'Dobrý **text**.', description: 'Krátký.' }, WORK_SCHEMA), []);
+  assert.deepEqual(textProblems('tvorba/x.yaml', { description: '[odkaz](x)' }, WORK_SCHEMA), [], 'description is plain: links not checked');
+  assert.deepEqual(textProblems('tvorba/x.yaml', { details: { mlha: '[ok](/tvorba/) **mlha**', most: '[zlé](most)' } }, WORK_SCHEMA).map((p) => p.match(/v (details \S+) má/)[1]), ['details most'], 'captions of details are formatted too');
 });

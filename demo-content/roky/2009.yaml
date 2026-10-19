@@ -10,13 +10,25 @@
 # Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.
 # cover: k3f9a
 
-# DOPLNIT Pár vět o roce za sebe (jaký byl, co se v tvorbě dělo); zobrazí se nahoře na stránce roku /tvorba/<rok>/.
-# Text piš pod „description: |“, každý řádek odsazený dvěma mezerami. Prázdné "" = bez textu.
-description: ""
+# NEPOVINNÉ. Popis pro vyhledávače a náhled odkazu (Google, Facebook, WhatsApp): jedna nebo dvě věty, nejvýš
+# 160 znaků, bez formátování; na stránce se neukáže. Prázdné = začátek textu.
+# description: Jedna nebo dvě věty pro Google, nejvýš 160 znaků.
 
 # NEPOVINNÉ. Při ořezu vybraného obrazu zůstane vidět [zleva %, shora %], např. [50, 50] = střed, [80, 30] = vpravo nahoře.
 # Jen s aspect = střed. Náhodný obraz se neořezává.
 # focus: [50, 50]
+
+# DOPLNIT Pár vět o roce za sebe (jaký byl, co se v tvorbě dělo), nahoře na stránce roku /tvorba/<rok>/.
+# Piš ho pod „text: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez textu.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+text: ""
 
 # NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
 # private_note: kde obraz visí, komu patří

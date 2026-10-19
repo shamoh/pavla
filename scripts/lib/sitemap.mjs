@@ -15,11 +15,13 @@ const latest = (works) => works.map((w) => w.modified).filter(Boolean).sort().at
  * and the works. `works`: [{ year, key, collection, modified }] (modified = derived_modified of the public copy),
  * `years`: [2026, …], `collections`: [{ slug, works }]. A work: the day it last changed; a list (year, collection,
  * the home page, all works, the collections): the newest change of its works; O mně and Kontakt: none (unknown).
+ * `pages`: names of the generic text pages that exist (/<name>/ after the static pages, no lastmod).
  */
-export function sitemapEntries({ years = [], collections = [], works = [] }) {
+export function sitemapEntries({ years = [], collections = [], works = [], pages = [] }) {
   const all = latest(works);
   return [
     ...STATIC_PAGES.map((path) => ({ path, lastmod: LISTS_ALL.has(path) ? all : undefined })),
+    ...pages.map((name) => ({ path: `/${name}/`, lastmod: undefined })),
     ...years.map((y) => ({ path: `/tvorba/${y}/`, lastmod: latest(works.filter((w) => w.year === y)) })),
     ...collections.map((c) => ({ path: `/tvorba/kolekce/${c.slug}/`, lastmod: latest(c.works ?? works.filter((w) => w.collection === c.slug)) })),
     ...works.map((w) => ({ path: `/tvorba/${w.year}/${w.key}/`, lastmod: w.modified })),

@@ -16,8 +16,11 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { photoDate } from './exif.mjs';
 import { commentedOutKeys, normalizeMetadata, skeleton, todoKeys, yamlProblem } from './metadata-yaml.mjs';
+import { linkProblems, plainText } from './rich-text.mjs';
 import { artform } from './seo.mjs';
-import { COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, UNCOLLECTED_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA, publicKeys } from './schema.mjs';
+import {
+  COLLECTION_SCHEMA, HOME_SCHEMA, PAGE_DESCRIPTION_CHARS, PAGE_SCHEMAS, PHOTO_SCHEMA, TODO, UNCOLLECTED_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA, publicKeys,
+} from './schema.mjs';
 import { IMAGE_EXTENSIONS, dateYear, generateId, isValidId, slugify, splitExt, titleFromName, todoProblems } from './works.mjs';
 
 export const WORKS_SUBDIR = 'tvorba';
@@ -125,17 +128,61 @@ async function readDetails(dir, where) {
 }
 
 /**
- * Texts still starting with DOPLNIT in the descriptions that are always public: collections, years, the home page and
- * photos of pages (works: validateWorks, only once published). Each list as the prepare* functions return it:
- * collections and years [{ data, yamlPath }], home and uncollected { data, yamlPath } or null, photos [{ name, data }].
+ * Texts still starting with DOPLNIT in the descriptions that are always public: collections, years, the home page,
+ * photos of pages and texts of pages (works: validateWorks, only once published). Each list as the prepare* functions
+ * return it: collections and years [{ data, yamlPath }], home and uncollected { data, yamlPath } or null, photos
+ * [{ name, data }], pages [{ name, data, yamlPath }].
  */
-export function placeholderProblems({ collections = [], years = [], home = null, uncollected = null, photos = [] }) {
+export function placeholderProblems({ collections = [], years = [], home = null, uncollected = null, photos = [], pages = [] }) {
   return [
     ...collections.flatMap((c) => todoProblems(c.yamlPath, c.data, publicKeys(COLLECTION_SCHEMA))),
     ...years.flatMap((y) => todoProblems(y.yamlPath, y.data, publicKeys(YEAR_SCHEMA))),
     ...(home ? todoProblems(home.yamlPath, home.data, publicKeys(HOME_SCHEMA)) : []),
     ...(uncollected ? todoProblems(uncollected.yamlPath, uncollected.data, publicKeys(UNCOLLECTED_SCHEMA)) : []),
     ...photos.flatMap((p) => todoProblems(`fotky/${p.name}.yaml`, p.data, publicKeys(PHOTO_SCHEMA))),
+    ...pages.flatMap((p) => todoProblems(p.yamlPath, p.data, publicKeys(PAGE_SCHEMAS[p.name]))),
+  ];
+}
+
+/**
+ * Problems of the texts of one description (Czech, for the run summary): a text attribute (`block` in the schema)
+ * that is no text, a link of a formatted one (`rich`, or each text of a map `richMap`: captions of details) that cannot
+ * stay a link, a description for search engines longer than PAGE_DESCRIPTION_CHARS.
+ */
+export function textProblems(yamlPath, data, schema) {
+  const problems = [];
+  for (const field of schema.fields.filter((f) => f.richMap)) {
+    const map = data?.[field.key];
+    if (!map || typeof map !== 'object' || Array.isArray(map)) continue;
+    for (const [name, value] of Object.entries(map)) problems.push(...linkProblems(yamlPath, `${field.key} ${name}`, value));
+  }
+  for (const field of schema.fields.filter((f) => f.block)) {
+    const value = data?.[field.key];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== 'string') {
+      problems.push(`${yamlPath}: ${field.key} musí být text [popisek-neni-text]`);
+      continue;
+    }
+    if (field.rich) problems.push(...linkProblems(yamlPath, field.key, value));
+    const length = plainText(value).length;
+    if (field.key === 'description' && length > PAGE_DESCRIPTION_CHARS) {
+      problems.push(`${yamlPath}: description má ${length} znaků, zkrať ho nejvýš na ${PAGE_DESCRIPTION_CHARS} (delší vyhledávače uříznou) [popis-stranky-dlouhy]`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * textProblems of every description except the pages (checked by preparePages), each list as the prepare* functions
+ * return it (works, collections and years [{ data, yamlPath }], home and uncollected { data, yamlPath } or null).
+ */
+export function allTextProblems({ works = [], collections = [], years = [], home = null, uncollected = null }) {
+  return [
+    ...works.flatMap((w) => textProblems(w.yamlPath, w.data, WORK_SCHEMA)),
+    ...collections.flatMap((c) => textProblems(c.yamlPath, c.data, COLLECTION_SCHEMA)),
+    ...years.flatMap((y) => textProblems(y.yamlPath, y.data, YEAR_SCHEMA)),
+    ...(home ? textProblems(home.yamlPath, home.data, HOME_SCHEMA) : []),
+    ...(uncollected ? textProblems(uncollected.yamlPath, uncollected.data, UNCOLLECTED_SCHEMA) : []),
   ];
 }
 
@@ -154,9 +201,10 @@ export const skeletonYaml = ({ id, title, date, details = [] }) => skeleton(WORK
 /**
  * Brings the YAML of one content file in line with its schema (scripts/lib/metadata-yaml.mjs) and writes it when
  * it changed. Adds to `updated` ("<file>: …" in Czech, for the run summary) and `problems`. Returns the new text.
+ * `values`: values of attributes added to the file instead of their `missing` (e.g. a text built from the settings).
  */
-export async function keepInLine(text, schema, file, absPath, updated, problems) {
-  const r = normalizeMetadata(text, schema);
+export async function keepInLine(text, schema, file, absPath, updated, problems, values = {}) {
+  const r = normalizeMetadata(text, schema, { values });
   if (r.problem) {
     problems.push(`${file}: ${r.problem}`);
     return text;
@@ -169,6 +217,7 @@ export async function keepInLine(text, schema, file, absPath, updated, problems)
   const final = r.added.filter((k) => settled.has(k));
   if (toCheck.length) notes.push(`doplněno ${toCheck.join(', ')} (DOPLNIT)`);
   if (final.length) notes.push(`doplněno ${final.join(', ')} (výchozí hodnota)`);
+  if (r.moved?.length) notes.push(`přesunuto ${r.moved.join(', ')} (nový význam: description je popis pro vyhledávače)`);
   if (r.unknown.length) notes.push(`neznámé ${r.unknown.join(', ')} (NEZNÁMÝ)`);
   if (r.stray) notes.push(`uklizené zbloudilé komentáře: ${r.stray}`);
   updated.push(`${file}: ${notes.length ? notes.join('; ') : 'srovnány komentáře a pořadí'}`);
@@ -178,7 +227,7 @@ export async function keepInLine(text, schema, file, absPath, updated, problems)
 /**
  * The schema of a description by its path in the content repository ("/" separators): tvorba/_index.yaml is
  * "Mimo kolekce", another _index.yaml in tvorba/ a collection, the rest of tvorba/ works, roky/ years, fotky/
- * photos, _index.yaml in the root the home page; null for anything else.
+ * photos, stranky/<page>.yaml the texts of pages (PAGE_SCHEMAS), _index.yaml in the root the home page; null for anything else.
  */
 export function schemaOfFile(file) {
   if (file === INDEX_FILE) return HOME_SCHEMA;
@@ -186,6 +235,7 @@ export function schemaOfFile(file) {
   if (file.startsWith(`${WORKS_SUBDIR}/`)) return path.posix.basename(file) === INDEX_FILE ? COLLECTION_SCHEMA : WORK_SCHEMA;
   if (file.startsWith('roky/')) return YEAR_SCHEMA;
   if (file.startsWith('fotky/')) return PHOTO_SCHEMA;
+  if (file.startsWith('stranky/')) return PAGE_SCHEMAS[path.posix.basename(file, '.yaml')] ?? null;
   return null;
 }
 
@@ -334,6 +384,10 @@ export async function findUnknownAttributes(contentDir) {
   const photosDir = path.join(contentDir, 'fotky');
   const photos = await fs.readdir(photosDir).catch(() => []);
   for (const f of photos.sort()) if (/\.ya?ml$/.test(f)) files.push([path.join('fotky', f), PHOTO_SCHEMA]);
+  for (const f of (await fs.readdir(path.join(contentDir, 'stranky')).catch(() => [])).sort()) {
+    const schema = PAGE_SCHEMAS[f.replace(/\.ya?ml$/, '')];
+    if (schema && /\.ya?ml$/.test(f)) files.push([path.join('stranky', f), schema]);
+  }
 
   const found = [];
   for (const [file, schema] of files) {

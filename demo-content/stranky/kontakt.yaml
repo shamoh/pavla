@@ -1,0 +1,26 @@
+# Stránka Kontakt (/kontakt/) - kostru vytvořila pipeline s textem, který stránka měla.
+# Formulář, kontakty (site.config.yaml webu) a fotka (fotky/kontakt.jpg) jsou zvlášť.
+
+# NEPOVINNÉ. Popis pro vyhledávače a náhled odkazu (Google, Facebook, WhatsApp): jedna nebo dvě věty, nejvýš
+# 160 znaků, bez formátování; na stránce se neukáže. Prázdné = začátek textu.
+description: |
+  Testovací stránka Kontakt: napište mi o obrazu nebo jen tak. (Popis z demo-content/stranky/kontakt.yaml.)
+
+# Popisek nad místem, kde žiji (místo samo je site.location v site.config.yaml webu), např. „Žiji a maluji“.
+location_label: Maluji (testovací popisek)
+
+# Text stránky Kontakt nad formulářem.
+# Piš ho pod „text: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez textu.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+text: |
+  Napište mi, testovací text z demo-content/stranky/kontakt.yaml.
+
+# NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+# private_note: co jsem na stránce změnila a proč

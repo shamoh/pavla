@@ -10,6 +10,7 @@
 //   #<tag> #<tag> …                 (its tags, Czech alphabetical order; only when it has any)
 // Missing parts are left out, with their empty line.
 
+import { ownText } from './rich-text.mjs';
 import { summarize } from './seo.mjs';
 import { formatSizeCm } from './works.mjs';
 import { sortTags } from './gallery-filter.mjs';
@@ -28,7 +29,7 @@ export function workTooltip(work, statusLabel, { detail } = {}) {
   const heading = detail === undefined ? work.title : `${work.title}, detail${detail ? `: ${detail}` : ''}`;
   const facts = [work.technique, formatSizeCm(work.size_cm), work.year].filter(Boolean).join(' · ');
   const status = SHOWN_STATUSES.has(work.status) ? statusLabel[work.status] : '';
-  const description = summarize(work.description, TOOLTIP_DESCRIPTION_MAX);
+  const description = summarize(ownText(work.text), TOOLTIP_DESCRIPTION_MAX);
   const tags = sortTags(Array.isArray(work.tags) ? work.tags.map((t) => String(t).trim()) : []).map((t) => `#${t}`).join(' ');
   const head = [heading, facts, work.support?.trim(), status].filter(Boolean).join('\n');
   return [head, description, tags].filter(Boolean).join('\n\n');

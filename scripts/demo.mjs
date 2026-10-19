@@ -20,11 +20,12 @@ import YAML from 'yaml';
 import { recipeProblems, renderDemoImages } from './lib/demo-images.mjs';
 import { INDEX_FILE } from './lib/content.mjs';
 import { DEMO_MARKER } from './lib/demo.mjs';
+import { PAGES_SUBDIR } from './lib/pages.mjs';
 import { OUTPUT_ROOTS } from './lib/site-images.mjs';
 import { run } from './process-images.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const CONTENT_SUBDIRS = ['tvorba', 'fotky', 'roky'];
+const CONTENT_SUBDIRS = ['tvorba', 'fotky', 'roky', PAGES_SUBDIR];
 /** Files in the root of the content: the home page and the marker of the test data. */
 const CONTENT_FILES = [INDEX_FILE, DEMO_MARKER];
 const isContent = (f) => CONTENT_SUBDIRS.includes(f.split(path.sep)[0]) || CONTENT_FILES.includes(f);

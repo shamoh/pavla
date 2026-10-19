@@ -7,7 +7,7 @@ import {
 import { COLLECTION_SKELETON_TEXT, UNCOLLECTED_SKELETON_TEXT, yearSkeletonText } from './schema.mjs';
 
 const good = {
-  title: 'Ráno u jezu', tags: ['voda'], description: 'Mlha nad vodou.', details: { mlha: 'Hladina v mlze.' },
+  title: 'Ráno u jezu', tags: ['voda'], text: 'Mlha nad vodou.', details: { mlha: 'Hladina v mlze.' },
   status: 'available', mockups: true,
 };
 const work = (data, extra = {}) => ({ slug: 'rano', dir: 'plener', data: { ...good, ...data }, ...extra });
@@ -30,14 +30,14 @@ test('workAdvice: nothing for a well written work', () => {
 
 test('workAdvice: tags, title, description and detail captions, in the file of the work', () => {
   const advice = workAdvice([work({
-    tags: [], title: 'ráno u jezu.', description: 'mlha nad vodou', details: { mlha: 'hladina v mlze', most: 'Most.' },
+    tags: [], title: 'ráno u jezu.', text: 'mlha nad vodou', details: { mlha: 'hladina v mlze', most: 'Most.' },
   })]);
   assert.deepEqual(advice, [
     'tvorba/plener/rano.yaml: nemá štítky (tags), podle nich se v galerii filtruje [bez-stitku]',
     'tvorba/plener/rano.yaml: title začíná malým písmenem [nazev-male-pismeno]',
     'tvorba/plener/rano.yaml: title by neměl končit tečkou [nazev-s-teckou]',
-    'tvorba/plener/rano.yaml: description začíná malým písmenem [text-male-pismeno]',
-    'tvorba/plener/rano.yaml: description by měl končit tečkou [text-bez-tecky]',
+    'tvorba/plener/rano.yaml: text začíná malým písmenem [text-male-pismeno]',
+    'tvorba/plener/rano.yaml: text by měl končit tečkou [text-bez-tecky]',
     'tvorba/plener/rano.yaml: popisek detailu mlha začíná malým písmenem [text-male-pismeno]',
     'tvorba/plener/rano.yaml: popisek detailu mlha by měl končit tečkou [text-bez-tecky]',
   ]);
@@ -53,26 +53,26 @@ test('workAdvice: a work on sale without mockups; sold, not for sale or with moc
 });
 
 test('workAdvice leaves DOPLNIT texts and empty ones to the checks', () => {
-  assert.deepEqual(workAdvice([work({ title: 'DOPLNIT název', description: 'DOPLNIT popis', details: { mlha: 'DOPLNIT popisek detailu', most: '' } })]), []);
-  assert.deepEqual(workAdvice([work({ description: undefined, details: undefined })]), []);
+  assert.deepEqual(workAdvice([work({ title: 'DOPLNIT název', text: 'DOPLNIT popis', details: { mlha: 'DOPLNIT popisek detailu', most: '' } })]), []);
+  assert.deepEqual(workAdvice([work({ text: undefined, details: undefined })]), []);
 });
 
 test('pageAdvice: title and description of a collection, description of a year and of the home page', () => {
   const advice = pageAdvice({
     collections: [
-      { yamlPath: 'tvorba/plener/_index.yaml', data: { title: 'plenér Šumava.', description: 'v září' } },
-      { yamlPath: 'tvorba/zahrada/_index.yaml', data: { title: 'Ze zahrady', description: 'Květiny ze zahrady.' } },
+      { yamlPath: 'tvorba/plener/_index.yaml', data: { title: 'plenér Šumava.', text: 'v září' } },
+      { yamlPath: 'tvorba/zahrada/_index.yaml', data: { title: 'Ze zahrady', text: 'Květiny ze zahrady.' } },
     ],
-    years: [{ yamlPath: 'roky/2026.yaml', data: { description: 'Rok, kdy jsem malovala' } }, { yamlPath: 'roky/2025.yaml', data: { description: '' } }],
-    home: { yamlPath: '_index.yaml', data: { description: 'maluji pro radost.' } },
+    years: [{ yamlPath: 'roky/2026.yaml', data: { text: 'Rok, kdy jsem malovala' } }, { yamlPath: 'roky/2025.yaml', data: { text: '' } }],
+    home: { yamlPath: '_index.yaml', data: { text: 'maluji pro radost.' } },
   });
   assert.deepEqual(advice, [
     'tvorba/plener/_index.yaml: title začíná malým písmenem [nazev-male-pismeno]',
     'tvorba/plener/_index.yaml: title by neměl končit tečkou [nazev-s-teckou]',
-    'tvorba/plener/_index.yaml: description začíná malým písmenem [text-male-pismeno]',
-    'tvorba/plener/_index.yaml: description by měl končit tečkou [text-bez-tecky]',
-    'roky/2026.yaml: description by měl končit tečkou [text-bez-tecky]',
-    '_index.yaml: description začíná malým písmenem [text-male-pismeno]',
+    'tvorba/plener/_index.yaml: text začíná malým písmenem [text-male-pismeno]',
+    'tvorba/plener/_index.yaml: text by měl končit tečkou [text-bez-tecky]',
+    'roky/2026.yaml: text by měl končit tečkou [text-bez-tecky]',
+    '_index.yaml: text začíná malým písmenem [text-male-pismeno]',
   ]);
 });
 
@@ -92,8 +92,8 @@ test('pageAdvice: alt and caption of a photo of a page, in its file', () => {
 test('pageAdvice: nothing without pages, for DOPLNIT texts, or for a year with a title by mistake', () => {
   assert.deepEqual(pageAdvice({}), []);
   assert.deepEqual(pageAdvice({
-    collections: [{ yamlPath: 'tvorba/k/_index.yaml', data: { title: 'DOPLNIT název', description: 'DOPLNIT popis' } }],
-    years: [{ yamlPath: 'roky/2026.yaml', data: { title: 'rok.', description: 'Dobrý rok.' } }],
+    collections: [{ yamlPath: 'tvorba/k/_index.yaml', data: { title: 'DOPLNIT název', text: 'DOPLNIT popis' } }],
+    years: [{ yamlPath: 'roky/2026.yaml', data: { title: 'rok.', text: 'Dobrý rok.' } }],
     home: { yamlPath: '_index.yaml', data: {} },
   }), []);
 });
@@ -172,7 +172,7 @@ test('techniqueAdvice: a technique longer than the closed select shows, once wit
 });
 
 test('pageAdvice: a collection title longer than the closed select shows', () => {
-  const at = (title) => pageAdvice({ collections: [{ yamlPath: 'tvorba/k/_index.yaml', data: { title, description: 'Text.' } }] });
+  const at = (title) => pageAdvice({ collections: [{ yamlPath: 'tvorba/k/_index.yaml', data: { title, text: 'Text.' } }] });
   assert.deepEqual(at('Plenér Šumava 2026'), []);
   assert.deepEqual(at('X'.repeat(COLLECTION_TITLE_CHARS)), []);
   assert.deepEqual(at('Plenér Štěkeň podzim 2025'), [
@@ -192,10 +192,10 @@ test('workAdvice: a title too long for the page title in search results, with th
 });
 
 test('pageAdvice: the description of the works without a collection, like other page texts', () => {
-  const at = (description) => pageAdvice({ uncollected: { yamlPath: 'tvorba/_index.yaml', data: { description } } });
+  const at = (text) => pageAdvice({ uncollected: { yamlPath: 'tvorba/_index.yaml', data: { text } } });
   assert.deepEqual(at('Samostatné listy a dárky.'), []);
   assert.deepEqual(at('samostatné listy'), [
-    'tvorba/_index.yaml: description začíná malým písmenem [text-male-pismeno]', 'tvorba/_index.yaml: description by měl končit tečkou [text-bez-tecky]',
+    'tvorba/_index.yaml: text začíná malým písmenem [text-male-pismeno]', 'tvorba/_index.yaml: text by měl končit tečkou [text-bez-tecky]',
   ]);
   assert.deepEqual(at(undefined), [], 'no description = the default text');
 });
@@ -249,9 +249,9 @@ test('todoAdvice: files reported elsewhere (published works under "Ke kontrole")
 });
 
 test('careAdvice: a published work without size or description; a draft only for its detail photos', () => {
-  const published = { yamlPath: 'tvorba/rano.yaml', data: { meta_draft: false, description: '  ' }, details: [] };
-  assert.deepEqual(careAdvice([published]).map((a) => a.split(':')[1].trim()), ['nemá rozměr (size_cm)', 'nemá popis (description)']);
-  const complete = { yamlPath: 'tvorba/vecer.yaml', data: { size_cm: [30, 40], description: 'Večer.' }, details: [] };
+  const published = { yamlPath: 'tvorba/rano.yaml', data: { meta_draft: false, text: '  ' }, details: [] };
+  assert.deepEqual(careAdvice([published]).map((a) => a.split(':')[1].trim()), ['nemá rozměr (size_cm)', 'nemá text']);
+  const complete = { yamlPath: 'tvorba/vecer.yaml', data: { size_cm: [30, 40], text: 'Večer.' }, details: [] };
   assert.deepEqual(careAdvice([complete]), []);
   const draft = { yamlPath: 'tvorba/novy.yaml', data: { meta_draft: true }, details: [] };
   assert.deepEqual(careAdvice([draft]), [], 'a draft is filled in under "Zbývá doplnit"');
@@ -327,19 +327,19 @@ test('featuredAdvice: none or one featured on a page with enough works and no ow
 test('pageAdvice: the sample sentence of a skeleton still as the description of a collection, a year or "Mimo kolekce"', () => {
   const advice = pageAdvice({
     collections: [
-      { yamlPath: 'tvorba/plener/_index.yaml', data: { title: 'Plenér', description: COLLECTION_SKELETON_TEXT } },
-      { yamlPath: 'tvorba/zahrada/_index.yaml', data: { title: 'Zahrada', description: 'Moje zahrada v létě.\n' } },
+      { yamlPath: 'tvorba/plener/_index.yaml', data: { title: 'Plenér', text: COLLECTION_SKELETON_TEXT } },
+      { yamlPath: 'tvorba/zahrada/_index.yaml', data: { title: 'Zahrada', text: 'Moje zahrada v létě.\n' } },
     ],
     years: [
-      { year: '2026', yamlPath: 'roky/2026.yaml', data: { description: yearSkeletonText('2026') } },
+      { year: '2026', yamlPath: 'roky/2026.yaml', data: { text: yearSkeletonText('2026') } },
       // the sentence of another year is a text of its own
-      { year: '2025', yamlPath: 'roky/2025.yaml', data: { description: yearSkeletonText('2024') } },
+      { year: '2025', yamlPath: 'roky/2025.yaml', data: { text: yearSkeletonText('2024') } },
     ],
-    uncollected: { yamlPath: 'tvorba/_index.yaml', data: { description: `  ${UNCOLLECTED_SKELETON_TEXT.trim()}  ` } },
-    home: { yamlPath: '_index.yaml', data: { description: COLLECTION_SKELETON_TEXT } },
+    uncollected: { yamlPath: 'tvorba/_index.yaml', data: { text: `  ${UNCOLLECTED_SKELETON_TEXT.trim()}  ` } },
+    home: { yamlPath: '_index.yaml', data: { text: COLLECTION_SKELETON_TEXT } },
   }).filter((a) => a.includes('vzorová věta'));
   assert.deepEqual(advice.map((a) => a.split(':')[0]), ['tvorba/plener/_index.yaml', 'roky/2026.yaml', 'tvorba/_index.yaml']);
-  assert.equal(advice[0], `tvorba/plener/_index.yaml: description je pořád vzorová věta z kostry („${COLLECTION_SKELETON_TEXT.trim()}“), je vidět na webu; napiš místo ní vlastní text [vzorovy-text]`);
+  assert.equal(advice[0], `tvorba/plener/_index.yaml: text je pořád vzorová věta z kostry („${COLLECTION_SKELETON_TEXT.trim()}“), je vidět na webu; napiš místo ní vlastní text [vzorovy-text]`);
   assert.ok(COLLECTION_SKELETON_TEXT.includes('nejvíc nejoblíbenější'), 'on purpose');
 });
 

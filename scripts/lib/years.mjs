@@ -1,6 +1,7 @@
 // Descriptions of years: roky/<year>.yaml in the content repository (YEAR_SCHEMA in scripts/lib/schema.mjs), an optional
-// text of the author about the year, shown on top of the year page /tvorba/<year>/. Every year with works gets a
-// skeleton; every file is brought in line with the schema like the other descriptions.
+// text of the author about the year (`text`, `description` for search engines), shown on top of the year page
+// /tvorba/<year>/. Every year with works gets a skeleton; every file is brought in line with the schema like the other
+// descriptions.
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -51,7 +52,7 @@ export async function prepareYears(contentDir, withWorks = []) {
   for (const year of [...new Set(withWorks.map(String))].sort()) {
     if (byYear.has(year)) continue;
     await fs.mkdir(root, { recursive: true });
-    await fs.writeFile(path.join(root, `${year}.yaml`), skeleton(YEAR_SCHEMA, { description: yearSkeletonText(year) }));
+    await fs.writeFile(path.join(root, `${year}.yaml`), skeleton(YEAR_SCHEMA, { text: yearSkeletonText(year) }));
     created.push(`${YEARS_SUBDIR}/${year}.yaml`);
     byYear.set(year, `${year}.yaml`);
   }
@@ -64,10 +65,6 @@ export async function prepareYears(contentDir, withWorks = []) {
       data = YAML.parse(text) ?? {};
     } catch (e) {
       continue; // reported by keepInLine
-    }
-    if (data.description !== undefined && data.description !== null && typeof data.description !== 'string') {
-      problems.push(`${yamlPath}: description musí být text [popisek-neni-text]`);
-      continue;
     }
     years.push({ year, data, yamlPath, coverPath: photos.get(year) ?? null });
   }

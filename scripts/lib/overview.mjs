@@ -8,6 +8,7 @@
 import { CODES, LEVELS, LEVEL_LABELS, coded, codesOf, withoutCodes } from './codes.mjs';
 import { groupProblems } from './summary.mjs';
 import { NO_COLLECTION_TITLE } from './gallery-filter.mjs';
+import { paragraphs, richTextMarkdown } from './rich-text.mjs';
 
 /** Levels of the messages of a pipeline run (the weekly health check has its own report). */
 const RUN_LEVELS = LEVELS.filter((l) => l !== 'health');
@@ -57,10 +58,10 @@ export function attributeLines(data, { skip = [], flags = [] } = {}) {
 
 /**
  * Attributes of a work told elsewhere or as a word (they are in the heading, the line of the description or the flags),
- * never as "key: value": title, id, date, size_cm, featured (heading), description (its own line), meta_corners (only
+ * never as "key: value": title, id, date, size_cm, featured (heading), text and description (lines of their own), meta_corners (only
  * for the pipeline), the switches meta_draft, meta_instagram (with the link instagram), meta_pinterest, mockups (flags).
  */
-const WORK_TOLD = ['title', 'id', 'date', 'size_cm', 'featured', 'description', 'meta_corners', 'meta_draft', 'meta_instagram', 'meta_pinterest', 'mockups'];
+const WORK_TOLD = ['title', 'id', 'date', 'size_cm', 'featured', 'text', 'description', 'meta_corners', 'meta_draft', 'meta_instagram', 'meta_pinterest', 'mockups'];
 
 /** The size of a work for its heading: "[ 21 x 15 ]", '' without a valid one. */
 export const sizeMark = (size) => (Array.isArray(size) && size.length === 2 && size.every((n) => Number(n) > 0) ? `[ ${size[0]} x ${size[1]} ]` : '');
@@ -83,23 +84,47 @@ export function workHeading(d, id, fallback) {
 /** Status of a work that is the default (nothing to tell): left out of the attributes. */
 const DEFAULT_STATUS = 'not-for-sale';
 
-/** Detail photos of a work, each a line "detail <name>: <caption>" ("detail <name>" without a caption). */
-const detailLines = (details) => (details && typeof details === 'object' && !Array.isArray(details)
+/**
+ * Detail photos of a work, each a line "detail <name>: <caption>" ("detail <name>" without a caption); the caption
+ * formatted as on the site (richTextMarkdown, `url` as in textLines).
+ */
+const detailLines = (details, url) => (details && typeof details === 'object' && !Array.isArray(details)
   ? Object.entries(details).map(([name, caption]) => {
-    const text = escText(formatValue(caption));
+    const text = typeof caption === 'string' ? richTextMarkdown(caption, { url }) : escText(formatValue(caption));
     return `detail ${escText(name)}${text ? `: ${text}` : ''}`;
   })
   : []);
 
 /**
- * The lines of a work under its links: its description (a paragraph of its own), each detail photo with its caption
+ * The text of a description as it looks on the site: each paragraph a line, formatted (richTextMarkdown: GitHub shows
+ * bold, italic and links; `url` makes an address on the site a full one), then its description for search engines
+ * (plain) as "Google: …" when it has its own; nothing for empty ones.
+ */
+function textLines(d, url) {
+  const description = typeof d?.description === 'string' && d.description.trim() ? escText(d.description) : '';
+  return [...paragraphs(d?.text).map((p) => richTextMarkdown(p, { url })), description && `Google: ${description}`].filter(Boolean);
+}
+
+/** A full address of a page of the site `siteUrl` (without a trailing slash; '' = as written). */
+const siteAddress = (siteUrl) => (p) => `${siteUrl}${p}`;
+
+/**
+ * The texts of a work as they will look on the site, for a README: its paragraphs formatted, its description for search
+ * engines and the captions of its details (textLines, detailLines), one line each; [] without any.
+ */
+export const textPreviewLines = (d, siteUrl = '') => [...textLines(d, siteAddress(siteUrl)), ...detailLines(d?.details, siteAddress(siteUrl))];
+
+/**
+ * The lines of a work under its links: its text and its description for search engines (paragraphs of their own,
+ * textLines), each detail photo with its caption
  * (a line each), then the switches that are on as words ("draft", "instagram: <link or ->", "pinterest", "mockups")
  * and the other attributes (attributeLines; the default status not-for-sale left out). The link `instagram` goes with
  * meta_instagram: true; without it, it is an attribute like any other.
  */
-export function workLines(d) {
-  const description = typeof d.description === 'string' && d.description.trim() ? [escText(d.description)] : [];
-  const details = detailLines(d.details);
+export function workLines(d, { siteUrl = '' } = {}) {
+  const url = siteAddress(siteUrl);
+  const description = textLines(d, url);
+  const details = detailLines(d.details, url);
   const instagram = typeof d.instagram === 'string' && d.instagram.trim() ? escText(d.instagram) : '-';
   const flags = [
     ...(d.meta_draft === true ? ['draft'] : []),
@@ -116,10 +141,10 @@ export function workLines(d) {
   return [...description, ...details, ...attributeLines(d, { skip, flags })];
 }
 
-/** The lines of a collection (or "Mimo kolekce") under its link: its description first, the title is the heading. */
-const collectionLines = (d) => [
-  ...(typeof d?.description === 'string' && d.description.trim() ? [escText(d.description)] : []),
-  ...attributeLines(d, { skip: ['title', 'description'] }),
+/** The lines of a collection (or "Mimo kolekce") under its link: its texts first (textLines), the title is the heading. */
+const collectionLines = (d, siteUrl = '') => [
+  ...textLines(d, siteAddress(siteUrl)),
+  ...attributeLines(d, { skip: ['title', 'text', 'description'] }),
 ];
 
 /** The anchor GitHub gives a heading: lower case, without punctuation, spaces as "-", repeated ones numbered. */
@@ -185,10 +210,10 @@ function countCodes(allNotes) {
  *   works [{ yamlPath, photoPath (relative to the content repository, null = none), id, data, collection (slug, null),
  *     pageUrl ('' = not on the site) }],
  *   collections [{ slug, yamlPath, data }], uncollected ({ yamlPath, data } of tvorba/_index.yaml, or null),
- *   noted (the lists of the run, notesByFile) }.
+ *   noted (the lists of the run, notesByFile), siteUrl (the address of the site, for links in texts) }.
  * Collections in Czech alphabetical order by title, "Mimo kolekce" last; works by date, newest first.
  */
-export function overviewReadme({ works, collections = [], uncollected = null, noted = {} }) {
+export function overviewReadme({ works, collections = [], uncollected = null, noted = {}, siteUrl = '' }) {
   const notes = notesByFile(noted);
   const anchor = headingAnchors();
   const link = (p) => `../${p.split('/').map(encodeURIComponent).join('/')}`;
@@ -209,7 +234,7 @@ export function overviewReadme({ works, collections = [], uncollected = null, no
     body.push('', `## ${head}`, '');
     if (g.meta) {
       shown.add(g.meta.yamlPath);
-      body.push(`[${g.meta.yamlPath}](${link(g.meta.yamlPath)})`, '', ...collectionLines(g.meta.data).flatMap((l) => [l, '']), ...messageLines(notes.get(g.meta.yamlPath)));
+      body.push(`[${g.meta.yamlPath}](${link(g.meta.yamlPath)})`, '', ...collectionLines(g.meta.data, siteUrl).flatMap((l) => [l, '']), ...messageLines(notes.get(g.meta.yamlPath)));
     }
     for (const w of [...g.works].sort(byDate)) {
       shown.add(w.yamlPath);
@@ -218,7 +243,7 @@ export function overviewReadme({ works, collections = [], uncollected = null, no
       anchor(heading);
       body.push('', `### ${heading}`, '',
         [`[${escText(w.yamlPath.split('/').pop())}](${link(w.yamlPath)})`, w.photoPath ? `[foto](${link(w.photoPath)})` : 'bez fotky', ...(w.pageUrl ? [`[web](${w.pageUrl})`] : [])].join(' · '),
-        '', ...workLines(d).flatMap((l) => [l, '']), ...messageLines(notes.get(w.yamlPath)));
+        '', ...workLines(d, { siteUrl }).flatMap((l) => [l, '']), ...messageLines(notes.get(w.yamlPath)));
     }
   }
   // messages of other files (years, photos, the home page) and general ones (tags, techniques)

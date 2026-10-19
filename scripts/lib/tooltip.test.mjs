@@ -5,7 +5,7 @@ import { TOOLTIP_DESCRIPTION_MAX, workTooltip } from './tooltip.mjs';
 const labels = { available: 'K prodeji', reserved: 'Rezervováno', sold: 'Prodáno', 'not-for-sale': 'Není na prodej' };
 const work = {
   title: 'Jez na Otavě', technique: 'akvarel', size_cm: [41, 30], year: 2025,
-  support: 'papír Canson XL Aquarelle (300 g)', status: 'available', description: 'Ráno u jezu,\n mlha nad vodou.',
+  support: 'papír Canson XL Aquarelle (300 g)', status: 'available', text: 'Ráno u jezu,\n mlha nad vodou.',
 };
 
 test('workTooltip: title, facts, support and status in lines, the description after an empty line', () => {
@@ -17,7 +17,7 @@ test('workTooltip: title, facts, support and status in lines, the description af
 
 test('workTooltip leaves out what is missing, and the status not-for-sale', () => {
   assert.equal(workTooltip({ title: 'Skica', technique: 'tužka', year: 2026, status: 'not-for-sale' }, labels), 'Skica\ntužka · 2026');
-  assert.equal(workTooltip({ ...work, support: ' ', description: '  ', size_cm: [0, 0], status: 'sold' }, labels), 'Jez na Otavě\nakvarel · 2025\nProdáno');
+  assert.equal(workTooltip({ ...work, support: ' ', text: '  ', size_cm: [0, 0], status: 'sold' }, labels), 'Jez na Otavě\nakvarel · 2025\nProdáno');
   assert.match(workTooltip({ ...work, status: 'gifted' }, { ...labels, gifted: 'Darováno' }), /\nDarováno\n/);
 });
 
@@ -27,7 +27,7 @@ test('workTooltip of a detail cover names the detail, with its caption when ther
 });
 
 test('workTooltip shortens a long description after a whole word', () => {
-  const tip = workTooltip({ ...work, description: 'slovo '.repeat(100) }, labels);
+  const tip = workTooltip({ ...work, text: 'slovo '.repeat(100) }, labels);
   const description = tip.split('\n\n')[1];
   assert.ok(description.length <= TOOLTIP_DESCRIPTION_MAX, String(description.length));
   assert.match(description, /slovo…$/);
@@ -39,7 +39,7 @@ test('workTooltip ends with the tags in Czech alphabetical order after an empty 
     'Jez na Otavě\nakvarel · 41 × 30 cm · 2025\npapír Canson XL Aquarelle (300 g)\nK prodeji\n\nRáno u jezu, mlha nad vodou.\n\n#čáp #mlha #řeka',
   );
   assert.equal(
-    workTooltip({ ...work, description: '', tags: ['les'] }, labels),
+    workTooltip({ ...work, text: '', tags: ['les'] }, labels),
     'Jez na Otavě\nakvarel · 41 × 30 cm · 2025\npapír Canson XL Aquarelle (300 g)\nK prodeji\n\n#les',
     'without a description one empty line only',
   );

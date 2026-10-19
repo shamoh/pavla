@@ -41,13 +41,13 @@ test('instagramReadme: a post with ``` gets a longer fence; a title with < is es
 
 test('flerReadme: facts, status and price, description to copy, original and mockups', () => {
   const md = flerReadme({
-    work: { ...work, support: 'papír Arches', status: 'available', price: 2500, description: 'Ráno u hráze.' }, year: '2026',
+    work: { ...work, support: 'papír Arches', status: 'available', price: 2500, text: 'Ráno u hráze.' }, year: '2026',
     files: { original: ['original.jpg'], mockups: ['mockup-komoda.jpg'] },
   });
   assert.match(md, /^# Fler: Bobří hráz\n\nakvarel · 30 × 30 cm · 2026, papír Arches\.\n\nStav: \*\*na prodej\*\* · Cena: \*\*2\s500 Kč\*\*/);
   assert.ok(md.includes('```text\nRáno u hráze.\n```'));
   assert.ok(md.includes('<img src="original.jpg"') && md.includes('<img src="mockup-komoda.jpg"'));
-  const plain = flerReadme({ work: { ...work, status: 'reserved', description: 'DOPLNIT' }, year: '2026', files: { original: ['original.jpg'], mockups: [] } });
+  const plain = flerReadme({ work: { ...work, status: 'reserved', text: 'DOPLNIT' }, year: '2026', files: { original: ['original.jpg'], mockups: [] } });
   assert.ok(plain.includes('Stav: **rezervováno**') && !plain.includes('## Popis') && !plain.includes('## Mockupy'));
 });
 
@@ -252,3 +252,12 @@ test('draftReadme: the four corners close up as a 2 × 2 table above the whole p
   assert.ok(!draftReadme({ work: { title: 'X' }, year: '2026', files: draftFiles }).includes('<table>'), 'none without them');
 });
 
+
+test('draftReadme: the texts formatted as they will look on the site, links to the site with its full address', () => {
+  const text = draftReadme({
+    work: { title: 'Ráno', id: 'a1b2c', text: 'Ráno **u jezu**.\n\nViz [kolekci](/tvorba/kolekce/x/).\n', description: 'Pro Google.', details: { mlha: '*Mlha*' } },
+    year: '2026', files: null, siteUrl: 'https://pavla.example',
+  });
+  assert.match(text, /\n## Text na webu\n\n.*\n\nRáno \*\*u jezu\*\*\.\n\nViz \[kolekci\]\(https:\/\/pavla\.example\/tvorba\/kolekce\/x\/\)\.\n\nGoogle: Pro Google\.\n\ndetail mlha: \*Mlha\*\n/);
+  assert.match(draftReadme({ work: { title: 'Ráno' }, year: '2026', files: null }), /\n## Text na webu\n\nObraz zatím nemá text/);
+});

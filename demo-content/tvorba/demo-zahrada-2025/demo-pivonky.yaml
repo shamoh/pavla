@@ -46,12 +46,17 @@ id: vjr39
 # Den vzniku ve tvaru 2026-06-14. Rok z něj určuje rok obrazu na webu (stránka roku, adresa).
 date: 2025-05-28
 
-# Pár vět o obraze, zobrazí se na jeho stránce. Text piš pod „description: |“, každý řádek odsazený dvěma
-# mezerami; dlouhý řádek automatika zalomí.
+# NEPOVINNÉ. Popis pro vyhledávače a náhled odkazu (Google, Facebook, WhatsApp): jedna nebo dvě věty, nejvýš
+# 160 znaků, bez formátování; na stránce se neukáže. Prázdné = začátek textu.
 description: |
-  Pivoňky ze zahrady, malované hned ráno, dokud byly celé.
+  Vlastní popis pro vyhledávače (testovací), jiný než text na stránce obrazu.
 
 # NEPOVINNÉ. Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
 details:
   1-kvety-nahore: Rozvité květy, široký výřez (úvodní obraz kolekce Ze zahrady 2025)
 
@@ -118,6 +123,21 @@ tags: [květina]
 # - tisk z výšky
 # - kresba tužkou
 technique: akvarel
+
+# Pár vět o obraze, zobrazí se na jeho stránce.
+# Piš ho pod „text: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez textu.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+text: |
+  Pivoňky ze zahrady, malované **hned ráno**, dokud byly celé.
+
+  Druhý odstavec testovacího textu s odkazem na [kolekci Ze zahrady](/tvorba/kolekce/demo-zahrada-2025/).
 
 # Název obrazu, jak ho uvidí návštěvníci webu.
 title: Pivoňky

@@ -4,6 +4,7 @@
 // (by guid = id of the work) on the board chosen for the feed; a pin links to the page of the work.
 // The page of every work also has a link "Uložit na Pinterest" for visitors (pinSaveUrl, no script of Pinterest).
 
+import { searchDescription } from './rich-text.mjs';
 import { captionFacts } from './works.mjs';
 
 /**
@@ -63,13 +64,13 @@ export function pinKeywords(work, dictionary = {}) {
 }
 
 /**
- * The description of a pin: the description of the work, "technique · size · year · id" (the id as in the Instagram
+ * The description of a pin: the description of the work (its description for search engines, otherwise its text), "technique · size · year · id" (the id as in the Instagram
  * post text: the gallery search finds the work by it) and the keywords (pinKeywords); a long description is shortened, so the facts and the keywords always fit the limit of Pinterest.
  */
 export const pinDescription = (work, year, dictionary = {}) => {
   const facts = [captionFacts(work ?? {}, year), work?.id].filter(Boolean).join(' · ');
   const tail = [facts, pinKeywords(work, dictionary)].filter(Boolean).join('. ');
-  const own = typeof work?.description === 'string' && !/^\s*DOPLNIT/.test(work.description) ? work.description.trim() : '';
+  const own = searchDescription(work);
   const room = PIN_DESCRIPTION_CHARS - tail.length - 1;
   const head = own && room > 20 ? clip(own, room) : '';
   return clip([head, tail].filter(Boolean).join(' '), PIN_DESCRIPTION_CHARS);

@@ -1,8 +1,8 @@
 // Map of the site (/sitemap.xml): the canonical address of every page with its lastmod (scripts/lib/sitemap.mjs).
-import { getCollections, getWorks, getYears, site } from '../lib/site';
+import { getCollections, getGenericPages, getWorks, getYears, site } from '../lib/site';
 import { sitemapEntries, sitemapXml } from '../../scripts/lib/sitemap.mjs';
 
 export function GET() {
-  const entries = sitemapEntries({ years: getYears(), collections: getCollections(), works: getWorks() });
+  const entries = sitemapEntries({ years: getYears(), collections: getCollections(), works: getWorks(), pages: getGenericPages().map((p) => p.name) });
   return new Response(sitemapXml(site.url, entries), { headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
 }

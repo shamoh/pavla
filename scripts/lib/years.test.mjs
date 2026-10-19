@@ -19,9 +19,10 @@ test('prepareYears: a skeleton for each year with works, every attribute, a samp
   assert.deepEqual(r.problems, []);
   const text = await fs.readFile(file('2026.yaml'), 'utf8');
   assert.deepEqual(schemaKeysIn(text, YEAR_SCHEMA), YEAR_FIELDS);
-  assert.equal(YAML.parse(text).description, 'Můj oblíbený rok, rok 2026.\n');
-  assert.ok(text.includes('\ndescription: |\n  Můj oblíbený rok, rok 2026.\n'));
-  assert.equal(YAML.parse(await fs.readFile(file('2025.yaml'), 'utf8')).description, yearSkeletonText('2025'));
+  assert.equal(YAML.parse(text).text, 'Můj oblíbený rok, rok 2026.\n');
+  assert.ok(text.includes('\ntext: |\n  Můj oblíbený rok, rok 2026.\n'));
+  assert.match(text, /\n# description: /, 'the description for search engines commented out');
+  assert.equal(YAML.parse(await fs.readFile(file('2025.yaml'), 'utf8')).text, yearSkeletonText('2025'));
   assert.match(text, /# DOPLNIT Pár vět o roce/);
   assert.deepEqual(r.years.map((y) => y.year), ['2025', '2026']);
   // idempotent
@@ -33,15 +34,15 @@ test('prepareYears keeps a text of a year without works and reads it', async () 
   await fs.mkdir(path.join(dir, 'roky'));
   await fs.writeFile(file('2024.yaml'), 'description: |\n  Rok plenérů.\n');
   const r = await prepareYears(dir, ['2025']);
-  assert.deepEqual(r.years.map((y) => [y.year, y.data.description]), [['2024', 'Rok plenérů.\n'], ['2025', yearSkeletonText('2025')]]);
+  assert.deepEqual(r.years.map((y) => [y.year, y.data.text]), [['2024', 'Rok plenérů.\n'], ['2025', yearSkeletonText('2025')]], 'the former description moved to text');
   assert.ok(r.updated.some((u) => u.startsWith('roky/2024.yaml')), 'brought in line with the schema');
 });
 
-test('prepareYears reports stray files, bad names and a description that is not text', async () => {
+test('prepareYears reports stray files and bad names; a text that is not text is a problem of textProblems', async () => {
   await fs.mkdir(path.join(dir, 'roky'));
   await fs.writeFile(file('letos.yaml'), 'description: x\n');
-  await fs.writeFile(file('2026.yaml'), 'description: [a, b]\n');
+  await fs.writeFile(file('2026.yaml'), 'text: [a, b]\n');
   const { problems } = await prepareYears(dir, []);
   assert.match(problems.join('\n'), /roky\/letos\.yaml: sem patří jen popisy roků \(2026\.yaml\) a jejich úvodní fotky/);
-  assert.match(problems.join('\n'), /roky\/2026\.yaml: description musí být text/);
+  assert.doesNotMatch(problems.join('\n'), /2026\.yaml: text/, 'checked with every description (allTextProblems)');
 });

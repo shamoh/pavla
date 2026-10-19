@@ -1,0 +1,30 @@
+---
+// A generic text page /<name>/ (e.g. /kurzy/): stranky/<name>.yaml of the content repository (TEXT_PAGE_SCHEMA), built
+// only while that file exists (getGenericPages). Its name must be in PAGES (scripts/lib/pages.mjs).
+import Base from '../layouts/Base.astro';
+import { getGenericPages, site } from '../lib/site';
+import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
+
+export function getStaticPaths() {
+  return getGenericPages().map(({ name, page }) => ({ params: { page: name }, props: { page } }));
+}
+
+const { page } = Astro.props;
+const path = `/${Astro.params.page}/`;
+// For search engines: a web page of the author's site.
+const jsonLd = graphLd(
+  { '@type': 'WebPage', '@id': new URL(path, site.url).href, url: new URL(path, site.url).href, name: `${page.title} – ${site.author}`, inLanguage: 'cs' },
+  breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: page.title, path }]),
+);
+---
+<Base title={page.title} description={page.description} jsonLd={jsonLd}>
+  <article class="text-page">
+    <h1>{page.title}</h1>
+    {page.paragraphs.map((p) => <p set:html={p} />)}
+    {page.closing.map((p) => <p class="muted" set:html={p} />)}
+  </article>
+</Base>
+<style>
+  .text-page { max-width: 62ch; font-size: 1.08rem; }
+  .text-page h1 { margin: 0 0 32px; }
+</style>

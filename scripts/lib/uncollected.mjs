@@ -33,7 +33,7 @@ export async function prepareUncollected(contentDir, hasWorks) {
   let text = await fs.readFile(file, 'utf8').catch(() => null);
   if (text === null && !hasWorks) return { uncollected: null, created, updated, problems };
   if (text === null) {
-    text = skeleton(UNCOLLECTED_SCHEMA, { description: UNCOLLECTED_SKELETON_TEXT });
+    text = skeleton(UNCOLLECTED_SCHEMA, { text: UNCOLLECTED_SKELETON_TEXT });
     await fs.mkdir(root, { recursive: true });
     await fs.writeFile(file, text);
     created.push(UNCOLLECTED_FILE);

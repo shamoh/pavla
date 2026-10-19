@@ -640,7 +640,7 @@ const settings = { always: { cs: ['umeni'], en: ['art'] }, en: { akvarel: 'water
 
 test('instagramPost: title, description, facts, address, Czech and English hashtags', () => {
   const text = instagramPost({
-    work: { title: 'Bobří hráz', description: 'Ráno u bobří hráze.\n', technique: 'akvarel', size_cm: [30, 30], tags: ['krajina', 'plenér', 'voda'] },
+    work: { title: 'Bobří hráz', text: 'Ráno u **bobří** hráze.\n', description: 'Jen pro Google.', technique: 'akvarel', size_cm: [30, 30], tags: ['krajina', 'plenér', 'voda'] },
     year: '2026', host: 'pavla.kramolis.cz', settings,
   });
   assert.equal(text, [
@@ -651,7 +651,7 @@ test('instagramPost: title, description, facts, address, Czech and English hasht
 
 test('instagramPost: no DOPLNIT placeholder, "na prodej" for a work on sale, no duplicate hashtags', () => {
   const text = instagramPost({
-    work: { title: 'Máky', description: 'DOPLNIT popis', technique: 'akvarel', tags: ['akvarel'] },
+    work: { title: 'Máky', text: 'DOPLNIT popis', technique: 'akvarel', tags: ['akvarel'] },
     year: '2026', host: 'pavla.kramolis.cz', onSale: true, settings,
   });
   assert.ok(!text.includes('DOPLNIT'));

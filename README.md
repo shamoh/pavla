@@ -20,6 +20,8 @@ nikdy nejdou.
   tvorba/<kolekce>/_cover.jpg               úvodní fotka kolekce (nepovinné)
   tvorba/<kolekce>/<slug>.yaml + .jpg       díla kolekce (a jejich detaily v <slug>/)
   fotky/<název>.jpg + <název>.yaml          ostatní fotky webu (O mně, Kontakt)
+  stranky/<stránka>.yaml                    texty stránek O mně, Kontakt, 404 (kostru s dosavadním textem založí pipeline)
+                                            a volitelných textových stránek (kurzy.yaml = /kurzy/)
   roky/<rok>.yaml                           text autorky o roce a úvodní obraz roku (kostru založí pipeline)
   roky/<rok>.jpg                            vlastní úvodní fotka roku (nepovinné)
   _index.yaml                               úvodní stránka: text a úvodní obraz (kostru založí pipeline)
@@ -32,11 +34,11 @@ nikdy nejdou.
 
 Systémové soubory obsahu mají všude stejná dvě jména: `_index.yaml` popisuje místo, kde leží (v kořeni úvodní
 stránku, ve složce kolekce kolekci, přímo v `tvorba/` díla mimo kolekce), `_cover.<jpg|png|webp>` je jeho vlastní úvodní fotka. Podtržítko je odliší
-od děl (jméno díla jím začínat nemůže). Složky (`tvorba/`, `roky/`, `fotky/`) a jména děl zůstávají česky.
+od děl (jméno díla jím začínat nemůže). Složky (`tvorba/`, `roky/`, `fotky/`, `stranky/`) a jména děl zůstávají česky.
 Stará jména (`_kolekce.yaml`, `_uvod.jpg`, `uvod.yaml`, `uvod.jpg`) pipeline odmítne chybou „tento soubor se teď
 jmenuje …, přejmenuj ho“ a vedle nich nezaloží kostru, takže se nic neztratí; soubory se přejmenují ručně.
 
-Jména všech ostatních souborů a složek v `tvorba/`, `fotky/` a `roky/` (i kolekcí a složek detailních fotek) musí
+Jména všech ostatních souborů a složek v `tvorba/`, `fotky/`, `roky/` a `stranky/` (i kolekcí a složek detailních fotek) musí
 už být svou adresou pro web: jen malá písmena bez diakritiky, číslice a pomlčky uvnitř, tedy `slugify(jméno) === jméno`
 (přípona zvlášť). Jinak by fotka, její popis a adresa měly různá jména (`Instagram_surf.jpg` by dostala
 `instagram-surf.yaml`). Kontroluje to `scripts/lib/file-names.mjs` (`fileNameProblems`) na začátku každého běhu
@@ -54,11 +56,12 @@ pavla/                                      (toto repo, veřejné)
   content/                                  veřejné kopie popisů = zrcadlo obsahového repa (generuje pipeline, needitovat):
     _index.yaml                             úvodní stránka
     tvorba/<slug>.yaml                      dílo bez kolekce
-    tvorba/_index.yaml                      díla mimo kolekce (description, cover, aspect, focus)
+    tvorba/_index.yaml                      díla mimo kolekce (text, cover, aspect, focus)
     tvorba/<kolekce>/_index.yaml            kolekce (složka = její slug)
     tvorba/<kolekce>/<slug>.yaml            dílo kolekce (kolekce = složka, žádný atribut)
     roky/<rok>.yaml                         rok
     fotky/<název>.yaml                      ostatní fotka (alt, caption, focus)
+    stranky/<stránka>.yaml                  text stránky (O mně, Kontakt, 404, volitelné textové stránky)
   public/                                   vygenerované obrázky leží ve složce své stránky (= adresa, generuje pipeline,
                                             scripts/lib/site-images.mjs); statické soubory webu (favicon.svg, favicon.ico, apple-touch-icon.png, CNAME) vedle:
     tvorba/<rok>/<slug>-<id>/               dílo: webové velikosti, detaily, mockupy, og-<otisk>.jpg, pin-<otisk>.jpg + info.json
@@ -71,7 +74,7 @@ pavla/                                      (toto repo, veřejné)
   mockups/instagram/                        scény ateliéru pro Instagram (scenes.yaml, README.md se zadáními generátoru)
   scripts/process-images.mjs                pipeline (npm run images)
   scripts/lib/                              logika pipeline a filtrů, každý modul má *.test.mjs
-  scripts/lib/schema.mjs                    atributy popisů (díla, kolekce, fotky): pořadí, výchozí hodnoty, komentáře
+  scripts/lib/schema.mjs                    atributy popisů (díla, kolekce, fotky, roky, stránky): pořadí, výchozí hodnoty, komentáře
   src/                                      web (Astro stránky a komponenty)
   site.config.yaml                          jméno, kontakty, doména, nastavení pipeline
 ```
@@ -86,7 +89,8 @@ pavla/                                      (toto repo, veřejné)
 | `/tvorba/kolekce/plener-sumava-2026/` | kolekce: název, popis, úvodní fotka a její díla s filtry |
 | `/tvorba/2026/rano-u-rybnika-k3f9a/` | detail díla |
 | `/tvorba/k3f9a/` | trvalý krátký odkaz, přesměruje na detail |
-| `/o-mne/`, `/kontakt/` | stránky s fotkami z `fotky/` obsahového repa |
+| `/o-mne/`, `/kontakt/` | stránky s texty ze `stranky/` a fotkami z `fotky/` obsahového repa |
+| `/kurzy/` | obecná textová stránka, jen když obsahové repo má `stranky/kurzy.yaml` |
 | `/sitemap.xml` | mapa webu: kanonická adresa každé stránky (bez krátkých odkazů a 404) |
 | `/pinterest.xml` | kanál RSS pro Pinterest: díla s `meta_pinterest: true` (viz *Pinterest*) |
 
@@ -111,7 +115,7 @@ i jako katalogové číslo na zadní straně obrazu. ID má 5 znaků, začíná 
 a neobsahuje snadno zaměnitelné znaky (`0 o 1 l i`).
 
 **Mapa webu** (`/sitemap.xml`, `src/pages/sitemap.xml.ts`, seznam adres `scripts/lib/sitemap.mjs`): úvod, statické
-stránky (`STATIC_PAGES`), roky, kolekce a díla, s adresou `site.url`. Pro vyhledávače i pro kontrolu obrázků
+stránky (`STATIC_PAGES`), existující obecné textové stránky (`/kurzy/`), roky, kolekce a díla, s adresou `site.url`. Pro vyhledávače i pro kontrolu obrázků
 (viz níže), která od ní začíná. Nová stránka v `src/pages` bez dat za sebou = přidat do `STATIC_PAGES`.
 Každá adresa má `<lastmod>`: dílo den, kdy se naposledy změnily jeho veřejné údaje nebo obrázky
 (`derived_modified` ve veřejné kopii `content/tvorba/…`, zapisuje pipeline, `MODIFIED` v `scripts/lib/site-content.mjs`;
@@ -301,34 +305,123 @@ ořezu (celé dílo), Ze zahrady `cover: <id>#<detail>` s `aspect: "2:1"` a `foc
 (celé, klik vede na dílo). Konkrétní obraz na úvodní stránce: do `demo-content/_index.yaml` napiš `cover: pf7ru`, s
 `aspect: "3:2"` se ořízne kolem středu.
 
+### Texty popisů: `text`, `description`, zápis `|` a formátování
+
+Každý popis s textem na webu (dílo, kolekce, rok, úvod, „Mimo kolekce“, stránky ve `stranky/`) má **stejný vzor**:
+
+| Atribut | Co dělá |
+|---|---|
+| `text` | text na stránce (`textField` ve schématu: `block`, `rich`); u díla popisek pod obrazem, u kolekce a roku nahoře na jejich stránce, u úvodu vedle velkého obrazu, u „Mimo kolekce“ v přehledu kolekcí |
+| `description` | nepovinný popis pro vyhledávače a náhled odkazu (`searchDescriptionField`: zakomentovaný, `settled`), bez formátování, nejvýš `PAGE_DESCRIPTION_CHARS` = 160 znaků (`[popis-stranky-dlouhy]`); prázdný = začátek textu (`searchDescription`); „Mimo kolekce“ ho nemá (nemá vlastní stránku) |
+| `closing` | jen stránky ve `stranky/`: tlumený závěrečný odstavec, formátovaný jako `text` |
+
+- **Zápis vždy `|`** (`blockText` v `scripts/lib/metadata-yaml.mjs`): pipeline zapíše každý text blokového atributu
+  (`block` ve schématu) jako `klíč: |`, ať byl v souboru jakkoli (na řádku, v uvozovkách, `>`, `>-`, `|-`). Řádky
+  delší než `TEXT_WIDTH` (140 znaků) zalomí u mezery, autorčina zalomení v bloku `|` nechá, mezery na krajích řádků
+  a víc prázdných řádků za sebou uklidí. Prázdný text zůstane `""` na řádku s klíčem.
+- **Význam textu** (`normalizeText`, `paragraphs` v `scripts/lib/rich-text.mjs`): zalomení řádku = mezera, prázdný
+  řádek = nový odstavec. Proto smí pipeline zalamovat; její kontrola „hodnota se nezměnila“ porovnává u blokových
+  atributů tento význam. Web i exporty berou text vždy přes tyto funkce: HTML odstavce `textHtml` (`richParagraphs`),
+  čistý řádek `plainText` / `ownText` (bez `DOPLNIT`) pro bublinu, hledání, Instagram, Fler, přehled kolekcí (karta
+  je odkaz, odkaz v ní by nefungoval) a `searchDescription` pro `<meta name="description">`, JSON-LD a pin.
+- **Formátování** (`text`, `closing`, `empty_closing` úvodu; `rich` ve schématu; každý popisek v `details` díla, `richMap`):
+  malá podmnožina Markdownu, nikdy HTML.
+  `[text](adresa)` = odkaz, `**slovo**` = tučně, `*slovo*` = kurzíva; všechno ostatní je obyčejný text (HTML se
+  escapuje, osamocená hvězdička zůstane). Adresa odkazu jen `https://…`, `http://…`, `mailto:…` nebo adresa na webu
+  začínající `/` (dostane základ webu přes `url`); vnější odkazy mají `rel="noopener"`. Jiná adresa (`www.fler.cz`,
+  `tvorba/`, `//…`, `javascript:`) zůstane na stránce textem a v pipeline je chyba `[spatny-odkaz-v-textu]`
+  (`linkProblems`). Web vkládá HTML jen z `textHtml` (`set:html`), nikdy jinak.
+- **Náhled v přehledu** `export/README.md` obsahového repa: `text` a popisky detailů jako Markdown pro GitHub
+  (`richTextMarkdown`): tučně, kurzíva a odkazy vypadají jako na webu, odkazy na web mají celou adresu (`siteUrl`
+  z `site.url`, aby fungovaly i na GitHubu), všechno ostatní je escapované; `description` čistý jako „Google: …“.
+- Kontroly všech textů najednou: `textProblems` / `allTextProblems` (`scripts/lib/content.mjs`): text, který není
+  text (`[popisek-neni-text]`), špatný odkaz, dlouhý `description`.
+- **Technický komentář** u `text` je strukturovaný (řádky s `  - `): jak psát, co znamená zalomení a prázdný řádek,
+  a seznam formátování; u `closing` odkaz na něj.
+- **Převod z 2026-10** (`moved: { description: 'text' }` ve schématu díla, kolekce, roku, úvodu a „Mimo kolekce“):
+  dřív byl `description` text na stránce. Soubor s `description` a bez `text` ho pipeline přejmenuje na `text`
+  (souhrn „přesunuto description → text“) i s jeho komentářem (starší znění jsou v `previous` obou atributů); jediná
+  výjimka z pravidla „žádná migrace“, aby texty přežily i ve větvích založených dřív. Soubor, který už `text` má,
+  se nemění: jeho `description` je popis pro vyhledávače.
+
 ### Text o roce
 
 Nepovinný text autorky o roce (jaký byl, co se v tvorbě dělo) je v obsahovém repu v `roky/<rok>.yaml`
 (`YEAR_SCHEMA` v `scripts/lib/schema.mjs`, pipeline `scripts/lib/years.mjs`):
 
 ```yaml
-description: |
-  Rok plenérů: Šumava v září, zahrada v létě…
+text: |
+  Rok plenérů: **Šumava** v září, zahrada v létě…
+# description: …    # NEPOVINNÉ: popis pro vyhledávače (jinak začátek textu)
 # cover: k3f9a      # NEPOVINNÉ: úvodní obraz roku, viz Úvodní obraz (nebo vlastní fotka roky/2026.jpg)
 # aspect: "3:2"     # NEPOVINNÉ, zapíná se smazáním "# ": ořez vybraného obrazu (jen s focus = "1:1")
 # focus: [50, 50]   # NEPOVINNÉ: co zůstane vidět [zleva %, shora %] (jen s aspect = střed)
 # private_note: …   # NEPOVINNÉ, soukromé, na web se nedostane
 ```
 
-- Pipeline ke každému roku, ve kterém je nějaké dílo, sama založí kostru (s prázdným `description`
-  a `DOPLNIT`) a všechny popisy roků srovnává podle schématu jako ostatní popisy.
-- Veřejná kopie (`description`, `cover`, `aspect`, `focus`) jde do `content/roky/<rok>.yaml`; web ji načte přes
-  `getYear` (`src/lib/site.ts`). Prázdný text se nezobrazí. Text je i popisem stránky pro vyhledávače.
-- Jiný soubor v `roky/` než `<rok>.yaml` a `<rok>.jpg`, fotka roku bez díla, nebo `description`, které není
-  text, zastaví běh chybou.
+- Pipeline ke každému roku, ve kterém je nějaké dílo, sama založí kostru (`text` se vzorovou větou
+  `yearSkeletonText`) a všechny popisy roků srovnává podle schématu jako ostatní popisy.
+- Veřejná kopie (`text`, `description`, `cover`, `aspect`, `focus`) jde do `content/roky/<rok>.yaml`; web ji načte
+  přes `getYear` (`src/lib/site.ts`, odstavce `paragraphs`). Prázdný text se nezobrazí. Popis pro vyhledávače:
+  `description`, jinak text, jinak „Akvarely a kresby z roku …“.
+- Jiný soubor v `roky/` než `<rok>.yaml` a `<rok>.jpg` nebo fotka roku bez díla zastaví běh chybou; texty viz
+  *Texty popisů*.
 
 ### Úvodní stránka (`_index.yaml`)
 
 Text vedle velkého obrazu na úvodní stránce a její úvodní obraz jsou v kořeni obsahového repa v `_index.yaml`
-(`HOME_SCHEMA`, pipeline `scripts/lib/home.mjs`): `description`, `cover`, `aspect`, `focus` a `private_note`, vlastní fotka
+(`HOME_SCHEMA`, pipeline `scripts/lib/home.mjs`): `text`, `description` (pro vyhledávače), `heading`, `button`, `empty_text`,
+`empty_closing`, `cover`, `aspect`, `focus` a `private_note`, vlastní fotka
 `_cover.jpg`. Když soubor chybí, pipeline založí kostru s výchozím textem úvodu (`HOME_TEXT`, stejný jako ve skutečném obsahu), takže se
-nic nezmění. Veřejná kopie je `content/_index.yaml` (web `getHome`); bez ní web ukáže výchozí text `HOME_TEXT`. Nadpis
-„Barvy, voda a trochu náhody“ je dál v `src/pages/index.astro`. Vyzkoušení: `demo-content/_index.yaml`, `/`.
+nic nezmění. Veřejná kopie je `content/_index.yaml` (web `getHome`); bez ní web ukáže výchozí text `HOME_TEXT`.
+`text` je formátovaný (viz *Texty popisů*), `description` pro vyhledávače je nepovinný (jinak začátek textu).
+`heading` je velký nadpis (blok `|`, každý řádek = řádek nadpisu, mezi nimi `<br>`; povinný, prázdný = chyba
+`[prazdny-nadpis]`; výchozí `HOME_HEADING` „Barvy, voda / a trochu náhody“, doplní se i do existujícího souboru).
+`button` = text tlačítka na tvorbu (výchozí `HOME_BUTTON` „Prohlédnout tvorbu“), `empty_text` = velká věta prázdného
+webu, dokud není žádné dílo (`HOME_EMPTY_TEXT` „Obrazy tu brzy přibudou.“), obojí povinné (`[prazdny-nadpis]`);
+`empty_closing` = menší formátovaná věta pod ní, kostra i doplnění do existujícího souboru dostane
+`homeEmptyClosing(site.instagram)` (odkaz na Instagram ze `site.config.yaml`, předává ho `prepareHome`), prázdné = nic.
+Vyzkoušení: `demo-content/_index.yaml` (nadpis „Testovací nadpis / na dva řádky“), `/`; prázdný web jen unit testy.
+
+### Texty stránek (`stranky/`)
+
+Texty stránek jsou v obsahovém repu ve složce `stranky/`, jeden soubor na stránku pojmenovaný její adresou
+(pipeline `scripts/lib/pages.mjs`, seznam stránek `PAGES`, schémata `PAGE_SCHEMAS` v `scripts/lib/schema.mjs`):
+
+| Soubor | Stránka | Schéma | Atributy navíc |
+|---|---|---|---|
+| `stranky/o-mne.yaml` | `/o-mne/` | `ABOUT_SCHEMA` | `closing` |
+| `stranky/kontakt.yaml` | `/kontakt/` | `CONTACT_SCHEMA` | `location_label` (popisek nad `site.location`, výchozí „Žiji a maluji“) |
+| `stranky/404.yaml` | neexistující adresa (`src/pages/404.astro`) | `NOT_FOUND_SCHEMA` | `title` (titulek v záložce), `heading` (nadpis), `closing` |
+| `stranky/kurzy.yaml` | `/kurzy/`, jen dokud soubor existuje | `TEXT_PAGE_SCHEMA` | `title` (nadpis i titulek), `closing` |
+
+| Atribut | Co dělá |
+|---|---|
+| `description` | nepovinný popis stránky pro vyhledávače a náhled odkazu (`<meta name="description">`, `og:description`), nejvýš `PAGE_DESCRIPTION_CHARS` = 160 znaků, bez formátování; na stránce se neukáže; prázdný = začátek textu |
+| `text` | text stránky; blok `|`, prázdný řádek = nový odstavec, řádky jednoho odstavce se spojí mezerou (`paragraphs`); prázdné `""` = bez textu; s formátováním |
+| `closing` | nepovinný závěrečný odstavec menším tlumeným písmem (třída `muted`); s formátováním |
+| `title`, `heading`, `location_label` | povinné jednořádkové texty stránek, které je mají (prázdné = chyba) |
+| `private_note` | soukromá poznámka, nikdy na web |
+
+Texty (`text`, `closing`, `description`) se píšou a formátují jako všude, viz *Texty popisů*.
+
+- **Pevné stránky** (O mně, Kontakt, 404): chybí-li soubor, pipeline založí kostru s textem, který stránka měla v kódu
+  (`ABOUT_*`, `CONTACT_*`, `NOT_FOUND_*` v `schema.mjs`; schválené texty, proto bez `DOPLNIT`: `settled`). Bez veřejné
+  kopie ukáže web tytéž výchozí texty.
+- **Obecná textová stránka** (`optional` v `PAGES`, teď jen `kurzy`): žádná kostra; stránka `/<název>/` vznikne
+  (`src/pages/[page].astro`, `getGenericPages`, JSON-LD `WebPage` + drobečky) a je v mapě webu (`sitemapEntries` `pages`)
+  jen dokud soubor existuje. Do menu ji přidá správce v `Base.astro`. Nová obecná stránka = záznam `<název>: { schema:
+  TEXT_PAGE_SCHEMA, optional: true }` v `PAGES` a `<název>: TEXT_PAGE_SCHEMA` v `PAGE_SCHEMAS`; jméno nesmí kolidovat
+  s jinou stránkou webu (`tvorba`, `o-mne`, …).
+- Každý běh soubory srovná se schématem jako ostatní popisy. Chyby (zastaví běh): `description` delší než 160 znaků
+  (`[popis-stranky-dlouhy]`), prázdný `title` / `heading` /
+  `location_label` (`[prazdny-text-stranky]`), špatný odkaz (`[spatny-odkaz-v-textu]`), hodnota, která není text
+  (`[popisek-neni-text]`), veřejný text začínající `DOPLNIT` (`[doplnit-verejny]`), jiný soubor nebo složka ve `stranky/`
+  (`[cizi-soubor]`).
+- Veřejná kopie (všechny atributy kromě `private_note`) jde do `content/stranky/<stránka>.yaml` (jen plný běh); web ji
+  načte přes `getPage` (`src/lib/site.ts`). Menu, kontakty, formulář, štítek „Chyba 404“ a fotky (`fotky/`) zůstávají ve webu.
+- Vyzkoušení: `demo-content/stranky/` (`npm run demo`): `/o-mne/` (dva odstavce, první zalomený, tučně, kurzíva, odkazy,
+  odkaz v `closing`), `/kontakt/` (vlastní `location_label`), libovolná neexistující adresa (texty 404 s odkazy), `/kurzy/`.
 
 **Nejnovější a jejich zobrazení:** pod úvodem jsou nejnovější díla (bez díla z úvodního obrazu) se stejným přepínačem
 zobrazení jako galerie (`ViewSwitch.astro` v záhlaví „Nejnovější“: „Velké obrazy“ / „Dlaždice“ a u dlaždic `−` / `+`),
@@ -678,7 +771,8 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `meta_pinterest_version` | nepovinné (v kostře `# meta_pinterest_version: 2`): verze pinu v kanálu, celé číslo od 1 (bez něj 1, jiná hodnota = chyba `[spatna-verze-pinu]`); vyšší = nová adresa obrázku v kanálu, tedy nový pin (viz *Pinterest*, Stálá adresa v kanálu) |
 | `id` | trvalý kód, doplní pipeline, NEMĚNIT |
 | `date` | den vzniku (`2026-06-14`): určuje řazení i rok díla (stránky roků, adresa, složky v `pavla`) |
-| `description` | veřejný popis na webu |
+| `text` | popisek obrazu na jeho stránce, s formátováním (viz *Texty popisů*); i v bublině, Instagramu a Fleru jako čistý text |
+| `description` | nepovinný popis pro vyhledávače, náhled odkazu a pin (jinak `text`), viz *Texty popisů* |
 | `details` | popisky detailních fotek (viz *Detailní fotky*) |
 | `featured` | `true` = ve **výběru autorky**: přepínač „Doporučené“ v galerii; z 10 nejnovějších vybraných (`FEATURED_PICK`) se náhodně střídá obraz nahoře na úvodní stránce, na stránce roku a úvod kolekce bez `cover`; nejnovější z nich je náhled pro sdílení (úvod, rok, kolekce) |
 | `fler` | odkaz na Fler, tlačítko „Koupit na Fleru“; v náhledu exportů `export/fler/` = „✓ na Fleru“ |
@@ -733,7 +827,7 @@ v galerii, na stránce díla i v bublině nad obrazem; `not-for-sale` štítek n
 Jediný zdroj pravdy o atributech popisů je `scripts/lib/schema.mjs` (`WORK_SCHEMA`, `COLLECTION_SCHEMA`,
 `PHOTO_SCHEMA`): pořadí, výchozí hodnota nové kostry, hodnota pro doplnění do existujícího souboru
 (`missing`, znamená totéž co chybějící atribut, takže se na webu nic nezmění: chybějící `meta_draft` = `false`,
-`description` = prázdné…) a **technický komentář** (typ, povolené hodnoty, příklady; atribut s pevnými
+`text` = prázdné…) a **technický komentář** (typ, povolené hodnoty, příklady; atribut s pevnými
 možnostmi, tj. `status` a přepínače `true`/`false`, má komentář „…, možnosti:“ a pod ním každou možnost
 na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`)). Výčty `WORK_FIELDS`,
 `COLLECTION_FIELDS` a `PHOTO_FIELDS` se z něj odvozují. Logika je v `scripts/lib/metadata-yaml.mjs`.
@@ -746,15 +840,14 @@ na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`)). V�
   - atributy seřadí podle schématu, mezi nimi prázdný řádek,
   - nad každý atribut dá jeho technický komentář v aktuálním znění, ve všech souborech stejný
     (starší znění z `previous` pozná a nahradí; jeho kopie hned nad ním, např. po běhu se starším schématem, smaže),
-  - dlouhý text o jednom odstavci u textových atributů (`block: true` ve schématu: `description` díla, kolekce, roku, úvodu a „Mimo kolekce“)
-    delší než `TEXT_WIDTH` (140 znaků) převede na zalomený blok `description: >` s řádky do 140 znaků (`foldLines`);
-    text se tím nezmění, jen se líp čte a upravuje. Krátký text zůstane na řádku s atributem, víc řádků jako `|`,
-    `description` nové kostry je vždy blok `|`, aby se text psal rovnou na správné místo s odsazením: dílo
+  - každý text blokového atributu (`block: true` ve schématu: `text`, `description`, `closing`, `heading`,
+    `empty_closing`) zapíše jako blok `|` s řádky do 140 znaků (`blockText`, viz *Texty popisů*); význam textu se
+    nezmění. `text` nové kostry je vždy blok `|`, aby se text psal rovnou na správné místo s odsazením: dílo
     `DOPLNIT popisek` (rozpracované dílo smí, zveřejnění ho odmítne), kolekce `COLLECTION_SKELETON_TEXT`, rok
     `yearSkeletonText(<rok>)`, „Mimo kolekce“ `UNCOLLECTED_SKELETON_TEXT` (vzorové věty bez `DOPLNIT`: jsou veřejné hned
     a `DOPLNIT` by zastavilo běh); existující soubor bez popisu dostane dál `missing` (`null`/`""`),
   - text napsaný pod `klíč:` / `klíč: |` bez odsazení (častá chyba) pozná `unindentedText` a `yamlProblem` napíše
-    místo obecné „chybný zápis YAML“ přesnou hlášku s ukázkou („description: text pod „description:“ musí být odsazený
+    místo obecné „chybný zápis YAML“ přesnou hlášku s ukázkou („text: text pod „text:“ musí být odsazený
     (řádek 5); správně je …“); funguje pro dílo, kolekci, rok, úvod, „Mimo kolekce“ i fotky,
   - `DOPLNIT` nechá, dokud ho člověk nesmaže (znamená „hodnotu zkontrolovat“), sám ho nikdy neodstraní,
   - vlastní komentář nad atributem nechá, nad technickým; blok, který je přesně technickým komentářem některého
@@ -765,7 +858,7 @@ na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`)). V�
   - neznámý atribut (např. překlep `mockup:`) nesmaže, dá ho na konec a označí komentářem `NEZNÁMÝ atribut…`;
     na web se nedostane,
   - **atribut s konečnou výchozí hodnotou** (ve schématu `settled: true`: `meta_draft`, `meta_edge` (`deckle`), `tags`, `meta_instagram`, `meta_pinterest`, `mockups`,
-    `featured`) nikdy nedostane `DOPLNIT` (ani v kostře, ani při doplnění), starý `DOPLNIT` u něj zmizí; souhrn běhu
+    `featured`, u stránek `description`, `text`, `closing`, `title`, `heading`, `location_label`, u úvodu `heading`) nikdy nedostane `DOPLNIT` (ani v kostře, ani při doplnění), starý `DOPLNIT` u něj zmizí; souhrn běhu
     ho hlásí jako „doplněno … (výchozí hodnota)“,
   - **zakomentovaný nepovinný atribut** (ve schématu `commented: true` a ukázková hodnota `example`; teď `support`,
     `details`, `price`, `fler`, `instagram`, `meta_instagram_grid` a `private_note` díla, `cover`, `aspect`, `focus` a `private_note` kolekce, roku
@@ -820,7 +913,9 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | techniky | akvarel (35), kresba tužkou (8), akvarel a tuš (6), kvaš (5), pastel (3), linoryt (1, Lípa u kaple) |
 | tagy (31, nerovnoměrně) | hodně: krajina (28), voda (15), město (12); středně: léto (9), zátiší (7), květiny (6), podzim, hory, plenér (po 5), ulice, zima, řeka, strom, les (po 4); málo: déšť, zvířata, ovoce, noc, světla, portrét, ptáci (po 3), loď, louka, nebe, sníh (po 2), jaro, kostel, květina, mlha, most, západ slunce (po 1) |
 | `featured` (výběr autorky, 15 děl, v 8 ze 16 kolekcí a 3 bez kolekce) | Máky, Ráno u rybníka, Šumava v mlze, Nádraží, Rybník v zimě… (2026 a přelom roku), Pivoňky, Zimní sad, Kočka na okně, Jablka na stole (2025), Louka s kopretinami (2024), Vltava u Zbraslavi v podvečerním světle (dlouhý název: na stránce díla se zalomí a hvězdička zůstane vpravo u prvního řádku), Oblaka, Čáp u rybníka, Buky, Babička: úvodní stránka náhodně střídá 10 nejnovějších (po Louku s kopretinami, `FEATURED_PICK`), `/tvorba/?featured=1` ukáže všech 15; kolekce bez vybraných: Skicák, Tatry, Krkonoše, Z cest, U moře, Zátiší, Noční město, Město 2026 |
-| text o roce | `/tvorba/2026/` má text (`demo-content/roky/2026.yaml`), `/tvorba/2025/` ne (`description: ""`) |
+| text o roce s formátováním | `/tvorba/2026/` (`demo-content/roky/2026.yaml`), `/tvorba/2025/` s kurzívou a tučným písmem |
+| text díla s formátováním (dva odstavce, tučně, odkaz) a vlastní `description` pro vyhledávače | Pivoňky (`demo-content/tvorba/demo-zahrada-2025/demo-pivonky.yaml`): `<meta name="description">` jiný než text |
+| odkaz v textu kolekce; v přehledu kolekcí čistý text | Ze zahrady 2025 (`/tvorba/kolekce/demo-zahrada-2025/`, `/tvorba/kolekce/`) |
 | tlačítko „Koupit na Fleru“ | Máky |
 | export pro Instagram (`meta_instagram: true`, asi čtvrtina děl) | Ráno u rybníka (+ 2 detaily), Pivoňky (+ 1 detail, na výšku), Kytice z louky (+ 1 detail, není na prodej; `meta_edge: cut`: ve scénách čistá rovná hrana), Máky (`meta_edge: canvas`: ve scénách plátno tlusté 2 cm s okrajem v barvách malby), Na podlaze (průhledný ořez podlahy), Lípa u kaple (20 × 15: scény se přiblíží), Zimní sad (50 × 35: na stoly se nevejde, v logu „does not fit the free part of the scene“, `scene-stul-*.jpg` chybí; panorama 2 snímky; na stojanu posunutý po liště do fotky), Oblaka (60 × 20: panorama 3 snímky, mřížka 3; na stojanu širší než fotka, „does not fit into the photo of the scene stojan“; na stoly se taky nevejde, takže žádný `scene-*.jpg`), Hřeben nad údolím (70 × 50: nevejde se nikam, na stojanu přes sklenici a okraj fotky, „does not fit into the photo“; žádný `scene-*.jpg`); ostatní díla žádný. Mřížka na profilu: Pivoňky (`meta_instagram_grid: 3x3`), Oblaka (`3x1`) a Ráno u rybníka (`2x1`, dvojice). Panorama: Na podlaze, Ráno u rybníka, Zimní sad (2 snímky), Oblaka (3); Máky, Kytice z louky (čtverec) a Pivoňky (na výšku) žádné. Příběh `story.jpg` má každé |
 | pin pro Pinterest | pin (`pin-<otisk>.jpg`) má každé zveřejněné dílo („Uložit na Pinterest“ ho nabídne); `meta_pinterest: true` u Ráno u rybníka, Pivoněk (na výšku, `meta_pinterest_version: 2`: `feedVersion: 2` v `info.json`) a Oblak (60 × 20: popisek hned pod obrazem) = `pin.feed` v `info.json` a 3 položky v `/pinterest.xml` (obrázek z `pin.feedFile`) |
@@ -853,13 +948,16 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | strukturovaná data: obraz na prodej jen s dostupností (`InStock` / `LimitedAvailability`), bez ceny | Máky (`available`), Kočka na okně (`reserved`) |
 | stránka 404 s výběrem autorky | libovolná neexistující adresa, např. `/tvorba/nic/` (v `npm run demo`) nebo `.demo/site/dist/404.html` |
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
-| doporučení „vzorová věta z kostry“ (`sampleAdvice`) | v kopii testovacích dat nastav `description` kolekce na „Toto je moje nejvíc nejoblíbenější kolekce.“ a spusť `npm run demo:prepare` (log `? advice:`), pak `git checkout demo-content/` |
+| texty stránek (`description`, odstavce `text`, tlumený `closing`, formátování a odkazy, `location_label`, texty 404) | `demo-content/stranky/o-mne.yaml`, `kontakt.yaml`, `404.yaml`; `/o-mne/`, `/kontakt/`, neexistující adresa |
+| obecná textová stránka jen se souborem (`optional`), v mapě webu | `demo-content/stranky/kurzy.yaml`; `/kurzy/`, `/sitemap.xml` |
+| nadpis úvodní stránky na dva řádky (`heading`) | `demo-content/_index.yaml`; `/` |
+| doporučení „vzorová věta z kostry“ (`sampleAdvice`) | v kopii testovacích dat nastav `text` kolekce na „Toto je moje nejvíc nejoblíbenější kolekce.“ a spusť `npm run demo:prepare` (log `? advice:`), pak `git checkout demo-content/` |
 | doporučení v souhrnu běhu: bez štítků, popis s malým písmenem a bez tečky / popisky detailů bez tečky / na prodej bez mockupů / text kolekce bez tečky / popis a popisek fotky bez tečky | Rozpracovaný obraz / Ráno u rybníka, Pivoňky / Máky, Bouřka nad polem, Modravské slatě, Pivoňky / Město 2026 / fotky stránek |
 | zrušení filtrů | `/tvorba/`: vyber techniku a štítek, vpravo „N z 60 děl × Zrušit filtry“; klik vrátí všechna díla i „60 děl“ a 1. stránku, dlaždice a počet na stránku zůstanou. `/tvorba/2025/`: rok zůstane. Lišta po posunu: se dvěma filtry „Zrušit vše“, s jedním ne. Panel „Upravit“: „Zrušit filtry“ vedle „Hotovo“. |
 | lišta filtrů při posunu nahoru, panel „Upravit“ (na úzké obrazovce zespodu) | `/tvorba/` (60 děl, stránka je dost dlouhá); úzká obrazovka: DevTools → režim zařízení |
 | počty u výběrů podle aktuálního výběru, skryté prázdné volby a filtry | `/tvorba/`: technika „kresba tužkou“ (8 děl, Kolekce jen Kresby…, Skicák (po 2), Plenér Šumava, Portréty, Ptáci, Tatry (po 1), bez „žádná“), + kolekce Kresby, pastely a kvaš (2 díla; přepínač Doporučené zmizí, oba obrazy jsou vybrané); štítek „krajina“: Technika jen akvarel (25), kresba tužkou, kvaš, linoryt |
 | výběr více štítků („a zároveň“): čipy se zapínají a vypínají, aktivní zůstanou jen ty, které výběr zúží, ostatní zašednou | `/tvorba/`: „krajina“ (30 děl, 17 aktivních čipů), + „voda“ (10 děl, aktivní hory, jaro, léto, plenér, ptáci, řeka, zima), + „řeka“ (2 díla, aktivní jaro a léto), „Vše“ zruší |
-| dlouhý popis o jednom odstavci zalomený do `description: >` (`foldLines`, text se nemění) | `demo-content/tvorba/demo-kresby-2025-2026/_index.yaml`: popis delší než 140 znaků v bloku `>` se dvěma řádky; další běh ho nemění |
+| dlouhý text zalomený do bloku `|` s řádky do 140 znaků (`blockText`, význam se nemění) | `demo-content/tvorba/demo-kresby-2025-2026/_index.yaml`: text delší než 140 znaků v bloku `|` se dvěma řádky; další běh ho nemění |
 | péče o web v „Doporučení“ (`careAdvice`, `photoSizeAdvice`, `featuredAdvice`; stáří z gitu jen na skutečném obsahu) | `npm run demo` (log `? advice:`): díla bez rozměru nebo popisu, malé fotky a stránky s málo obrazy ve výběru autorky, podle toho, co testovací data mají |
 | zakomentovaný údaj, který není nepovinný, v „Ke kontrole“ (`commentedOutReview`) | `npm run demo` (log `! commented-out attribute:`): `tvorba/demo-rozpracovane.yaml: řádek „# title: Pracovní název“ …` |
 | zbloudilý technický komentář uklizený a spočítaný (`stray`) | v `demo-content/tvorba/demo-na-podlaze.yaml` smaž řádky `meta_corners:` s hodnotami (komentář nech) a spusť `npm run demo:prepare`: rohy se najdou znovu s jedním komentářem, log ukáže `… demo-na-podlaze.yaml: uklizené zbloudilé komentáře: 1`; pak `git checkout demo-content/tvorba/demo-na-podlaze.yaml` |
@@ -872,7 +970,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | filtr bez zbytečných voleb: Stav jen „na prodej“, bez Výběru autorky (všechna díla vybraná) / bez filtru Stav | Ze zahrady 2025 / Kresby, pastely a kvaš 2025–2026 / Město 2026 |
 | řádek filtrů na jeden řádek, zkrácená volba, „Na stránku“ pod díly | `/tvorba/?collection=demo-kresby-2025-2026`: „Kresby, pastely a kva…“, rozbalený výběr ukáže celý název; `/tvorba/` dole vpravo „Na stránku“, při filtru s nejvýš 12 díly zmizí |
 | doporučení: dlouhý název kolekce | Kresby, pastely a kvaš 2025–2026 (32 znaků); dlouhou techniku testovací data nemají, pokrývají ji testy |
-| „Mimo kolekce“ na přehledu kolekcí, `cover` + `aspect`, `description` | `/tvorba/kolekce/` poslední položka (12 děl, úvodní obraz Oblaka oříznutý na 3:2 a vlastní text z `demo-content/tvorba/_index.yaml`) → `/tvorba/?collection=none`; s rokem 2019 „1 z 12 děl“ a odkaz s `&year=2019` |
+| „Mimo kolekce“ na přehledu kolekcí, `cover` + `aspect`, `text` | `/tvorba/kolekce/` poslední položka (12 děl, úvodní obraz Oblaka oříznutý na 3:2 a vlastní text z `demo-content/tvorba/_index.yaml`) → `/tvorba/?collection=none`; s rokem 2019 „1 z 12 děl“ a odkaz s `&year=2019` |
 | bublina nad obrazem: s popisem a stavem / detail jako úvodní obraz / vlastní fotka bez bubliny | Máky v galerii / Ze zahrady 2025 / Plenér Šumava 2026 |
 
 ### Kontroly (pipeline při chybě nic nezveřejní)
@@ -891,7 +989,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 - `cover` kolekce je `id` publikovaného díla této kolekce (případně `#` a jeho existující detail) a kolekce nemá zároveň vlastní úvodní fotku, `aspect` (`šířka:výška`) a `focus` (`[x, y]` 0–100) kolekce, roku i úvodu jsou jen u vybraného obrazu (`cover` nebo vlastní fotka),
 - `focus` fotky je `[x, y]` v rozsahu 0–100,
 - každý klíč v `details:` odpovídá existující detailní fotce a popisek je text,
-- žádný veřejný atribut nemá text začínající `DOPLNIT` (`title`, `description`, štítek v `tags`, popisek v `details`…;
+- žádný veřejný atribut nemá text začínající `DOPLNIT` (`title`, `text`, `description`, štítek v `tags`, popisek v `details`…;
   `todoTexts`), např. nástřel popisku detailu z kostry: u díla jen zveřejňovaného (`meta_draft: false`, `validateWorks`),
   u kolekce, roku, úvodní stránky a fotky stránky vždy (`placeholderProblems` v `scripts/lib/content.mjs`),
 - soubory ve složkách mají známý typ, detailní složka patří k existujícímu dílu,
@@ -901,6 +999,9 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 
 Zajímavé výřezy obrazu (detail tahu, textura papíru, konkrétní část) se ukážou
 na detailu díla pod popisem a stavem (mockupy jsou až pod nimi) a jdou i na Instagram.
+Každý náhled je `<figure>`: obrázek je odkaz do prohlížeče fotek, popisek pod ním `<figcaption>` mimo ten odkaz,
+formátovaný (`detailCaptionHtml`, viz *Texty popisů*), takže odkazy v popisku fungují; bublina, `alt` a popisek
+v prohlížeči fotek mají čistý text (`detailCaption`).
 
 **Kam je dát:** do podsložky vedle master fotky, pojmenované přesně jako dílo:
 
@@ -1133,8 +1234,8 @@ Jeden soubor se **vším o všech dílech** pro hledání v prohlížeči (Ctrl+
   na vlastním řádku, ostatní atributy (bez `title`, ten je v nadpisu) a hlášky. Díla v kolekci od nejnovějšího (`date`).
 - Dílo (`workHeading`, `workLines`): nadpis `### <název> ★ · <id> @ <date> [ <šířka> x <výška> ]` (hvězdička jen
   u `featured: true`, datum a rozměr jen když jsou), řádek s odkazy na popis (text = jen jméno souboru, např. `zena-v-desti.yaml`, odkaz vede na celou cestu), fotku („foto“, nebo „bez fotky“)
-  a stránku na webu (jen zveřejněné), popis (`description`) na vlastním řádku, pod ním každá detailní fotka na vlastním
-  řádku `detail <jméno>: <popisek>` (bez popisku jen `detail <jméno>`), pak jeden odstavec: zapnuté přepínače
+  a stránku na webu (jen zveřejněné), text (`text`, každý odstavec na vlastním řádku, formátovaný jako na webu) a vlastní popis pro vyhledávače („Google: …“) na vlastních řádcích, pod ním každá detailní fotka na vlastním
+  řádku `detail <jméno>: <popisek>` (formátovaný) (bez popisku jen `detail <jméno>`), pak jeden odstavec: zapnuté přepínače
   slovem (`draft` = `meta_draft: true`, `instagram: <odkaz>` nebo `instagram: -` = `meta_instagram: true` s odkazem /
   zatím bez něj, `pinterest`, `mockups`; vypnuté nic) a ostatní atributy v pořadí souboru `klíč: hodnota · …`
   (i `private_*`; prázdné vynechá; seznamy čárkami, mapy `klíč=hodnota; …`, dlouhé texty nad 80 znaků na vlastním
@@ -1228,8 +1329,9 @@ tvorba/zatisi-s-jablky.jpg + .yaml    ← dílo bez kolekce
 ```yaml
 # tvorba/2026-plener-sumava/_index.yaml (obsahové repo)
 title: Plenér Šumava 2026
-description: |
-  Týden malování venku na Kvildě a Modravě.
+text: |
+  Týden malování venku na Kvildě a Modravě. Viz [nejnovější obrazy](/tvorba/).
+# description: … # NEPOVINNÉ: popis pro vyhledávače (jinak začátek textu)
 cover: k3f9a#1-kvet # NEPOVINNÉ: úvodní obraz, id díla z kolekce, případně #detailní fotka
 aspect: "3:2"       # ořez vybraného obrazu na poměr stran (prázdné s focus = "1:1"); obě prázdné = celý
 focus: [50, 40]     # bod [zleva %, shora %], který zůstane vidět (prázdné s aspect = střed)
@@ -1279,7 +1381,7 @@ private_note: kde … # NEPOVINNÉ, soukromé, na web se nedostane
   `tvorba/_cover.jpg` (→ `public/tvorba/_cover/`), `cover: <id>` jen dílo mimo kolekce (jinak chyba „nepatří do obrazů
   mimo kolekce“), s `aspect`/`focus` oříznutý, jinak náhodně z výběru autorky. Obrázek pro sdílení nemá (žádná vlastní
   stránka); veřejná kopie `content/tvorba/_index.yaml` jen dokud je nějaké zveřejněné dílo mimo kolekci. Text pod
-  názvem: nepovinný `description` téhož souboru (v kostře zakomentovaný), prázdný = `UNCOLLECTED_TEXT` („Obrazy, které
+  názvem: nepovinný `text` téhož souboru (v kostře zakomentovaný, v přehledu jako čistý text), prázdný = `UNCOLLECTED_TEXT` („Obrazy, které
   nepatří do žádné kolekce.“); doporučení k velkému písmenu a tečce jako u kolekce, `DOPLNIT` = chyba. Řídí se vybraným rokem jako kolekce („2 z 12 děl“, odkaz s `&year=`), čipy roků
   ale počítají jen kolekce. Bez děl mimo kolekce (nebo bez kolekcí) chybí.
 - Složka kolekce, jejíž adresa by byla `none`, je chyba („adresu „none“ web používá pro obrazy bez kolekce“).
@@ -1586,14 +1688,14 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
      (řádek smazat), nebo ne (odkomentovat, nebo smazat). Řádky technických komentářů se nehlásí; běh nezastaví.
   3. **Doporučení** (`### 💡 Doporučení (počet)`, `workAdvice` v `scripts/lib/advice.mjs`): po souborech, u všech děl
      (i rozpracovaných), běh nezastaví ani nezmění: dílo bez štítků (`tags`); `title` začíná malým písmenem nebo končí
-     tečkou; `description` a popisky detailů (`details`) začínají malým písmenem nebo nekončí tečkou (stačí i `!`, `?`,
+     tečkou; `text` (bez formátování) a popisky detailů (`details`) začínají malým písmenem nebo nekončí tečkou (stačí i `!`, `?`,
      `…`, případně před uzavírací uvozovkou či závorkou); dílo na prodej (`available`, `reserved`) bez `mockups: true`;
      název díla delší než `workTitleChars` (60 znaků titulku stránky ve výsledcích vyhledávání, `SEARCH_TITLE_MAX`,
      minus „ · “ a `site.title`, teď 40): ve výsledcích vyhledávání a v záložce se zkrátí (bublina nad obrazem název
-     nezkracuje). Kolekce, rok nebo „Mimo kolekce“ s `description` pořád jako vzorová věta z kostry
+     nezkracuje). Kolekce, rok nebo „Mimo kolekce“ s `text` pořád jako vzorová věta z kostry
      (`COLLECTION_SKELETON_TEXT`, `yearSkeletonText(<rok>)`, `UNCOLLECTED_SKELETON_TEXT`, bez mezer okolo; `sampleAdvice`
-     v `pageAdvice`): „description je pořád vzorová věta z kostry (…), je vidět na webu; napiš místo ní vlastní text“.
-     Stejně `title` a `description` kolekce, `description` roku a úvodní stránky a `alt` a `caption` fotek stránek
+     v `pageAdvice`): „text je pořád vzorová věta z kostry (…), je vidět na webu; napiš místo ní vlastní text“.
+     Stejně `title` a `text` kolekce, `text` roku a úvodní stránky a `alt` a `caption` fotek stránek
      (`pageAdvice`). Název kolekce delší než `COLLECTION_TITLE_CHARS` (19) a technika delší než `TECHNIQUE_CHARS` (14)
      znaků (`techniqueAdvice`, jednou za techniku s počtem děl): zavřený výběr v galerii je zkrátí (viz *Řádek filtrů*).
      Texty začínající `DOPLNIT` a prázdné přeskočí (ty hlídají kontroly).
@@ -1718,7 +1820,7 @@ roky. Web je na Pinterest dává sám, přes kanál RSS (`scripts/lib/pinterest.
   nejnovější první: `title` (nejvýš 100 znaků), `link` na stránku díla s UTM parametry
   `?utm_source=pinterest&utm_medium=social&utm_campaign=rss` (`FEED_UTM`: Google Analytics tak návštěvu z pinu pozná
   i z aplikace Pinterestu, která jinak neřekne, odkud návštěvník přišel; stránka má kanonickou adresu bez nich), `guid` = `id` díla (Pinterest stejné dílo
-  nepřipne dvakrát), `description` (popis díla, „technika · rozměr · rok · id“ (podle `id` obraz najde hledání v galerii) a klíčová slova, nejvýš 500 znaků,
+  nepřipne dvakrát), `description` (popis díla = jeho `description`, jinak `text`, „technika · rozměr · rok · id“ (podle `id` obraz najde hledání v galerii) a klíčová slova, nejvýš 500 znaků,
   `pinDescription`; dlouhý popis se zkrátí, fakta a klíčová slova zůstanou),
   `pubDate` podle `date`, obrázek v `enclosure` a `media:content`. Bez děl s pinem prázdný kanál.
 - **Klíčová slova** (`pinKeywords`): Pinterest hledá podle slov v názvu a popisu, ne podle hashtagů. Na konci popisu
@@ -1745,9 +1847,9 @@ roky. Web je na Pinterest dává sám, přes kanál RSS (`scripts/lib/pinterest.
 
 Co web dělá, aby mu vyhledávače rozuměly (`scripts/lib/seo.mjs`, `src/layouts/Base.astro`):
 
-- **Popis každé stránky** (`<meta name="description">`, max. 160 znaků, `summarize`): úvod = text z `_index.yaml`,
-  dílo = jeho popis, jinak složený z techniky, podkladu, rozměrů a roku (`workDescription`), rok a kolekce = jejich
-  text, jinak věta s názvem; Tvorba, Kolekce, O mně a Kontakt mají vlastní. Žádné dvě stránky nemají stejný titulek
+- **Popis každé stránky** (`<meta name="description">`, max. 160 znaků, `summarize`): úvod, dílo, rok, kolekce a stránky ve
+  `stranky/` = jejich `description`, jinak jejich `text` bez formátování (`searchDescription`), dílo jinak složené z techniky,
+  podkladu, rozměrů a roku (`workDescription`), rok a kolekce jinak věta s názvem; Tvorba, Kolekce, O mně a Kontakt mají vlastní. Žádné dvě stránky nemají stejný titulek
   ani popis: dílo se stejným názvem jako jiné dostane v titulku stránky v závorce techniku („Tetřevská slať
   (tisk z výšky)“; se stejnou technikou i rozměr a rok, pak `id`; `workPageTitle`), dílo se stejným popisem jako
   jiné za něj techniku, rozměr a rok („Krmelec na okraji lesa. Akvarel, 27,5 × 40 cm, 2026.“, vlastní text se
@@ -1990,7 +2092,8 @@ souhrn běhu náhledy vyjmenuje. Jinou složku dá `run({ previewDir })`.
 `DRAFT_EDGE` = 2000 px (`shrinkPreview`, nikdy nezvětšené; popisky a čáry rostou s fotkou, čísla zůstávají v px původní
 fotky) jdou do `export/draft/[<kolekce>/]<slug>/` obsahového repa jako `backgrounds.jpg`, `cut.jpg`, `frames.jpg`
 a rohy zblízka `frames-tl.jpg`, `frames-tr.jpg`, `frames-br.jpg`, `frames-bl.jpg` (`PREVIEW_KINDS`; 500 px, nezmenšují se, v README zobrazené ve 400 px)
-s `README.md` (`draftReadme`: název, údaje, „Kód obrazu“ a kolekce, „Stav popisu“, všechny náhledy, v „Rámečcích“ rohy
+s `README.md` (`draftReadme`: název, údaje, „Kód obrazu“ a kolekce, „Text na webu“ (texty díla formátované jako na webu,
+`textPreviewLines` jako přehled, odkazy na web s celou adresou), „Stav popisu“, všechny náhledy, v „Rámečcích“ rohy
 jako tabulka 2 × 2 nad celou fotkou, použité `meta_corners`) a přehled
 `export/draft/README.md` podle kolekcí (`draftIndex`, u každého díla kód za názvem a značky stavu popisu `noteMarks`, např.
 „✗ 1 · 💡 3“ = chyby, ke kontrole ⚠, doporučení, údaje k doplnění ✎, s legendou nahoře). Složku má **každé** rozpracované

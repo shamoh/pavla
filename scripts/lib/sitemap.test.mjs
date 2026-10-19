@@ -18,6 +18,7 @@ test('sitemapEntries: static pages, years, collections and works; never the shor
   for (const p of ['/', '/tvorba/', '/tvorba/kolekce/']) assert.equal(lastmod[p], '2026-10-07', p);
   for (const p of ['/o-mne/', '/kontakt/']) assert.equal(lastmod[p], undefined, p);
   assert.deepEqual(sitemapEntries({}).map((e) => e.path), STATIC_PAGES, 'no content yet: only the static pages');
+  assert.deepEqual(sitemapEntries({ pages: ['kurzy'] }).map((e) => e.path), [...STATIC_PAGES, '/kurzy/'], 'a generic text page after the static ones');
   assert.equal(sitemapEntries({ works: [{ year: 2026, key: 'a-b2c3d' }] })[0].lastmod, undefined, 'no day known yet');
 });
 

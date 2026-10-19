@@ -7,12 +7,14 @@
 //   content/tvorba/<collection>/<slug>.yaml  a work of the collection (the collection comes from the folder)
 //   content/roky/<year>.yaml                 a year
 //   content/fotky/<name>.yaml                another photo of the site
+//   content/stranky/<page>.yaml              the text of a page (o-mne, kontakt)
 // The year of a work comes from its `date`, as in the content repository; drafts are never copied.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
 import { INDEX_FILE, WORKS_SUBDIR } from './content.mjs';
+import { PAGES_SUBDIR } from './pages.mjs';
 import { PHOTOS_SUBDIR } from './photos.mjs';
 import { YEARS_SUBDIR } from './years.mjs';
 
@@ -35,6 +37,8 @@ export const yearCopyPath = (year) => path.posix.join(COPIES_DIR, YEARS_SUBDIR, 
 export const UNCOLLECTED_COPY = path.posix.join(COPIES_DIR, WORKS_SUBDIR, INDEX_FILE);
 /** Path of the public copy of the home page. */
 export const HOME_COPY = path.posix.join(COPIES_DIR, INDEX_FILE);
+/** Path of the public copy of the text of a page. */
+export const pageCopyPath = (name) => path.posix.join(COPIES_DIR, PAGES_SUBDIR, `${name}.yaml`);
 /** Path of the public copy of a photo's description. */
 export const photoCopyPath = (name) => path.posix.join(COPIES_DIR, PHOTOS_SUBDIR, `${name}.yaml`);
 
@@ -46,7 +50,7 @@ const list = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes:
 /**
  * Reads the public copies under `root` (this repo, or .demo/site for the test data):
  * { works: [{ slug, collection (slug or null), data }], collections: [{ slug, data }],
- *   years: Map(year → data), home: data | null, uncollected: data | null, photos: Map(name → data) }.
+ *   years: Map(year → data), home: data | null, uncollected: data | null, photos: Map(name → data), pages: Map(name → data) }.
  */
 export function readCopies(root) {
   const base = path.join(root, COPIES_DIR);
@@ -73,11 +77,15 @@ export function readCopies(root) {
   for (const e of list(path.join(base, PHOTOS_SUBDIR))) {
     if (e.isFile() && isYaml(e.name)) photos.set(e.name.slice(0, -5), readYaml(path.join(base, PHOTOS_SUBDIR, e.name)));
   }
+  const pages = new Map();
+  for (const e of list(path.join(base, PAGES_SUBDIR))) {
+    if (e.isFile() && isYaml(e.name)) pages.set(e.name.slice(0, -5), readYaml(path.join(base, PAGES_SUBDIR, e.name)));
+  }
   const homeFile = path.join(root, HOME_COPY);
   const uncollectedFile = path.join(root, UNCOLLECTED_COPY);
   return {
     works, collections, years, home: fs.existsSync(homeFile) ? readYaml(homeFile) : null,
-    uncollected: fs.existsSync(uncollectedFile) ? readYaml(uncollectedFile) : null, photos,
+    uncollected: fs.existsSync(uncollectedFile) ? readYaml(uncollectedFile) : null, photos, pages,
   };
 }
 

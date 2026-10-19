@@ -21,8 +21,7 @@ const { year, works, redirect } = Astro.props;
 const target = redirect && workUrl(redirect);
 // Year page: the author's text about the year (optional) and its cover (roky/<year>.yaml of the content repository).
 const yearPage = year ? getYear(year) : undefined;
-const text = yearPage?.description;
-const yearDescription = text || `Akvarely a kresby z roku ${year} – ${site.author}.`;
+const yearDescription = yearPage?.description || `Akvarely a kresby z roku ${year} – ${site.author}.`;
 const jsonLd = year ? graphLd(
   collectionPageLd(site, { path: `/tvorba/${year}/`, name: `Tvorba ${year}`, description: yearDescription, items: works!, itemPath: (w: Work) => `/tvorba/${w.year}/${w.key}/` }),
   breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Tvorba', path: '/tvorba/' }, { name: String(year), path: `/tvorba/${year}/` }]),
@@ -44,7 +43,7 @@ const jsonLd = year ? graphLd(
     <header class="intro">
       <div>
         <h1>Tvorba {year}</h1>
-        {text ? <p class="desc">{text}</p> : null}
+        {yearPage?.paragraphs.map((p) => <p class="desc" set:html={p} />)}
         <SearchField id="works-search" hint="Enter otevře obraz" label={`Hledat v názvech a popisech obrazů roku ${year}`} placeholder="Hledat v názvech a popisech…" />
       </div>
       {yearPage?.cover ? <Cover cover={yearPage.cover} sizes="(max-width: 900px) 100vw, 45vw" eager /> : null}

@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import YAML from 'yaml';
-import { TEXT_WIDTH, commentedOutKeys, normalizeMetadata, schemaKeysIn, skeleton, todoKeys, unindentedText, yamlProblem } from './metadata-yaml.mjs';
+import { TEXT_WIDTH, blockText, commentedOutKeys, normalizeMetadata, schemaKeysIn, skeleton, todoKeys, unindentedText, yamlProblem } from './metadata-yaml.mjs';
+import { normalizeText } from './rich-text.mjs';
 import { todoTexts } from './works.mjs';
 import { COLLECTION_SKELETON_TEXT, COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, UNCOLLECTED_SCHEMA, UNKNOWN_DOC, WORK_SCHEMA, YEAR_SCHEMA, fieldKeys } from './schema.mjs';
 
@@ -358,35 +359,53 @@ test('the real work schema: meta_corners deleted and found again has its comment
 // A text longer than TEXT_WIDTH: words of different lengths, one double space.
 const LONG = `${'Ráno nad rybníkem, mlha se drží nad hladinou a slunce '.repeat(4)}prosvítá  mezi olšemi.`;
 
-test('a long one-paragraph text of a block attribute becomes a folded block: the same text, lines up to TEXT_WIDTH', () => {
-  for (const written of [JSON.stringify(LONG), `|\n  ${LONG}`]) {
+test('a text of a block attribute is always a block "|": lines up to TEXT_WIDTH, the same meaning, stable', () => {
+  for (const written of [JSON.stringify(LONG), `|\n  ${LONG}`, `>-\n  ${LONG}`, `>\n  ${LONG.slice(0, LONG.indexOf(' ', 60))}\n  ${LONG.slice(LONG.indexOf(' ', 60) + 1)}`, LONG]) {
     const r = norm(`id: k3f9a\ndraft: false\ntitle: ${LONG}\nsize: [1, 2]\ntext: ${written}\n`);
-    assert.equal(r.problem, null);
-    assert.match(r.text, /\ntext: >-?\n {2}Ráno/);
-    const block = r.text.slice(r.text.indexOf('text: >'));
+    assert.equal(r.problem, null, written.slice(0, 10));
+    assert.match(r.text, /\ntext: \|\n {2}Ráno/);
+    const block = r.text.slice(r.text.indexOf('text: |'));
     assert.ok(block.split('\n').length > 2, 'broken into more lines');
     assert.ok(block.split('\n').every((l) => l.length <= TEXT_WIDTH));
-    assert.equal(YAML.parse(r.text).text.trimEnd(), LONG, 'the text stays');
-    assert.equal(norm(r.text).changed, false, 'and stays so on the next run');
+    assert.equal(normalizeText(YAML.parse(r.text).text), normalizeText(LONG), 'the meaning stays');
+    assert.equal(norm(r.text).changed, false, 'and the file stays so on the next run');
     assert.match(r.text, new RegExp(`\\ntitle: ${LONG.slice(0, 20)}.*\\n`), 'not a block attribute: left on its line');
   }
 });
 
-test('a short text, an empty one and a text of more lines keep their form', () => {
-  const text = `id: k3f9a\ndraft: false\ntitle: A\nsize: [1, 2]\ntext: |\n  První řádek.\n  ${LONG}\n`;
-  assert.match(norm(text).text, new RegExp(`\\ntext: \\|\\n {2}První řádek\\.\\n {2}${LONG.slice(0, 20)}`));
-  assert.match(norm('id: k3f9a\ndraft: false\ntitle: A\nsize: [1, 2]\ntext: Krátký.\n').text, /\ntext: Krátký\.\n/);
+test('a block "|" keeps the author\'s line breaks and paragraphs; a short text becomes a block too, an empty one stays ""', () => {
+  const text = `id: k3f9a\ndraft: false\ntitle: A\nsize: [1, 2]\ntext: |\n  První řádek.\n  Druhý   řádek.  \n\n\n  ${LONG}\n`;
+  const r = norm(text);
+  assert.match(r.text, new RegExp(`\\ntext: \\|\\n {2}První řádek\\.\\n {2}Druhý řádek\\.\\n\\n {2}${LONG.slice(0, 20)}`), 'one empty line between paragraphs, spaces tidied');
+  assert.match(norm('id: k3f9a\ndraft: false\ntitle: A\nsize: [1, 2]\ntext: Krátký.\n').text, /\ntext: \|\n {2}Krátký\.\n/);
+  assert.match(norm('id: k3f9a\ndraft: false\ntitle: A\nsize: [1, 2]\ntext: |-\n  Bez konce.\n').text, /\ntext: \|\n {2}Bez konce\.\n/, '"|-" too');
+  assert.match(norm('id: k3f9a\ndraft: false\ntitle: A\nsize: [1, 2]\ntext: ""\n').text, /\ntext: ""\n/);
   const empty = { header: [], fields: [{ key: 'text', block: true, doc: 'Popis.', value: '' }] };
   assert.equal(skeleton(empty), '# DOPLNIT Popis.\ntext: ""\n', 'an empty skeleton value on the line of its key');
 });
 
-test('the real schemas: a long description of a work, collection, year, home and "Mimo kolekce" is folded', () => {
+test('blockText: the text of a block, trimmed lines up to TEXT_WIDTH, one empty line between paragraphs', () => {
+  assert.equal(blockText('  a  b \n\n\n c\n'), 'a b\n\nc\n');
+  assert.equal(blockText('a\nb'), 'a b\n', 'not a block "|": its line breaks are spaces');
+  assert.equal(blockText('a\nb', { literal: true }), 'a\nb\n', 'a block "|": the author\'s line breaks stay');
+  assert.ok(blockText(LONG).split('\n').every((l) => l.length <= TEXT_WIDTH - 2));
+  assert.equal(blockText(`${'x'.repeat(TEXT_WIDTH + 10)} y`), `${'x'.repeat(TEXT_WIDTH + 10)}\ny\n`, 'a word longer than the width stays whole');
+});
+
+test('the real schemas: a former description (the text on the page) moves to text, once; the meaning stays', () => {
   const long = 'Slovo a ještě jedno slovo, '.repeat(8).trim();
   for (const schema of [WORK_SCHEMA, COLLECTION_SCHEMA, YEAR_SCHEMA, HOME_SCHEMA, UNCOLLECTED_SCHEMA]) {
-    const r = normalizeMetadata(`description: ${JSON.stringify(long)}\n`, schema);
+    const r = normalizeMetadata(`description: >-\n  ${long}\n`, schema);
     assert.equal(r.problem, null, schema.name);
-    assert.match(r.text, /\ndescription: >-\n {2}Slovo/, schema.name);
-    assert.equal(YAML.parse(r.text).description, long, schema.name);
+    assert.deepEqual(r.moved, ['description → text'], schema.name);
+    assert.match(r.text, /\ntext: \|\n {2}Slovo/, schema.name);
+    const data = YAML.parse(r.text);
+    assert.equal(normalizeText(data.text), long, schema.name);
+    assert.equal(data.description, undefined, `${schema.name}: the description for search engines is a new, empty one`);
+    assert.deepEqual(normalizeMetadata(r.text, schema).moved, [], `${schema.name}: nothing moves again`);
+    // with a text already there, a description is the one for search engines and stays
+    const both = normalizeMetadata('text: Text.\ndescription: Pro Google.\n', schema);
+    assert.deepEqual([both.moved, YAML.parse(both.text).description], [[], schema === UNCOLLECTED_SCHEMA ? 'Pro Google.' : 'Pro Google.\n'], schema.name);
   }
 });
 
@@ -454,20 +473,24 @@ test('unindentedText: only a line at the edge right under an attribute without a
   assert.equal(unindentedText('', 1), null);
 });
 
-test('skeletons: description ready as a block, a work with DOPLNIT, a collection with a sample sentence', () => {
+test('skeletons: text ready as a block, a work with DOPLNIT, a collection with a sample sentence', () => {
   const work = skeleton(WORK_SCHEMA, { id: 'k3f9a', title: 'Ráno', date: '2026-05-01' });
-  assert.ok(work.includes(`# mezerami; dlouhý řádek automatika zalomí.\ndescription: |\n  ${TODO} popisek\n`));
-  assert.equal(YAML.parse(work).description, `${TODO} popisek\n`);
+  assert.ok(work.includes(`odkaz na e-mail.\ntext: |\n  ${TODO} popisek\n`), 'under its comment with the formatting');
+  assert.match(work, /# DOPLNIT Pár vět o obraze/);
+  assert.equal(YAML.parse(work).text, `${TODO} popisek\n`);
+  assert.match(work, /\n# description: /, 'the description for search engines commented out');
   const collection = skeleton(COLLECTION_SCHEMA, { title: 'Plenér' });
-  assert.ok(collection.includes(`\ndescription: |\n  ${COLLECTION_SKELETON_TEXT}`));
+  assert.ok(collection.includes(`\ntext: |\n  ${COLLECTION_SKELETON_TEXT}`));
   assert.ok(!COLLECTION_SKELETON_TEXT.startsWith(TODO), 'a collection is public at once: DOPLNIT would stop the run');
-  // an existing file without a description gets none (missing), whatever the skeleton has
+  // an existing file without a text gets none (missing), whatever the skeleton has
   for (const schema of [WORK_SCHEMA, COLLECTION_SCHEMA]) {
     const r = normalizeMetadata('title: Ráno\n', schema);
-    assert.equal(YAML.parse(r.text).description, null, schema === WORK_SCHEMA ? 'work' : 'collection');
+    assert.equal(YAML.parse(r.text).text, null, schema === WORK_SCHEMA ? 'work' : 'collection');
   }
-  // the former wording of the comment is replaced in existing files
-  const old = '# Pár vět o obraze, zobrazí se na jeho stránce. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.\ndescription: ""\n';
-  assert.ok(normalizeMetadata(old, WORK_SCHEMA).text.includes('Text piš pod „description: |“'));
-  assert.ok(!normalizeMetadata(old, WORK_SCHEMA).text.includes('Stačí v uvozovkách'));
+  // a former wording of the comment of the moved description goes with it
+  const old = '# Pár vět o obraze, zobrazí se na jeho stránce. Stačí v uvozovkách na jeden řádek, dlouhý text automatika zalomí.\ndescription: Ráno.\n';
+  const moved = normalizeMetadata(old, WORK_SCHEMA).text;
+  assert.ok(moved.includes('# Pár vět o obraze, zobrazí se na jeho stránce.\n# Piš ho pod „text: |“'));
+  assert.ok(!moved.includes('Stačí v uvozovkách'));
+  assert.match(moved, /\ntext: \|\n {2}Ráno\.\n/);
 });

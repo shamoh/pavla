@@ -58,14 +58,15 @@ import YAML from 'yaml';
 import { PUBLIC_COLLECTION_FIELDS, coverSource, prepareCollections, validateCollectionCovers } from './lib/collections.mjs';
 import { PUBLIC_YEAR_FIELDS, prepareYears } from './lib/years.mjs';
 import { PUBLIC_HOME_FIELDS, prepareHome } from './lib/home.mjs';
+import { preparePages, publicPageFields } from './lib/pages.mjs';
 import { PUBLIC_UNCOLLECTED_FIELDS, prepareUncollected } from './lib/uncollected.mjs';
 import { NO_COLLECTION_TITLE } from './lib/gallery-filter.mjs';
 import {
   HOME_PAGE_DIR, OUTPUT_ROOTS, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, fingerprintedName, ogDir, photoDir, staleOutputs, workImageDir, yearPageDir,
 } from './lib/site-images.mjs';
-import { HOME_COPY, MODIFIED, UNCOLLECTED_COPY, collectionCopyPath, photoCopyPath, staleCopies, workCopyPath, yearCopyPath } from './lib/site-content.mjs';
+import { HOME_COPY, MODIFIED, UNCOLLECTED_COPY, collectionCopyPath, pageCopyPath, photoCopyPath, staleCopies, workCopyPath, yearCopyPath } from './lib/site-content.mjs';
 import { coverProblems, coverShareSource } from './lib/covers.mjs';
-import { commentedOutReview, placeholderProblems, prepareContent } from './lib/content.mjs';
+import { allTextProblems, commentedOutReview, placeholderProblems, prepareContent } from './lib/content.mjs';
 import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
@@ -390,7 +391,8 @@ async function careOfSite({ works, years, collections, home, uncollected, conten
 
 /**
  * Every description of the content repository as it is now (after the skeletons and normalization of this run):
- * works and collections in tvorba/ (any depth), years in roky/, photos in fotky/ and the home page _index.yaml;
+ * works and collections in tvorba/ (any depth), years in roky/, photos in fotky/, texts of pages in stranky/ and the
+ * home page _index.yaml;
  * [{ file (relative, "/"), text }] sorted by file.
  */
 async function contentYamls(contentDir) {
@@ -398,6 +400,7 @@ async function contentYamls(contentDir) {
     ...(await listFiles(path.join(contentDir, 'tvorba'))).map((f) => `tvorba/${f}`),
     ...(await listFiles(path.join(contentDir, 'roky'))).map((f) => `roky/${f}`),
     ...(await listFiles(path.join(contentDir, 'fotky'))).map((f) => `fotky/${f}`),
+    ...(await listFiles(path.join(contentDir, 'stranky'))).map((f) => `stranky/${f}`),
     ...((await exists(path.join(contentDir, '_index.yaml'))) ? ['_index.yaml'] : []),
   ].filter((f) => f.endsWith('.yaml')).sort();
   return Promise.all(files.map(async (file) => ({ file, text: await fs.readFile(path.join(contentDir, file), 'utf8') })));
@@ -497,9 +500,13 @@ export async function run({
   const corners = await prepareCorners(contentDir, works, { search: edges.search, suspicious: edges.suspicious });
   corners.detected.forEach((p) => log(`+ corners of the sheet: ${p}`));
   cornersOf = new Map(works.filter((w) => w.masterPath).map((w) => [w.masterPath, w.data.meta_corners]));
-  const home = await prepareHome(contentDir);
+  const home = await prepareHome(contentDir, { instagram: config.site?.instagram ?? '' });
   created.push(...home.created);
   updated.push(...home.updated);
+  // stranky/<page>.yaml: the texts of the pages O mně and Kontakt.
+  const pages = await preparePages(contentDir);
+  created.push(...pages.created);
+  updated.push(...pages.updated);
   // tvorba/_index.yaml: the cover of "Mimo kolekce" (the works without a collection) on the collections overview.
   const uncollected = await prepareUncollected(contentDir, works.some((w) => !w.collection));
   created.push(...uncollected.created);
@@ -521,7 +528,7 @@ export async function run({
   const commentedOut = commentedOutReview(yamls);
   commentedOut.forEach((p) => log(`! commented-out attribute: ${p}`));
   const problems = [
-    ...scanProblems, ...corners.problems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems, ...home.problems, ...uncollected.problems,
+    ...scanProblems, ...corners.problems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems, ...home.problems, ...pages.problems, ...uncollected.problems,
     ...years.years.flatMap((y) => coverProblems({
       where: y.yamlPath, data: y.data, photoPath: y.coverPath, works, inScope: (w) => w.year === y.year, scope: y.year,
     })),
@@ -532,7 +539,10 @@ export async function run({
     }) : []),
     ...validateCollectionCovers(collections.collections, works),
     ...placeholderProblems({
-      collections: collections.collections, years: years.years, home: home.home, uncollected: uncollected.uncollected, photos: photos.photos,
+      collections: collections.collections, years: years.years, home: home.home, uncollected: uncollected.uncollected, photos: photos.photos, pages: pages.pages,
+    }),
+    ...allTextProblems({
+      works, collections: collections.collections, years: years.years, home: home.home, uncollected: uncollected.uncollected,
     }),
     ...demoProblems({ works, collections: collections.collections, marked: await exists(path.join(contentDir, DEMO_MARKER)) }, dataset),
   ];
@@ -595,6 +605,7 @@ export async function run({
     await fs.mkdir(dir, { recursive: true });
     await writeIfChanged(readmePath, draftReadme({
       work: w.data, year: w.year, files, corners: draftCorners(w.data.meta_corners), collection, fingerprint: files ? fingerprint : '', notes, noPreviews,
+      siteUrl: String(config.site?.url ?? '').replace(/\/+$/, ''),
     }));
   }
   // export/README.md: everything about every work and what the run says about it, in one file for searching
@@ -603,6 +614,7 @@ export async function run({
   const overviewSite = String(config.site?.url ?? '').replace(/\/+$/, '');
   const writeOverview = async (extra = {}) => {
     const text = overviewReadme({
+      siteUrl: overviewSite,
       works: works.map((w) => ({
         yamlPath: w.yamlPath,
         photoPath: w.masterPath ? path.relative(contentDir, w.masterPath).split(path.sep).join('/') : null,
@@ -991,6 +1003,11 @@ export async function run({
     await writeCopy(HOME_COPY, h.data, PUBLIC_HOME_FIELDS);
     const source = coverShareSource({ photoPath: h.coverPath, data: h.data, works });
     await pageCover(HOME_PAGE_DIR, { photoPath: h.coverPath, alt: config.site?.title ?? '', source, label: 'uvod' });
+  }
+
+  // Texts of the pages: content/stranky/<page>.yaml (no images of their own: their photos are in fotky/).
+  if (!only.length) {
+    for (const p of pages.pages) await writeCopy(pageCopyPath(p.name), p.data, publicPageFields(p.name));
   }
 
   // Works without a collection: content/tvorba/_index.yaml (cover); public/tvorba/_cover/ (own cover photo). The

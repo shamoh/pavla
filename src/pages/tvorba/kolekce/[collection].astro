@@ -6,7 +6,8 @@ import Base from '../../../layouts/Base.astro';
 import WorkGallery from '../../../components/WorkGallery.astro';
 import SearchField from '../../../components/SearchField.astro';
 import Cover from '../../../components/Cover.astro';
-import { collectionShareImage, getCollections, site, url, type Collection } from '../../../lib/site';
+import { collectionShareImage, getCollections, site, textHtml, url, type Collection } from '../../../lib/site';
+import { searchDescription } from '../../../../scripts/lib/rich-text.mjs';
 import { breadcrumbLd, collectionPageLd, graphLd } from '../../../../scripts/lib/seo.mjs';
 
 export function getStaticPaths() {
@@ -14,9 +15,11 @@ export function getStaticPaths() {
 }
 interface Props { collection: Collection }
 const { collection } = Astro.props;
-const { title, description, works } = collection;
+const { title, works } = collection;
 const path = `/tvorba/kolekce/${collection.slug}/`;
-const pageDescription = description?.trim() || `${title} – kolekce maleb a kreseb, ${site.author}.`;
+// The text of the collection (formatted) and its description for search engines (its own, or the text).
+const paragraphs = textHtml(collection.text);
+const pageDescription = searchDescription(collection) || `${title} – kolekce maleb a kreseb, ${site.author}.`;
 const jsonLd = graphLd(
   collectionPageLd(site, { path, name: title, description: pageDescription, items: works, itemPath: (w) => `/tvorba/${w.year}/${w.key}/` }),
   breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Tvorba', path: '/tvorba/' }, { name: 'Kolekce', path: '/tvorba/kolekce/' }, { name: title, path }]),
@@ -28,7 +31,7 @@ const jsonLd = graphLd(
     <div>
       <p class="eyebrow">Kolekce</p>
       <h1>{title}</h1>
-      {description && <p class="desc">{description}</p>}
+      {paragraphs.map((p) => <p class="desc" set:html={p} />)}
       <SearchField id="works-search" hint="Enter otevře obraz" label={`Hledat v názvech a popisech obrazů kolekce ${title}`} placeholder="Hledat v názvech a popisech…" />
     </div>
     <Cover cover={collection.cover} sizes="(max-width: 900px) 100vw, 55vw" eager />

@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import opentype from 'opentype.js';
 import sharp from 'sharp';
 import YAML from 'yaml';
+import { ownText } from './rich-text.mjs';
 import { captionFacts } from './works.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -1108,7 +1109,7 @@ const tagLine = (words) => [...new Set(words.map(hashtag).filter(Boolean))].map(
  * site.config.yaml: { always: { cs: [], en: [] }, en: { <Czech word>: <English hashtag> } }.
  */
 export function instagramPost({ work, year, host, onSale = false, collection = '', settings = {} }) {
-  const description = typeof work.description === 'string' && !/^\s*DOPLNIT/.test(work.description) ? work.description.trim() : '';
+  const description = ownText(work.text);
   const words = [work.technique, ...(Array.isArray(work.tags) ? work.tags : [])].filter((w) => typeof w === 'string' && w.trim());
   const en = settings.en ?? {};
   const translated = words.map((w) => en[w] ?? en[w.toLowerCase()]).filter(Boolean);

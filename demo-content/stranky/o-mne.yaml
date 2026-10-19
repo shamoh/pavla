@@ -1,0 +1,40 @@
+# Stránka O mně (/o-mne/) - kostru vytvořila pipeline s textem, který stránka měla.
+# Nadpis a fotky (fotky/o-mne-uvod.jpg, fotky/portret.jpg) jsou zvlášť.
+
+# NEPOVINNÉ. Závěrečný odstavec pod textem, menším tlumeným písmem (např. pozvání, ať mi lidé napíšou).
+# Piš ho pod „closing: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez závěrečného odstavce.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+closing: |
+  Tlumený závěrečný odstavec (closing): kdyby vás některý obraz oslovil, [napište mi](/kontakt/).
+
+# NEPOVINNÉ. Popis pro vyhledávače a náhled odkazu (Google, Facebook, WhatsApp): jedna nebo dvě věty, nejvýš
+# 160 znaků, bez formátování; na stránce se neukáže. Prázdné = začátek textu.
+description: |
+  Testovací stránka O mně: maluji akvarelem v kroužku, na plenérech i doma u stolu. (Popis z demo-content/stranky/o-mne.yaml.)
+
+# Text stránky O mně vedle portrétu.
+# Piš ho pod „text: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez textu.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+text: |
+  Maluji v kroužku a na plenérech, nejraději **krajinu** a *vodu*. Tento odstavec je zalomený
+  na dva řádky, na stránce je z něj jeden.
+
+  Druhý odstavec testovacího textu s odkazy: [výběr autorky](/tvorba/?featured=1)
+  a [Fler](https://www.fler.cz/).
+
+# NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+# private_note: co jsem na stránce změnila a proč

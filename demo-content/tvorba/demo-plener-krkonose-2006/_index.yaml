@@ -7,14 +7,26 @@
 # Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.
 # cover: k3f9a
 
-# Pár vět o kolekci: kde a kdy obrazy vznikly. Text piš pod „description: |“, každý řádek odsazený dvěma
-# mezerami; dlouhý řádek automatika zalomí.
-description: |
-  Týden na horách s malířským kroužkem, každý den jiné údolí.
+# NEPOVINNÉ. Popis pro vyhledávače a náhled odkazu (Google, Facebook, WhatsApp): jedna nebo dvě věty, nejvýš
+# 160 znaků, bez formátování; na stránce se neukáže. Prázdné = začátek textu.
+# description: Jedna nebo dvě věty pro Google, nejvýš 160 znaků.
 
 # NEPOVINNÉ. Při ořezu vybraného obrazu zůstane vidět [zleva %, shora %], např. [50, 50] = střed, [80, 30] = vpravo nahoře.
 # Jen s aspect = střed. Náhodný obraz se neořezává.
 # focus: [50, 50]
+
+# Pár vět o kolekci (kde a kdy obrazy vznikly), na stránce kolekce a v přehledu kolekcí.
+# Piš ho pod „text: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez textu.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+text: |
+  Týden na horách s malířským kroužkem, každý den jiné údolí.
 
 # Název kolekce na webu, např. Plenér Šumava 2026.
 title: Plenér Krkonoše 2006

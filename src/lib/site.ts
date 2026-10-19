@@ -4,10 +4,12 @@ import YAML from 'yaml';
 import { PIN_FILE } from '../../scripts/lib/pinterest.mjs';
 import { coverCandidates, dateYear, detailKey, formatSizeCm, isValidId, workKey } from '../../scripts/lib/works.mjs';
 import { photoFocus } from '../../scripts/lib/photos.mjs';
+import { GENERIC_PAGES, PAGES } from '../../scripts/lib/pages.mjs';
+import { plainText, richParagraphs, searchDescription } from '../../scripts/lib/rich-text.mjs';
 import { readCopies } from '../../scripts/lib/site-content.mjs';
 import { HOME_PAGE_DIR, LEGACY_OG_FILE, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, pageShareFile, photoDir, workImageDir, yearPageDir } from '../../scripts/lib/site-images.mjs';
 import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
-import { HOME_TEXT, UNCOLLECTED_TEXT } from '../../scripts/lib/schema.mjs';
+import { HOME_BUTTON, HOME_EMPTY_TEXT, HOME_HEADING, HOME_TEXT, UNCOLLECTED_TEXT, homeEmptyClosing } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
 import { NO_COLLECTION_TITLE } from '../../scripts/lib/gallery-filter.mjs';
 import { sortCollections } from '../../scripts/lib/collection-filter.mjs';
@@ -84,6 +86,9 @@ export interface Work {
   details?: Record<string, string>;
   /** Slug of the collection (the folder of content/tvorba/<slug>/), if the work belongs to one. */
   collection?: string;
+  /** The text on its page, formatted (scripts/lib/rich-text.mjs; textHtml), as written. */
+  text?: string;
+  /** Its own description for search engines (plain); without it they get the text (searchDescription). */
   description?: string;
   /** The day (YYYY-MM-DD) its public attributes or images last changed (derived_modified of the public copy). */
   modified?: string;
@@ -105,6 +110,8 @@ export interface Work {
 export interface Collection {
   slug: string;
   title: string;
+  /** The text of the collection, formatted (textHtml), as written; `description` for search engines (searchDescription). */
+  text?: string;
   description?: string;
   /** The cover (resolveCover): its own photo, `cover`, or random from the author's selection. */
   cover: Cover;
@@ -185,7 +192,7 @@ export function getCollections(): Collection[] {
     if (!members.length) continue;
     const page = collectionPageDir(slug);
     const cover = resolveCover(members, data, page, data.title ?? slug)!;
-    collections.push({ slug, title: data.title ?? slug, description: data.description, cover, works: members });
+    collections.push({ slug, title: data.title ?? slug, text: data.text ?? undefined, description: data.description ?? undefined, cover, works: members });
   }
   collectionCache = sortCollections(collections);
   return collectionCache;
@@ -195,15 +202,15 @@ export function getCollections(): Collection[] {
  * The works in no collection as one more item of the collections overview ("Mimo kolekce", leading to the gallery
  * filtered to them, ?collection=none). Its cover follows the rule of every place (resolveCover) from tvorba/_index.yaml
  * of the content repository: its own photo tvorba/_cover.jpg, `cover` among these works, otherwise random. No share
- * image (no page of its own). Its text: `description` of that file, otherwise UNCOLLECTED_TEXT.
- * Null when every work is in a collection.
+ * image (no page of its own). Its text: `text` of that file as plain text (it is shown inside a link), otherwise
+ * UNCOLLECTED_TEXT. Null when every work is in a collection.
  */
-export function getUncollected(): { title: string; description: string; cover: Cover; works: Work[] } | null {
+export function getUncollected(): { title: string; text: string; cover: Cover; works: Work[] } | null {
   const works = getWorks().filter((w) => !w.collection);
   if (!works.length) return null;
   const cover = resolveCover(works, copies().uncollected ?? {}, UNCOLLECTED_PAGE_DIR, NO_COLLECTION_TITLE)!;
-  const description = String(copies().uncollected?.description ?? '').trim() || UNCOLLECTED_TEXT;
-  return { title: NO_COLLECTION_TITLE, description, cover, works };
+  const text = plainText(copies().uncollected?.text) || UNCOLLECTED_TEXT;
+  return { title: NO_COLLECTION_TITLE, text, cover, works };
 }
 
 export const getCollection = (slug?: string) => (slug ? getCollections().find((c) => c.slug === slug) : undefined);
@@ -296,24 +303,68 @@ export function coverShareImage(c: Cover | null): ShareImage | undefined {
   return undefined;
 }
 
-/** A year page: the author's text about the year (content/roky/<year>.yaml) and its cover. */
-export function getYear(year: number): { description?: string; cover: Cover | null } {
+/**
+ * A year page: the author's text about the year (content/roky/<year>.yaml) as HTML paragraphs, its description for
+ * search engines (its own or the text, '' without either) and its cover.
+ */
+export function getYear(year: number): { paragraphs: string[]; description: string; cover: Cover | null } {
   const data = copies().years.get(String(year)) ?? {};
-  const text = typeof data.description === 'string' && data.description.trim() ? data.description.trim() : undefined;
   const works = getWorks().filter((w) => w.year === year);
   const page = yearPageDir(year);
-  return { description: text, cover: resolveCover(works, data, page, `Tvorba ${year}`) };
+  return { paragraphs: textHtml(data.text), description: searchDescription(data), cover: resolveCover(works, data, page, `Tvorba ${year}`) };
 }
 
 /**
  * The home page: its text (content/_index.yaml; without the file, e.g. before the first pipeline run, the text the
  * page always had) and its cover.
  */
-export function getHome(): { description?: string; cover: Cover | null } {
-  const data = copies().home ?? { description: HOME_TEXT };
-  const text = typeof data.description === 'string' && data.description.trim() ? data.description.trim() : undefined;
-  return { description: text, cover: resolveCover(getWorks(), data, HOME_PAGE_DIR, site.title) };
+export function getHome(): {
+  paragraphs: string[]; description: string; heading: string[]; button: string; emptyText: string; emptyClosing: string[];
+  cover: Cover | null;
+} {
+  const data = copies().home ?? { text: HOME_TEXT, empty_closing: homeEmptyClosing(site.instagram) };
+  const line = (value: unknown, fallback: string) => String(value ?? '').trim() || fallback;
+  // the lines of the heading (a copy from before the heading was in the content has none: the default one)
+  const heading = String(data.heading ?? HOME_HEADING).split('\n').map((l) => l.trim()).filter(Boolean);
+  return {
+    paragraphs: textHtml(data.text), description: searchDescription(data), heading,
+    button: line(data.button, HOME_BUTTON), emptyText: line(data.empty_text, HOME_EMPTY_TEXT), emptyClosing: textHtml(data.empty_closing),
+    cover: resolveCover(getWorks(), data, HOME_PAGE_DIR, site.title),
+  };
 }
+
+/**
+ * A formatted text (`text`, `closing` of any description; scripts/lib/rich-text.mjs) as HTML paragraphs, addresses on
+ * the site with the base of the site. The only HTML the site takes from the content (set:html): never anything else.
+ */
+export const textHtml = (text: unknown): string[] => richParagraphs(text, { url });
+
+/** The text of a page as the site shows it (getPage). */
+export type PageText = {
+  description: string; title: string; heading: string; locationLabel: string;
+  /** Paragraphs as HTML (simple formatting of scripts/lib/rich-text.mjs); `closing`: the muted last ones. */
+  paragraphs: string[]; closing: string[];
+};
+
+/**
+ * The text of a page (content/stranky/<name>.yaml; without the file, e.g. before the first pipeline run, the texts
+ * the page had in the code). Null for an optional page without its file.
+ */
+export function getPage(name: keyof typeof PAGES): PageText | null {
+  const data = copies().pages.get(name) ?? PAGES[name].defaults;
+  if (!data) return null;
+  const line = (value: unknown) => String(value ?? '').trim();
+  return {
+    description: searchDescription(data), title: line(data.title), heading: line(data.heading), locationLabel: line(data.location_label),
+    paragraphs: textHtml(data.text), closing: textHtml(data.closing),
+  };
+}
+
+/** The generic text pages that exist (their file is in the content): [{ name, page }]. */
+export const getGenericPages = () => GENERIC_PAGES.flatMap((name) => {
+  const page = getPage(name as keyof typeof PAGES);
+  return page ? [{ name, page }] : [];
+});
 
 export const getYears = () => [...new Set(getWorks().map((w) => w.year))].sort((a, b) => b - a);
 
@@ -328,11 +379,15 @@ export const workTitle = (w: Work, detail?: string) => workTooltip(w, statusLabe
 
 /** Detail page of a work: /tvorba/<year>/<slug>-<id>/ */
 export const workUrl = (w: Work) => url(`/tvorba/${w.year}/${w.key}/`);
-/** Caption of a detail photo of a work, or '' when the author did not write one. */
-export function detailCaption(work: Work, name: string): string {
+/** Caption of a detail photo of a work as written (with its formatting), or '' when the author did not write one. */
+const rawDetailCaption = (work: Work, name: string): string => {
   const entry = Object.entries(work.details ?? {}).find(([key]) => detailKey(key) === name);
   return entry ? String(entry[1]).trim() : '';
-}
+};
+/** Caption of a detail photo of a work as plain text (tooltips, alt, labels), or '' when there is none. */
+export const detailCaption = (work: Work, name: string): string => plainText(rawDetailCaption(work, name));
+/** Caption of a detail photo of a work as HTML (formatting of scripts/lib/rich-text.mjs), or '' when there is none. */
+export const detailCaptionHtml = (work: Work, name: string): string => textHtml(rawDetailCaption(work, name)).join(' ');
 
 /**
  * Share image (og:image) of a work: og.jpg from the pipeline (the whole work on paper, 3:2),

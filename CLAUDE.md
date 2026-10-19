@@ -48,7 +48,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `private_*` (jen obsahové repo; vlastní `private_…` smí přidat kdokoli, bez `NEZNÁMÝ`) / `derived_*` (jen toto repo,
   odvozuje pipeline; v obsahovém repu = chyba; teď `derived_modified` díla = den poslední změny veřejných údajů
   nebo obrázků, `lastmod` v mapě webu). Uvnitř skupiny abecedně. Přejmenovaný atribut (`renamed` ve schématu,
-  `draft` → `meta_draft`) = chyba, soubor se nemění, žádná migrace. (`instagram` byl dřív název `meta_instagram`, dnes
+  `draft` → `meta_draft`) = chyba, soubor se nemění, žádná migrace. Jediná výjimka: `moved: { description: 'text' }`
+  (2026-10, dílo, kolekce, rok, úvod, „Mimo kolekce“): soubor s `description` a bez `text` pipeline přejmenuje (změna významu,
+  texty ve větvích by jinak tiše zmizely). (`instagram` byl dřív název `meta_instagram`, dnes
   je to odkaz na příspěvek; zapomenuté `instagram: true` ohlásí kontrola odkazu.)
 - Veřejná kopie yaml obsahuje jen sdílené atributy (`publicKeys(<schéma>)` = `PUBLIC_WORK_FIELDS` / `PUBLIC_COLLECTION_FIELDS`
   / `PUBLIC_YEAR_FIELDS` / `PUBLIC_HOME_FIELDS` / `PUBLIC_PHOTO_FIELDS`, nikdy ručně),
@@ -117,7 +119,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   Kolekce je combobox (`src/lib/combobox.ts` nad skrytým `<select>`, který zůstává jediným stavem; kolekce podle abecedy `czechOrder` (i Technika), smazaný text = „vše“ (nápověda, Enter ji vybere), psaní zužuje podle
   `comboMatches`, nikdy do URL). Kolekce má za „vše“ volbu „žádná“ (`NO_COLLECTION` = `?collection=none`, díla bez kolekce; čip v liště z `data-chip`),
   přehled kolekcí končí položkou „Mimo kolekce“ (`NO_COLLECTION_TITLE`, `getUncollected`); slug `none` pipeline odmítne.
-  Její text (`description`, prázdný = `UNCOLLECTED_TEXT`) a úvodní obraz: `tvorba/_index.yaml` + `tvorba/_cover.jpg` obsahového repa (`UNCOLLECTED_SCHEMA`, `scripts/lib/uncollected.mjs`,
+  Její text (`text`, v přehledu čistý, prázdný = `UNCOLLECTED_TEXT`) a úvodní obraz: `tvorba/_index.yaml` + `tvorba/_cover.jpg` obsahového repa (`UNCOLLECTED_SCHEMA`, `scripts/lib/uncollected.mjs`,
   výstup `public/tvorba/_cover/`, kopie `content/tvorba/_index.yaml`, bez og), stejné pravidlo jako kolekce.
   Řádek filtrů na počítači (od 1280 px) vždy na jeden řádek: výběry s `max-width` a zkrácením „…“, přepínač „Doporučené“
   (= výběr autorky), „Na stránku“ pod díly; nový filtr = ověřit nejhorší případ (všechny volby, nejdelší texty, 9999 děl) a
@@ -136,9 +138,26 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (`Cover.astro`, vede na zobrazené dílo); stránka ukáže náhodného skriptem `scripts/lib/random-pick.mjs`
   (vložený, bez přeblikávání), `og:image` je vždy první kandidát. Web pipeline (`coverSource`) musí vybírat stejně.
 - Text o roce: `roky/<rok>.yaml` obsahového repa (`YEAR_SCHEMA`, `scripts/lib/years.mjs`), kostru pipeline založí
-  ke každému roku s díly; veřejná kopie `content/roky/<rok>.yaml` (`description`, `cover`, `aspect`, `focus`), web `getYear`.
-- Úvodní stránka: `_index.yaml` v kořeni obsahového repa (`HOME_SCHEMA`, `scripts/lib/home.mjs`; text `description`,
-  `cover`, `aspect`, `focus`), kostra s výchozím textem `HOME_TEXT` (= text úvodu ve skutečném obsahu); veřejná kopie `content/_index.yaml`, web `getHome`.
+  ke každému roku s díly; veřejná kopie `content/roky/<rok>.yaml` (`text`, `description`, `cover`, `aspect`, `focus`), web `getYear`.
+- Úvodní stránka: `_index.yaml` v kořeni obsahového repa (`HOME_SCHEMA`, `scripts/lib/home.mjs`; `text`, `description`,
+  `cover`, `aspect`, `focus`, povinné `heading` po řádcích, `button`, `empty_text` a formátovaný `empty_closing` prázdného webu s odkazem na
+  `site.instagram` (`homeEmptyClosing`, předává `prepareHome`); výchozí `HOME_HEADING`, `HOME_BUTTON`, `HOME_EMPTY_TEXT`), kostra s výchozím textem `HOME_TEXT` (= text úvodu ve skutečném obsahu); veřejná kopie `content/_index.yaml`, web `getHome`.
+- Texty popisů (dílo, kolekce, rok, úvod, „Mimo kolekce“, stránky): vždy `text` = text na stránce (`textField`, `block` + `rich`,
+  strukturovaný komentář s pravidly a formátováním) a nepovinný `description` = popis pro vyhledávače (`searchDescriptionField`,
+  zakomentovaný, bez formátování, max. `PAGE_DESCRIPTION_CHARS`, prázdný = text, `searchDescription`; „Mimo kolekce“ ho nemá).
+  Význam textu `normalizeText`/`paragraphs` (zalomení = mezera, prázdný řádek = odstavec); konzumenti nikdy syrový text:
+  HTML `textHtml`, čistý `plainText`/`ownText`. Formátování jen `scripts/lib/rich-text.mjs` (`[text](adresa)`, `**tučně**`,
+  `*kurzíva*`, nikdy HTML; adresy `https`/`http`/`mailto`/`/…`, jinak `[spatny-odkaz-v-textu]`); web vkládá HTML (`set:html`)
+  jen z `textHtml`. Popisky `details` díla taky (`richMap`; web `detailCaptionHtml` ve `figcaption` mimo odkaz na zvětšení,
+  čistý `detailCaption`). Přehled `export/README.md` ukáže texty formátované (`richTextMarkdown`, odkazy na web s celou
+  adresou `siteUrl`). Kontroly `textProblems`/`allTextProblems`.
+- Texty stránek: `stranky/<stránka>.yaml` obsahového repa (jméno = adresa, `PAGES` v `scripts/lib/pages.mjs`, schémata
+  `PAGE_SCHEMAS`): O mně (`ABOUT_SCHEMA`), Kontakt (`CONTACT_SCHEMA`, `location_label`), 404 (`NOT_FOUND_SCHEMA`, `title`,
+  `heading`) mají kostru s dosavadními texty (`ABOUT_*`, `CONTACT_*`, `NOT_FOUND_*`, schválené = `settled`, bez `DOPLNIT`);
+  obecná textová stránka (`TEXT_PAGE_SCHEMA`, `optional`, teď `kurzy`) bez kostry, `/<název>/` (`src/pages/[page].astro`,
+  `getGenericPages`, mapa webu) jen dokud soubor existuje; nová = záznam v `PAGES` i `PAGE_SCHEMAS`, do menu ručně.
+  Texty jako všude (viz Texty popisů), navíc `closing`. Jiný soubor ve `stranky/` = chyba; veřejná kopie `content/stranky/<stránka>.yaml`,
+  web `getPage` (bez kopie výchozí texty). Menu, kontakty, formulář a fotky zůstávají ve webu.
 - Hledání (`?q=`, `scripts/lib/search.mjs`, `SearchField.astro`), vždy na každém výpisu: každá galerie v názvech, popisech a `id`
   děl (`searchText` předem v `data-search` karty), přehled kolekcí v názvech a popisech kolekcí; každé slovo podřetězcem, bez
   diakritiky a velikosti písmen, nikdy regexp; přesně `id` díla galerie + Enter otevře dílo (`exactId`;
@@ -175,14 +194,15 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   komentář (česky, typ, hodnoty, příklady). Pipeline z něj staví kostry a při každém běhu srovná všechny popisy
   (`scripts/lib/metadata-yaml.mjs`): doplní chybějící atributy s `DOPLNIT`, srovná pořadí a technické komentáře,
   neznámé označí `NEZNÁMÝ`. Povinný atribut s konečnou výchozí hodnotou (`settled: true`: `meta_draft`, `meta_edge`, `tags`, `meta_instagram`, `meta_pinterest`,
-  `mockups`, `featured`) nikdy nemá `DOPLNIT`. Nepovinný atribut (`commented: true` + `example`: `support`, `details`,
+  `mockups`, `featured`, texty stránek a `heading` úvodu) nikdy nemá `DOPLNIT`. Nepovinný atribut (`commented: true` + `example`: `support`, `details`,
   `caption`, `private_note`, `price`, `fler`, `instagram`, `meta_instagram_grid`, `cover`, `aspect`, `focus`) je v souboru zakomentovaný (`# price: 2500`) pod technickým komentářem s `NEPOVINNÉ.`, bez
   `DOPLNIT`; prázdná hodnota = zakomentovat. Nový atribut = záznam ve schématu (prefix určí skupinu), README obou rep
   a testovací data; změna znění komentáře = staré znění do `previous`. Atribut s pevnými možnostmi (výčet, `true`/`false`):
   komentář „<co>, možnosti:“ a pod ním každá možnost na řádku `- <hodnota> - <význam>` (obyčejná pomlčka `-`, nikdy `–`); povolené hodnoty v `options`
   pole (test hlídá shodu s komentářem), jiná hodnota = chyba (`optionProblems`), i u rozpracovaného díla. `DOPLNIT` nikdy neodstraňovat za lidi.
-  Dlouhý text o jednom odstavci (`block: true`, nad `TEXT_WIDTH`) pipeline zalomí do bloku `>` (`foldLines`, hodnota se nemění);
-  `description` v kostře vždy jako blok `|` (aby ho nikdo nemusel psát ručně): dílo `DOPLNIT popisek`, kolekce, rok
+  Každý text blokového atributu (`block: true`) pipeline zapíše jako `|` (`blockText`: řádky do `TEXT_WIDTH`, autorčina
+  zalomení zůstanou, jiný styl `>`/`>-`/uvozovky se převede; kontrola hodnoty porovnává význam `normalizeText`), nikdy `>`;
+  `text` v kostře vždy jako blok `|` (aby ho nikdo nemusel psát ručně): dílo `DOPLNIT popisek`, kolekce, rok
   a „Mimo kolekce“ vzorovou větu (`COLLECTION_SKELETON_TEXT`, `yearSkeletonText`, `UNCOLLECTED_SKELETON_TEXT`; nikdy
   `DOPLNIT`, ty jsou veřejné hned a `DOPLNIT` by zastavilo běh). Neodsazený text pod atributem hlásí `yamlProblem`
   přesně (`unindentedText`).
@@ -208,7 +228,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   přehled `draftIndex`), i ve větvi, přepsané jen při změně otisku v README; zveřejněním zmizí (`EXPORT_FILES.draft`).
   Složku má každý draft, s fotkou vždy všechny tři náhledy (i `meta_corners: false` / samé nuly = celá fotka), bez fotky
   jen README s důvodem; přehled se značkami `noteMarks`.
-  README díla má „Stav popisu“ = jeho hlášky ze souhrnu (`workNotes`, stejné skupiny); píše se i při běhu s chybami
+  README díla má „Text na webu“ (`textPreviewLines`, formátované jako přehled) a „Stav popisu“ = jeho hlášky ze souhrnu (`workNotes`, stejné skupiny); píše se i při běhu s chybami
   v popisech (dílo s vlastní chybou bez nových náhledů; přehledy vždy, mazání jen bez chyb), commit zpět i po chybě.
   `npm run preview -- <fotka|složka>` (`scripts/preview.mjs`): tentýž náhled (`<slug>-<id>-backgrounds.jpg`, i u pipeline) +
   `<slug>-<id>-frames-tl|tr|br|bl.jpg` (roh fotky 200 × 200 bodů zvětšený 2,5× na 500 × 500, čáry po 5 bodech do 100 a po 10 do 130 středem pixelu od obou krajů, čísla přes čáry, `cornerFramesOf`;

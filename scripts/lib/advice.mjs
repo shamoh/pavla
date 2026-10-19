@@ -4,6 +4,7 @@
 
 import { untranslatedWords } from './instagram.mjs';
 import { todoKeys } from './metadata-yaml.mjs';
+import { plainText } from './rich-text.mjs';
 import { COLLECTION_SKELETON_TEXT, TODO, UNCOLLECTED_SKELETON_TEXT, yearSkeletonText } from './schema.mjs';
 import { SEARCH_TITLE_MAX } from './seo.mjs';
 import { detailKey, isInstagramUrl, isOnSale, validSize, wantsInstagram, wantsMockups, workPath } from './works.mjs';
@@ -60,7 +61,7 @@ export function workAdvice(works, { siteTitle = '' } = {}) {
     if (title && [...title].length > titleChars) {
       advice.push(`${where}: název má ${[...title].length} znaků, ve výsledcích vyhledávání a v záložce prohlížeče se zkrátí; celý se vejde do ${titleChars} znaků [dlouhy-nazev]`);
     }
-    advice.push(...sentenceAdvice(where, 'description', data.description));
+    advice.push(...sentenceAdvice(where, 'text', plainText(data.text) || data.text));
     if (data.details && typeof data.details === 'object') {
       for (const [name, caption] of Object.entries(data.details)) advice.push(...sentenceAdvice(where, `popisek detailu ${name}`, caption));
     }
@@ -105,16 +106,16 @@ export function techniqueAdvice(works) {
 
 /**
  * The sample sentence of a new skeleton (COLLECTION_SKELETON_TEXT, yearSkeletonText, UNCOLLECTED_SKELETON_TEXT) still
- * as the description: it is on the site, so a recommendation to write an own one. Compared without the spaces around.
+ * as the text: it is on the site, so a recommendation to write an own one. Compared by meaning (plainText).
  */
-function sampleAdvice(where, description, sample) {
-  if (!sample || typeof description !== 'string' || description.trim() !== sample.trim()) return [];
-  return [`${where}: description je pořád vzorová věta z kostry („${sample.trim()}“), je vidět na webu; napiš místo ní vlastní text [vzorovy-text]`];
+function sampleAdvice(where, text, sample) {
+  if (!sample || typeof text !== 'string' || plainText(text) !== plainText(sample)) return [];
+  return [`${where}: text je pořád vzorová věta z kostry („${sample.trim()}“), je vidět na webu; napiš místo ní vlastní text [vzorovy-text]`];
 }
 
 /**
- * Recommendations for the texts of collections (title, description), years, the home page and the works without a
- * collection (description), as prepareCollections / prepareYears / prepareHome / prepareUncollected give them
+ * Recommendations for the texts of collections (title, text), years, the home page and the works without a
+ * collection (text), as prepareCollections / prepareYears / prepareHome / prepareUncollected give them
  * ({ yamlPath, data }), and of photos (alt, caption),
  * as preparePhotos gives them ({ name, data }).
  */
@@ -126,8 +127,8 @@ export function pageAdvice({ collections = [], years = [], home = null, uncollec
   return [
     ...pages.flatMap(([page, titled, sample]) => [
       ...(titled ? [...titleAdvice(page.yamlPath, page.data?.title), ...collectionTitleAdvice(page.yamlPath, page.data?.title)] : []),
-      ...sentenceAdvice(page.yamlPath, 'description', page.data?.description),
-      ...sampleAdvice(page.yamlPath, page.data?.description, sample),
+      ...sentenceAdvice(page.yamlPath, 'text', plainText(page.data?.text) || page.data?.text),
+      ...sampleAdvice(page.yamlPath, page.data?.text, sample),
     ]),
     ...photos.flatMap((p) => ['alt', 'caption'].flatMap((key) => sentenceAdvice(`fotky/${p.name}.yaml`, key, p.data?.[key]))),
   ];
@@ -179,7 +180,7 @@ export function careAdvice(works) {
     const data = w.data ?? {};
     if (isPublished(w)) {
       if (!validSize(data.size_cm)) advice.push(`${where}: nemá rozměr (size_cm): na webu chybí, mockupy nedrží měřítko a nevzniknou scény ateliéru pro Instagram [bez-rozmeru]`);
-      if (!hasText(data.description)) advice.push(`${where}: nemá popis (description): ukáže se na stránce obrazu, ve výsledcích vyhledávání i v pinu [bez-popisu]`);
+      if (!hasText(data.text)) advice.push(`${where}: nemá text: ukáže se na stránce obrazu, ve výsledcích vyhledávání i v pinu [bez-popisu]`);
     }
     const captions = new Map(Object.entries(data.details && typeof data.details === 'object' ? data.details : {}).map(([k, v]) => [detailKey(k), v]));
     for (const { name } of w.details ?? []) {

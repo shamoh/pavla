@@ -1,7 +1,8 @@
 // Collections of works (e.g. one plein-air trip, or a theme across years): every folder in <contentDir>/tvorba/
 // is a collection, its works lie in it (see scripts/lib/content.mjs). Its slug (the web address) is slugify(folder
 // name), e.g. "2026-plener-sumava"; the year is just a part of the name, a collection may span several years.
-//   tvorba/<collection>/_index.yaml     title, description, optional `cover` and `focus` (private_note stays private)
+//   tvorba/<collection>/_index.yaml     title, text (and description for search engines), optional `cover` and `focus`
+//                                       (private_note stays private)
 //   tvorba/<collection>/_cover.jpg      optional cover photo
 // Cover of a collection: its own photo, otherwise `cover: <work id>` (the work) or `cover: <work id>#<detail>`
 // (one of its detail photos), otherwise its newest work. The cover is shown cropped to 3:2 around `focus: [x, y]` (%).

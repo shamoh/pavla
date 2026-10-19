@@ -9,6 +9,7 @@ import Cover from '../../../components/Cover.astro';
 import Pager from '../../../components/Pager.astro';
 import SearchField from '../../../components/SearchField.astro';
 import { collectionShareImage, collectionUrl, config, getCollections, getUncollected, site, url } from '../../../lib/site';
+import { plainText } from '../../../../scripts/lib/rich-text.mjs';
 import { NO_COLLECTION } from '../../../../scripts/lib/gallery-filter.mjs';
 import { encodeYearCounts, worksLabel, yearCounts, yearOptions } from '../../../../scripts/lib/collection-filter.mjs';
 import { breadcrumbLd, collectionPageLd, graphLd } from '../../../../scripts/lib/seo.mjs';
@@ -50,7 +51,8 @@ const jsonLd = graphLd(
         <Cover cover={c.cover} sizes="(max-width: 700px) 100vw, 50vw" eager={i < 2} link={false} class="collection-cover" />
         <span class="title">{c.title}</span>
         <span class="muted" data-works={c.works.length}>{worksLabel(c.works.length, c.works.length)}</span>
-        {c.description && <span class="desc">{c.description}</span>}
+        {/* plain text: the card is a link, a link inside it would not work */}
+        {c.text && <span class="desc">{plainText(c.text)}</span>}
       </a>
     ))}
     {uncollected && (
@@ -58,7 +60,7 @@ const jsonLd = graphLd(
         <Cover cover={uncollected.cover} sizes="(max-width: 700px) 100vw, 50vw" link={false} class="collection-cover" />
         <span class="title">{uncollected.title}</span>
         <span class="muted" data-works={uncollected.works.length}>{worksLabel(uncollected.works.length, uncollected.works.length)}</span>
-        <span class="desc">{uncollected.description}</span>
+        <span class="desc">{uncollected.text}</span>
       </a>
     )}
   </div>

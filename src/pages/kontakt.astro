@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Photo from '../components/Photo.astro';
 import MessageForm from '../components/MessageForm.astro';
-import { messages, site } from '../lib/site';
+import { getPage, messages, site } from '../lib/site';
 import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
 import { EVENTS } from '../../scripts/lib/analytics.mjs';
 import { mailtoLink } from '../../scripts/lib/messages.mjs';
@@ -15,7 +15,8 @@ const links = [
   site.pinterest && { label: 'Pinterest', href: pinterestProfileLink(site.pinterest), text: 'Pavla na Pinterestu', rel: 'me' },
   site.fler && { label: 'Obchůdek', href: site.fler, text: 'Fler' },
 ].filter(Boolean) as { label: string; href: string; text: string; rel?: string; track?: string }[];
-const description = 'Zaujal vás obraz, nebo jen chcete pozdravit? Napište mi – a když se vám některý obraz zalíbí, domluvíme se. Žiji a maluji v Roztokách.';
+// The texts are in stranky/kontakt.yaml of the content repository.
+const { description, paragraphs, locationLabel } = getPage('kontakt')!;
 // For search engines: the contact page of the author.
 const jsonLd = graphLd(
   { '@type': 'ContactPage', '@id': new URL('/kontakt/', site.url).href, url: new URL('/kontakt/', site.url).href, name: `Kontakt – ${site.author}`, inLanguage: 'cs', about: { '@id': new URL('/#autorka', site.url).href } },
@@ -26,12 +27,12 @@ const jsonLd = graphLd(
   <div class="contact-page">
     <div>
       <h1>Kontakt</h1>
-      <p>Zaujal vás obraz nebo jen chcete pozdravit?</p>
+      {paragraphs.map((p) => <p set:html={p} />)}
       {messages.mode && <MessageForm variant="inline" />}
       {!messages.mode && (
         <ul class="contact">
           {links.map((l) => <li><span class="eyebrow">{l.label}</span><a href={l.href} rel={l.rel} data-track={l.track}>{l.text}</a></li>)}
-          {site.location && <li><span class="eyebrow">Žiji a maluji</span><span class="value">{site.location}</span></li>}
+          {site.location && <li><span class="eyebrow">{locationLabel}</span><span class="value">{site.location}</span></li>}
         </ul>
       )}
     </div>
@@ -44,7 +45,7 @@ const jsonLd = graphLd(
         <ul class="contact compact">
           {links.map((l) => <li><span class="eyebrow">{l.label}</span><a href={l.href} rel={l.rel} data-track={l.track}>{l.text}</a></li>)}
         </ul>
-        {site.location && <p class="where"><span class="eyebrow">Žiji a maluji</span><span class="value">{site.location}</span></p>}
+        {site.location && <p class="where"><span class="eyebrow">{locationLabel}</span><span class="value">{site.location}</span></p>}
       </div>
     )}
   </div>

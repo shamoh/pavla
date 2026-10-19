@@ -4,6 +4,7 @@
 // A work on sale tells only that it is available, never its price (the price stays on the page itself).
 
 import { copyrightNotice } from './image-rights.mjs';
+import { searchDescription } from './rich-text.mjs';
 import { formatSizeCm } from './works.mjs';
 
 const SCHEMA = 'https://schema.org';
@@ -33,11 +34,12 @@ export function summarize(text, max = 160) {
 
 
 /**
- * Description of a work page: its own text, otherwise made of what is known (the support as written, never
+ * Description of a work page: its own description for search engines or its text (searchDescription), otherwise made of what is known (the support as written, never
  * declined), e.g. "Ovce – akvarel, papír Arches 300 g, 42 × 30 cm, 2026. Pavla Kramolišová."
  */
 export function workDescription(work, site) {
-  if (work.description?.trim()) return summarize(work.description);
+  const own = searchDescription(work);
+  if (own) return summarize(own);
   const facts = [work.technique, work.support, formatSizeCm(work.size_cm), work.year].filter(Boolean).join(', ');
   return summarize(`${work.title}${facts ? ` – ${facts}` : ''}. ${site.author}.`);
 }
@@ -81,7 +83,7 @@ export function workPageDescription(work, works, site) {
   const level = Math.max(1, distinctLevel(group));
   const facts = distinctions(work)[level];
   const suffix = `${facts.charAt(0).toLocaleUpperCase('cs')}${facts.slice(1)}.`;
-  const text = work.description?.trim() ? work.description : own;
+  const text = searchDescription(work) || own;
   const lead = summarize(text, 160 - suffix.length - 1);
   return `${/[.!?…]$/.test(lead) ? lead : `${lead}.`} ${suffix}`;
 }

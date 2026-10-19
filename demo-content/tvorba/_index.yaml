@@ -10,14 +10,22 @@ aspect: "3:2"
 # Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.
 cover: pt9zy
 
-# NEPOVINNÉ. Pár vět pod „Mimo kolekce“ na přehledu kolekcí. Text piš pod „description: |“, každý řádek odsazený
-# dvěma mezerami. Prázdné = „Obrazy, které nepatří do žádné kolekce.“
-description: |
-  Samostatné listy, které se nikam nehodily: dárky, pokusy a obrázky z jednoho odpoledne.
-
 # NEPOVINNÉ. Při ořezu vybraného obrazu zůstane vidět [zleva %, shora %], např. [50, 50] = střed, [80, 30] = vpravo nahoře.
 # Jen s aspect = střed. Náhodný obraz se neořezává.
 # focus: [50, 50]
+
+# NEPOVINNÉ. Pár vět pod „Mimo kolekce“ na přehledu kolekcí.
+# Piš ho pod „text: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = „Obrazy, které nepatří do žádné kolekce.“.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+text: |
+  Samostatné listy, které se nikam nehodily: dárky, pokusy a obrázky z jednoho odpoledne.
 
 # NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
 # private_note: kde obraz visí, komu patří

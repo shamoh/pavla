@@ -23,9 +23,10 @@ test('prepareUncollected writes a skeleton only once a work lies right in tvorba
   assert.deepEqual(schemaKeysIn(text, UNCOLLECTED_SCHEMA), UNCOLLECTED_FIELDS);
   assert.match(text, /\n# cover: k3f9a\n/);
   // a sample text, ready in a block ("|", indented), checked like any added value (DOPLNIT at its comment only)
-  assert.ok(text.includes(`\ndescription: |\n  ${UNCOLLECTED_SKELETON_TEXT}`), text);
-  assert.deepEqual(todoKeys(text), ['description']);
-  assert.deepEqual(r.uncollected, { data: { description: UNCOLLECTED_SKELETON_TEXT }, yamlPath: 'tvorba/_index.yaml', coverPath: null });
+  assert.ok(text.includes(`\ntext: |\n  ${UNCOLLECTED_SKELETON_TEXT}`), text);
+  assert.deepEqual(todoKeys(text), ['text']);
+  assert.deepEqual(r.uncollected, { data: { text: UNCOLLECTED_SKELETON_TEXT }, yamlPath: 'tvorba/_index.yaml', coverPath: null });
+  assert.doesNotMatch(text, /description/, 'no description for search engines: no page of its own');
   const again = await prepareUncollected(dir, true);
   assert.deepEqual([again.created, again.updated, again.problems], [[], [], []]);
 });
@@ -35,7 +36,7 @@ test('prepareUncollected reads a hand-written file and the own cover photo, also
   await fs.writeFile(path.join(dir, 'tvorba', '_cover.jpg'), 'x');
   const r = await prepareUncollected(dir, false);
   assert.equal(r.uncollected.data.cover, 'k3f9a');
-  assert.equal(r.uncollected.data.description, 'Samostatné listy.');
+  assert.equal(r.uncollected.data.text, 'Samostatné listy.\n', 'the former description moved to text');
   assert.equal(r.uncollected.coverPath, path.join(dir, 'tvorba', '_cover.jpg'));
   assert.ok(r.updated.some((u) => u.startsWith('tvorba/_index.yaml')), 'brought in line with the schema');
 });

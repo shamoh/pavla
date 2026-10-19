@@ -56,6 +56,12 @@ test('prepareDemo builds the test data into .demo/ only and writes the assigned 
   assert.ok(await exists(path.join(outDir, 'site/public/favicon.svg')));
   assert.ok(!(await exists(path.join(outDir, 'site/public/CNAME'))));
   assert.ok(!(await exists(path.join(outDir, 'site/public/tvorba/2026/x'))));
+  // texts of the pages: skeletons written back to demo-content/stranky/, a test text kept as it is
+  assert.ok(await exists(path.join(demoDir, 'stranky/o-mne.yaml')), 'the skeleton of a page goes back to demo-content/');
+  await write(path.join(demoDir, 'stranky/kontakt.yaml'), 'description: Testovací popis.\ntext: Testovací text.\n');
+  const pages = await prepareDemo(opts());
+  assert.equal(pages.ok, true, pages.problems.join('\n'));
+  assert.equal(YAML.parse(await fs.readFile(path.join(outDir, 'site/content/stranky/kontakt.yaml'), 'utf8')).text, 'Testovací text.\n');
   // this repo's own generated data are untouched
   assert.ok(!(await exists(path.join(siteDir, 'content'))));
   // second run: nothing to regenerate, the id stays

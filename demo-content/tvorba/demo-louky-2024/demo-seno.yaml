@@ -45,12 +45,16 @@ id: v7tsq
 # Den vzniku ve tvaru 2026-06-14. Rok z něj určuje rok obrazu na webu (stránka roku, adresa).
 date: 2024-07-19
 
-# Pár vět o obraze, zobrazí se na jeho stránce. Text piš pod „description: |“, každý řádek odsazený dvěma
-# mezerami; dlouhý řádek automatika zalomí.
-description: |
-  Kupky sena v zapadajícím slunci.
+# NEPOVINNÉ. Popis pro vyhledávače a náhled odkazu (Google, Facebook, WhatsApp): jedna nebo dvě věty, nejvýš
+# 160 znaků, bez formátování; na stránce se neukáže. Prázdné = začátek textu.
+# description: Jedna nebo dvě věty pro Google, nejvýš 160 znaků.
 
 # NEPOVINNÉ. Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
 # details: { 1-mlha: Ranní mlha nad vodou }
 
 # Výběr autorky, možnosti:
@@ -109,6 +113,19 @@ tags: [krajina, louka, léto, západ slunce]
 # - tisk z výšky
 # - kresba tužkou
 technique: akvarel
+
+# Pár vět o obraze, zobrazí se na jeho stránce.
+# Piš ho pod „text: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez textu.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+text: |
+  Kupky sena v zapadajícím slunci.
 
 # Název obrazu, jak ho uvidí návštěvníci webu.
 title: Seno

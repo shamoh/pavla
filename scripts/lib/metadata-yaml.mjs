@@ -16,56 +16,66 @@
 //     "# key: <example>" under its technical comment starting with "NEPOVINNÉ.", never marked DOPLNIT; removing "# " switches it on. An empty
 //     value of such an attribute means the same as its absence, so it is commented out again,
 //   - the comment at the top of the file stays there, separated by an empty line,
-//   - values never change (the result is checked), nor does the way they are written (| blocks, [a, b], quotes),
-//     except a long one-paragraph text of a `block` attribute (description): longer than TEXT_WIDTH, it becomes a
-//     folded block ">" with lines up to TEXT_WIDTH (the same text, only easier to read and edit).
+//   - values never change (the result is checked), nor does the way they are written ([a, b], quotes), except the
+//     texts of `block` attributes (text, closing, description): always a block "|" (one style for people to learn),
+//     whatever style the file had (plain, quoted, ">", ">-", "|-"), lines longer than TEXT_WIDTH broken at a space,
+//     the author's own line breaks kept. A text means its paragraphs (rich-text.mjs normalizeText: a line break is a
+//     space, an empty line a new paragraph), so for these attributes the check compares that meaning,
+//   - an attribute whose meaning moved to another name (`moved` in the schema, e.g. description → text in 2026-10:
+//     description became the text for search engines) is renamed when the file has no attribute of the new name;
+//     the one exception to "never migrated", so files from before (also in other branches) keep their text.
 // Files written before technical comments existed are converted: comments at the end of a line become the author's
 // own comment above the attribute, unless they come from the old templates (LEGACY_COMMENTS).
 
 import { isDeepStrictEqual } from 'node:util';
 import YAML from 'yaml';
+import { normalizeText, paragraphs } from './rich-text.mjs';
 import { LEGACY_COMMENTS, TODO, UNKNOWN_DOC, attributeGroup, compareKeys, docLines } from './schema.mjs';
 
 const STRINGIFY = { lineWidth: 0, nullStr: '', flowCollectionPadding: false };
 
-/** A one-paragraph text of a `block` attribute longer than this becomes a folded block with lines up to this width. */
+/** Lines of the texts of `block` attributes are broken at a space to at most this many characters (with the indentation). */
 export const TEXT_WIDTH = 140;
 
-/** The text of a scalar that should be a folded block: one paragraph (at most a trailing newline), longer than TEXT_WIDTH. */
-const isLongParagraph = (value) => typeof value === 'string' && !value.replace(/\n$/, '').includes('\n') && value.length > TEXT_WIDTH;
-
-/** A long one-paragraph text of a `block` attribute as a folded block (written by foldLines). */
-function foldLong(node) {
-  if (YAML.isScalar(node) && isLongParagraph(node.value) && node.type !== 'BLOCK_FOLDED') node.type = 'BLOCK_FOLDED';
+/** A line broken at single spaces into lines of at most `width` characters (a word longer than that stays whole). */
+function wrapLine(line, width) {
+  const out = [];
+  let rest = line;
+  while (rest.length > width) {
+    // the last space within the width, or after a word longer than the width
+    let at = rest.lastIndexOf(' ', width);
+    if (at <= 0) at = rest.indexOf(' ', width);
+    if (at <= 0) break;
+    out.push(rest.slice(0, at));
+    rest = rest.slice(at + 1);
+  }
+  return [...out, rest];
 }
 
 /**
- * Breaks the long lines of the folded blocks ("key: >", "key: >-") of a top-level attribute at single spaces, to at
- * most TEXT_WIDTH characters (the yaml library writes them as one line with lineWidth 0). A line break between two
- * lines of a folded block reads as one space, so the text stays the same; a line starting with a space (more
- * indented) would not, so a break never leaves a space at the start of a line, and such lines are left as they are.
+ * The text of a `block` attribute as written into the file, for a block "|": every line trimmed and at most
+ * TEXT_WIDTH long with its indentation, one empty line between paragraphs, one line break at the end. A text that
+ * was a block "|" keeps the author's line breaks; any other style (plain, quoted, folded ">") is one line per
+ * paragraph before breaking (its line breaks were never the author's). The meaning (normalizeText) never changes.
  */
-export function foldLines(text) {
-  const lines = text.split('\n');
-  const out = [];
-  let folded = false;
-  for (const line of lines) {
-    if (/^[^\s#][^:]*: >[-+]?$/.test(line)) { folded = true; out.push(line); continue; }
-    if (folded && line !== '' && !line.startsWith('  ')) folded = false;
-    if (!folded || line.length <= TEXT_WIDTH || /^ {3}/.test(line)) { out.push(line); continue; }
-    let rest = line.slice(2);
-    while (rest.length > TEXT_WIDTH - 2) {
-      let at = -1;
-      for (let i = Math.min(rest.length - 2, TEXT_WIDTH - 2); i > 0; i -= 1) {
-        if (rest[i] === ' ' && rest[i - 1] !== ' ' && rest[i + 1] !== ' ') { at = i; break; }
-      }
-      if (at === -1) break;
-      out.push(`  ${rest.slice(0, at)}`);
-      rest = rest.slice(at + 1);
-    }
-    out.push(`  ${rest}`);
-  }
-  return out.join('\n');
+export function blockText(value, { literal = false } = {}) {
+  const parts = literal
+    ? String(value).split(/\n[ \t]*\n/).map((p) => p.split('\n').map((l) => l.trim().replace(/[ \t]+/g, ' ')).filter(Boolean)).filter((p) => p.length)
+    : paragraphs(value).map((p) => [p]);
+  return `${parts.map((lines) => lines.flatMap((l) => wrapLine(l, TEXT_WIDTH - 2)).join('\n')).join('\n\n')}\n`;
+}
+
+/** A text worth a block: a string with more than whitespace (an empty one stays "" on the line of its key). */
+const isText = (value) => typeof value === 'string' && value.trim() !== '';
+
+/**
+ * The value node of a `block` attribute as a block "|" (blockText). `literal`: its line breaks are the author's (a
+ * block "|" of the file, or a new value with line breaks, e.g. the text of a skeleton).
+ */
+function toBlock(node, literal = node?.type === 'BLOCK_LITERAL') {
+  if (!YAML.isScalar(node) || !isText(node.value)) return;
+  node.value = blockText(node.value, { literal });
+  node.type = 'BLOCK_LITERAL';
 }
 
 /**
@@ -230,8 +240,8 @@ function newValueNode(doc, field, value) {
   // a map of lists (meta_corners): every list on its own line, [a, b]
   if (YAML.isMap(node)) for (const pair of node.items) if (YAML.isSeq(pair.value)) pair.value.flow = true;
   // a block attribute: a text of more lines as "|", a long one as ">", a short one (or "") on the line of its key
-  if (field.block && isLongParagraph(value)) node.type = 'BLOCK_FOLDED';
-  else if (field.block && typeof value === 'string' && value.includes('\n')) node.type = 'BLOCK_LITERAL';
+  // a block attribute: a text as "|" (blockText), "" on the line of its key
+  if (field.block) toBlock(node, typeof value === 'string' && value.includes('\n'));
   return node;
 }
 
@@ -250,6 +260,18 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
   if (doc.errors.length) return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: yamlProblem(doc.errors[0], original) };
   if (doc.contents !== null && !YAML.isMap(doc.contents)) {
     return { text: original, changed: false, added: [], unknown: [], stray: 0, problem: 'musí to být seznam údajů (klíč: hodnota) [spatny-yaml]' };
+  }
+  // an attribute whose meaning moved to another name (`moved`): renamed while the new name is not there yet
+  const moved = [];
+  for (const [from, to] of Object.entries(schema.moved ?? {})) {
+    const items = doc.contents?.items ?? [];
+    const pair = items.find((p) => String(p.key?.value ?? p.key) === from);
+    if (!pair || items.some((p) => String(p.key?.value ?? p.key) === to)) continue;
+    const key = doc.createNode(to);
+    key.commentBefore = pair.key.commentBefore;
+    key.spaceBefore = pair.key.spaceBefore;
+    pair.key = key;
+    moved.push(`${from} → ${to}`);
   }
   const before = doc.toJS() ?? {};
   const pairs = doc.contents?.items ?? [];
@@ -303,7 +325,7 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
       .flatMap(toLines).filter((l) => l.trim());
     own = clean(withoutLegacy([...own, ...trailing]));
     pair.key.comment = undefined;
-    if (field?.block) foldLong(pair.value);
+    if (field?.block) toBlock(pair.value);
     if (pair.value) {
       pair.value.comment = undefined;
       if (YAML.isCollection(pair.value)) pair.value.commentBefore = undefined;
@@ -377,15 +399,18 @@ export function normalizeMetadata(original, schema, { values = {}, header = null
   top = clean(top);
   if (!top.length && header) top = header;
   // the file's comment on top, then an empty line
-  const result = foldLines(((top.length ? `${top.map((l) => (l ? `# ${l}` : '#')).join('\n')}\n\n` : '') + out.toString(STRINGIFY))
-    .replace(new RegExp(`^${COMMENTED}(\\S+):.*$`, 'gm'), (_, key) => `# ${key}: ${known.get(key).example}`));
+  const result = ((top.length ? `${top.map((l) => (l ? `# ${l}` : '#')).join('\n')}\n\n` : '') + out.toString(STRINGIFY))
+    .replace(new RegExp(`^${COMMENTED}(\\S+):.*$`, 'gm'), (_, key) => `# ${key}: ${known.get(key).example}`);
 
-  // safety: the values must be exactly the same (plus the added attributes, minus emptied commented-out ones)
+  // safety: the values must be exactly the same (plus the added attributes, minus emptied commented-out ones); the
+  // texts of block attributes the same in meaning (their line breaks may change)
+  const meaning = (values) => Object.fromEntries(Object.entries(values)
+    .map(([k, v]) => [k, known.get(k)?.block && typeof v === 'string' ? normalizeText(v) : v]));
   const after = YAML.parse(result) ?? {};
-  if (!isDeepStrictEqual(after, expected)) {
+  if (!isDeepStrictEqual(meaning(after), meaning(expected))) {
     return { text: original, changed: false, added: [], unknown, stray: 0, problem: 'automatika tento soubor neumí srovnat, aniž by změnila hodnotu; dej prosím vědět správci webu' };
   }
-  return { text: result, changed: result !== original, added, unknown, stray, problem: null };
+  return { text: result, changed: result !== original, added, unknown, stray, moved, problem: null };
 }
 
 /** A new file of `schema`: every attribute with its default or given value, all marked DOPLNIT except generated ones. */
