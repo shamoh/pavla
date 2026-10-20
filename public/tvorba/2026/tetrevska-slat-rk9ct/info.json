@@ -47,7 +47,20 @@
       "dominant": "rgb(216,216,200)"
     }
   ],
-  "details": [],
+  "details": [
+    {
+      "name": "tetrevska-slat-skica",
+      "width": 2562,
+      "height": 2822,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(152,152,152)"
+    }
+  ],
   "og": {
     "width": 1200,
     "height": 800,
@@ -59,5 +72,5 @@
     "bytes": 185444,
     "file": "pin-1752e9c6.jpg"
   },
-  "fingerprint": "a6b514af6c996b20"
+  "fingerprint": "c52cf5f15506e164"
 }

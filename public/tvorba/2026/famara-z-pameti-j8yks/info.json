@@ -1,0 +1,63 @@
+{
+  "width": 3136,
+  "height": 2171,
+  "widths": [
+    480,
+    960,
+    1600,
+    2400
+  ],
+  "dominant": "rgb(200,200,184)",
+  "transparent": true,
+  "mockups": [
+    {
+      "scene": "obyvak-svetly",
+      "label": "Světlý obývák",
+      "width": 2400,
+      "height": 1350,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(232,232,232)"
+    },
+    {
+      "scene": "komoda",
+      "label": "Komoda",
+      "width": 2400,
+      "height": 1600,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(200,200,200)"
+    },
+    {
+      "scene": "predsin",
+      "label": "Předsíň",
+      "width": 2400,
+      "height": 1578,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(216,216,200)"
+    }
+  ],
+  "details": [],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-5292eb00.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 117916,
+    "file": "pin-cfc277d6.jpg"
+  },
+  "fingerprint": "2a1d4d095aaf140b"
+}
