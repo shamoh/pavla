@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, wantsPinterest, workCodeHint, workKey, workShortPath, instagramGrid, parseGrid } from './works.mjs';
+import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, wantsPinterest, workCodeHint, workKey, workShortPath, instagramGrid, orderDetails, parseGrid } from './works.mjs';
 
 /** Deterministic "random" returning the given values in a loop. */
 const sequence = (...values) => {
@@ -159,6 +159,19 @@ test('validateWorks checks detail captions against the detail photos of the work
   assert.match(validateWorks([work({ dir: 'plener', details, data: { details: { vesta: 'x' } } })])[0], /ve složce tvorba\/plener\/rano\/ není/);
   assert.match(validateWorks([work({ details, data: { details: { lodka: 5 } } })])[0], /popisek „lodka“ musí být text/);
   assert.match(validateWorks([work({ details, data: { details: ['Květ'] } })])[0], /details musí být řádky/);
+});
+
+test('orderDetails follows the order of the captions, photos without one follow by file name', () => {
+  const names = (list) => list.map((d) => d.name);
+  const details = [{ name: '1-kvet' }, { name: 'lodka' }, { name: 'oci' }, { name: 'zaver' }];
+  assert.deepEqual(names(orderDetails(details, { oci: 'Oči', '1 Květ': 'Květ' })), ['oci', '1-kvet', 'lodka', 'zaver']);
+  assert.deepEqual(names(orderDetails(details, { zaver: 'Z', lodka: 'L', oci: 'O', '1-kvet': 'K' })), ['zaver', 'lodka', 'oci', '1-kvet']);
+  // without captions (or with broken ones) the file order stays, and a caption without a photo changes nothing
+  for (const captions of [undefined, null, ['oci'], 'oci']) assert.deepEqual(names(orderDetails(details, captions)), names(details));
+  assert.deepEqual(names(orderDetails(details, { vesta: 'x', lodka: 'L' })), ['lodka', '1-kvet', 'oci', 'zaver']);
+  // the input is not changed
+  orderDetails(details, { oci: 'O' });
+  assert.deepEqual(names(details), ['1-kvet', 'lodka', 'oci', 'zaver']);
 });
 
 test('validateWorks stops a published work with a text still starting with DOPLNIT, not a draft', () => {

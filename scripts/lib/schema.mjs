@@ -590,10 +590,14 @@ export const WORK_SCHEMA = {
       example: '{ 1-mlha: Ranní mlha nad vodou }',
       doc: [
         'Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.',
+        'V tomto pořadí se detaily ukážou na stránce obrazu, fotky bez popisku za nimi podle názvu.',
         ...FORMATTING_DOC,
       ],
       value: null,
-      previous: ['Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.', [
+      previous: [[
+        'Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.',
+        ...FORMATTING_DOC,
+      ], 'Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.', [
         'Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.',
         'Formátování jako u text: **tučně**, *kurzívou*, [odkaz](/tvorba/).',
       ], [

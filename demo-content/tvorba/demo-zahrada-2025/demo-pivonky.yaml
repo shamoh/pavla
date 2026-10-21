@@ -52,6 +52,7 @@ description: |
   Vlastní popis pro vyhledávače (testovací), jiný než text na stránce obrazu.
 
 # NEPOVINNÉ. Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.
+# V tomto pořadí se detaily ukážou na stránce obrazu, fotky bez popisku za nimi podle názvu.
 # Formátování:
 #   - **slovo** = tučně,
 #   - *slovo* = kurzívou,

@@ -154,6 +154,19 @@ export function publicFields(data, fields) {
 /** Slug of a detail photo named in `details:` ("1 Mlha" and "1-mlha" both mean the file 1-mlha.jpg). */
 export const detailKey = (name) => slugify(name);
 
+/**
+ * Detail photos [{ name, … }] in the order of their captions in `details:` (the author's order); photos without
+ * a caption follow in their own order (by file name).
+ */
+export function orderDetails(details, captions) {
+  const keys = captions && typeof captions === 'object' && !Array.isArray(captions) ? Object.keys(captions).map(detailKey) : [];
+  const rank = (d) => {
+    const i = keys.indexOf(d.name);
+    return i < 0 ? keys.length : i;
+  };
+  return [...details].sort((a, b) => rank(a) - rank(b));
+}
+
 /** `details:` in a work is an optional mapping "<detail file name>: <caption>". */
 function validateDetailCaptions(w, where) {
   const captions = w.data?.details;

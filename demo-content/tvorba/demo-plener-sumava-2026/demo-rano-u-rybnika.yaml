@@ -51,14 +51,15 @@ date: 2026-06-14
 # description: Jedna nebo dvě věty pro Google, nejvýš 160 znaků.
 
 # NEPOVINNÉ. Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.
+# V tomto pořadí se detaily ukážou na stránce obrazu, fotky bez popisku za nimi podle názvu.
 # Formátování:
 #   - **slovo** = tučně,
 #   - *slovo* = kurzívou,
 #   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
 details:
-  1-mlha-nad-hladinou: Mlha nad hladinou, **mokré do mokrého** (víc v [kolekci](/tvorba/kolekce/demo-plener-sumava-2026/))
   2-rakos: Rákos na břehu, suchým štětcem
+  1-mlha-nad-hladinou: Mlha nad hladinou, **mokré do mokrého** (víc v [kolekci](/tvorba/kolekce/demo-plener-sumava-2026/))
 
 # na úvodní stránce
 # Výběr autorky, možnosti:

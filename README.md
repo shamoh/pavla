@@ -922,7 +922,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | `mockups: false` | Pivoňky (na prodej, + detail), Bouřka nad polem, Modravské slatě (na prodej), Kvilda skica, Nádraží (prodáno), Máky (na prodej), Lípa u kaple, Jablka na stole (prodáno), Rozpracovaný obraz |
 | `DOPLNIT` a neznámý atribut (`NEZNÁMÝ`) | Rozpracovaný obraz (`mockup: true` je schválně překlep) |
 | mockupy malého díla (≤ 35 cm) / většího | Kočka na okně / Zimní sad |
-| detailní fotky | Ráno u rybníka (2, s popisky), Kytice z louky (1, bez popisku), Pivoňky (1 široký) |
+| detailní fotky | Ráno u rybníka (2, s popisky v opačném pořadí než soubory: na stránce první Rákos), Kytice z louky (1, bez popisku), Pivoňky (1 široký) |
 | kolekce: vlastní úvodní fotka (panorama, celá) | Plenér Šumava 2026 |
 | kolekce: `cover: <id>#<detail>` + `aspect: "2:1"` + `focus` | Ze zahrady 2025 (detail Pivoněk) |
 | kolekce: `cover: <id>` (celé dílo) | Město 2026 (Město v dešti, ne nejnovější Náměstí v mlze) |
@@ -1013,7 +1013,9 @@ tvorba/2026-plener-sumava/rano-u-rybnika/2-rakos.jpg detail 2
 - Název složky = název yaml díla (bez `.yaml`). Složka bez díla je chyba.
 - Ve složce smí být jen fotky (`jpg`, `png`, `tif`, `webp`; `.jpeg` a velká písmena odmítne kontrola jmen). Soubory
   začínající tečkou se ignorují, jméno s `_` je chyba `[neplatne-jmeno]`.
-- **Pořadí** určuje název souboru (abecedně), proto číslo na začátku.
+- **Pořadí** na stránce díla (náhledy i listování v prohlížeči fotek) je pořadí popisků pod `details:`
+  (`orderDetails`, `workDetails`); fotky bez popisku následují podle názvu souboru (abecedně). Bez popisků tedy
+  rozhoduje název souboru, proto se hodí číslo na začátku.
 - Z názvu souboru vznikne jméno detailu (`1 Mlha.jpg` → `1-mlha`). Dvě fotky se
   stejným jménem jsou chyba.
 

@@ -50,6 +50,7 @@ date: 2006-07-03
 # description: Jedna nebo dvě věty pro Google, nejvýš 160 znaků.
 
 # NEPOVINNÉ. Popisky detailních fotek ze složky se jménem obrazu (vedle tohoto souboru): { název fotky: popisek, … }.
+# V tomto pořadí se detaily ukážou na stránce obrazu, fotky bez popisku za nimi podle názvu.
 # Formátování:
 #   - **slovo** = tučně,
 #   - *slovo* = kurzívou,

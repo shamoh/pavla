@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
 import { PIN_FILE } from '../../scripts/lib/pinterest.mjs';
-import { coverCandidates, dateYear, detailKey, formatSizeCm, isValidId, workKey } from '../../scripts/lib/works.mjs';
+import { coverCandidates, dateYear, detailKey, formatSizeCm, isValidId, orderDetails, workKey } from '../../scripts/lib/works.mjs';
 import { photoFocus } from '../../scripts/lib/photos.mjs';
 import { GENERIC_PAGES, PAGES } from '../../scripts/lib/pages.mjs';
 import { plainText, richParagraphs, searchDescription } from '../../scripts/lib/rich-text.mjs';
@@ -388,6 +388,8 @@ const rawDetailCaption = (work: Work, name: string): string => {
 export const detailCaption = (work: Work, name: string): string => plainText(rawDetailCaption(work, name));
 /** Caption of a detail photo of a work as HTML (formatting of scripts/lib/rich-text.mjs), or '' when there is none. */
 export const detailCaptionHtml = (work: Work, name: string): string => textHtml(rawDetailCaption(work, name)).join(' ');
+/** Detail photos of a work in the author's order of `details:` (thumbnails and the viewer), the rest by file name. */
+export const workDetails = (work: Work): Detail[] => orderDetails(work.image.details ?? [], work.details);
 
 /**
  * Share image (og:image) of a work: og.jpg from the pipeline (the whole work on paper, 3:2),
