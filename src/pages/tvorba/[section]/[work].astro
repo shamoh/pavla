@@ -11,6 +11,7 @@ import { pinDescription } from '../../../../scripts/lib/pinterest.mjs';
 import { shareLinks } from '../../../../scripts/lib/share.mjs';
 import { artworkLd, breadcrumbLd, graphLd, workPageDescription, workPageTitle } from '../../../../scripts/lib/seo.mjs';
 import { defaultType, mailtoLink, workContext } from '../../../../scripts/lib/messages.mjs';
+import { viewId } from '../../../../scripts/lib/work-viewer.mjs';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -32,11 +33,13 @@ const details = workDetails(work).map((d, i) => ({ ...d, caption: detailCaption(
 // Mockups only when the author asked for them (mockups: true), whether or not the work is for sale.
 const mockups = wantsMockups(work) ? work.image.mockups ?? [] : [];
 const mockupsHeading = isOnSale(work.status) ? 'Jak by mohl vypadat u vás' : 'Jak vypadá na zdi';
+// Each has its own address #<id> (scripts/lib/work-viewer.mjs).
 const views = [
-  { label: work.title, prefix: '', image: work.image },
-  ...details.map((d) => ({ label: `${work.title} · ${d.caption}`, prefix: `detail-${d.name}-`, image: d })),
-  ...mockups.map((m) => ({ label: `${work.title} · ${m.label}`, prefix: `mockup-${m.scene}-`, image: m })),
+  { id: viewId({ kind: 'main' }), label: work.title, prefix: '', image: work.image },
+  ...details.map((d) => ({ id: viewId({ kind: 'detail', name: d.name }), label: `${work.title} · ${d.caption}`, prefix: `detail-${d.name}-`, image: d })),
+  ...mockups.map((m) => ({ id: viewId({ kind: 'mockup', name: m.scene }), label: `${work.title} · ${m.label}`, prefix: `mockup-${m.scene}-`, image: m })),
 ].map((v) => ({
+  id: v.id,
   label: v.label,
   width: v.image.width,
   height: v.image.height,
@@ -190,15 +193,52 @@ const story = textHtml(work.text);
   applyCopyButtons();
 </script>
 <script>
-  // Viewer: a dialog (not fullscreen) that steps through the work and its mockups.
+  // Viewer: a dialog (not fullscreen) that steps through the work, its details and its mockups.
   // Without JavaScript the links simply open the largest image.
-  type View = { label: string; src: string; srcset: string; width: number; height: number; cutout: boolean };
+  // The picture shown is in the address (#obraz, #detail-<name>, #mockup-<scene>; scripts/lib/work-viewer.mjs):
+  // opening adds a history entry (Back closes the viewer), stepping replaces it, a link with it opens that picture,
+  // an unknown one is dropped from the address.
+  import { hashId, viewIndex } from '../../../../scripts/lib/work-viewer.mjs';
+  type View = { id: string; label: string; src: string; srcset: string; width: number; height: number; cutout: boolean };
   const dialog = document.getElementById('viewer') as HTMLDialogElement;
   const img = document.getElementById('viewer-img') as HTMLImageElement;
   const label = document.getElementById('viewer-label')!;
   const count = document.getElementById('viewer-count')!;
   const views: View[] = JSON.parse(dialog.dataset.views!);
+  const ids = views.map((v) => v.id);
   let current = 0;
+  // set while the viewer closes because of the history (Back), so closing does not change it again
+  let closingFromHistory = false;
+
+  const address = (id = '') => location.pathname + location.search + (id ? `#${id}` : '');
+  // history entries added by opening the viewer carry this mark: closing it goes back instead of adding another
+  const OPENED = 'pavla-viewer';
+
+  function open(i: number) {
+    show(i);
+    history.pushState({ ...history.state, [OPENED]: true }, '', address(ids[current]));
+    dialog.showModal();
+  }
+  function step(i: number) {
+    show(i);
+    history.replaceState(history.state, '', address(ids[current]));
+  }
+  // The address names a picture: show it (also opened by a link or Back/Forward), otherwise the viewer is closed.
+  function follow() {
+    const i = viewIndex(location.hash, ids);
+    if (i >= 0) {
+      show(i);
+      if (!dialog.open) dialog.showModal();
+      return;
+    }
+    if (dialog.open) {
+      closingFromHistory = true;
+      dialog.close();
+    }
+    // an unknown picture: the page as it is, without the hash (anchors of elements on the page keep working)
+    const id = hashId(location.hash);
+    if (location.hash && !(id && document.getElementById(id))) history.replaceState(history.state, '', address());
+  }
 
   function show(i: number) {
     current = (i + views.length) % views.length;
@@ -218,25 +258,36 @@ const story = textHtml(work.text);
     a.addEventListener('click', (e) => {
       if (e.metaKey || e.ctrlKey || e.shiftKey) return; // let "open in new tab" work
       e.preventDefault();
-      show(Number(a.dataset.view));
-      dialog.showModal();
+      open(Number(a.dataset.view));
     }),
   );
-  dialog.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) => b.addEventListener('click', () => show(current + Number(b.dataset.step))));
+  dialog.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) => b.addEventListener('click', () => step(current + Number(b.dataset.step))));
   dialog.querySelector('.close')!.addEventListener('click', () => dialog.close());
   // A click on the backdrop (outside the figure) closes the viewer.
   dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
   dialog.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight') show(current + 1);
-    if (e.key === 'ArrowLeft') show(current - 1);
+    if (e.key === 'ArrowRight') step(current + 1);
+    if (e.key === 'ArrowLeft') step(current - 1);
   });
   // Swipe on touch screens.
   let startX: number | null = null;
   dialog.addEventListener('pointerdown', (e) => { startX = e.clientX; });
   dialog.addEventListener('pointerup', (e) => {
-    if (startX !== null && Math.abs(e.clientX - startX) > 50) show(current + (e.clientX < startX ? 1 : -1));
+    if (startX !== null && Math.abs(e.clientX - startX) > 50) step(current + (e.clientX < startX ? 1 : -1));
     startX = null;
   });
+  // However it closes (×, Esc, the backdrop), the address drops the picture: back to the entry before opening,
+  // or (opened by a link) the same entry without the hash.
+  dialog.addEventListener('close', () => {
+    if (closingFromHistory) {
+      closingFromHistory = false;
+      return;
+    }
+    if (history.state?.[OPENED]) history.back();
+    else history.replaceState(history.state, '', address());
+  });
+  window.addEventListener('popstate', follow);
+  follow();
 </script>
 <style>
   .back { margin: -12px 0 24px; font-size: 0.9rem; }

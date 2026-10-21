@@ -108,6 +108,13 @@ jinde zkopírování s hláškou „Odkaz zkopírován“, `src/lib/share-button
 (atribut `instagram`), pak detaily a mockupy. Na úzké obrazovce pod sebou: obraz, název a údaje, popis a štítky,
 stav a cena, sdílení, detaily, mockupy.
 
+**Zvětšení má vlastní adresu.** Klik na obraz, detail nebo mockup otevře prohlížeč fotek a zapíše zobrazený obrázek
+do adresy za `#` (`scripts/lib/work-viewer.mjs`, `viewId`/`viewIndex`): `#obraz` = celý obraz, `#detail-<jméno detailu>`
+(např. `/tvorba/2011/orangutan-g4psg/#detail-oci`), `#mockup-<scéna>`. Otevření přidá záznam do historie (tlačítko
+Zpět prohlížeč zavře), listování šipkami nebo tahem adresu jen přepíše, zavření (×, Esc, klik vedle) kotvu odebere.
+Odkaz s kotvou otevře rovnou ten obrázek; neznámou kotvu (smazaný detail, překlep) stránka z adresy odebere a ukáže
+dílo normálně (kotva prvku na stránce, např. `#viewer`, zůstane). Bez JavaScriptu odkazy otevřou největší obrázek.
+
 **ID díla** (např. `k3f9a`) vygeneruje pipeline při prvním zpracování a zapíše
 ho do yaml. Už se nemění: díky němu fungují staré odkazy i po přejmenování díla
 (neznámá adresa končící na `-<id>/` přesměruje na aktuální detail). Může sloužit
