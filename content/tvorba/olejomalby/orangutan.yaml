@@ -6,7 +6,7 @@ details:
   oblicej: Bradou na mámině rameni
   oci: Pohled, který se ptá
 featured: true
-mockups: false
+mockups: true
 size_cm:
   - 70
   - 50
@@ -19,4 +19,4 @@ technique: olej
 text: |
   Orangutaní mládě schované v náručí své matky.
 title: Orangutan
-derived_modified: 2026-10-21
+derived_modified: 2026-10-22

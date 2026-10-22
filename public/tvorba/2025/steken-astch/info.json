@@ -58,7 +58,9 @@
     "height": 1500,
     "bytes": 186636,
     "file": "pin-02742136.jpg",
-    "feed": true
+    "feed": true,
+    "feedFile": "pin-02742136.jpg",
+    "feedVersion": 1
   },
-  "fingerprint": "077fb4d98e7e970c"
+  "fingerprint": "a0ae290a07bf6cbc"
 }

@@ -9,7 +9,44 @@
   ],
   "dominant": "rgb(24,56,40)",
   "transparent": true,
-  "mockups": [],
+  "mockups": [
+    {
+      "scene": "obyvak-svetly",
+      "label": "Světlý obývák",
+      "width": 2400,
+      "height": 1350,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(232,232,232)"
+    },
+    {
+      "scene": "komoda",
+      "label": "Komoda",
+      "width": 2400,
+      "height": 1600,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(200,200,200)"
+    },
+    {
+      "scene": "predsin",
+      "label": "Předsíň",
+      "width": 2400,
+      "height": 1578,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(216,184,136)"
+    }
+  ],
   "details": [
     {
       "name": "oblicej",
@@ -60,5 +97,5 @@
     "feedFile": "pin-062988d0.jpg",
     "feedVersion": 1
   },
-  "fingerprint": "6a8569a7fd2c7eef"
+  "fingerprint": "a17528da59cec869"
 }

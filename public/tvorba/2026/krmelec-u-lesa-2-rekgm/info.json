@@ -58,7 +58,9 @@
     "height": 1500,
     "bytes": 203032,
     "file": "pin-baed1871.jpg",
-    "feed": true
+    "feed": true,
+    "feedFile": "pin-baed1871.jpg",
+    "feedVersion": 1
   },
-  "fingerprint": "b264e2903694b4db"
+  "fingerprint": "cf7bd52428deeb80"
 }
