@@ -8,11 +8,11 @@
 
 import fs from 'node:fs/promises';
 import YAML from 'yaml';
-import { findUnknownAttributes, findUnknownTechniques } from './lib/content.mjs';
+import { findUnknownAttributes, findUnknownTechniques, findUntranslatedTags } from './lib/content.mjs';
 import { checkSiteImages, evaluateSiteImages } from './lib/site-check.mjs';
 import { evaluatePageTexts } from './lib/page-check.mjs';
 import {
-  DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, formatReport,
+  DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport,
 } from './lib/health.mjs';
 
 const SITE_REPO = 'shamoh/pavla';
@@ -76,11 +76,17 @@ const unknown = process.env.CONTENT_DIR
 const techniques = process.env.CONTENT_DIR
   ? await guarded('techniky obrazů', async () => evaluateUnknownTechniques(await findUnknownTechniques(process.env.CONTENT_DIR)))
   : evaluateUnknownTechniques(null);
+const config = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
+// every work, also those not on Instagram or Pinterest yet: the translation is there before it goes there
+const translations = process.env.CONTENT_DIR
+  ? await guarded('překlady štítků', async () => evaluateUntranslatedTags(await findUntranslatedTags(process.env.CONTENT_DIR, {
+    Instagram: config.instagramPost?.en, Pinterest: config.pinterestKeywords?.en,
+  })))
+  : evaluateUntranslatedTags(null);
 
 // Every image the pages of the deployed site refer to exists (a deploy without images, a pipeline that removed some).
 let site = null;
 const siteImages = await guarded('obrázky webu', async () => {
-  const config = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
   site = await checkSiteImages(textArg('--site-url') ?? config.site.url, fetch);
   return evaluateSiteImages(site);
 });
@@ -88,7 +94,7 @@ const siteImages = await guarded('obrázky webu', async () => {
 // a build); not checked when the site could not be read.
 const pageTexts = evaluatePageTexts(site?.html ?? null);
 
-const report = formatReport(token, runs, dryRun, deploy, pr, unknown, techniques, siteImages, pageTexts);
+const report = formatReport(token, runs, dryRun, deploy, pr, unknown, techniques, translations, siteImages, pageTexts);
 console.log(report.text);
 if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, report.text);
 // codes: "[token-vyprsi] [obrazky-chybi]" for the title of the issue (e-mails filtered by code)

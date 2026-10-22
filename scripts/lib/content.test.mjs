@@ -6,7 +6,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
 import {
-  DETAIL_CAPTION_TODO, allTextProblems, commentedOutReview, findUnknownAttributes, placeholderProblems, schemaOfFile, findUnknownTechniques, prepareContent, readTree,
+  DETAIL_CAPTION_TODO, allTextProblems, commentedOutReview, findUnknownAttributes, placeholderProblems, schemaOfFile, findUnknownTechniques, findUntranslatedTags, prepareContent, readTree,
   textProblems, withId,
 } from './content.mjs';
 import { todoKeys } from './metadata-yaml.mjs';
@@ -306,4 +306,18 @@ test('textProblems and allTextProblems: texts that are no text, bad links, a lon
   assert.deepEqual(textProblems('tvorba/x.yaml', { text: 'Dobrý **text**.', description: 'Krátký.' }, WORK_SCHEMA), []);
   assert.deepEqual(textProblems('tvorba/x.yaml', { description: '[odkaz](x)' }, WORK_SCHEMA), [], 'description is plain: links not checked');
   assert.deepEqual(textProblems('tvorba/x.yaml', { details: { mlha: '[ok](/tvorba/) **mlha**', most: '[zlé](most)' } }, WORK_SCHEMA).map((p) => p.match(/v (details \S+) má/)[1]), ['details most'], 'captions of details are formatted too');
+});
+
+test('findUntranslatedTags lists techniques and tags of every work without an English word, per platform', async () => {
+  await write('rano.yaml', 'id: k3f9a\ntitle: Ráno\ntechnique: akvarel\ntags: [krajina, motýl]\n');
+  await write('plener/vecer.yaml', 'id: m7q2x\ntitle: Večer\nmeta_draft: true\ntechnique: DOPLNIT akvarel\ntags: [Motýl, pláž]\n');
+  await write('plener/_index.yaml', 'title: Plenér\n');
+  await write('bez.yaml', 'id: q6u3v\ntitle: Bez štítků\ntechnique: ""\n');
+  const dictionaries = { Instagram: { akvarel: 'watercolor', krajina: 'landscape', motýl: 'butterfly' }, Pinterest: { akvarel: 'watercolor', krajina: 'landscape' } };
+  assert.deepEqual(await findUntranslatedTags(dir, dictionaries), [
+    '„motýl“ (Pinterest): tvorba/rano.yaml',
+    '„Motýl“ (Pinterest): tvorba/plener/vecer.yaml',
+    '„pláž“ (Instagram, Pinterest): tvorba/plener/vecer.yaml',
+  ]);
+  assert.deepEqual(await findUntranslatedTags(dir, { Instagram: { akvarel: 'a', krajina: 'k', motýl: 'b', pláž: 'p' } }), []);
 });

@@ -412,3 +412,28 @@ export async function findUnknownTechniques(contentDir) {
   }
   return [...files].sort(([a], [b]) => a.localeCompare(b, 'cs')).map(([technique, list]) => `${technique}: ${list.join(', ')}`);
 }
+
+/**
+ * Techniques and tags of every work (drafts too, not DOPLNIT) without an English word in the dictionaries of
+ * site.config.yaml: `dictionaries` = { Instagram: instagramPost.en, Pinterest: pinterestKeywords.en }. Returns
+ * ["„<word>“ (<platforms without it>): <files>"] in Czech order, so a translation is there before a work goes there.
+ */
+export async function findUntranslatedTags(contentDir, dictionaries) {
+  const { groups } = await readTree(path.join(contentDir, WORKS_SUBDIR));
+  const files = new Map();
+  for (const g of groups) {
+    for (const file of g.yamls.values()) {
+      const rel = path.join(WORKS_SUBDIR, g.dir, file);
+      const data = YAML.parse(await fs.readFile(path.join(contentDir, rel), 'utf8')) ?? {};
+      const words = [data.technique, ...(Array.isArray(data.tags) ? data.tags : [])]
+        .filter((w) => typeof w === 'string' && w.trim() && !w.trim().startsWith(TODO)).map((w) => w.trim());
+      for (const w of new Set(words)) files.set(w, [...(files.get(w) ?? []), rel]);
+    }
+  }
+  const missing = (w, en) => !en?.[w] && !en?.[w.toLowerCase()];
+  return [...files]
+    .map(([word, list]) => [word, list, Object.keys(dictionaries).filter((platform) => missing(word, dictionaries[platform]))])
+    .filter(([, , platforms]) => platforms.length)
+    .sort(([a], [b]) => a.localeCompare(b, 'cs'))
+    .map(([word, list, platforms]) => `„${word}“ (${platforms.join(', ')}): ${list.join(', ')}`);
+}

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, formatReport, parseExpiration,
+  DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, parseExpiration,
 } from './health.mjs';
 
 const now = new Date('2026-09-27T10:00:00Z');
@@ -187,4 +187,14 @@ test('formatReport: the codes of the failed checks and of their listed problems,
   );
   assert.equal(report.ok, false);
   assert.deepEqual(report.codes, ['token-neplatny', 'titulek-chybi', 'neznamy-atribut']);
+});
+
+test('evaluateUntranslatedTags: a word without an English one is listed with where to add it', () => {
+  const bad = evaluateUntranslatedTags(['„motýl“ (Instagram, Pinterest): tvorba/a.yaml']);
+  assert.equal(bad.ok, false);
+  assert.match(bad.message, /\[preklad-chybi\]\n- „motýl“ \(Instagram, Pinterest\): tvorba\/a\.yaml\nDoplň překlad do site\.config\.yaml/);
+  assert.equal(evaluateUntranslatedTags([]).ok, true);
+  const skipped = evaluateUntranslatedTags(null);
+  assert.equal(skipped.ok, true);
+  assert.match(skipped.message, /nebyly zkontrolovány/);
 });

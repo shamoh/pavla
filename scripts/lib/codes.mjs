@@ -111,6 +111,7 @@ export const CODES = {
   'aktualizace-ceka': { level: 'health', text: 'aktualizace obsahu se dlouho nesloučila' },
   'neznamy-atribut': { level: 'health', text: 'popis má neznámý atribut (NEZNÁMÝ)' },
   'nova-technika': { level: 'health', text: 'technika bez druhu díla pro vyhledávače' },
+  'preklad-chybi': { level: 'health', text: 'štítek nebo technika bez anglického překladu (Instagram, Pinterest)' },
   'obrazky-chybi': { level: 'health', text: 'na nasazeném webu chybí obrázky' },
   'stranky-nedostupne': { level: 'health', text: 'stránky nasazeného webu nejsou dostupné' },
   'nacteni-selhalo': { level: 'health', text: 'kontrola nemohla načíst data (API, obsah)' },

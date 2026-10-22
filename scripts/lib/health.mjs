@@ -146,6 +146,22 @@ export function evaluateUnknownTechniques(found) {
   };
 }
 
+/**
+ * `found`: ["„<word>“ (<platforms>): <files>"] from findUntranslatedTags, or null when the content was not available.
+ * Not ok when a technique or a tag of any work has no English word for Instagram or Pinterest: added before the work
+ * goes there, the post and the pin have it in English from the start.
+ */
+export function evaluateUntranslatedTags(found) {
+  if (found === null) return { ok: true, message: 'Překlady štítků nebyly zkontrolovány (obsah není k dispozici).' };
+  if (!found.length) return { ok: true, message: 'Každý štítek a technika má anglický překlad pro Instagram i Pinterest.' };
+  return {
+    ok: false,
+    message: `Štítky nebo techniky bez anglického překladu pro Instagram a Pinterest: [preklad-chybi]\n`
+      + found.map((f) => `- ${f}`).join('\n')
+      + '\nDoplň překlad do site.config.yaml (repo pavla): instagramPost.en (hashtag bez mezer) a pinterestKeywords.en (slova s mezerami).',
+  };
+}
+
 export const RENEW_TOKEN = [
   'Jak token obnovit:',
   '',

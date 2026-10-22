@@ -1788,6 +1788,11 @@ nepovinný). Kontroluje:
 - že každá technika děl má druh díla pro vyhledávače (`artform` v `scripts/lib/seo.mjs`, `findUnknownTechniques`
   v `scripts/lib/content.mjs`): nová technika bez pravidla v `ARTFORMS` vypíše techniku s díly, která ji mají
   (bez `CONTENT_DIR` se přeskočí),
+- že každý štítek a technika všech děl (i rozpracovaných a těch, která na Instagram ani Pinterest zatím nejdou;
+  bez `DOPLNIT`) má anglický překlad v `instagramPost.en` i `pinterestKeywords.en` v `site.config.yaml`
+  (`findUntranslatedTags` v `scripts/lib/content.mjs`, `evaluateUntranslatedTags`): vypíše slovo, platformy bez
+  překladu a díla, aby se překlad doplnil dřív, než dílo na Instagram nebo Pinterest půjde (pipeline to hlásí jen
+  u děl, která tam jdou, `stitek-bez-prekladu`; bez `CONTENT_DIR` se přeskočí),
 - že na nasazeném webu existuje každý obrázek, na který jeho stránky odkazují (`scripts/lib/site-check.mjs`):
   projde web od úvodní stránky a od všech stránek mapy webu (`/sitemap.xml`) po vlastních odkazech, z `src`, `srcset`, `href`
   a `og:image` posbírá obrázky a na každý se zeptá (`HEAD`); vypíše chybějící obrázky se stránkou, která na ně
@@ -1806,7 +1811,7 @@ a jako výstup kroku `codes` (`[token-vyprsi] [obrazky-chybi]`): workflow obsaho
 aby šly e-maily filtrovat podle kódu. Každá neúspěšná kontrola končí první řádek své hlášky kódem ze stejného registru jako hlášky
 pipeline (`scripts/lib/codes.mjs`, úroveň `health`): `token-chybi`, `token-neplatny`, `token-nedostupny`,
 `token-vyprsi`, `beh-selhal`, `zkusebni-beh-selhal`, `nasazeni-selhalo`, `nasazeni-chybi`, `aktualizace-ceka`,
-`neznamy-atribut`, `nova-technika`, `obrazky-chybi`, `stranky-nedostupne`, `nacteni-selhalo` (API nebo obsah se
+`neznamy-atribut`, `nova-technika`, `preklad-chybi`, `obrazky-chybi`, `stranky-nedostupne`, `nacteni-selhalo` (API nebo obsah se
 nepodařilo načíst). Problémy textů stránek mají kód každý (`titulek-chybi`, `stejny-titulek`, `popis-stranky-chybi`,
 `stejny-popis-stranky`, `dlouhy-popis-stranky`, `jsonld-chybi`, `jsonld-neplatny`, `jsonld-neni-objekt`,
 `jsonld-bez-contextu`, `jsonld-prazdny-graf`, `jsonld-bez-typu`); jsou to přímo kódy `pageProblems`, takže je

@@ -72,11 +72,14 @@ instagramPost:
     mlha: fog
     moře: sea
     most: bridge
+    motýl: butterfly
     nebe: sky
     noc: night
     opice: monkey
     ovoce: fruit
+    pláž: beach
     plenér: pleinair
+    plody: fruit
     podzim: autumn
     portrét: portrait
     postavy: figures
@@ -138,11 +141,14 @@ pinterestKeywords:
     mlha: fog
     moře: sea
     most: bridge
+    motýl: butterfly
     nebe: sky
     noc: night
     opice: monkey
     ovoce: fruit
+    pláž: beach
     plenér: plein air
+    plody: fruit
     podzim: autumn
     portrét: portrait
     postavy: figures
