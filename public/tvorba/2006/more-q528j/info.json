@@ -21,7 +21,9 @@
     "height": 1500,
     "bytes": 174908,
     "file": "pin-c5672fb4.jpg",
-    "feed": true
+    "feed": true,
+    "feedFile": "pin-c5672fb4.jpg",
+    "feedVersion": 1
   },
-  "fingerprint": "df199c9d34fdfb0e"
+  "fingerprint": "16827941db6202fe"
 }
