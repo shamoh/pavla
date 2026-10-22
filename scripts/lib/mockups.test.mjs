@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
-import { composeMockup, cropWindow, fits, frameGeometry, hashIndex, loadScenes, pickScenes, placement, renderMockup } from './mockups.mjs';
+import { CANVAS_DEFAULTS, canvasFrame, composeMockup, cropWindow, fits, frameGeometry, hashIndex, loadScenes, pickScenes, placement, renderMockup } from './mockups.mjs';
 
 const scene = (name, group, maxCm = [100, 80], extra = {}) => ({
   name, group, maxCm, frameCm: 2, pxPerCm: 10, anchor: { x: 1200, bottom: 800 }, standing: ['shelf', 'desk'].includes(group), ...extra,
@@ -22,6 +22,19 @@ test('frameGeometry grows the mat with the work and keeps it within limits', () 
   assert.equal(frameGeometry([120, 80], scene('x', 'wall')).mat, 10);
   assert.equal(frameGeometry([10, 10], scene('x', 'shelf')).mat, 3);
   assert.equal(frameGeometry([60, 40], scene('x', 'shelf')).mat, 6);
+});
+
+test('frameGeometry of a canvas: no mat, the frame and the gap of the scene for canvases', () => {
+  assert.deepEqual(frameGeometry([70, 50], scene('x', 'wall'), 'canvas'), { mat: 0, gap: 1.4, frame: 1, outerW: 74.8, outerH: 54.8 });
+  assert.deepEqual(frameGeometry([70, 50], scene('x', 'wall', [100, 80], { canvas: { frameCm: 0, gapCm: 0 } }), 'canvas'), { mat: 0, gap: 0, frame: 0, outerW: 70, outerH: 50 });
+  assert.equal(frameGeometry([70, 50], scene('x', 'wall', [100, 80], { canvas: { frameCm: 2.2, gapCm: 0 } }), 'canvas').outerW, 74.4);
+  // paper (any other edge, or none) keeps its mat
+  for (const edge of [undefined, 'deckle', 'cut']) assert.equal(frameGeometry([70, 50], scene('x', 'wall'), edge).mat, 10);
+});
+
+test('canvasFrame takes the canvas of the scene over the defaults', () => {
+  assert.deepEqual(canvasFrame(scene('x', 'wall')), CANVAS_DEFAULTS);
+  assert.deepEqual(canvasFrame(scene('x', 'wall', [100, 80], { canvas: { frameCm: 0, depthCm: 4 } })), { ...CANVAS_DEFAULTS, frameCm: 0, depthCm: 4 });
 });
 
 test('fits compares the framed size with the scene limits', () => {
@@ -53,13 +66,20 @@ test('pickScenes: a larger work gets a living room, another wall and a hallway, 
 });
 
 test('pickScenes honours a smaller count', () => {
-  assert.equal(pickScenes([56, 38], 'k3f9a', scenes, 2).length, 2);
+  assert.equal(pickScenes([56, 38], 'k3f9a', scenes, { count: 2 }).length, 2);
 });
 
 test('pickScenes skips scenes where the framed work does not fit', () => {
   // 70 × 50 cm framed is about 88 × 68 cm: only living-a and the hallway fit.
   assert.deepEqual(pickScenes([70, 50], 'k3f9a', scenes).map((s) => s.name), ['living-a', 'hallway']);
   assert.deepEqual(pickScenes([300, 200], 'k3f9a', scenes), []);
+});
+
+test('pickScenes: a canvas without a mat fits where the same work on paper does not', () => {
+  // 70 × 50 cm on paper is about 94 × 74 cm framed, as a canvas 74.8 × 54.8 cm
+  assert.deepEqual(pickScenes([70, 50], 'k3f9a', scenes).map((s) => s.name), ['living-a', 'hallway']);
+  const canvas = pickScenes([70, 50], 'k3f9a', scenes, { edge: 'canvas' });
+  assert.deepEqual(canvas.map((s) => s.group), ['living', 'wall', 'hallway']);
 });
 
 test('pickScenes falls back to any fitting scene when a group has none', () => {
@@ -133,6 +153,44 @@ test('renderMockup with an aspect returns that aspect', async () => {
   const master = await sharp({ create: { width: 300, height: 400, channels: 3, background: '#c98' } }).jpeg().toBuffer();
   const { width, height } = await sharp(await renderMockup(master, [24, 32], real[0], { aspect: 4 / 5 })).metadata();
   assert.ok(Math.abs(width / height - 0.8) < 0.01);
+});
+
+test('every canvas of a scene in mockups/scenes.yaml has only known keys and sane values', async () => {
+  const { scenes: real } = await loadScenes();
+  for (const s of real) {
+    for (const key of Object.keys(s.canvas ?? {})) assert.ok(key in CANVAS_DEFAULTS, `${s.name}: canvas.${key}`);
+    const c = canvasFrame(s);
+    assert.ok(c.frameCm >= 0 && c.gapCm >= 0 && c.depthCm > 0, s.name);
+  }
+});
+
+test('a canvas hangs without a mat: its middle is the work, a bare canvas has no frame around it', async () => {
+  const { scenes: real } = await loadScenes();
+  const sideboard = real.find((s) => s.name === 'komoda');
+  assert.equal(canvasFrame(sideboard).frameCm, 0, 'komoda: a bare canvas');
+  const master = await sharp({ create: { width: 700, height: 500, channels: 3, background: '#ff00ff' } }).jpeg().toBuffer();
+  const pixel = async (buf, x, y) => [...(await sharp(buf).extract({ left: x, top: y, width: 1, height: 1 }).raw().toBuffer())];
+  // the light of the room darkens it, the hue stays
+  const magenta = ([r, g, b]) => r > 100 && b > 60 && g < 30;
+  for (const s of real.filter((x) => x.canvas)) {
+    const { buf, rect } = await composeMockup(master, [70, 50], s, { edge: 'canvas' });
+    assert.equal(rect.mat, 0, s.name);
+    const px = s.pxPerCm;
+    // just inside the outer edge: the frame (or, bare, already the canvas), never a white mat
+    const inset = Math.round((rect.frame + rect.gap) * px) + Math.round(px);
+    assert.ok(magenta(await pixel(buf, rect.left + Math.round(rect.width / 2), rect.top + inset)), `${s.name}: the canvas right inside the frame`);
+    const rim = await pixel(buf, rect.left + Math.round(rect.width / 2), rect.top + 1);
+    assert.equal(magenta(rim), rect.frame === 0 && rect.gap === 0, `${s.name}: the outer edge is ${rect.frame ? 'the frame' : 'the canvas'}`);
+  }
+});
+
+test('renderMockup of a canvas keeps the aspect of the scene', async () => {
+  const { scenes: real } = await loadScenes();
+  const master = await sharp({ create: { width: 700, height: 500, channels: 3, background: '#4f7a8a' } }).jpeg().toBuffer();
+  const out = await renderMockup(master, [70, 50], real[0], { edge: 'canvas' });
+  const { width, height } = await sharp(out).metadata();
+  const scene = await sharp(real[0].path).metadata();
+  assert.ok(Math.abs(width / height - scene.width / scene.height) < 0.01);
 });
 
 test('occluders keep the original photo in front of the work', async () => {

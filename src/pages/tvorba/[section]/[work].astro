@@ -11,7 +11,7 @@ import { pinDescription } from '../../../../scripts/lib/pinterest.mjs';
 import { shareLinks } from '../../../../scripts/lib/share.mjs';
 import { artworkLd, breadcrumbLd, graphLd, workPageDescription, workPageTitle } from '../../../../scripts/lib/seo.mjs';
 import { defaultType, mailtoLink, workContext } from '../../../../scripts/lib/messages.mjs';
-import { viewId } from '../../../../scripts/lib/work-viewer.mjs';
+import { MOCKUPS_NOTE, mockupCaption, mockupsHeading, viewId, workCaption } from '../../../../scripts/lib/work-viewer.mjs';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -32,12 +32,11 @@ const base = workImagePath(work);
 const details = workDetails(work).map((d, i) => ({ ...d, caption: detailCaption(work, d.name) || `detail ${i + 1}`, html: detailCaptionHtml(work, d.name) || `detail ${i + 1}` }));
 // Mockups only when the author asked for them (mockups: true), whether or not the work is for sale.
 const mockups = wantsMockups(work) ? work.image.mockups ?? [] : [];
-const mockupsHeading = isOnSale(work.status) ? 'Jak by mohl vypadat u vás' : 'Jak vypadá na zdi';
 // Each has its own address #<id> (scripts/lib/work-viewer.mjs).
 const views = [
-  { id: viewId({ kind: 'main' }), label: work.title, prefix: '', image: work.image },
+  { id: viewId({ kind: 'main' }), label: workCaption(work), prefix: '', image: work.image },
   ...details.map((d) => ({ id: viewId({ kind: 'detail', name: d.name }), label: `${work.title} · ${d.caption}`, prefix: `detail-${d.name}-`, image: d })),
-  ...mockups.map((m) => ({ id: viewId({ kind: 'mockup', name: m.scene }), label: `${work.title} · ${m.label}`, prefix: `mockup-${m.scene}-`, image: m })),
+  ...mockups.map((m) => ({ id: viewId({ kind: 'mockup', name: m.scene }), label: `${work.title} · ${mockupCaption(m.label)}`, prefix: `mockup-${m.scene}-`, image: m })),
 ].map((v) => ({
   id: v.id,
   label: v.label,
@@ -155,23 +154,25 @@ const story = textHtml(work.text);
         </section>
       )}
       {mockups.length > 0 && (
-        <section class="mockups" aria-label="Jak obraz vypadá v interiéru">
-          <p class="eyebrow">{mockupsHeading}</p>
+        <section class="mockups" aria-label="Vizualizace obrazu v interiéru">
+          {/* the heading over a line, the mockups, under them a footnote: made-up pictures, the work has no frame */}
+          <p class="eyebrow">{mockupsHeading(isOnSale(work.status))}</p>
           <div class:list={['mockup-grid', { wide: mockupsWide }]}>
             {mockups.map((m, i) => (
-              <a href={views[1 + details.length + i].src} data-view={1 + details.length + i} title={`Zvětšit: ${m.label}`}>
-                <Img base={base} prefix={`mockup-${m.scene}-`} image={m} alt={`${work.title} v interiéru: ${m.label}`} sizes="(max-width: 900px) 100vw, 30vw" />
-                <span class="muted">{m.label} · skutečná velikost {formatSize(work.size_cm)}</span>
+              <a href={views[1 + details.length + i].src} data-view={1 + details.length + i} title={`Zvětšit: ${mockupCaption(m.label)}`}>
+                <Img base={base} prefix={`mockup-${m.scene}-`} image={m} alt={`${work.title}: ${mockupCaption(m.label)}`} sizes="(max-width: 900px) 100vw, 30vw" />
+                <span class="muted">{mockupCaption(m.label)}</span>
               </a>
             ))}
           </div>
+          <p class="note">{MOCKUPS_NOTE}</p>
         </section>
       )}
     </div>
   </article>
   <dialog class="viewer" id="viewer" aria-label="Prohlížení obrázků" data-views={JSON.stringify(views)}>
     <figure>
-      <img id="viewer-img" alt="" />
+      <img id="viewer-img" alt="" draggable="false" />
       <figcaption><span id="viewer-label"></span> <span class="muted" id="viewer-count"></span></figcaption>
     </figure>
     {views.length > 1 && (
@@ -198,7 +199,7 @@ const story = textHtml(work.text);
   // The picture shown is in the address (#obraz, #detail-<name>, #mockup-<scene>; scripts/lib/work-viewer.mjs):
   // opening adds a history entry (Back closes the viewer), stepping replaces it, a link with it opens that picture,
   // an unknown one is dropped from the address.
-  import { hashId, viewIndex } from '../../../../scripts/lib/work-viewer.mjs';
+  import { autoHide, hashId, swipeStep, viewIndex } from '../../../../scripts/lib/work-viewer.mjs';
   type View = { id: string; label: string; src: string; srcset: string; width: number; height: number; cutout: boolean };
   const dialog = document.getElementById('viewer') as HTMLDialogElement;
   const img = document.getElementById('viewer-img') as HTMLImageElement;
@@ -207,6 +208,10 @@ const story = textHtml(work.text);
   const views: View[] = JSON.parse(dialog.dataset.views!);
   const ids = views.map((v) => v.id);
   let current = 0;
+  // The arrows fade a few seconds after opening or the last move of the mouse; a tap on the picture shows or hides
+  // them (autoHide). The close button, the caption and the count stay.
+  const arrows = [...dialog.querySelectorAll<HTMLButtonElement>('[data-step]')];
+  const controls = autoHide((on) => dialog.classList.toggle('idle', !on));
   // set while the viewer closes because of the history (Back), so closing does not change it again
   let closingFromHistory = false;
 
@@ -216,6 +221,7 @@ const story = textHtml(work.text);
 
   function open(i: number) {
     show(i);
+    controls.show();
     history.pushState({ ...history.state, [OPENED]: true }, '', address(ids[current]));
     dialog.showModal();
   }
@@ -228,7 +234,10 @@ const story = textHtml(work.text);
     const i = viewIndex(location.hash, ids);
     if (i >= 0) {
       show(i);
-      if (!dialog.open) dialog.showModal();
+      if (!dialog.open) {
+        dialog.showModal();
+        controls.show();
+      }
       return;
     }
     if (dialog.open) {
@@ -261,24 +270,50 @@ const story = textHtml(work.text);
       open(Number(a.dataset.view));
     }),
   );
-  dialog.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) => b.addEventListener('click', () => step(current + Number(b.dataset.step))));
+  arrows.forEach((b) => {
+    // a hidden arrow first only shows itself (a tap at the edge of a phone), it does not step
+    b.addEventListener('click', () => {
+      if (!controls.visible) { controls.show(); return; }
+      step(current + Number(b.dataset.step));
+      controls.show();
+    });
+    b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') controls.hold(true); });
+    b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') controls.hold(false); });
+    // reached by the keyboard (Tab)
+    b.addEventListener('focus', () => { if (b.matches(':focus-visible')) controls.show(); });
+  });
+  dialog.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') controls.show(); });
   dialog.querySelector('.close')!.addEventListener('click', () => dialog.close());
-  // A click on the backdrop (outside the figure) closes the viewer.
-  dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
+  // A click on the backdrop (outside the figure) closes the viewer; not the click that ends a swipe.
+  dialog.addEventListener('click', (e) => {
+    if (swiped) { swiped = false; return; }
+    if (e.target === dialog) dialog.close();
+  });
   dialog.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight') step(current + 1);
     if (e.key === 'ArrowLeft') step(current - 1);
   });
-  // Swipe on touch screens.
-  let startX: number | null = null;
-  dialog.addEventListener('pointerdown', (e) => { startX = e.clientX; });
+  // Swipe (a finger or the mouse) to the left = next, to the right = previous (swipeStep). The viewer keeps sideways
+  // moves to itself (touch-action in the CSS), otherwise the phone takes the gesture and cancels the pointer.
+  let start: { x: number; y: number } | null = null;
+  let swiped = false;
+  dialog.addEventListener('pointerdown', (e) => { start = { x: e.clientX, y: e.clientY }; swiped = false; });
+  dialog.addEventListener('pointercancel', () => { start = null; });
   dialog.addEventListener('pointerup', (e) => {
-    if (startX !== null && Math.abs(e.clientX - startX) > 50) step(current + (e.clientX < startX ? 1 : -1));
-    startX = null;
+    if (!start) return;
+    const s = swipeStep(e.clientX - start.x, e.clientY - start.y);
+    const tap = !s && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 10;
+    start = null;
+    // a tap (finger or pen) on the picture shows or hides the arrows
+    if (tap && e.pointerType !== 'mouse' && e.target === img) controls.toggle();
+    if (!s) return;
+    swiped = true;
+    step(current + s);
   });
   // However it closes (×, Esc, the backdrop), the address drops the picture: back to the entry before opening,
   // or (opened by a link) the same entry without the hash.
   dialog.addEventListener('close', () => {
+    controls.hide();
     if (closingFromHistory) {
       closingFromHistory = false;
       return;
@@ -349,11 +384,16 @@ const story = textHtml(work.text);
   .story .desc { margin: 18px 0 0; }
   .tags { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.9rem; margin: 12px 0 0; }
   .tags a { color: var(--accent); text-decoration: none; }
-  .mockups { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .mockups { margin-top: 36px; }
+  .mockups .eyebrow { margin: 0 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  /* a footnote to all the mockups: smaller and softer than their captions, under a short thin rule */
+  .mockups .note { margin: 18px 0 0; font-size: 0.74rem; color: var(--ink-soft); }
+  .mockups .note::before { content: ''; display: block; width: 3em; margin-bottom: 6px; border-top: 1px solid var(--line); }
   .mockup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .mockup-grid.wide { grid-template-columns: 1fr; }
   .mockup-grid a { display: flex; flex-direction: column; gap: 6px; text-decoration: none; font-size: 0.82rem; cursor: zoom-in; }
-  .viewer { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96vh; overflow: visible; }
+  /* pan-y: sideways moves are the swipe of the viewer, not a scroll or a back gesture of the phone; pinch zoom stays */
+  .viewer { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96vh; overflow: visible; touch-action: pan-y pinch-zoom; }
   .viewer::backdrop { background: rgba(30, 26, 22, .82); }
   .viewer figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .viewer img { display: block; max-width: 92vw; max-height: 82vh; width: auto; height: auto; box-shadow: 0 24px 64px rgba(0,0,0,.45); background: var(--paper-2); }
@@ -362,6 +402,9 @@ const story = textHtml(work.text);
   .viewer figcaption .muted { color: #bdb3a6; margin-left: 8px; }
   .viewer button { position: fixed; background: rgba(0,0,0,.35); color: #fff; border: 0; cursor: pointer; font: 300 2.4rem/1 var(--sans); width: 52px; height: 52px; border-radius: 50%; }
   .viewer button:hover { background: rgba(0,0,0,.6); }
+  .viewer .nav { transition: opacity .4s; }
+  .viewer.idle .nav { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) { .viewer .nav { transition: none; } }
   .viewer .prev { left: 16px; top: 50%; transform: translateY(-50%); }
   .viewer .next { right: 16px; top: 50%; transform: translateY(-50%); }
   .viewer .close { right: 16px; top: 16px; font-size: 2rem; }

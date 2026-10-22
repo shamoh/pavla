@@ -108,7 +108,9 @@ jinde zkopírování s hláškou „Odkaz zkopírován“, `src/lib/share-button
 (atribut `instagram`), pak detaily a mockupy. Na úzké obrazovce pod sebou: obraz, název a údaje, popis a štítky,
 stav a cena, sdílení, detaily, mockupy.
 
-**Zvětšení má vlastní adresu.** Klik na obraz, detail nebo mockup otevře prohlížeč fotek a zapíše zobrazený obrázek
+**Zvětšení má vlastní adresu.** Klik na obraz, detail nebo mockup otevře prohlížeč fotek (popisek: u obrazu „<název> · <text díla>“ zkrácený
+na `VIEWER_TEXT_MAX` znaků, `workCaption`, u detailu „<název> · <popisek detailu>“, u mockupu
+„<název> · <scéna> (vizualizace)“) a zapíše zobrazený obrázek
 do adresy za `#` (`scripts/lib/work-viewer.mjs`, `viewId`/`viewIndex`): `#obraz` = celý obraz, `#detail-<jméno detailu>`
 (např. `/tvorba/2011/orangutan-g4psg/#detail-oci`), `#mockup-<scéna>`. Otevření přidá záznam do historie (tlačítko
 Zpět prohlížeč zavře), listování šipkami nebo tahem adresu jen přepíše, zavření (×, Esc, klik vedle) kotvu odebere.
@@ -929,7 +931,8 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | `mockups: false` | Pivoňky (na prodej, + detail), Bouřka nad polem, Modravské slatě (na prodej), Kvilda skica, Nádraží (prodáno), Máky (na prodej), Lípa u kaple, Jablka na stole (prodáno), Rozpracovaný obraz |
 | `DOPLNIT` a neznámý atribut (`NEZNÁMÝ`) | Rozpracovaný obraz (`mockup: true` je schválně překlep) |
 | mockupy malého díla (≤ 35 cm) / většího | Kočka na okně / Zimní sad |
-| detailní fotky | Ráno u rybníka (2, s popisky v opačném pořadí než soubory: na stránce první Rákos), Kytice z louky (1, bez popisku), Pivoňky (1 široký) |
+| mockupy plátna (`meta_edge: canvas`, bez pasparty, rám podle scény: ložnice stínový rám, polička a pracovna výchozí; nadpis „Jak by mohl vypadat na zdi“, poznámka „Vizualizace…“) | Slunečnice (35 × 35, `support: plátno`, + 2 detaily) |
+| detailní fotky | Ráno u rybníka (2, s popisky v opačném pořadí než soubory: na stránce první Rákos), Kytice z louky (1, bez popisku), Pivoňky (1 široký), Slunečnice (2, plátno s mockupy) |
 | kolekce: vlastní úvodní fotka (panorama, celá) | Plenér Šumava 2026 |
 | kolekce: `cover: <id>#<detail>` + `aspect: "2:1"` + `focus` | Ze zahrady 2025 (detail Pivoněk) |
 | kolekce: `cover: <id>` (celé dílo) | Město 2026 (Město v dešti, ne nejnovější Náměstí v mlze) |
@@ -1433,7 +1436,10 @@ zapisuje), jiná hodnota než `true`/`false` je chyba.
 
 - Dílo s `mockups: true` dostane na stránce tři mockupy ve skutečném měřítku
   podle `size_cm`. Nadpis sekce se řídí stavem: u díla na prodej „Jak by mohl
-  vypadat u vás“, jinak „Jak vypadá na zdi“.
+  vypadat u vás“, jinak „Jak by mohl vypadat na zdi“ (`mockupsHeading`). Pod ním
+  čára, mockupy s popiskem „<scéna> (vizualizace)“ (`mockupCaption`, i v `alt`, v prohlížeči
+  fotek „<název> · <scéna> (vizualizace)“) a pod všemi drobná šedá poznámka pod krátkou tenkou
+  čárou „Vizualizace – rám je jen pro představu.“ (`MOCKUPS_NOTE`; vše v `scripts/lib/work-viewer.mjs`).
 - Fler exporty mockupů vzniknou jen u díla na prodej, které mockupy má. Na
   Instagram mockupy nejdou nikdy.
 - Přepnutí `mockups` dílo přegeneruje, `false` jeho mockupy (i ve Fler exportech)
@@ -1442,6 +1448,16 @@ zapisuje), jiná hodnota než `true`/`false` je chyba.
   neukáže, ani kdyby soubory zůstaly.
 - Pole jde i do veřejné kopie popisu (web ho čte), kód `wantsMockups` v
   `scripts/lib/works.mjs`.
+
+**Plátno (`meta_edge: canvas`) visí bez pasparty.** Každá scéna může mít v `scenes.yaml`
+vlastní rám pro plátna (`canvas`): `frameCm` šířka lišty v barvě `frame` (0 = bez rámu, holé plátno),
+`gapCm` tmavá spára mezi lištou a plátnem (stínový rám), `depthCm` jak daleko plátno stojí od stěny
+(hlubší a měkčí stín) a `profile` lišta osvětlená shora. Scéna bez `canvas` má tenký stínový rám
+s profilem (`CANVAS_DEFAULTS` v `scripts/lib/mockups.mjs`). Teď: obývák večer lišta s profilem přímo
+na plátně, ložnice stínový rám se spárou, komoda bez rámu. Okraje plátna jsou lehce ztmavené (otáčejí
+se kolem blindrámu). Bez pasparty je plátno v rámu menší, takže se vejde i do scén, kam by se stejný
+obraz na papíře nevešel (`frameGeometry`, `pickScenes` s `edge`). Změna `meta_edge` u díla s mockupy
+dílo přegeneruje.
 
 **Mockup je vždy jen holý papír.** Master srovnaný přes `npm run straighten`
 ukazuje kolem listu úzký okraj podkladu, aby byly vidět okraje papíru, a fotka
@@ -1452,8 +1468,11 @@ pro mockupy (na webu i pro Fler) master ořízne na největší obdélník uvnit
 z metadat fotky (`pavla:sheet`, viz *Srovnání fotek obrazů*); má-li obojí, na jejich průnik.
 Webové obrázky díla a exporty pro Instagram a Fler okraj neořezávají, jen podlahu vně rohů
 zprůhlední nebo nahradí barvou pozadí. Master bez obojího (sken, fotka upravená jinde) jde do
-mockupu celý jako dosud. Klik na obraz, detail nebo mockup otevře prohlížečku, ve které se dá
-šipkami (i swipem) přepínat mezi originálem, detaily a mockupy.
+mockupu celý jako dosud. Klik na obraz, detail nebo mockup otevře prohlížeč fotek, ve kterém se dá
+šipkami (i tahem prstem nebo myší) přepínat mezi originálem, detaily a mockupy. Šipky po otevření
+a po každém pohybu myši zůstanou 3 s (`CONTROLS_MS`), pak se rozplynou; nad šipkou myš drží, na telefonu je
+klepnutí na obrázek ukáže nebo schová a klepnutí na skrytou šipku ji jen ukáže (`autoHide` v
+`scripts/lib/work-viewer.mjs`). Křížek, popisek a počítadlo zůstávají, klávesy ←/→ fungují vždy.
 
 - Malá díla (delší strana do 35 cm): stěna (komoda, ložnice), rámeček na poličce
   a rámeček opřený na stole v pracovně.
@@ -1463,7 +1482,7 @@ mockupu celý jako dosud. Klik na obraz, detail nebo mockup otevře prohlížeč
 
 Scény jsou v `mockups/`: fotka interiéru z Unsplash a v `scenes.yaml` její
 kalibrace (kolik pixelů je 1 cm, kam se obraz věší, jak velký se vejde, barva
-rámu, světlo, stín a případné předměty před obrazem, např. opěradlo židle). Novou scénu přidáš tak, že uložíš fotku (čelní pohled na
+rámu, rám pro plátna, světlo, stín a případné předměty před obrazem, např. opěradlo židle). Novou scénu přidáš tak, že uložíš fotku (čelní pohled na
 stěnu, 2400 px na šířku), odhadneš měřítko podle předmětu známé velikosti a
 doplníš záznam do `scenes.yaml`. Pak `npm run images` přegeneruje všechna díla.
 
@@ -1632,7 +1651,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | rozpracované dílo | „Rozpracovaný obraz“ nesmí být v galerii, v roce 2026 ani na adrese `/tvorba/dhsh5/` |
 | web bez děl | `mkdir -p /tmp/prazdny/public && cp public/favicon.svg /tmp/prazdny/public/ && SITE_DATA_DIR=/tmp/prazdny npx astro build`: úvodní stránka ukáže „Obrazy tu brzy přibudou.“ a odkaz na Instagram (bez `site.instagram` jen první větu) |
 | mockup bez okraje | srovnej fotku přes `npm run straighten` (s výchozím okrajem), dej ji jako master díla s `mockups: true` do testovacích dat nebo obsahového repa, `npm run images`: webový obrázek díla má kolem papíru pruh podlahy, mockupy (`mockup-*.jpg`) ne. Metadata ověříš: `node --input-type=module -e "import s from 'sharp';console.log(String((await s('<master>.jpg').metadata()).xmp))"` |
-| stav a mockupy | v yaml díla s `mockups: true` změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, mockupy na detailu zůstanou (nadpis „Jak vypadá na zdi“), z `export/fler` zmizí; pak `mockups: false`: mockupy zmizí i z webu. Testovací data: Ráno u rybníka (na prodej) × Slunečnice, Šumava v mlze (ne) × Pivoňky (vypnuté) |
+| stav a mockupy | v yaml díla s `mockups: true` změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, mockupy na detailu zůstanou (nadpis „Jak by mohl vypadat na zdi“), z `export/fler` zmizí; pak `mockups: false`: mockupy zmizí i z webu. Testovací data: Ráno u rybníka (na prodej) × Slunečnice, Šumava v mlze (ne) × Pivoňky (vypnuté) |
 | exporty | `ls .demo/content/export/*/*/`: Instagram jen díla s `meta_instagram: true` (Ráno u rybníka, Pivoňky, Kytice z louky, Máky, Na podlaze, Lípa u kaple, Zimní sad, Oblaka, Hřeben nad údolím), každé ve své složce `export/instagram/[<kolekce>/]<slug>/` (`ls -R .demo/content/export/instagram`) s `caption-papir/-pergamen/-noc.jpg`, `scene-stul-tmavy/-stul-svetly/-stojan.jpg`, `story.jpg`, `pano-*.jpg` (jen široká díla, Oblaka 3 snímky), `grid-*.jpg` + `grid-preview.jpg` (Pivoňky 9, Oblaka 3, Ráno u rybníka 2), `README.md` (s textem příspěvku, pořadím karuselu a adresou pro nálepku příběhu) a `detail-*.jpg`; Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export pro Instagram zmizí |
 | Instagram: snímky s popiskem a scény | `open .demo/content/export/instagram/demo-plener-sumava-2026/demo-rano-u-rybnika/*`: tři snímky s popiskem (název, technika · rozměr · rok, adresa webu) na papíru palet, dílo na tmavém a světlém stole (natočené k divákovi, vodorovně na fotce, mimo rekvizity) a na stojanu (na liště, za paletkou); Lípa u kaple přiblížená, Zimní sad hlášený jako nevejde se na stoly, Oblaka a Hřeben nad údolím (70 × 50) i na stojan („does not fit into the photo of the scene stojan“); snímek scény, do které se dílo nevejde, chybí (log; souhrn „Ke kontrole“ dostane plný běh obsahového repa); `cat …/README.md`: text příspěvku s popisem, adresa webu s `id` díla, „Kolekce: …“ u Ráno u rybníka, „Obraz je na prodej.“ u Máků, hashtagy česky a anglicky; štítek bez anglického překladu = „Doporučení“ v souhrnu |
 | náhledy exportů | `cat .demo/content/export/instagram/README.md .demo/content/export/fler/README.md`: přehledy s miniaturami; v každé složce díla `README.md` se všemi fotkami (u Instagramu i textem příspěvku, u Fleru s cenou); vykreslené je uvidíš na GitHubu obsahového repa nebo v náhledu Markdownu v editoru |

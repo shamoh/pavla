@@ -205,7 +205,7 @@ async function web(dir, m, img, { work, picked, details, fingerprint, xmp, pin, 
   const rendered = [];
   const framed = picked.length ? await mockupSource(m) : null;
   for (const scene of picked) {
-    const buf = await renderMockup(framed, work.size_cm, scene);
+    const buf = await renderMockup(framed, work.size_cm, scene, { edge: work.meta_edge });
     rendered.push({ scene: scene.name, buf });
     const { width, height } = await sharp(buf).metadata();
     const mw = await responsive(buf, width, dir, `mockup-${scene.name}-`, img.mockups.widths, img.web.quality, xmp);
@@ -733,7 +733,7 @@ export async function run({
       return false;
     }
     // Outputs depend on the master, the size (mockup scale), the scenes, whether the work is on sale
-    // (Fler exports), `mockups`, `meta_instagram`, `meta_pinterest`, the corners of the sheet (and how its edge fades, edgeLook: not the
+    // (Fler exports), `mockups` (with the edge: a canvas hangs without a mat), `meta_instagram`, `meta_pinterest`, the corners of the sheet (and how its edge fades, edgeLook: not the
     // settings of detection and previews) and the detail photos; not on price or description.
     const master = await fs.readFile(w.masterPath);
     const onSale = isOnSale(w.data.status);
@@ -756,7 +756,7 @@ export async function run({
     // Creator, title, copyright and page of the work in the XMP of its web images (a new title makes them again)
     const xmp = rightsXmp({ author: config.site?.author, title: w.data.title, year: w.year, pageUrl: workPageUrl(w.year, key) });
     const fingerprint = sha1(
-      String(PIPELINE_VERSION), master, JSON.stringify(w.data.size_cm ?? null), scenesText, String(onSale), String(instagram), String(mockupsOn),
+      String(PIPELINE_VERSION), master, JSON.stringify(w.data.size_cm ?? null), scenesText, String(onSale), String(instagram), String(mockupsOn && (w.data.meta_edge ?? 'deckle')),
       String(pinterest), ...instagramInputs, ...folderInputs, ...flerInputs, ...pinInputs, xmp,
       JSON.stringify(w.data.meta_corners ?? null), JSON.stringify(cutsSheet(w.data.meta_corners) ? edgeLook(edges) : null),
       ...details.flatMap((d) => [d.name, d.buf]),
@@ -768,7 +768,7 @@ export async function run({
     log(`→ ${rel}`);
     const m = await loadMaster(master, { corners: w.data.meta_corners, edges });
     // Mockups only when the author asks for them (mockups: true), whether or not the work is for sale.
-    const picked = mockupsOn ? pickScenes(w.data.size_cm, w.id, scenes) : [];
+    const picked = mockupsOn ? pickScenes(w.data.size_cm, w.id, scenes, { edge: w.data.meta_edge }) : [];
     if (mockupsOn && !picked.length) log(`  ! no mockup scene is big enough for ${rel} (see mockups/scenes.yaml maxCm)`);
     // Pinterest: the work with the caption right under it on the paper of the first palette, 2:3, on the site; every
     // work has it ("Uložit na Pinterest" of its page), with meta_pinterest it is also in the feed /pinterest.xml

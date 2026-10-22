@@ -30,6 +30,8 @@ images:
   tvorba/demo-plener-sumava-2026/demo-kvilda-skica.jpg: { size: [2400, 1800], palette: sediva, seed: 16 }
   tvorba/demo-mesto-2026/demo-mesto-v-desti.jpg: { size: [1800, 2400], palette: mesto, seed: 17 }
   tvorba/demo-slunecnice.jpg: { size: [2000, 2000], palette: slunce, seed: 18 }
+  tvorba/demo-slunecnice/1-stred-kvetu.jpg: { from: tvorba/demo-slunecnice.jpg, crop: [650, 650, 700, 700], width: 1600 }
+  tvorba/demo-slunecnice/2-okraj-platna.jpg: { from: tvorba/demo-slunecnice.jpg, crop: [1300, 1200, 700, 800], width: 1600 }
   tvorba/demo-mesto-2026/demo-namesti-v-mlze.jpg: { size: [1600, 2000], palette: mesto, seed: 21 }
   tvorba/demo-kresby-2025-2026/demo-nadrazi.jpg: { size: [2000, 1400], palette: sediva, seed: 22 }
   tvorba/demo-maky.jpg: { size: [1600, 1600], palette: ovoce, seed: 23 }

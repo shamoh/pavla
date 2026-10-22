@@ -8,6 +8,10 @@
 #   group     living | wall | hallway | shelf | desk – podle toho se scéna vybírá (viz scripts/lib/mockups.mjs)
 #   standing  true = rámeček stojí (opřený o stěnu na poličce/stole), má užší paspartu
 #   frame     barva rámu, frameCm šířka lišty
+#   canvas    jak visí plátno na rámu (meta_edge: canvas), vždy bez pasparty; bez něj tenký stínový rám s profilem
+#             { frameCm: 1, gapCm: 1.4, depthCm: 3.5, profile: true } (CANVAS_DEFAULTS v scripts/lib/mockups.mjs):
+#             frameCm šířka lišty (0 = bez rámu, holé plátno), gapCm spára mezi lištou a plátnem, depthCm jak daleko
+#             plátno stojí od stěny (hlubší a měkčí stín), profile lišta osvětlená shora (jinak plochá)
 #   light     jak moc obraz převezme světlo stěny (0 = vůbec, 1 = úplně)
 #   shadow    stín rámu: posun a rozmazání v cm, průhlednost
 #   occluders obdélníky fotky (v pixelech), které jsou před obrazem – po vložení obrazu se vrátí navrch
@@ -24,6 +28,8 @@
   maxCm: [150, 85]
   frame: "#2b2724"
   frameCm: 2.5
+  # plátno: lišta s profilem přímo na plátně, bez spáry
+  canvas: { frameCm: 2.2, gapCm: 0, depthCm: 2.5 }
   light: 0.75
   shadow: { dx: -1.2, dy: 1.6, blur: 2.2, opacity: 0.45 }
 
@@ -54,6 +60,8 @@
   maxCm: [85, 80]
   frame: "#e8e0d2"
   frameCm: 2.5
+  # plátno: tenký stínový rám s profilem a širší spárou (= výchozí)
+  canvas: { frameCm: 1, gapCm: 1.4, depthCm: 3.5 }
   light: 0.45
   shadow: { dx: 0.6, dy: 1.4, blur: 2, opacity: 0.4 }
 
@@ -69,6 +77,8 @@
   maxCm: [110, 55]
   frame: "#b89a72"
   frameCm: 2
+  # plátno: bez rámu, jen hlubší stín na stěně
+  canvas: { frameCm: 0, gapCm: 0, depthCm: 4 }
   light: 0.6
   shadow: { dx: 0.4, dy: 1.2, blur: 1.6, opacity: 0.3 }
 

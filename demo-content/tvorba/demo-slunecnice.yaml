@@ -14,11 +14,11 @@ meta_corners:
 # - false - zveřejnit
 meta_draft: false
 
-# Hrana obrazu ve scénách ateliéru pro Instagram, možnosti:
+# Hrana obrazu ve scénách ateliéru pro Instagram a v mockupech, možnosti:
 # - deckle - papír s roztřepenou hranou (akvarel na ručním nebo trhaném papíru)
 # - cut - papír s čistou rovnou hranou (ořezaný list, karton)
-# - canvas - plátno na rámu: čistá zaoblená hrana, tlusté asi 2 cm, rovné
-meta_edge: deckle
+# - canvas - plátno na rámu: čistá zaoblená hrana, tlusté asi 2 cm, rovné; v mockupech bez pasparty
+meta_edge: canvas
 
 # Fotky pro Instagram, možnosti:
 # - true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, panorama pro karusel, příběh, detailní fotky)
@@ -56,7 +56,9 @@ date: 2023-08-22
 #   - *slovo* = kurzívou,
 #   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
-# details: { 1-mlha: Ranní mlha nad vodou }
+details:
+  1-stred-kvetu: Střed květu, kvaš v silné vrstvě.
+  2-okraj-platna: Malba přechází přes okraj plátna.
 
 # Výběr autorky, možnosti:
 # - true - ve výběru: přepínač „Doporučené“ v galerii; z 10 nejnovějších vybraných se náhodně střídají
@@ -110,7 +112,7 @@ status: not-for-sale
 # - papír Canson Montval Cold Pressed (300 g), 100% celulóza
 # - papír Canson XL Aquarelle (300 g), 100% celulóza
 # - akvarelový karton Chamoix (220 g)
-support: papír 300 g
+support: plátno
 
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
 tags: [květiny, léto]
