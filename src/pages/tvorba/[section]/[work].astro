@@ -170,7 +170,7 @@ const story = textHtml(work.text);
       )}
     </div>
   </article>
-  <dialog class="viewer" id="viewer" aria-label="Prohlížení obrázků" data-views={JSON.stringify(views)}>
+  <dialog class="viewer" id="viewer" aria-label="Prohlížení obrázků" data-views={JSON.stringify(views)} data-work-id={work.id} data-work-title={work.title}>
     <figure>
       <img id="viewer-img" alt="" draggable="false" />
       <figcaption><span id="viewer-label"></span> <span class="muted" id="viewer-count"></span></figcaption>
@@ -200,6 +200,7 @@ const story = textHtml(work.text);
   // opening adds a history entry (Back closes the viewer), stepping replaces it, a link with it opens that picture,
   // an unknown one is dropped from the address.
   import { autoHide, hashId, swipeStep, viewIndex } from '../../../../scripts/lib/work-viewer.mjs';
+  import { EVENTS, imageEventParams, trackEvent } from '../../../../scripts/lib/analytics.mjs';
   type View = { id: string; label: string; src: string; srcset: string; width: number; height: number; cutout: boolean };
   const dialog = document.getElementById('viewer') as HTMLDialogElement;
   const img = document.getElementById('viewer-img') as HTMLImageElement;
@@ -208,6 +209,9 @@ const story = textHtml(work.text);
   const views: View[] = JSON.parse(dialog.dataset.views!);
   const ids = views.map((v) => v.id);
   let current = 0;
+  const work = { id: dialog.dataset.workId!, title: dialog.dataset.workTitle! };
+  // every picture shown is an image_view, with how it got there (IMAGE_METHODS)
+  const track = (method: string) => trackEvent(EVENTS.image, imageEventParams(work, ids[current], method));
   // The arrows fade a few seconds after opening or the last move of the mouse; a tap on the picture shows or hides
   // them (autoHide). The close button, the caption and the count stay.
   const arrows = [...dialog.querySelectorAll<HTMLButtonElement>('[data-step]')];
@@ -224,16 +228,21 @@ const story = textHtml(work.text);
     controls.show();
     history.pushState({ ...history.state, [OPENED]: true }, '', address(ids[current]));
     dialog.showModal();
+    track('open');
   }
-  function step(i: number) {
+  function step(i: number, method: string) {
     show(i);
     history.replaceState(history.state, '', address(ids[current]));
+    track(method);
   }
   // The address names a picture: show it (also opened by a link or Back/Forward), otherwise the viewer is closed.
-  function follow() {
+  // `method`: link = the page opened with it, history = Back/Forward (counted only when another picture shows).
+  function follow(method: 'link' | 'history') {
     const i = viewIndex(location.hash, ids);
     if (i >= 0) {
+      const shown = dialog.open && ids[current] === ids[i];
       show(i);
+      if (!shown) track(method);
       if (!dialog.open) {
         dialog.showModal();
         controls.show();
@@ -274,7 +283,7 @@ const story = textHtml(work.text);
     // a hidden arrow first only shows itself (a tap at the edge of a phone), it does not step
     b.addEventListener('click', () => {
       if (!controls.visible) { controls.show(); return; }
-      step(current + Number(b.dataset.step));
+      step(current + Number(b.dataset.step), 'arrow');
       controls.show();
     });
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') controls.hold(true); });
@@ -290,8 +299,8 @@ const story = textHtml(work.text);
     if (e.target === dialog) dialog.close();
   });
   dialog.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight') step(current + 1);
-    if (e.key === 'ArrowLeft') step(current - 1);
+    if (e.key === 'ArrowRight') step(current + 1, 'key');
+    if (e.key === 'ArrowLeft') step(current - 1, 'key');
   });
   // Swipe (a finger or the mouse) to the left = next, to the right = previous (swipeStep). The viewer keeps sideways
   // moves to itself (touch-action in the CSS), otherwise the phone takes the gesture and cancels the pointer.
@@ -308,7 +317,7 @@ const story = textHtml(work.text);
     if (tap && e.pointerType !== 'mouse' && e.target === img) controls.toggle();
     if (!s) return;
     swiped = true;
-    step(current + s);
+    step(current + s, 'swipe');
   });
   // However it closes (×, Esc, the backdrop), the address drops the picture: back to the entry before opening,
   // or (opened by a link) the same entry without the hash.
@@ -321,8 +330,8 @@ const story = textHtml(work.text);
     if (history.state?.[OPENED]) history.back();
     else history.replaceState(history.state, '', address());
   });
-  window.addEventListener('popstate', follow);
-  follow();
+  window.addEventListener('popstate', () => follow('history'));
+  follow('link');
 </script>
 <style>
   .back { margin: -12px 0 24px; font-size: 0.9rem; }

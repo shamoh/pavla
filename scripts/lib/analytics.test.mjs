@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  EVENTS, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
+  EVENTS, IMAGE_METHODS, imageEventParams, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
 } from './analytics.mjs';
 
 const analytics = { googleMeasurementId: 'G-HPZNHYZ2MQ' };
@@ -74,4 +74,14 @@ test('viewEventParams: where and which view, tiles with their size', () => {
   assert.equal(EVENTS.view, 'view_change');
   assert.deepEqual(viewEventParams('home', { view: 'grid', tile: 's' }), { listing: 'home', view: 'grid' });
   assert.deepEqual(viewEventParams('gallery', { view: 'tiles', tile: 'l' }), { listing: 'gallery', view: 'tiles-l' });
+});
+
+test('image_view: the work, the picture, its kind and how it got into the viewer', () => {
+  assert.equal(EVENTS.image, 'image_view');
+  const work = { id: 'g4psg', title: 'Orangutan' };
+  assert.deepEqual(imageEventParams(work, 'obraz', 'open'), { work_id: 'g4psg', work_title: 'Orangutan', image: 'obraz', image_kind: 'main', method: 'open' });
+  assert.equal(imageEventParams(work, 'detail-oci', 'swipe').image_kind, 'detail');
+  assert.equal(imageEventParams(work, 'mockup-obyvak-vecer', 'link').image_kind, 'mockup');
+  for (const m of IMAGE_METHODS) assert.equal(imageEventParams(work, 'obraz', m).method, m);
+  assert.throws(() => imageEventParams(work, 'obraz', 'click'), /unknown method/);
 });

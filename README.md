@@ -1947,21 +1947,45 @@ analytics:
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
   | `palette_change` | návštěvník v patičce přepne barvy webu (jen skutečná změna, ne opakovaný klik na tutéž) | `palette` (`papir`, `pergamen`, `noc`, `auto`) |
   | `view_change` | návštěvník přepne zobrazení děl (velké obrazy / dlaždice) nebo velikost dlaždic, na úvodní stránce i v galerii (`viewEventParams`) | `listing` (`home`, `gallery`), `view` (`grid`, `tiles-s`, `tiles-m`, `tiles-l`) |
+  | `image_view` | každý obrázek ukázaný v prohlížeči fotek na stránce díla (`imageEventParams`): otevření i každé listování; Zpět/Vpřed jen při jiném obrázku | `work_id`, `work_title`, `image` (kotva obrázku: `obraz`, `detail-<jméno>`, `mockup-<scéna>`), `image_kind` (`main`, `detail`, `mockup`), `method` (`IMAGE_METHODS`: `open` klik na stránce, `arrow` šipka prohlížeče, `swipe` tah, `key` klávesa ←/→, `link` stránka otevřená s kotvou, `history` Zpět/Vpřed) |
 
   Tlačítka nesou `data-track="<událost>"`, `data-work-id` a `data-work-title`; posluchač kliků je v `Base.astro`,
-  filtr v `WorkGallery.astro`. Nové tlačítko se sleduje přidáním stejných atributů a názvu do `EVENTS`.
+  filtr v `WorkGallery.astro`, `image_view` ve skriptu prohlížeče v `src/pages/tvorba/[section]/[work].astro`. Nové tlačítko se sleduje přidáním stejných atributů a názvu do `EVENTS`.
 - **Jednorázově v GA** (bez toho se parametry v přehledech neukážou, jen počty událostí):
-  *Administrátor → Vlastní definice → Vytvořit vlastní dimenzi*, rozsah **Událost**, pro každý parametr zvlášť:
-  `tag` (Štítek), `technique` (Technika), `year` (Rok), `collection` (Kolekce), `status` (Stav filtru),
-  `featured` (Výběr autorky), `q` (Hledání), `work_id` (ID díla), `work_title` (Název díla), `method` (Způsob sdílení), `message_type` (Typ zprávy), `palette` (Barvy webu), `listing` (Výpis), `view` (Zobrazení); a *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru,
-  jednotka Standardní). Data se v nich ukazují až od chvíle registrace, zpětně ne.
+  *Administrátor → Vlastní definice → Vytvořit vlastní dimenzi*, rozsah **Událost**, pro každý parametr zvlášť
+  (název, popis do 150 znaků, parametr události). Existující dimenzi upravíš přes ⋮ → *Upravit* (parametr ani rozsah
+  se změnit nedají, název a popis ano):
+
+  | Název dimenze | Parametr | Popis (do pole *Popis*) |
+  |---|---|---|
+  | Štítek | `tag` | Filtr štítků v galerii (gallery_filter); víc štítků jako jedna hodnota spojená čárkou, např. krajina,voda. |
+  | Technika | `technique` | Filtr techniky v galerii (gallery_filter), např. akvarel. |
+  | Rok | `year` | Filtr roku v galerii nebo na přehledu kolekcí (gallery_filter). |
+  | Kolekce | `collection` | Filtr kolekce v galerii (gallery_filter): slug kolekce, none = díla bez kolekce. |
+  | Stav filtru | `status` | Filtr stavu v galerii (gallery_filter): unsold = na prodej, kept = ještě mám, gone = už nemám. |
+  | Výběr autorky | `featured` | Zapnutý přepínač Doporučené (výběr autorky) v galerii (gallery_filter). |
+  | Hledání | `q` | Text hledání v galerii nebo v přehledu kolekcí (gallery_filter). |
+  | ID díla | `work_id` | Trvalý kód díla (např. g4psg) u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek. |
+  | Název díla | `work_title` | Název díla u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek. |
+  | Způsob | `method` | share: kde sdílel (pinterest, facebook, whatsapp, native, copy); image_view: jak přišel na obrázek (open, arrow, swipe, key, link, history). |
+  | Typ zprávy | `message_type` | Typ odeslané zprávy (message_sent): greeting, work, purchase, collaboration, bug, other. |
+  | Barvy webu | `palette` | Barvy zvolené v patičce (palette_change): papir, pergamen, noc, auto. |
+  | Výpis | `listing` | Kde se přepnulo zobrazení děl (view_change): home = úvodní stránka, gallery = galerie. |
+  | Zobrazení | `view` | Nové zobrazení děl (view_change): grid = velké obrazy, tiles-s / tiles-m / tiles-l = dlaždice malé / střední / velké. |
+  | Obrázek | `image` | Obrázek v prohlížeči fotek díla (image_view): obraz, detail-<jméno>, mockup-<scéna>; stejně jako kotva v adrese. |
+  | Druh obrázku | `image_kind` | Druh obrázku v prohlížeči fotek (image_view): main = celý obraz, detail = detailní fotka, mockup = vizualizace v interiéru. |
+
+  A *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru, jednotka Standardní, popis: „Kolik děl (na přehledu
+  kolekcí kolik kolekcí) odpovídá filtru po jeho změně (gallery_filter).“). Data se v nich ukazují až od chvíle
+  registrace, zpětně ne. Nový parametr události = nový řádek v této tabulce.
   Přehledy: *Přehledy → Zapojení → Události* (počty a proklik na parametry) nebo *Průzkum* (tabulka např.
   Událost × Technika).
 - Vyzkoušení událostí lokálně (bez Google tagu se nic neposílá, jen vypisuje): `npm run demo`, v DevTools →
   *Console* zapnout úroveň *Verbose*, změnit filtr v `/tvorba/` → `[analytics] gallery_filter {…}`; na detailu
   díla na prodej s odkazem na Fler (v testovacích datech Máky) klik na „Koupit na Fleru“ → `[analytics] fler_click`,
   na detailu Ráno u rybníka klik na „Na Instagramu“ → `[analytics] instagram_click`, na ikonu v řádku „Sdílet“ →
-  `[analytics] share` s `method` (např. `pinterest`, `copy`).
+  `[analytics] share` s `method` (např. `pinterest`, `copy`); klik na obraz, detail nebo mockup a listování v prohlížeči
+  fotek → `[analytics] image_view` s `image`, `image_kind` a `method`.
   Na nasazeném webu: GA → *Administrátor → DebugView* s Tag Assistantem, nebo *V reálném čase → Počet událostí*.
 - Kód: `scripts/lib/analytics.mjs` (kdy měřit, obsah značky, kontrola ID), `analyticsId` v `src/lib/site.ts`.
 - Vyzkoušení: `npm run build`, pak `grep -c googletagmanager dist/index.html` (1 = značka je tam);

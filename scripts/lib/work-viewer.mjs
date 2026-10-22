@@ -11,6 +11,13 @@ export const MAIN_VIEW = 'obraz';
 /** Id of a view in the viewer: { kind: 'main' } | { kind: 'detail' | 'mockup', name } (name = slug of the file). */
 export const viewId = ({ kind, name }) => (kind === 'main' ? MAIN_VIEW : `${kind}-${name}`);
 
+/** Kind of a view from its id: 'main' | 'detail' | 'mockup' ('' for none of them). */
+export function viewKind(id) {
+  if (id === MAIN_VIEW) return 'main';
+  const kind = String(id ?? '').split('-')[0];
+  return ['detail', 'mockup'].includes(kind) && String(id).length > kind.length + 1 ? kind : '';
+}
+
 /** The id a location hash names ("#detail-oci" → "detail-oci"), '' without one or when it cannot be decoded. */
 export function hashId(hash) {
   try {

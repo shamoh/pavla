@@ -1,10 +1,11 @@
 // Visitor statistics: Google Analytics 4 (gtag.js), configured by analytics.googleMeasurementId in site.config.yaml.
 // Only the production build of the real site measures: never `astro dev`, never the site from the test data.
 // GA stores its usual first-party cookies (_ga, _ga_<id>), so returning visitors are recognised.
-// Own events (sent from the browser, see EVENTS): a filter change in the gallery and clicks on the buttons
-// of a work ("Koupit na Fleru", "Napsat autorce"). This module runs both in the build and in the browser.
+// Own events (sent from the browser, see EVENTS): a filter change in the gallery, clicks on the buttons
+// of a work ("Koupit na Fleru", "Napsat autorce"), the pictures shown in the viewer of a work. This module runs both in the build and in the browser.
 
 import { FILTER_KEYS } from './gallery-filter.mjs';
+import { viewKind } from './work-viewer.mjs';
 
 /** A GA4 measurement ID, e.g. "G-HPZNHYZ2MQ". */
 export const isMeasurementId = (id) => typeof id === 'string' && /^G-[A-Z0-9]{4,16}$/.test(id);
@@ -53,7 +54,24 @@ export const EVENTS = {
   message: 'message_sent', // message_type, work_id and work_title (a message about a work)
   palette: 'palette_change', // palette: the chosen colours (papir, pergamen, noc, auto)
   view: 'view_change', // the view of works switched: listing (home, gallery), view (grid, tiles-s, tiles-m, tiles-l)
+  image: 'image_view', // a picture shown in the viewer of a work: work_id, work_title, image, image_kind, method
 };
+
+/**
+ * How a picture got into the viewer (`method` of image_view): open = a click on the picture, a detail or a mockup on
+ * the page, arrow = an arrow of the viewer, swipe, key = ← / → on the keyboard, link = the page opened with its
+ * address (#detail-…), history = Back / Forward of the browser.
+ */
+export const IMAGE_METHODS = ['open', 'arrow', 'swipe', 'key', 'link', 'history'];
+
+/**
+ * Parameters of image_view: the work, the picture (`image` = its id in the address: obraz, detail-<name>,
+ * mockup-<scene>; `image_kind` = main, detail, mockup) and how it got there (IMAGE_METHODS).
+ */
+export function imageEventParams({ id, title }, image, method) {
+  if (!IMAGE_METHODS.includes(method)) throw new Error(`unknown method of image_view: ${method}`);
+  return { work_id: id, work_title: title, image, image_kind: viewKind(image), method };
+}
 
 /** Parameters of view_change: where (`listing`: home, gallery) and the new view (grid, or tiles with its size). */
 export const viewEventParams = (listing, { view, tile }) => ({ listing, view: view === 'tiles' ? `tiles-${tile}` : 'grid' });

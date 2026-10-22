@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { autoHide, CONTROLS_MS, VIEWER_TEXT_MAX, workCaption, hashId, MAIN_VIEW, MOCKUPS_NOTE, mockupCaption, mockupsHeading, swipeStep, SWIPE_PX, viewId, viewIndex } from './work-viewer.mjs';
+import { viewKind, autoHide, CONTROLS_MS, VIEWER_TEXT_MAX, workCaption, hashId, MAIN_VIEW, MOCKUPS_NOTE, mockupCaption, mockupsHeading, swipeStep, SWIPE_PX, viewId, viewIndex } from './work-viewer.mjs';
 
 test('viewId names the work, its details and its mockups', () => {
   assert.equal(viewId({ kind: 'main' }), MAIN_VIEW);
@@ -111,4 +111,11 @@ test('workCaption: the title and the text of the work, plain and shortened; the 
   for (const text of [undefined, '', '  \n ']) assert.equal(workCaption({ title: 'Orangutan', text }), 'Orangutan');
   const long = workCaption({ title: 'T', text: 'slovo '.repeat(100) });
   assert.ok(long.length <= 'T · '.length + VIEWER_TEXT_MAX && long.endsWith('…'), long);
+});
+
+test('viewKind tells the work, a detail and a mockup apart by the id', () => {
+  assert.equal(viewKind('obraz'), 'main');
+  assert.equal(viewKind('detail-oci'), 'detail');
+  assert.equal(viewKind('mockup-obyvak-vecer'), 'mockup');
+  for (const id of ['', undefined, 'detail-', 'mockup', 'oci', 'viewer']) assert.equal(viewKind(id), '', String(id));
 });
