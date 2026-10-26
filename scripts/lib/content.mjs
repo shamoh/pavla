@@ -398,7 +398,8 @@ export async function findUnknownAttributes(contentDir) {
 
 /**
  * Techniques of the works for which search engines get no art form (`artform` in scripts/lib/seo.mjs knows no rule
- * for them): ["<technique>: <file>, <file>"], sorted; a work without a technique is left out. Changes nothing.
+ * for them): ["<technique>: <file>, <file>"], sorted; a work without a technique or with a DOPLNIT one is left out
+ * (drafts with a real technique are not, so the rule is there before the work goes public). Changes nothing.
  */
 export async function findUnknownTechniques(contentDir) {
   const { groups } = await readTree(path.join(contentDir, WORKS_SUBDIR));
@@ -407,7 +408,7 @@ export async function findUnknownTechniques(contentDir) {
     for (const file of g.yamls.values()) {
       const rel = path.join(WORKS_SUBDIR, g.dir, file);
       const technique = String(YAML.parse(await fs.readFile(path.join(contentDir, rel), 'utf8'))?.technique ?? '').trim();
-      if (technique && !artform(technique)) files.set(technique, [...(files.get(technique) ?? []), rel]);
+      if (technique && !technique.startsWith(TODO) && !artform(technique)) files.set(technique, [...(files.get(technique) ?? []), rel]);
     }
   }
   return [...files].sort(([a], [b]) => a.localeCompare(b, 'cs')).map(([technique, list]) => `${technique}: ${list.join(', ')}`);

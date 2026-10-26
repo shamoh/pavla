@@ -56,10 +56,12 @@ export function pageReferences(html, pageUrl, origin) {
  * Walks the site from `siteUrl` (its home page and the pages of its sitemap.xml) and checks every image its pages
  * refer to. Returns { pages, images (counts), sitemap (pages listed in it, 0 without one), missing: [{ image, page }],
  * brokenPages: [{ page, status }], html: [{ path, html }] (every page read, for the checks of their texts) }.
- * `fetchFn(url, { method })` like fetch; images are asked for with HEAD, `concurrency` at a time. A page listed in the sitemap counts as linked from "sitemap.xml", an image
+ * `fetchFn(url, { method })` like fetch; images are asked for with HEAD, `concurrency` at a time; an image that fails
+ * (any status but ok, or no answer = status 0) is asked again up to `retries` times after `retryDelayMs`, and only
+ * then counts as missing (the deployed site: a short hiccup of the host is no missing image; a built site needs none). A page listed in the sitemap counts as linked from "sitemap.xml", an image
  * of the feed for Pinterest (/pinterest.xml) from "pinterest.xml".
  */
-export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concurrency = 8 } = {}) {
+export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concurrency = 8, retries = 0, retryDelayMs = 3000 } = {}) {
   const origin = new URL(siteUrl).origin;
   const queue = [pageKey(new URL('/', siteUrl).href)];
   const map = await fetchFn(new URL('/sitemap.xml', siteUrl).href, { method: 'GET' });
@@ -96,7 +98,12 @@ export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concu
   const all = [...imageFrom.keys()];
   for (let i = 0; i < all.length; i += concurrency) {
     await Promise.all(all.slice(i, i + concurrency).map(async (image) => {
-      const res = await fetchFn(image, { method: 'HEAD' });
+      const head = () => fetchFn(image, { method: 'HEAD' }).catch(() => ({ ok: false, status: 0 }));
+      let res = await head();
+      for (let n = 0; !res.ok && n < retries; n++) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+        res = await head();
+      }
       if (!res.ok) missing.push({ image, page: imageFrom.get(image), status: res.status });
     }));
   }
@@ -132,7 +139,8 @@ export function evaluateSiteImages(result, { limit = 10 } = {}) {
   const problems = [];
   if (result.missing.length) {
     problems.push(`Na webu chybí ${count(result.missing.length, IMAGES)}, na které odkazují jeho stránky: [obrazky-chybi]`);
-    problems.push(...result.missing.slice(0, limit).map((m) => `- ${path(m.image)} (stránka ${path(m.page)})`));
+    const status = (m) => (m.status === undefined ? '' : m.status === 0 ? ', bez odpovědi' : `, HTTP ${m.status}`);
+    problems.push(...result.missing.slice(0, limit).map((m) => `- ${path(m.image)} (stránka ${path(m.page)}${status(m)})`));
     if (result.missing.length > limit) problems.push(`- … a dalších ${result.missing.length - limit}`);
   }
   if (result.brokenPages.length) {

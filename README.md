@@ -1787,7 +1787,8 @@ nepovinný). Kontroluje:
   bez `CONTENT_DIR` se tahle kontrola přeskočí),
 - že každá technika děl má druh díla pro vyhledávače (`artform` v `scripts/lib/seo.mjs`, `findUnknownTechniques`
   v `scripts/lib/content.mjs`): nová technika bez pravidla v `ARTFORMS` vypíše techniku s díly, která ji mají
-  (bez `CONTENT_DIR` se přeskočí),
+  (i rozpracovaná díla se skutečnou technikou, aby pravidlo bylo dřív než zveřejnění; technika `DOPLNIT` ne;
+  bez `CONTENT_DIR` se přeskočí),
 - že každý štítek a technika všech děl (i rozpracovaných a těch, která na Instagram ani Pinterest zatím nejdou;
   bez `DOPLNIT`) má anglický překlad v `instagramPost.en` i `pinterestKeywords.en` v `site.config.yaml`
   (`findUntranslatedTags` v `scripts/lib/content.mjs`, `evaluateUntranslatedTags`): vypíše slovo, platformy bez
@@ -1795,8 +1796,10 @@ nepovinný). Kontroluje:
   u děl, která tam jdou, `stitek-bez-prekladu`; bez `CONTENT_DIR` se přeskočí),
 - že na nasazeném webu existuje každý obrázek, na který jeho stránky odkazují (`scripts/lib/site-check.mjs`):
   projde web od úvodní stránky a od všech stránek mapy webu (`/sitemap.xml`) po vlastních odkazech, z `src`, `srcset`, `href`
-  a `og:image` posbírá obrázky a na každý se zeptá (`HEAD`); vypíše chybějící obrázky se stránkou, která na ně
-  odkazuje, a nedostupné stránky. Adresa webu je `site.url` ze `site.config.yaml`, `--site-url <adresa>` ji
+  a `og:image` posbírá obrázky a na každý se zeptá (`HEAD`); obrázek, který neprojde, zkusí ještě dvakrát po 3 s
+  (`retries`, `retryDelayMs`; chvilkový výpadek GitHub Pages není chybějící obrázek, `npm run check:images` nad vyrobeným
+  webem neopakuje); vypíše chybějící obrázky se stránkou, která na ně odkazuje, a stavem (`HTTP 404`, `bez odpovědi`),
+  a nedostupné stránky. Adresa webu je `site.url` ze `site.config.yaml`, `--site-url <adresa>` ji
   přepíše (např. lokálně spuštěný web). Vyzkoušení: `node scripts/check-health.mjs --site-url <adresa>`
   (bez tokenů ohlásí i token; za proxy navíc `NODE_USE_ENV_PROXY=1`).
 - že stránky nasazeného webu (tytéž, které prošla kontrola obrázků, bez `noindex`) mají vlastní titulek a popis

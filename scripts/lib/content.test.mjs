@@ -234,8 +234,12 @@ test('findUnknownTechniques lists techniques without an art form with their work
   await write('plener/_index.yaml', 'title: Plenér\n');
   await write('skica.yaml', 'id: p2s5t\ntitle: Skica\ntechnique: enkaustika\n');
   await write('bez.yaml', 'id: q6u3v\ntitle: Bez techniky\ntechnique: ""\n');
+  await write('nova.yaml', 'meta_draft: true\nid: r8w2y\ntitle: Nová\ntechnique: DOPLNIT\n');
+  await write('rozpracovana.yaml', 'meta_draft: true\nid: s3x9z\ntitle: Rozpracovaná\ntechnique: frotáž\n');
   const before = await read('rano.yaml');
-  assert.deepEqual(await findUnknownTechniques(dir), ['enkaustika: tvorba/skica.yaml', 'koláž: tvorba/plener/noc.yaml, tvorba/plener/vecer.yaml']);
+  assert.deepEqual(await findUnknownTechniques(dir), [
+    'enkaustika: tvorba/skica.yaml', 'frotáž: tvorba/rozpracovana.yaml', 'koláž: tvorba/plener/noc.yaml, tvorba/plener/vecer.yaml',
+  ], 'DOPLNIT left out, a draft with a real technique not');
   assert.equal(await read('rano.yaml'), before);
 });
 

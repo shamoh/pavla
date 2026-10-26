@@ -71,6 +71,24 @@ test('checkSiteImages: stops after maxPages', async () => {
   assert.ok(asked.filter((a) => a.startsWith('GET') && !a.endsWith('.xml')).length <= 6, 'pages, besides the sitemap and the feed');
 });
 
+test('checkSiteImages: a failed image is asked again with retries, missing only when it fails every time', async () => {
+  const answers = { '/blik.jpg': [503, 200], '/pryc.jpg': [404, 404, 404], '/ticho.jpg': ['throw', 'throw', 'throw'] };
+  const asked = [];
+  const fetchFn = async (url, { method }) => {
+    const { pathname } = new URL(url);
+    if (method === 'GET') return pathname === '/' ? { ok: true, status: 200, text: async () => '<img src="/blik.jpg"><img src="/pryc.jpg"><img src="/ticho.jpg"><img src="/ok.jpg">' } : { ok: false, status: 404, text: async () => '' };
+    asked.push(pathname);
+    const status = (answers[pathname] ?? [200]).shift() ?? 200;
+    if (status === 'throw') throw new Error('network');
+    return { ok: status === 200, status };
+  };
+  const r = await checkSiteImages(`${ORIGIN}/`, fetchFn, { retries: 2, retryDelayMs: 0 });
+  assert.deepEqual(r.missing.map((m) => [new URL(m.image).pathname, m.status]), [['/pryc.jpg', 404], ['/ticho.jpg', 0]]);
+  assert.deepEqual(['/blik.jpg', '/pryc.jpg', '/ticho.jpg', '/ok.jpg'].map((p) => asked.filter((a) => a === p).length), [2, 3, 3, 1]);
+  const once = await checkSiteImages(`${ORIGIN}/`, async (url, o) => (o.method === 'GET' ? fetchFn(url, o) : { ok: false, status: 503 }));
+  assert.deepEqual(once.missing.map((m) => m.status), [503, 503, 503, 503], 'no retries by default (a built site)');
+});
+
 test('evaluateSiteImages: fine, missing images (listed up to the limit), broken pages, not checked', () => {
   assert.deepEqual(evaluateSiteImages({ pages: 30, images: 375, sitemap: 18, missing: [], brokenPages: [] }), {
     ok: true, message: 'Všechny obrázky na webu existují (375 obrázků na 30 stránkách, z mapy webu 18).',
@@ -81,7 +99,9 @@ test('evaluateSiteImages: fine, missing images (listed up to the limit), broken 
   const bad = evaluateSiteImages({ pages: 1, images: 12, missing, brokenPages: [{ page: `${ORIGIN}/o-mne/`, status: 500 }] });
   assert.equal(bad.ok, false);
   assert.match(bad.message, /^Na webu chybí 12 obrázků/);
-  assert.match(bad.message, /\n- \/tvorba\/2026\/x\/0\.jpg \(stránka \/tvorba\/2026\/x\/\)/);
+  assert.match(bad.message, /\n- \/tvorba\/2026\/x\/0\.jpg \(stránka \/tvorba\/2026\/x\/, HTTP 404\)/);
+  assert.match(evaluateSiteImages({ pages: 1, images: 1, missing: [{ image: `${ORIGIN}/a.jpg`, page: `${ORIGIN}/`, status: 0 }], brokenPages: [] }).message,
+    /- \/a\.jpg \(stránka \/, bez odpovědi\)/);
   assert.match(bad.message, /\n- … a dalších 2\n/);
   assert.match(bad.message, /Nedostupné stránky webu \(1\): \[stranky-nedostupne\]\n- \/o-mne\/ \(HTTP 500\)/);
   assert.equal(evaluateSiteImages(null).ok, true);

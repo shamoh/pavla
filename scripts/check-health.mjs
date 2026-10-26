@@ -87,7 +87,8 @@ const translations = process.env.CONTENT_DIR
 // Every image the pages of the deployed site refer to exists (a deploy without images, a pipeline that removed some).
 let site = null;
 const siteImages = await guarded('obrázky webu', async () => {
-  site = await checkSiteImages(textArg('--site-url') ?? config.site.url, fetch);
+  // a failed image is asked again twice, 3 s apart: one hiccup of GitHub Pages is no missing image
+  site = await checkSiteImages(textArg('--site-url') ?? config.site.url, fetch, { retries: 2, retryDelayMs: 3000 });
   return evaluateSiteImages(site);
 });
 // The same pages have their own titles and descriptions and valid structured data (as npm run check:images checks
