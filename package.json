@@ -6,6 +6,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "node scripts/preview.mjs",
+    "corners": "node --env-file-if-exists=.env scripts/corners.mjs",
     "images": "node --env-file-if-exists=.env scripts/process-images.mjs",
     "check:images": "node scripts/check-images.mjs",
     "test": "node --test \"scripts/**/*.test.mjs\"",

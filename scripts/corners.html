@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rohy obrazů</title>
+<style>
+  /* A local tool (npm run corners), not a page of the site: its own neutral dark colours. */
+  :root { --bg: #1b1b1d; --panel: #252528; --line: #3a3a3f; --ink: #ecebe8; --ink-soft: #a3a19c; --accent: #4fc3f7; --warn: #ff6b6b; --ok: #7cdb8a; --c0: #ffe600; --c1: #00e5ff; --c2: #ff4fd8; --c3: #7cff7c; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 13px/1.4 system-ui, sans-serif; display: grid; grid-template-columns: 250px 1fr 300px; overflow: hidden; }
+  aside, section { overflow: auto; padding: 10px; }
+  aside { border-right: 1px solid var(--line); background: var(--panel); }
+  section { border-left: 1px solid var(--line); background: var(--panel); }
+  h1 { font-size: 15px; margin: 0 0 8px; }
+  h2 { font-size: 13px; margin: 12px 0 6px; color: var(--ink-soft); font-weight: 500; }
+  label { display: flex; gap: 6px; align-items: center; color: var(--ink-soft); margin-bottom: 8px; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li button { width: 100%; text-align: left; font: inherit; color: var(--ink); background: none; border: 0; border-radius: 4px; padding: 5px 6px; cursor: pointer; display: flex; gap: 6px; }
+  li button:hover { background: var(--line); }
+  li button[aria-current='true'] { background: var(--accent); color: var(--bg); }
+  li .mark { width: 1.2em; flex: none; text-align: center; }
+  li small { display: block; color: var(--ink-soft); }
+  li button[aria-current='true'] small { color: var(--bg); }
+  /* the bars above and under the photo are outside its stage: a photo fitted or zoomed never runs under them */
+  main { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  #bar { padding: 6px 10px; border-bottom: 1px solid var(--line); min-height: 2.2em; }
+  .stage { position: relative; flex: 1; min-height: 0; overflow: hidden; cursor: crosshair; }
+  #canvas { position: absolute; inset: 0; }
+  #lens { position: absolute; pointer-events: none; }
+  #hint { padding: 6px 10px; border-top: 1px solid var(--line); color: var(--ink-soft); }
+  #keys { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 0; max-width: min(860px, 94vw); }
+  /* the padding is inside: a click on the dialog itself is a click on the backdrop */
+  #keys > div { padding: 16px 20px; }
+  #keys-close { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 9px; cursor: pointer; }
+  #keys::backdrop { background: rgba(0,0,0,.6); }
+  #keys h1 { display: flex; justify-content: space-between; align-items: baseline; }
+  #keys .groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 4px 28px; }
+  #keys h2 { color: var(--accent); margin: 10px 0 4px; }
+  #keys table { border-collapse: collapse; width: 100%; }
+  #keys td { padding: 3px 0; vertical-align: top; border-top: 1px solid var(--line); }
+  #keys td:first-child { white-space: nowrap; padding-right: 14px; width: 1%; }
+  #keys p { color: var(--ink-soft); margin: 12px 0 0; }
+  .loupes { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: 'tl tr' 'bl br'; gap: 6px; }
+  .loupe { position: relative; }
+  .loupe canvas { width: 100%; aspect-ratio: 1; display: block; border: 2px solid var(--line); border-radius: 4px; cursor: crosshair; background: #000; }
+  .loupe.active canvas { border-color: var(--accent); }
+  .loupe.crossed canvas { border-color: var(--warn); animation: crossed .8s steps(1) infinite; }
+  @keyframes crossed { 50% { border-color: transparent; } }
+  @media (prefers-reduced-motion: reduce) { .loupe.crossed canvas { animation: none; } }
+  #crossed { color: var(--warn); font-weight: 600; }
+  #target { color: var(--accent); }
+  #square { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  #square b { font-weight: 600; }
+  .loupe span { position: absolute; left: 4px; top: 2px; font-weight: 600; text-shadow: 0 0 3px #000; pointer-events: none; }
+  .values div { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
+  .values .bad { color: var(--warn); }
+  pre { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 6px; margin: 6px 0; font-size: 12px; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+  .buttons button, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 9px; cursor: pointer; }
+  .buttons button:hover { border-color: var(--accent); }
+  .buttons button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .buttons button:disabled { opacity: .4; cursor: default; }
+  #confirm { display: none; margin-top: 6px; padding: 6px; border: 1px solid var(--accent); border-radius: 4px; }
+  #confirm.open { display: block; }
+  #message { margin-top: 6px; min-height: 1.4em; }
+  #message.error { color: var(--warn); }
+  #message.ok { color: var(--ok); }
+  kbd { border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font-size: 11px; }
+</style>
+</head>
+<body>
+<aside>
+  <h1>Rohy obrazů</h1>
+  <label><input type="checkbox" id="drafts" checked /> jen rozpracované</label>
+  <ul id="works"></ul>
+</aside>
+<main id="view">
+  <div id="bar"><div><span id="status"></span><span id="target"></span></div><div id="square"></div><div id="crossed"></div></div>
+  <div class="stage"><canvas id="canvas"></canvas><canvas id="lens" hidden></canvas></div>
+  <div id="hint">Klik = přesune nejbližší roh (<kbd>Shift</kbd> vybraný) a vybere ho · tažení bodu = posun rohu, jinde = posun fotky · kolečko = zoom ·
+    držet <kbd>Ctrl</kbd>/<kbd>⌘</kbd> = lupa u kurzoru · <kbd>?</kbd> všechny klávesy</div>
+</main>
+<dialog id="keys"><div>
+  <h1>Klávesy <button id="keys-close">Zavřít (Esc)</button></h1>
+  <div class="groups">
+    <div>
+      <h2>Rohy</h2>
+      <table>
+        <tr><td>klik do fotky</td><td>přesune nejbližší roh na místo kliku a vybere ho (čárkovaný kroužek a čára ukazují který)</td></tr>
+        <tr><td><kbd>Shift</kbd> + klik</td><td>přesune vybraný roh, ať je kdekoli</td></tr>
+        <tr><td>tažení bodu</td><td>posune roh, blízko čáry jiného rohu se k ní přichytí</td></tr>
+        <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></td><td>vybere roh tl / tr / br / bl (i klik do jeho lupy)</td></tr>
+        <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>posune vybraný roh o 1 px fotky</td></tr>
+        <tr><td><kbd>Shift</kbd> + šipky</td><td>o 10 px fotky</td></tr>
+      </table>
+    </div>
+    <div>
+      <h2>Pohled na fotku</h2>
+      <table>
+        <tr><td>kolečko, <kbd>+</kbd> <kbd>-</kbd></td><td>zoom kolem kurzoru (mimo fotku kolem středu)</td></tr>
+        <tr><td><kbd>0</kbd></td><td>1 : 1, pixel fotky = pixel obrazovky</td></tr>
+        <tr><td><kbd>F</kbd></td><td>celá fotka</td></tr>
+        <tr><td>tažení mimo bod</td><td>posune fotku</td></tr>
+        <tr><td><kbd>⌥</kbd>/<kbd>Alt</kbd> + šipky</td><td>posune fotku o 50 bodů obrazovky</td></tr>
+        <tr><td><kbd>Shift</kbd> <kbd>⌥</kbd> + šipky</td><td>o 250 bodů</td></tr>
+        <tr><td><kbd>D</kbd></td><td>zatemnit okolí listu, zapnout / vypnout</td></tr>
+        <tr><td><kbd>G</kbd></td><td>pomocné čáry z rohů skrýt / ukázat</td></tr>
+        <tr><td>barva čar</td><td>zelená tučná = dvojice čar na stejném místě, přes žlutou a oranžovou do červené, od 1 % fotky červená tučná</td></tr>
+        <tr><td><kbd>Shift</kbd> + tažení</td><td>bez přichycení k čarám ostatních rohů</td></tr>
+      </table>
+    </div>
+    <div>
+      <h2>Lupy</h2>
+      <table>
+        <tr><td>držet <kbd>Ctrl</kbd> / <kbd>⌘</kbd></td><td>lupa u kurzoru, klik dá nejbližší roh pod její kříž</td></tr>
+        <tr><td><kbd>Z</kbd></td><td>zvětšení lup 2× → 4× → 8× → 2×</td></tr>
+        <tr><td><kbd>Shift</kbd> <kbd>Z</kbd></td><td>zvětšení lup zpět</td></tr>
+        <tr><td>klik do lupy rohu</td><td>dá roh přesně na ten pixel</td></tr>
+      </table>
+    </div>
+    <div>
+      <h2>Ostatní</h2>
+      <table>
+        <tr><td><kbd>?</kbd></td><td>tento přehled</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>zavře přehled</td></tr>
+      </table>
+    </div>
+  </div>
+  <p>Česká klávesnice: číslice fungují i bez Shiftu (<kbd>é</kbd> = 0, <kbd>ě</kbd> <kbd>š</kbd> <kbd>č</kbd> = 2–4); klávesa 1 je
+    <kbd>+</kbd> (zoom), roh tl je <kbd>Shift</kbd> <kbd>1</kbd>; <kbd>-</kbd> je vpravo od tečky.</p>
+</div></dialog>
+<section>
+  <h2>Rohy zblízka <select id="zoom"><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option></select></h2>
+  <div class="loupes" id="loupes"></div>
+  <h2>Ořez (% fotky)</h2>
+  <div class="values" id="values"></div>
+  <pre id="yaml"></pre>
+  <div class="buttons">
+    <button id="copy" class="primary">Kopírovat</button>
+    <button id="write">Zapsat do yaml…</button>
+    <button id="detect">Najít automaticky</button>
+    <button id="reset">Vrátit z yaml</button>
+    <button id="whole">Celá fotka</button>
+  </div>
+  <div id="confirm"><div id="confirm-text"></div>
+    <div class="buttons" style="margin-top:6px"><button id="confirm-yes" class="primary">Zapsat</button><button id="confirm-no">Zrušit</button></div></div>
+  <div id="message"></div>
+</section>
+<script>
+/*FUNCTIONS*/
+const CONFIG = /*DATA*/{};
+const KEYS = ['tl', 'tr', 'br', 'bl'];
+const NAMES = { tl: 'vlevo nahoře', tr: 'vpravo nahoře', br: 'vpravo dole', bl: 'vlevo dole' };
+const colour = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const COLOURS = KEYS.map((_, i) => colour(`--c${i}`));
+const WARN = colour('--warn');
+const $ = (id) => document.getElementById(id);
+const canvas = $('canvas'), ctx = canvas.getContext('2d');
+
+let works = [];
+let current = null;          // the work shown
+let image = null;            // its photo (full size)
+let points = null;           // [[x, y] × 4] in pixels of the photo
+let active = 0;              // index of the corner a click places
+let darken = true;
+let view = { scale: 1, x: 0, y: 0 };
+let lens = false;            // Ctrl / Cmd held: the loupe at the cursor
+let shiftHeld = false;       // Shift held: a click moves the chosen corner, not the nearest one
+let guides = true;           // the guides from the corners (G)
+const edits = new Map();     // key → points changed and not written yet
+
+const size = () => [image.naturalWidth, image.naturalHeight];
+const value = () => pointsToCorners(points, size());
+const sameValue = (a, b) => a && b && JSON.stringify(a) === JSON.stringify(b);
+// indexes of the corners on the wrong side of another one (crossedCorners)
+const crossedSet = () => new Set(crossedCorners(points).flatMap((c) => c.corners));
+
+function message(text, kind = '') {
+  $('message').textContent = text;
+  $('message').className = kind;
+}
+
+async function loadWorks() {
+  works = await (await fetch('/api/works')).json();
+  renderList();
+  const fromHash = decodeURIComponent(location.hash.slice(1));
+  const first = works.find((w) => w.key === fromHash) ?? listed()[0];
+  if (first) open(first);
+}
+
+const listed = () => works.filter((w) => !$('drafts').checked || w.draft || w === current);
+
+function renderList() {
+  $('works').replaceChildren(...listed().map((w) => {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.setAttribute('aria-current', String(w === current));
+    const mark = edits.has(w.key) ? '•' : w.corners === false ? '–' : w.corners ? '✓' : '?';
+    b.innerHTML = `<span class="mark"></span><span><span class="t"></span><small></small></span>`;
+    b.querySelector('.mark').textContent = mark;
+    b.querySelector('.mark').title = { '•': 'neuložená změna', '–': 'meta_corners: false', '✓': 'má meta_corners', '?': 'bez meta_corners' }[mark];
+    b.querySelector('.t').textContent = w.title;
+    b.querySelector('small').textContent = [w.key.replace(/^tvorba\//, ''), w.draft ? null : 'zveřejněné'].filter(Boolean).join(' · ');
+    b.onclick = () => open(w);
+    li.append(b);
+    return li;
+  }));
+}
+
+async function open(work) {
+  current = work;
+  location.hash = encodeURIComponent(work.key);
+  renderList();
+  message('');
+  closeConfirm();
+  $('status').textContent = 'Načítám fotku…';
+  const img = new Image();
+  img.src = `/api/photo?key=${encodeURIComponent(work.key)}`;
+  await img.decode();
+  if (current !== work) return;
+  image = img;
+  active = 0;
+  const [w, h] = size();
+  if (edits.has(work.key)) points = edits.get(work.key);
+  else if (work.corners && work.corners.photo && work.corners.photo[0] === w && work.corners.photo[1] === h) points = cornersToPoints(work.corners);
+  else {
+    points = cornersToPoints({ photo: [w, h], tl: [0, 0], tr: [0, 0], br: [0, 0], bl: [0, 0] });
+    if (work.corners && work.corners.photo) message(`meta_corners patří fotce ${work.corners.photo.join(' × ')}, fotka má ${w} × ${h}: hledám znovu.`, 'error');
+    await detect(false);
+  }
+  fit();
+  update();
+}
+
+async function detect(markEdited = true) {
+  $('status').textContent = 'Hledám rohy…';
+  const r = await (await fetch(`/api/detect?key=${encodeURIComponent(current.key)}`)).json();
+  points = cornersToPoints(r.value);
+  if (markEdited) edited();
+  update();
+}
+
+function edited() {
+  if (current.corners && current.corners.photo && sameValue(value(), current.corners)) edits.delete(current.key);
+  else edits.set(current.key, points);
+  renderList();
+}
+
+function fit() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  const [w, h] = size();
+  const scale = Math.min((r.width - 40) / w, (r.height - 40) / h);
+  view = { scale, x: (r.width - w * scale) / 2, y: (r.height - h * scale) / 2 };
+}
+
+const toScreen = ([x, y]) => [view.x + x * view.scale, view.y + y * view.scale];
+const toPhoto = (sx, sy) => [(sx - view.x) / view.scale, (sy - view.y) / view.scale];
+const clampPoint = ([x, y]) => { const [w, h] = size(); return [Math.max(0, Math.min(w, Math.round(x))), Math.max(0, Math.min(h, Math.round(y)))]; };
+
+function draw() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  const dpr = devicePixelRatio || 1;
+  canvas.width = r.width * dpr; canvas.height = r.height * dpr;
+  canvas.style.width = `${r.width}px`; canvas.style.height = `${r.height}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, r.width, r.height);
+  if (!image) return;
+  const [w, h] = size();
+  ctx.imageSmoothingEnabled = view.scale < 2;
+  ctx.drawImage(image, view.x, view.y, w * view.scale, h * view.scale);
+  const s = points.map(toScreen);
+  if (darken) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(view.x, view.y, w * view.scale, h * view.scale);
+    ctx.moveTo(...s[0]); s.slice(1).forEach((p) => ctx.lineTo(...p)); ctx.closePath();
+    ctx.fillStyle = 'rgba(0,0,0,.6)';
+    ctx.fill('evenodd');
+    ctx.restore();
+  }
+  const crossed = crossedSet();
+  drawGuides(ctx, toScreen);
+  ctx.beginPath();
+  ctx.moveTo(...s[0]); s.slice(1).forEach((p) => ctx.lineTo(...p)); ctx.closePath();
+  if (crossed.size) { ctx.save(); ctx.globalAlpha = 0.25; ctx.fillStyle = WARN; ctx.fill(); ctx.restore(); }
+  ctx.strokeStyle = crossed.size ? WARN : '#fff'; ctx.lineWidth = crossed.size ? 2 : 1; ctx.stroke();
+  s.forEach((p, i) => {
+    if (crossed.has(i)) { ctx.beginPath(); ctx.arc(p[0], p[1], 13, 0, 2 * Math.PI); ctx.strokeStyle = WARN; ctx.lineWidth = 3; ctx.stroke(); }
+    ctx.beginPath();
+    ctx.arc(p[0], p[1], i === active ? 8 : 6, 0, 2 * Math.PI);
+    ctx.strokeStyle = COLOURS[i]; ctx.lineWidth = i === active ? 3 : 2; ctx.stroke();
+  });
+  drawHover(s);
+  drawLens();
+}
+
+// the corner under the mouse (a press drags it), screen px of the main view; -1 = none
+const hitCorner = (sx, sy) => points.map(toScreen).findIndex(([x, y]) => Math.hypot(x - sx, y - sy) < 12);
+
+// the corner a click (or a drag) would move: a dashed ring, and a dashed line to the cursor where a click puts it
+// the same in the main view, in the loupe at the cursor and in the status bar: { corner, drag } or null (no mouse)
+function hoverTarget() {
+  if (!pointer || drag || !image) return null;
+  const hit = hitCorner(...pointer);
+  return hit >= 0 ? { corner: hit, drag: true } : { corner: clickTarget(points, toPhoto(...pointer), active, shiftHeld), drag: false };
+}
+
+// a dashed ring around the corner `s[t]` (screen points of the canvas `c`), with a dashed line to `to` unless dragged
+function markTarget(c, s, target, to, radius) {
+  const t = target.corner;
+  c.save();
+  c.setLineDash([4, 4]);
+  c.strokeStyle = COLOURS[t]; c.lineWidth = 2;
+  c.beginPath(); c.arc(s[t][0], s[t][1], radius, 0, 2 * Math.PI); c.stroke();
+  if (!target.drag) { c.lineWidth = 1; c.beginPath(); c.moveTo(...s[t]); c.lineTo(...to); c.stroke(); }
+  c.restore();
+}
+
+function drawHover(s) {
+  const target = hoverTarget();
+  $('target').textContent = target
+    ? ` · ${target.drag ? 'tažení' : 'klik'}: ${KEYS[target.corner]} (${NAMES[KEYS[target.corner]]})${!target.drag && shiftHeld ? ', vybraný' : ''}`
+    : '';
+  if (target) markTarget(ctx, s, target, pointer, 14);
+}
+
+// redraws at most once a frame (the mouse moves faster than the photo draws)
+let drawQueued = false;
+function scheduleDraw() {
+  if (drawQueued) return;
+  drawQueued = true;
+  requestAnimationFrame(() => { drawQueued = false; draw(); });
+}
+
+// the loupe at the cursor: the photo around it in the zoom of the corner loupes, with the corners and a crosshair
+function drawLens() {
+  const c = $('lens');
+  c.hidden = !(lens && pointer && image);
+  if (c.hidden) return;
+  const px = 220, dpr = devicePixelRatio || 1;
+  c.width = px * dpr; c.height = px * dpr;
+  c.style.width = `${px}px`; c.style.height = `${px}px`;
+  c.style.left = `${pointer[0] - px / 2}px`; c.style.top = `${pointer[1] - px / 2}px`;
+  const l = c.getContext('2d');
+  l.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const zoom = Number($('zoom').value);
+  const [x, y] = toPhoto(...pointer);
+  const half = px / 2 / zoom;
+  const toLens = ([u, v]) => [(u - x + half) * zoom, (v - y + half) * zoom];
+  l.save();
+  l.beginPath(); l.arc(px / 2, px / 2, px / 2 - 1, 0, 2 * Math.PI); l.clip();
+  l.fillStyle = '#000'; l.fillRect(0, 0, px, px);
+  l.imageSmoothingEnabled = false;
+  l.drawImage(image, x - half, y - half, 2 * half, 2 * half, 0, 0, px, px);
+  drawGuides(l, toLens);
+  const s = points.map(toLens);
+  l.beginPath(); l.moveTo(...s[0]); s.slice(1).forEach((p) => l.lineTo(...p)); l.closePath();
+  l.strokeStyle = crossedSet().size ? WARN : '#fff'; l.lineWidth = 1; l.stroke();
+  s.forEach((p, i) => { l.beginPath(); l.arc(p[0], p[1], 6, 0, 2 * Math.PI); l.strokeStyle = COLOURS[i]; l.lineWidth = 2; l.stroke(); });
+  const target = hoverTarget();
+  if (target) markTarget(l, s, target, [px / 2, px / 2], 12);
+  l.strokeStyle = 'rgba(255,255,255,.75)'; l.lineWidth = 1;
+  l.beginPath(); l.moveTo(px / 2, 0); l.lineTo(px / 2, px); l.moveTo(0, px / 2); l.lineTo(px, px / 2); l.stroke();
+  l.restore();
+  l.beginPath(); l.arc(px / 2, px / 2, px / 2 - 1, 0, 2 * Math.PI);
+  l.strokeStyle = colour('--accent'); l.lineWidth = 2; l.stroke();
+}
+
+// from each corner a faint horizontal and vertical line across the photo (help for cutting an upright rectangle);
+// `map` turns a photo point into a point of the canvas `c`
+// the sides of the sheet each line of a corner belongs to: [its vertical line, its horizontal one] (rectangleDeviation)
+const SIDES = [['left', 'top'], ['right', 'top'], ['right', 'bottom'], ['left', 'bottom']];
+const guideColour = ({ hue }) => `hsl(${hue} 90% 55%)`;
+const styleOf = (deviation) => guideStyle(deviation, Math.max(...size()));
+
+function drawGuides(c, map) {
+  if (!guides) return;
+  const [w, h] = size();
+  const deviation = rectangleDeviation(points);
+  const line = (from, to, style) => {
+    c.globalAlpha = style.alpha; c.lineWidth = style.width; c.strokeStyle = guideColour(style);
+    c.beginPath(); c.moveTo(...map(from)); c.lineTo(...map(to)); c.stroke();
+  };
+  c.save();
+  points.forEach(([x, y], i) => {
+    line([x, 0], [x, h], styleOf(deviation[SIDES[i][0]]));
+    line([0, y], [w, y], styleOf(deviation[SIDES[i][1]]));
+  });
+  c.restore();
+}
+
+function drawLoupe(i) {
+  const c = $('loupes').children[i].querySelector('canvas');
+  const px = c.clientWidth || 140;
+  const dpr = devicePixelRatio || 1;
+  c.width = px * dpr; c.height = px * dpr;
+  const l = c.getContext('2d');
+  l.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const zoom = Number($('zoom').value);
+  const [x, y] = points[i];
+  const half = px / 2 / zoom;
+  l.fillStyle = '#000'; l.fillRect(0, 0, px, px);
+  l.imageSmoothingEnabled = false;
+  // the area of the photo around the corner, a pixel of the photo = `zoom` pixels; outside the photo stays black
+  l.drawImage(image, x - half, y - half, 2 * half, 2 * half, 0, 0, px, px);
+  // a corner on the wrong side of another one: the loupe under a red filter
+  if (crossedSet().has(i)) { l.globalAlpha = 0.35; l.fillStyle = WARN; l.fillRect(0, 0, px, px); l.globalAlpha = 1; }
+  // the guides through the middle of the pixels, like the crosshair (its own guides lie under it)
+  drawGuides(l, ([u, v]) => [(u - x + half + 0.5) * zoom, (v - y + half + 0.5) * zoom]);
+  l.strokeStyle = COLOURS[i]; l.lineWidth = 1;
+  const m = px / 2 + zoom / 2;
+  l.beginPath(); l.moveTo(m, 0); l.lineTo(m, px); l.moveTo(0, m); l.lineTo(px, m); l.stroke();
+  c.dataset.half = half;
+}
+
+function update() {
+  draw();
+  KEYS.forEach((_, i) => drawLoupe(i));
+  const crossed = crossedCorners(points);
+  const wrong = crossedSet();
+  [...$('loupes').children].forEach((el, i) => { el.classList.toggle('active', i === active); el.classList.toggle('crossed', wrong.has(i)); });
+  $('crossed').textContent = crossed.length ? `⚠ Překřížené rohy: ${crossed.map((c) => c.text).join(', ')}. Takhle nejde zapsat.` : '';
+  const v = value();
+  const [w, h] = v.photo;
+  const pct = (n, of) => `${(100 * n / of).toFixed(1).replace('.', ',')} %`;
+  $('values').replaceChildren(...KEYS.map((k) => {
+    const div = document.createElement('div');
+    const bad = wrong.has(KEYS.indexOf(k)) || v[k][0] / w > CONFIG.suspicious || v[k][1] / h > CONFIG.suspicious;
+    div.className = bad ? 'bad' : '';
+    div.innerHTML = '<span></span><span></span>';
+    div.children[0].textContent = `${k} [${v[k].join(', ')}]`;
+    div.children[1].textContent = `${pct(v[k][0], w)} · ${pct(v[k][1], h)}`;
+    return div;
+  }));
+  $('yaml').textContent = editorYaml(v);
+  $('write').disabled = !current.yaml || crossed.length > 0;
+  $('write').title = !current.yaml ? 'fotka ještě nemá popis (založí ho npm run images)' : crossed.length ? 'rohy jsou překřížené' : '';
+  if (crossed.length) closeConfirm();
+  const deviation = rectangleDeviation(points);
+  $('square').replaceChildren('Odchylka od obdélníku: ', ...[['left', 'tl–bl vodorovně'], ['right', 'tr–br vodorovně'], ['top', 'tl–tr svisle'], ['bottom', 'bl–br svisle']]
+    .flatMap(([side, label], j) => {
+      const b = document.createElement('b');
+      b.textContent = `${deviation[side]} px`;
+      b.style.color = guideColour(styleOf(deviation[side]));
+      return [j ? ' · ' : '', `${label} `, b];
+    }));
+  $('status').textContent = `${current.title} · ${w} × ${h} px · roh ${KEYS[active]} (${NAMES[KEYS[active]]})${edits.has(current.key) ? ' · neuloženo' : ''}`;
+}
+
+function setPoint(i, p) {
+  points = points.map((q, j) => (j === i ? clampPoint(p) : q));
+  edited();
+  update();
+}
+
+// the main view: click places the active corner, dragging a corner moves it, dragging elsewhere moves the photo
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => {
+  if (!image) return;
+  canvas.setPointerCapture(e.pointerId);
+  const hit = hitCorner(e.offsetX, e.offsetY);
+  drag = { x: e.offsetX, y: e.offsetY, view: { ...view }, corner: hit, moved: false };
+  if (hit >= 0) { active = hit; update(); }
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  if (Math.hypot(e.offsetX - drag.x, e.offsetY - drag.y) > 4) drag.moved = true;
+  if (!drag.moved) return;
+  // a dragged corner snaps to the guides of the others (8 points of the screen), not with Shift
+  if (drag.corner >= 0) {
+    const p = toPhoto(e.offsetX, e.offsetY);
+    setPoint(drag.corner, e.shiftKey ? p : snapPoint(points, drag.corner, p.map(Math.round), 8 / view.scale));
+  }
+  else { view.x = drag.view.x + e.offsetX - drag.x; view.y = drag.view.y + e.offsetY - drag.y; draw(); }
+});
+canvas.addEventListener('pointerup', (e) => {
+  if (drag && !drag.moved && drag.corner < 0) {
+    // a click moves the nearest corner there (with Shift the chosen one) and chooses it (arrows, loupes and 1–4 work with it)
+    const p = toPhoto(e.offsetX, e.offsetY);
+    active = clickTarget(points, p, active, e.shiftKey);
+    setPoint(active, p);
+  }
+  drag = null;
+  scheduleDraw();
+});
+canvas.addEventListener('wheel', (e) => {
+  if (!image) return;
+  e.preventDefault();
+  view = zoomView(view, [e.offsetX, e.offsetY], Math.exp(-e.deltaY * 0.0015));
+  draw();
+}, { passive: false });
+// where the mouse is over the main view (null outside it): + / − zoom around it, else around the middle
+let pointer = null;
+canvas.addEventListener('mousemove', (e) => {
+  pointer = [e.offsetX, e.offsetY]; lens = e.ctrlKey || e.metaKey; shiftHeld = e.shiftKey;
+  if (image && !drag) scheduleDraw();
+});
+canvas.addEventListener('mouseleave', () => { pointer = null; if (image) scheduleDraw(); });
+// Ctrl+click on a Mac is the context menu: never over the photo
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+function zoomByKey(factor) {
+  const r = canvas.getBoundingClientRect();
+  view = zoomView(view, pointer ?? [r.width / 2, r.height / 2], factor);
+  draw();
+}
+
+// the loupes: a click (or drag) puts the corner where it points
+KEYS.forEach((k, i) => {
+  const el = document.createElement('div');
+  el.className = 'loupe';
+  // where the corner is: bottom left under top left, bottom right under top right
+  el.style.gridArea = k;
+  el.innerHTML = '<canvas></canvas><span></span>';
+  el.querySelector('span').textContent = k;
+  el.querySelector('span').style.color = COLOURS[i];
+  const c = el.querySelector('canvas');
+  const place = (e) => {
+    const zoom = Number($('zoom').value);
+    const [x, y] = points[i];
+    const half = c.clientWidth / 2 / zoom;
+    active = i;
+    setPoint(i, [x - half + e.offsetX / zoom - 0.5, y - half + e.offsetY / zoom - 0.5]);
+  };
+  c.addEventListener('pointerdown', place);
+  $('loupes').append(el);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Control' || e.key === 'Meta') { lens = true; drawLens(); return; }
+  if (e.key === 'Shift') { shiftHeld = true; if (image) scheduleDraw(); return; }
+  if (e.target.tagName === 'SELECT') return;
+  const a = keyAction(e);
+  if (!a) return;
+  if (a.help) { e.preventDefault(); toggleKeys(); return; }
+  if ($('keys').open || !image) return;
+  e.preventDefault();
+  if (a.move) setPoint(active, [points[active][0] + a.move[0], points[active][1] + a.move[1]]);
+  else if (a.pan) { view = { ...view, x: view.x + a.pan[0], y: view.y + a.pan[1] }; draw(); }
+  else if (a.corner !== undefined) { active = a.corner; update(); }
+  else if (a.zoom) zoomByKey(a.zoom);
+  else if (a.actual) zoomByKey(1 / (devicePixelRatio || 1) / view.scale);
+  else if (a.fit) { fit(); draw(); }
+  else if (a.darken) { darken = !darken; draw(); }
+  else if (a.guides) { guides = !guides; update(); }
+  else if (a.loupeZoom) {
+    const levels = [...$('zoom').options].map((o) => o.value);
+    $('zoom').value = nextZoom(levels, $('zoom').value, a.loupeZoom < 0);
+    update();
+  }
+});
+document.addEventListener('keyup', (e) => {
+  if (e.key === 'Control' || e.key === 'Meta') { lens = e.ctrlKey || e.metaKey; drawLens(); }
+  if (e.key === 'Shift') { shiftHeld = false; if (image) scheduleDraw(); }
+});
+addEventListener('blur', () => { lens = false; shiftHeld = false; if (image) draw(); });
+const toggleKeys = () => ($('keys').open ? $('keys').close() : $('keys').showModal());
+$('keys-close').onclick = () => $('keys').close();
+$('keys').addEventListener('click', (e) => { if (e.target === $('keys')) $('keys').close(); });
+
+$('zoom').onchange = update;
+$('drafts').onchange = renderList;
+addEventListener('resize', () => image && update());
+$('copy').onclick = async () => {
+  try { await navigator.clipboard.writeText(editorYaml(value())); message('Zkopírováno do schránky.', 'ok'); }
+  catch { message('Schránka nejde, zkopíruj text nad tlačítky ručně.', 'error'); }
+};
+$('detect').onclick = () => detect();
+$('whole').onclick = () => { const [w, h] = size(); points = [[0, 0], [w, 0], [w, h], [0, h]]; edited(); update(); };
+$('reset').onclick = () => {
+  edits.delete(current.key);
+  const c = current.corners;
+  if (c && c.photo && c.photo[0] === size()[0] && c.photo[1] === size()[1]) { points = cornersToPoints(c); renderList(); update(); }
+  else message('V yaml nejsou rohy k této fotce.', 'error');
+};
+const closeConfirm = () => $('confirm').classList.remove('open');
+$('write').onclick = () => {
+  $('confirm-text').textContent = `Zapsat meta_corners do ${current.yaml}?${current.corners ? ' Dosavadní hodnota se přepíše.' : ''} Nic jiného v souboru se nezmění.`;
+  $('confirm').classList.add('open');
+};
+$('confirm-no').onclick = closeConfirm;
+$('confirm-yes').onclick = async () => {
+  closeConfirm();
+  const v = value();
+  const r = await fetch('/api/corners', { method: 'POST', body: JSON.stringify({ key: current.key, value: v }) });
+  const body = await r.json();
+  if (!r.ok) { message(body.error, 'error'); return; }
+  current.corners = v;
+  edits.delete(current.key);
+  renderList();
+  update();
+  message(`Zapsáno do ${body.written}.`, 'ok');
+};
+
+loadWorks();
+</script>
+</body>
+</html>

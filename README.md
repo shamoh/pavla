@@ -2262,6 +2262,53 @@ npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s po
   může ukazovat starou verzi, dokud soubor znovu neotevřeš. `meta_corners: false` náhled nemá. Plný běh
   `npm run images` složku `.previews/` vyprázdní (nechá v ní jen náhledy draftů).
 
+**Oklikání rohů (`npm run corners`, `scripts/corners.mjs`):** místo přepisování čísel z náhledů se rohy dají
+naklikat myší. Příkaz spustí lokální server (jen `127.0.0.1`, výchozí port 4327, jiný `--port <číslo>`) nad obsahovým
+repem z `CONTENT_DIR` v `.env` (nebo `npm run corners -- <obsahové repo>`) a vypíše adresu, kterou otevřeš v prohlížeči
+(`http://127.0.0.1:4327/`). Bez nových závislostí; stránka je `scripts/corners.html`, logika serveru
+`scripts/lib/corner-editor.mjs` (`route`, testovaná bez socketu).
+
+- **Vlevo seznam děl** (fotky děl jako u `npm run preview`, `listMasters`), výchozí jen rozpracované (`meta_draft` není
+  `false`), zaškrtávátkem všechna. Značka: `✓` má `meta_corners`, `?` nemá, `–` `meta_corners: false`, `•` neuložená
+  změna (rozpracované úpravy se drží při přepínání mezi díly, dokud stránku nezavřeš). Vybrané dílo je v adrese (`#tvorba/…`).
+- **Uprostřed celá fotka** (v plné velikosti, otočená podle EXIF jako u pipeline) s čtyřúhelníkem rohů a zatemněným
+  okolím (= co bude průhledné). Klik přesune nejbližší roh na místo kliku a vybere ho
+  (`nearestCorner`, výběr se ukáže i v lupách rohů; šipky a lupy pak pracují s ním, jinak ho změní `1`–`4` nebo klik do lupy rohu),
+  `Shift`+klik přesune vybraný roh (`clickTarget`). Roh, který by klik (nebo stisk na bodu) přesunul, má pod myší
+  čárkovaný kroužek a čárkovanou čáru ke kurzoru, stejně v lupě u kurzoru, a stavový řádek nahoře ho vypíše
+  („klik: br (vpravo dole)“, se `Shift` „…, vybraný“, na bodu „tažení: …“). Tažení bodu roh posune, tažení jinde posune fotku, kolečko zoomuje kolem kurzoru,
+  stejně `+` / `-` (o 25 %, `=` jako `+` na anglické klávesnici; kolem kurzoru, mimo fotku kolem středu, `zoomView`).
+  Klávesy (`keyAction`; přehled v okně na `?`, `Esc` ho zavře): `1`–`4` výběr rohu, šipky posun rohu o 1 px fotky
+  (`Shift` o 10 px), `⌥`/`Alt` + šipky posun fotky o 50 bodů (`Shift` o 250), `0` zoom 1 : 1 (pixel fotky = pixel
+  obrazovky), `F` celá fotka, `D` zatemnění zapnout/vypnout, `Z` další zvětšení lup dokola 2× → 4× → 8× → 2×
+  (`Shift+Z` zpět, `nextZoom`); držení `Ctrl`/`⌘` ukáže u kurzoru kruhovou lupu ve zvětšení lup rohů s rohy a křížem
+  (klik dá nejbližší roh pod kříž). Česká klávesnice: číslice i bez Shiftu podle místa klávesy (`é` = 0, `ě` `š` `č` = 2–4),
+  klávesa 1 je `+`, roh `tl` je `Shift+1`. `Ctrl`/`⌘` s jinou klávesou patří prohlížeči.
+  Z každého rohu vede přes celou fotku jemná vodorovná a svislá čára (`drawGuides`, `G` je skryje / ukáže; i v lupách rohů,
+  středem pixelů jako jejich kříž, a v lupě u kurzoru): pomůcka, aby ořez vyšel co nejvíc jako pravoúhlý obdélník.
+  Dvojice čar jedné strany listu (svislé `tl`/`bl` a `tr`/`br`, vodorovné `tl`/`tr` a `bl`/`br`, `rectangleDeviation`) mají
+  barvu podle odchylky (`guideStyle`): na stejném místě zelené a tlustší, s rostoucí odchylkou přes žlutou a oranžovou
+  do červené, od 1 % delší strany fotky červené a tlustší. Stejně obarvené odchylky v px ukazuje řádek nad fotkou.
+  Tažený roh se do 8 bodů obrazovky přichytí k čáře jiného rohu (`snapPoint`), se `Shift` bez přichycení.
+  Stavový řádek nahoře a nápověda dole jsou mimo plochu fotky, fotka pod ně nikdy nezajede.
+  Překřížené rohy (levý roh `tl`/`bl` není vlevo od pravého `tr`/`br`, nebo horní `tl`/`tr` není nad dolním `bl`/`br`,
+  `crossedCorners`): čtyřúhelník a dotčené body červeně, jejich lupy pod červeným filtrem s blikajícím rámečkem,
+  řádky ořezu červeně, nad fotkou varování a *Zapsat do yaml…* nejde (zapsanou hodnotu překřížit nejde ani tak:
+  každý roh nejvýš čtvrtinu fotky od svého rohu, `cornersProblems`).
+- **Vpravo rohy zblízka**: každý roh ve zvětšení 2×/4×/8× (pixel fotky = 2/4/8 bodů, bez vyhlazení) s nitkovým
+  křížem; klik do lupy dá roh přesně na ten pixel. Pod nimi ořez každého rohu v px a v % fotky (nad
+  `images.edges.suspicious` červeně) a hotový blok `meta_corners:` (`editorYaml`, stejný text jako výpis `npm run preview`).
+- **Tlačítka:** *Kopírovat* (blok do schránky), *Zapsat do yaml…* (po potvrzení na stránce zapíše `meta_corners` do
+  popisu díla, existující hodnotu i `false` přepíše, nic jiného v souboru nezmění: `replaceCorners` přes `withCorners`),
+  *Najít automaticky* (detekce jako v pipeline, `detectFile`; použije se i sama u díla bez rohů nebo s rohy jiné
+  velikosti fotky), *Vrátit z yaml*, *Celá fotka* (samé nuly = nic se neořízne).
+- Zápis server zkontroluje stejně jako pipeline (`cornersProblems`: velikost fotky, nejvýš čtvrtina strany) a odmítne
+  fotku bez popisu (ten založí `npm run images`). Fotky a popisy bere jen ze seznamu děl, nikdy cestu z požadavku;
+  odpovídá jen na adresu `127.0.0.1`/`localhost` svého portu a zápis přijme jen ze své stránky (`Origin`,
+  `trustedRequest`), aby ho nemohla zavolat jiná stránka otevřená v prohlížeči.
+- Zapisuje do obsahového repa v té větvi, která je zrovna checkoutnutá; změnu pak commitni jako ruční úpravu.
+  Náhledy ořezu se obnoví při dalším `npm run images` (nebo `npm run preview`).
+
 **Vyzkoušení:** `npm run demo` (testovací data mají list vyfocený nakřivo na podlaze, viz *Testovací data*),
 pak dílo „Na podlaze“ ve všech třech paletách; náhled rozpracovaného díla je v `.demo/site/.previews/` a zmenšený
 v `.demo/content/export/draft/` (`README.md` s náhledy). Na skutečném

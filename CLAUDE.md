@@ -238,6 +238,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   na každé straně u každé čáry popisek s čísly panelu, rozložené podél strany, nad čarami; u rohů jejich hodnoty; uprostřed panel: schéma,
   rozměry, odstraněno celkem / z rohů / z inset a prolnutí, nastavení, použité `meta_corners`; žádné SVG `<pattern>`, na velké fotce trvá sekundy) pro libovolné fotky, obsah jen čte,
   chybějící rohy najde a vypíše jako yaml; `--write` je zapíše jen do popisů zadaných fotek bez `meta_corners`.
+  Oklikání rohů myší: `npm run corners` (`scripts/corners.mjs`, stránka `scripts/corners.html`, server bez socketu `route` v
+  `scripts/lib/corner-editor.mjs`, funkce stránky `EDITOR_FUNCTIONS` vložené jako text), lokální server jen na `127.0.0.1`
+  (`trustedRequest`: Host + `Origin` u zápisu), fotky jen ze seznamu děl; „Zapsat“ po potvrzení přepíše jen `meta_corners` (`replaceCorners`).
   Náhled i výpis ukazují ořez rohů v % fotky (náhled po řádcích „zleva 2,5 % = 93 px“ / „shora …“, i px z `meta_corners`), nad `images.edges.suspicious` (5 %) červeně (jen ten řádek) / `!`, na konci výpisu souhrn podezřelých fotek;
   `--only-suspicious` = jen podezřelé (ne s `--write`). Souhrn běhu („Nalezené rohy listu“) značí podezřelé `⚠`. Originální fotky obsahového repa pipeline nikdy nemění.
 - Ostatní fotky: `fotky/<název>.jpg` obsahového repa → `public/fotky/<název>/` (obrázky), popis (`alt`, `caption`,
