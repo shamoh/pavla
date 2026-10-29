@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { SITE_BINARY, binaryBranch, orphanBinaries, pack, promote, pruneBinaries, remoteBranch, treeOf, unpack } from './binary.mjs';
+import { SITE_BINARY, binaryBranch, dropPromoted, orphanBinaries, pack, promote, pruneBinaries, remoteBranch, treeOf, unpack } from './binary.mjs';
 
 const git = (dir, ...args) => execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8' }).trim();
 
@@ -115,6 +115,32 @@ test('promote: the images of the merged update become main\'s, once; neither bra
     assert.equal(await promote({ dir: a, from: 'obsah/aktualizace_binary', to: 'main_binary', lock: 'binary.lock' }), 'current');
     await fs.writeFile(path.join(a, 'binary.lock'), `${'1'.repeat(40)}\n`);
     await assert.rejects(promote({ dir: a, from: 'obsah/aktualizace_binary', to: 'main_binary', lock: 'binary.lock' }), /neither main_binary nor obsah\/aktualizace_binary/);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('dropPromoted: the update branch goes once main_binary has its commit; a newer one stays', async () => {
+  const { root, clones: [a] } = await setup(1);
+  const from = 'obsah/aktualizace_binary';
+  const heads = () => git(a, 'ls-remote', '--heads', 'origin', from);
+  try {
+    assert.equal(await dropPromoted({ dir: a, from, to: 'main_binary' }), false, 'no update branch: nothing');
+    await write(a, 'public/tvorba/x.avif', 'stare');
+    await pack({ dir: a, paths, branch: 'main_binary', push: true, lock: 'binary.lock' });
+    await write(a, 'public/tvorba/x.avif', 'nove');
+    await pack({ dir: a, paths, branch: from, push: true, lock: 'binary.lock' });
+    assert.equal(await dropPromoted({ dir: a, from, to: 'main_binary' }), false, 'not promoted yet: stays');
+    assert.notEqual(heads(), '');
+    await promote({ dir: a, from, to: 'main_binary', lock: 'binary.lock' });
+    assert.equal(await dropPromoted({ dir: a, from, to: 'main_binary' }), true);
+    assert.equal(heads(), '');
+    assert.notEqual(git(a, 'ls-remote', '--heads', 'origin', 'main_binary'), '', 'main_binary stays');
+    // a newer update already sent its images: stays
+    await write(a, 'public/tvorba/x.avif', 'novejsi');
+    await pack({ dir: a, paths, branch: from, push: true });
+    assert.equal(await dropPromoted({ dir: a, from, to: 'main_binary' }), false);
+    assert.notEqual(heads(), '');
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }

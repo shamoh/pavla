@@ -27,7 +27,8 @@ jobs:
       - run: npm ci
       # The images are made by the content workflow and are not in main: they are in the branch whose tree
       # binary.lock names. After a merged content update that is obsah/aktualizace_binary: it becomes main_binary
-      # first (promote), then the images go into public/ (unpack) and the site is built from them and content/.
+      # first (promote; then it is deleted, as main_binary has its commit), then the images go into public/ (unpack)
+      # and the site is built from them and content/.
       - name: The images of a merged content update become main's
         run: node scripts/binary.mjs promote
       - name: Images of the site

@@ -142,6 +142,20 @@ export async function promote({ dir, from, to, lock }) {
   return 'promoted';
 }
 
+/**
+ * Deletes `from` on origin once `to` has its very commit (the images of a merged update were promoted), so the branch
+ * does not linger. A newer `from` (a new update already sent its images) differs and stays; the delete is leased on
+ * the commit, so one pushed in between stays too. Returns true when deleted.
+ */
+export async function dropPromoted({ dir, from, to }) {
+  const source = await remoteBranch(dir, from);
+  if (!source) return false;
+  const target = await remoteBranch(dir, to);
+  if (target?.commit !== source.commit) return false;
+  await git(dir, ['push', '--quiet', `--force-with-lease=refs/heads/${from}:${source.commit}`, 'origin', `:refs/heads/${from}`]);
+  return true;
+}
+
 /** Binary branches on origin whose own branch is gone (merged and deleted): their names, of `heads` (branch names). */
 export function orphanBinaries(heads) {
   const names = new Set(heads);

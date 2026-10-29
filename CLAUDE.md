@@ -30,7 +30,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   a jména, jen veřejné atributy, `scripts/lib/site-content.mjs`, needitovat; plný běh smaže vše, co nezapsal)
   a obrázky v `public/` (**nejsou v historii `main`**: `.gitignore`, větev `main_binary` s jediným commitem, `binary.lock`
   v `main` = hash jejich stromu, `scripts/binary.mjs` pack/unpack/promote/prune, `npm run binary:pull`; pull request
-  aktualizace obsahu má obrázky v `obsah/aktualizace_binary`, deploy je `promote` povýší; viz README „Obrázky webu ve větvi“;
+  aktualizace obsahu má obrázky v `obsah/aktualizace_binary`, deploy je `promote` povýší a pak tu větev smaže (`dropPromoted`, jen se stejným commitem jako `main_binary`); viz README „Obrázky webu ve větvi“;
   obsahové repo stejně drží `export/` v `<větev>_binary`) ve složce své stránky (= adresa, `scripts/lib/site-images.mjs`): dílo
   `public/tvorba/<rok>/<slug>-<id>/`, rok `public/tvorba/<rok>/_cover/` + `_og/`, kolekce
   `public/tvorba/kolekce/<slug>/_cover/` + `_og/`, úvod `public/_cover/` + `public/_og/`, fotky `public/fotky/<název>/`;
