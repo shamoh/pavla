@@ -1,13 +1,13 @@
 {
-  "width": 3136,
-  "height": 2171,
+  "width": 3071,
+  "height": 2073,
   "widths": [
     480,
     960,
     1600,
     2400
   ],
-  "dominant": "rgb(200,200,184)",
+  "dominant": "rgb(168,184,184)",
   "transparent": true,
   "mockups": [
     {
@@ -51,13 +51,13 @@
   "og": {
     "width": 1200,
     "height": 800,
-    "file": "og-5292eb00.jpg"
+    "file": "og-4ea2bffc.jpg"
   },
   "pin": {
     "width": 1000,
     "height": 1500,
-    "bytes": 117916,
-    "file": "pin-cfc277d6.jpg"
+    "bytes": 112214,
+    "file": "pin-276ccecf.jpg"
   },
-  "fingerprint": "9547e2d60383e78e"
+  "fingerprint": "4544ffed870a4389"
 }
