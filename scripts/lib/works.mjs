@@ -305,6 +305,20 @@ export const isInstagramUrl = (v) => typeof v === 'string' && /^https:\/\/(?:www
 /** True when the author asked for Instagram exports of a work (`meta_instagram: true`). */
 export const wantsInstagram = (data) => data?.meta_instagram === true;
 
+/** True when the author asked for Fler exports of a work (`meta_fler: true`); a price alone never asks for them. */
+export const wantsFler = (data) => data?.meta_fler === true;
+
+/** A link (http/https) in a string attribute (`instagram`, `fler`). */
+const linked = (v) => typeof v === 'string' && /^https?:\/\/\S+/.test(v.trim());
+
+/**
+ * Exports for a platform are made only while they are needed: asked for (meta_instagram / meta_fler; Fler also only
+ * for a work on sale) and the work not there yet (no `instagram` / `fler` link). Once the link is in, the photos have
+ * been used and go.
+ */
+export const makesInstagramExports = (data) => wantsInstagram(data) && !linked(data?.instagram);
+export const makesFlerExports = (data) => wantsFler(data) && isOnSale(data?.status) && !linked(data?.fler);
+
 /** Largest number of columns and of rows of the Instagram profile grid (meta_instagram_grid). */
 export const GRID_MAX = 5;
 
@@ -330,16 +344,15 @@ const validPinVersion = (v) => v === undefined || v === null || v === '' || (Num
 
 /**
  * Export suffixes a work should have, per platform (file names: exportFileName; stale files: planFolderPrune).
- * Instagram: only works with `meta_instagram: true`: `instagramVariants` (captions, studio scenes, the slides of the
+ * Instagram (`instagram`: makesInstagramExports): `instagramVariants` (captions, studio scenes, the slides of the
  * panorama and the story, see scripts/lib/instagram.mjs) and every detail photo (the text of the post is in README.md), never the
  * mockups of the site.
- * Fler: only works on sale, the original and every mockup. `mockupScenes` null = unknown (no web images yet).
+ * Fler (`fler`: makesFlerExports): the original and every mockup. `mockupScenes` null = unknown (no web images yet).
  */
-export function expectedExports({ status, details, mockupScenes, instagram = false, instagramVariants = [] }) {
-  const onSale = isOnSale(status);
+export function expectedExports({ fler = false, details, mockupScenes, instagram = false, instagramVariants = [] }) {
   return {
     instagram: instagram ? [...instagramVariants, ...details.map((d) => `-detail-${d}`)] : [],
-    fler: !onSale ? [] : mockupScenes === null ? null : ['', ...mockupScenes.map((s) => `-mockup-${s}`)],
+    fler: !fler ? [] : mockupScenes === null ? null : ['', ...mockupScenes.map((s) => `-mockup-${s}`)],
   };
 }
 

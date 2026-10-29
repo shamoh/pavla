@@ -2,7 +2,8 @@
 #   1. the test content is built from demo-content/ into .demo/content (like a checkout of the content repository),
 #   2. the pipeline runs on it as on a branch (--prepare-only, with the cut previews of drafts smaller in export/draft/
 #      of the test content) and as on main, writing into this checkout,
-#   3. the pull request is prepared by the same script as the content workflow (scripts/pull-request.mjs) and its
+#   3. the images are packed into a commit of obsah/aktualizace_binary (scripts/binary.mjs pack, not pushed) and the
+#      pull request is prepared by the same script as the content workflow (scripts/pull-request.mjs) and its
 #      paths are added and committed the way peter-evans/create-pull-request does it,
 #   in two rounds: first without the cover photos of collections (so no public/tvorba/kolekce/<slug>/_cover exists, like
 #   before the first real cover photo), then with them (the folder appears).
@@ -21,6 +22,8 @@ on:
       - 'scripts/pull-request.mjs'
       - 'scripts/lib/pull-request.mjs'
       - 'scripts/demo.mjs'
+      - 'scripts/binary.mjs'
+      - 'scripts/lib/binary.mjs'
       - '.github/workflows/dry-run.yml'
       - '.github/dry-run-commit.sh'
   workflow_dispatch:
@@ -71,6 +74,7 @@ jobs:
 
       - name: Pull request without collection cover photos (not opened)
         run: |
+          node scripts/binary.mjs pack obsah/aktualizace_binary
           node scripts/pull-request.mjs "$RUNNER_TEMP/pr-body.md"
           .github/dry-run-commit.sh "$RUNNER_TEMP/pr-body.md"
 
@@ -81,5 +85,6 @@ jobs:
 
       - name: Pull request with collection cover photos (not opened)
         run: |
+          node scripts/binary.mjs pack obsah/aktualizace_binary
           node scripts/pull-request.mjs "$RUNNER_TEMP/pr-body.md"
           .github/dry-run-commit.sh "$RUNNER_TEMP/pr-body.md"

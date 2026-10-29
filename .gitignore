@@ -8,4 +8,10 @@ dist/
 .previews/
 .prototypes/
 /mockups/export/
+# images of the site made by the pipeline: in the branch main_binary, not in main (scripts/binary.mjs, npm run binary:pull)
+/public/tvorba/
+/public/fotky/
+/public/_cover/
+/public/_og/
+/public/og.jpg
 AGENTS.md

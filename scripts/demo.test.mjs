@@ -84,12 +84,13 @@ test('dry run: content only, then the pipeline on the test data into a site repo
   assert.equal((await run({ contentDir: r.contentDir, siteDir, config, log: () => {}, dataset: 'demo' })).ok, true);
   assert.equal((await run({ contentDir: r.contentDir, siteDir, config, log: () => {} })).ok, false, 'the real data set refuses test data');
 
+  // the images are not in the pull request (their branch, scripts/binary.mjs): content/ only, no binary.lock packed here
   const paths = await pullRequestPaths(siteDir);
-  assert.ok(!paths.includes('public/_cover'), 'no own cover photo of the home page in this test data');
+  assert.deepEqual(paths, ['content']);
   await git('add', '--', ...paths);
   const { stdout } = await git('status', '--porcelain');
   assert.match(stdout, /^A {2}content\/tvorba\/demo-rano\.yaml$/m);
-  assert.match(stdout, /^D {2}public\/tvorba\/2026\/x\/info\.json$/m, 'the real work is pruned');
+  assert.ok(!(await exists(path.join(siteDir, 'public/tvorba/2026/x/info.json'))), 'the real work is pruned');
 });
 
 test('prepareDemo refuses works without "demo-" names, test data without the marker and a broken recipe', async () => {

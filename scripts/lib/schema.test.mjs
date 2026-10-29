@@ -29,7 +29,7 @@ test('every schema is in file order and has only meta_, shared and private_ attr
     assert.ok(keys.every((k) => attributeGroup(k) !== 'derived'), `${s.name}: derived_ belong to the site repository only`);
   }
   assert.deepEqual(fieldKeys(WORK_SCHEMA), [
-    'meta_corners', 'meta_draft', 'meta_edge', 'meta_instagram', 'meta_instagram_grid', 'meta_pinterest', 'meta_pinterest_version', 'id', 'date', 'description', 'details', 'featured', 'fler', 'instagram', 'mockups', 'price',
+    'meta_corners', 'meta_draft', 'meta_edge', 'meta_fler', 'meta_instagram', 'meta_instagram_grid', 'meta_pinterest', 'meta_pinterest_version', 'id', 'date', 'description', 'details', 'featured', 'fler', 'instagram', 'mockups', 'price',
     'size_cm', 'status', 'support', 'tags', 'technique', 'text', 'title', 'private_note',
   ]);
 });
@@ -61,7 +61,7 @@ test('the text on the page is "text" everywhere, formatted, and description (whe
 
 test('an attribute with options lists exactly them in its technical comment, one per line', () => {
   const withOptions = SCHEMAS.flatMap((s) => s.fields).filter((f) => f.options);
-  assert.deepEqual(withOptions.map((f) => f.key), ['meta_draft', 'meta_edge', 'meta_instagram', 'meta_pinterest', 'featured', 'mockups', 'status'].filter((k) => withOptions.some((f) => f.key === k)));
+  assert.deepEqual(withOptions.map((f) => f.key), ['meta_draft', 'meta_edge', 'meta_fler', 'meta_instagram', 'meta_pinterest', 'featured', 'mockups', 'status'].filter((k) => withOptions.some((f) => f.key === k)));
   for (const f of withOptions) {
     const lines = docLines(f);
     assert.match(lines[0], /, možnosti:$/, f.key);

@@ -1,6 +1,7 @@
 // When files came into a git repository (the content repository): the day of the commit that added each of them,
-// following renames (a work moved into a collection keeps its date). Used by recommendations that need an age:
-// drafts waiting too long, Instagram photos without the link of their post (scripts/lib/advice.mjs).
+// following renames (a work moved into a collection keeps its date), or the day a line of them last changed. Used by
+// recommendations that need an age: drafts waiting too long, Instagram photos without the link of their post
+// (scripts/lib/advice.mjs).
 // Without git, outside a repository or in a shallow clone (no history, the dates would be wrong) nothing is known.
 
 import { execFile } from 'node:child_process';
@@ -31,6 +32,25 @@ export async function addedDates(dir, files) {
       const days = await git(dir, ['log', '--follow', '--diff-filter=A', '--format=%cs', '--', file]);
       const oldest = days.split('\n').filter(Boolean).at(-1);
       if (oldest) dates.set(file, oldest);
+    } catch {
+      // unknown: no recommendation for this file
+    }
+  }
+  return dates;
+}
+
+/**
+ * The day (YYYY-MM-DD) a line matching `pattern` (a regular expression for git -G, e.g. "^meta_instagram: true")
+ * last changed in each of `files` (relative to `dir`), following renames: Map(file -> day). For a line that is
+ * there now, the day it was written so. A file without such a change, or every file without the history, is left out.
+ */
+export async function lineDates(dir, files, pattern) {
+  const dates = new Map();
+  if (!files.length || !(await hasHistory(dir))) return dates;
+  for (const file of files) {
+    try {
+      const newest = (await git(dir, ['log', '--follow', '-G', pattern, '--format=%cs', '-n', '1', '--', file])).split('\n')[0];
+      if (newest) dates.set(file, newest);
     } catch {
       // unknown: no recommendation for this file
     }

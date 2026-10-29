@@ -5,7 +5,10 @@
 //   - the latest commit on pavla/main was deployed,
 //   - the content pull request (obsah/aktualizace) does not wait for a merge too long,
 //   - no description of the content has an attribute the pipeline does not know (NEZNÁMÝ),
-//   - every image the pages of the deployed site refer to exists (scripts/lib/site-check.mjs).
+//   - every image the pages of the deployed site refer to exists (scripts/lib/site-check.mjs),
+//   - both repositories and the deployed site stay well below the size limits of GitHub (evaluateSizes),
+//   - the minutes of GitHub Actions of private repositories stay within the free minutes of the month (evaluateMinutes),
+//   - monthly: the settings of both repositories are still those of their stored export (evaluateSettings).
 // Pure functions; the GitHub API calls live in scripts/check-health.mjs.
 // Messages are Czech: they end up on the run page and in an issue e-mailed to the owner. A failed check ends the first
 // line of its message with its code (scripts/lib/codes.mjs, level health), like the messages of a pipeline run.
@@ -159,6 +162,103 @@ export function evaluateUntranslatedTags(found) {
     message: `Štítky nebo techniky bez anglického překladu pro Instagram a Pinterest: [preklad-chybi]\n`
       + found.map((f) => `- ${f}`).join('\n')
       + '\nDoplň překlad do site.config.yaml (repo pavla): instagramPost.en (hashtag bez mezer) a pinterestKeywords.en (slova s mezerami).',
+  };
+}
+
+/**
+ * Size limits of GitHub (docs.github.com): a repository should stay below 1 GB (its whole history, every version of
+ * every image), a site on GitHub Pages must stay below 1 GB. `warnShare`: the share of a limit from which the check fails,
+ * so there is time to act (docs/github-provoz.md of the content repository).
+ */
+export const SIZE_LIMITS = { repoBytes: 1_000_000_000, siteBytes: 1_000_000_000, warnShare: 0.7 };
+
+const MB = 1_000_000;
+const megabytes = (bytes) => `${Math.round(bytes / MB)} MB`;
+
+/**
+ * `sizes`: { site: bytes of the repository of the site, content: of the content repository, pages: of the last deployed
+ * site (its Pages artifact) }, each null when it could not be read. Not ok when any of them reaches `warnShare` of its
+ * limit; the message always lists all of them with their share, to follow how they grow.
+ */
+export function evaluateSizes(sizes, limits = SIZE_LIMITS) {
+  const items = [
+    ['repo webu (shamoh/pavla)', sizes.site, limits.repoBytes],
+    ['obsahové repo', sizes.content, limits.repoBytes],
+    ['nasazený web (GitHub Pages)', sizes.pages, limits.siteBytes],
+  ];
+  const share = (bytes, limit) => Math.round((bytes / limit) * 100);
+  const parts = items.map(([label, bytes, limit]) => (bytes === null || bytes === undefined
+    ? `${label} nezjištěno`
+    : `${label} ${megabytes(bytes)} (${share(bytes, limit)} % z ${megabytes(limit)})`));
+  const over = items.filter(([, bytes, limit]) => typeof bytes === 'number' && bytes >= limit * limits.warnShare);
+  if (!over.length) return { ok: true, message: `Velikost: ${parts.join(' · ')}.` };
+  return {
+    ok: false,
+    message: `Blíží se limit velikosti GitHubu (${over.map(([label]) => label).join(', ')}): [blizi-se-limit]\n`
+      + `Velikost: ${parts.join(' · ')}.\n`
+      + 'Co s tím: kapitola „Velikost rep a webu“ v docs/github-provoz.md obsahového repa.',
+  };
+}
+
+/**
+ * Free minutes of GitHub Actions per month on GitHub Free: only private repositories use them (public ones run free).
+ * `warnShare`: the share from which the check fails; also when the month at its pace so far would use them all
+ * (from day `paceFromDay`, earlier the pace says little). Without minutes left GitHub stops the runs until the next month.
+ */
+export const MINUTE_LIMITS = { included: 2000, warnShare: 0.7, paceFromDay: 7 };
+
+/**
+ * `items`: usageItems of the billing usage report of the month (GitHub API /users/<user>/settings/billing/usage),
+ * or null when it could not be read (no CHECK_TOKEN); `isPrivate(repo)`: whether a repository is private.
+ * Counts the Actions minutes of private repositories (per repository in the message); any amount to pay fails.
+ */
+export function evaluateMinutes(items, isPrivate, { now = new Date(), limits = MINUTE_LIMITS } = {}) {
+  if (items === null) {
+    return { ok: true, message: 'Minuty GitHub Actions nebyly zkontrolovány (chybí secret CHECK_TOKEN, viz docs/github-provoz.md obsahového repa).' };
+  }
+  const minutes = items.filter((i) => i.product === 'actions' && /minute/i.test(String(i.unitType ?? '')) && isPrivate(i.repositoryName));
+  const byRepo = new Map();
+  for (const i of minutes) byRepo.set(i.repositoryName, (byRepo.get(i.repositoryName) ?? 0) + Number(i.quantity ?? 0));
+  const used = [...byRepo.values()].reduce((a, b) => a + b, 0);
+  const net = items.reduce((sum, i) => sum + Number(i.netAmount ?? 0), 0);
+  const day = now.getUTCDate();
+  const days = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
+  const pace = Math.round((used / day) * days);
+  const repos = [...byRepo].sort((a, b) => b[1] - a[1]).map(([repo, m]) => `${repo} ${Math.round(m)}`).join(', ');
+  const share = Math.round((used / limits.included) * 100);
+  const facts = `Minuty Actions soukromých rep za tento měsíc: ${Math.round(used)} z ${limits.included} (${share} %)`
+    + `${repos ? `: ${repos}` : ''}; tímto tempem ${pace} za celý měsíc.`;
+  if (net > 0) {
+    return { ok: false, message: `GitHub účtuje platbu ${net.toFixed(2)} USD za tento měsíc. [placene-minuty]\n${facts}` };
+  }
+  const tooFast = day >= limits.paceFromDay && pace >= limits.included;
+  if (used >= limits.included * limits.warnShare || tooFast) {
+    return {
+      ok: false,
+      message: `Docházejí volné minuty GitHub Actions: [dochazeji-minuty]\n${facts}\n`
+        + 'Bez minut GitHub zastaví zpracování obsahu až do dalšího měsíce. Co s tím: docs/github-provoz.md obsahového repa.',
+    };
+  }
+  return { ok: true, message: facts };
+}
+
+/**
+ * `results`: [{ repo, diffs (compareSnapshots), noSnapshot (no stored export yet) }], or null when the settings were not
+ * compared this time (`reason`: why). Not ok when a repository differs from its stored export: a setting changed by
+ * mistake (auto-merge off, the ruleset gone) breaks the automation silently; a change made on purpose = export again.
+ */
+export function evaluateSettings(results, { reason = '' } = {}) {
+  if (results === null) return { ok: true, message: `Nastavení rep nebylo porovnáno${reason ? ` (${reason})` : ''}.` };
+  const changed = results.filter((r) => r.diffs?.length || r.noSnapshot);
+  if (!changed.length) return { ok: true, message: `Nastavení rep odpovídá uloženému exportu (${results.map((r) => r.repo).join(', ')}).` };
+  return {
+    ok: false,
+    message: `Nastavení repa se liší od uloženého exportu: [nastaveni-se-zmenilo]\n`
+      + changed.map((r) => (r.noSnapshot
+        ? `- ${r.repo}: uložený export chybí`
+        : `- ${r.repo}:\n${r.diffs.slice(0, 20).map((d) => `  - ${d}`).join('\n')}${r.diffs.length > 20 ? `\n  - … a dalších ${r.diffs.length - 20}` : ''}`)).join('\n')
+      + '\nNeměl ho nikdo měnit? Vrať ho v Settings repa. Změna byla záměrná? Obnov export: '
+      + '`node scripts/repo-settings.mjs <repo> --out <docs/github-nastaveni/<jméno>.md>` (repo pavla) a commitni ho.',
   };
 }
 

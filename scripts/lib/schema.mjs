@@ -470,15 +470,30 @@ export const WORK_SCHEMA = {
       value: 'deckle',
     },
     {
+      key: 'meta_fler',
+      settled: true,
+      options: [true, false],
+      doc: [
+        'Fotky pro Fler, možnosti:',
+        '- true - připravit, dokud obraz nemá odkaz fler (export/fler: originál a mockupy s podpisem)',
+        '- false - žádné (cena a stav prodeje na webu Fler nepotřebují, obraz se může prodávat i napřímo)',
+      ],
+      value: false,
+    },
+    {
       key: 'meta_instagram',
       settled: true,
       options: [true, false],
       doc: [
         'Fotky pro Instagram, možnosti:',
-        '- true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, panorama pro karusel, příběh, detailní fotky)',
+        '- true - připravit, dokud obraz nemá odkaz instagram (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, panorama pro karusel, příběh, detailní fotky)',
         '- false - žádné',
       ],
       previous: [[
+        'Fotky pro Instagram, možnosti:',
+        '- true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, panorama pro karusel, příběh, detailní fotky)',
+        '- false - žádné',
+      ], [
         'Fotky pro Instagram, možnosti:',
         '- true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, detailní fotky)',
         '- false - žádné',

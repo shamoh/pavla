@@ -6,12 +6,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import {
-  OUTPUT_PATHS, changedFiles, changedItems, pullRequestBody, pullRequestPaths, runFromEnv, stepOutput,
+  OUTPUT_PATHS, changedBinaries, changedFiles, changedItems, pullRequestBody, pullRequestPaths, runFromEnv, stepOutput,
 } from './pull-request.mjs';
 
 const git = (cwd, ...args) => promisify(execFile)('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd });
 
-/** A repo like this one after an earlier content update: works and photos committed, no collection cover yet. */
+/** A repo like this one after an earlier content update: the public copies committed (the images are in their branch). */
 async function siteRepo() {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-pr-'));
   await git(dir, 'init', '-q');
@@ -20,8 +20,6 @@ async function siteRepo() {
     await fs.writeFile(path.join(dir, rel), text);
   };
   await write('content/tvorba/rano.yaml');
-  await write('public/tvorba/2026/rano-k3f9a/480.jpg');
-  await write('public/fotky/portret/480.jpg');
   await write('content/tvorba/plener/_index.yaml');
   await write('src/pages/index.astro');
   await git(dir, 'add', '-A');
@@ -29,32 +27,39 @@ async function siteRepo() {
   return { dir, write };
 }
 
-test('pullRequestPaths: only output folders that exist or that git knows; git add then succeeds', async () => {
+test('pullRequestPaths: content/ and binary.lock, never the images (they are in their own branch)', async () => {
   const { dir, write } = await siteRepo();
-  // public/_cover, public/_og and public/og.jpg never existed: the pull request step failed on paths like them
-  assert.deepEqual(await pullRequestPaths(dir), ['content', 'public/tvorba', 'public/fotky']);
-
-  // a new cover photo of a collection and a share image create the folders
-  await write('public/tvorba/kolekce/plener/_cover/480.jpg', 'cover');
-  await write('public/tvorba/kolekce/plener/_og/og-0123abcd.jpg', 'share');
+  assert.deepEqual(OUTPUT_PATHS, ['content', 'binary.lock']);
+  // before the first update with a lock: only content/
+  assert.deepEqual(await pullRequestPaths(dir), ['content']);
+  await write('binary.lock', `${'a'.repeat(40)}\n`);
   await write('content/roky/2026.yaml', 'description: Rok');
-  await write('public/tvorba/2026/_cover/480.jpg', 'year');
-  await write('content/_index.yaml', 'description: Úvod');
-  await write('public/_cover/480.jpg', 'home');
-  await write('public/_og/og-0123abcd.jpg', 'home share');
-  await write('public/og.jpg', 'former home share'); // the former name, until the prune removes it
-  // the last photo removed: the folder is gone, but its deletion must reach the pull request
-  await fs.rm(path.join(dir, 'public/fotky'), { recursive: true });
   const paths = await pullRequestPaths(dir);
-  assert.deepEqual(paths, ['content', 'public/tvorba', 'public/fotky', 'public/_cover', 'public/_og', 'public/og.jpg']);
-  // the current layout and the former public/og.jpg (its deletion must reach the pull request)
-  assert.deepEqual(OUTPUT_PATHS, ['content', 'public/tvorba', 'public/fotky', 'public/_cover', 'public/_og', 'public/og.jpg']);
-
+  assert.deepEqual(paths, ['content', 'binary.lock']);
   // what peter-evans/create-pull-request does with add-paths
   await git(dir, 'add', '--', ...paths);
   const { stdout } = await git(dir, 'status', '--porcelain');
-  assert.match(stdout, /^D {2}public\/fotky\/portret\/480\.jpg$/m);
-  assert.match(stdout, /^A {2}public\/tvorba\/kolekce\/plener\/_cover\/480\.jpg$/m);
+  assert.match(stdout, /^A {2}binary\.lock$/m);
+  assert.match(stdout, /^A {2}content\/roky\/2026\.yaml$/m);
+});
+
+test('changedBinaries: the images that differ from main\'s, every image without main\'s yet', async () => {
+  const { dir } = await siteRepo();
+  const tree = async (files) => {
+    const env = { ...process.env, GIT_INDEX_FILE: path.join(dir, '.git', 'tmp-index') };
+    const run = (...args) => promisify(execFile)('git', args, { cwd: dir, env });
+    await run('read-tree', '--empty');
+    for (const [rel, text] of Object.entries(files)) {
+      const { stdout: blob } = await promisify(execFile)('sh', ['-c', `printf %s '${text}' | git hash-object -w --stdin`], { cwd: dir });
+      await run('update-index', '--add', '--cacheinfo', `100644,${blob.trim()},${rel}`);
+    }
+    return (await run('write-tree')).stdout.trim();
+  };
+  const main = await tree({ 'public/tvorba/2026/rano-k3f9a/480.jpg': 'a', 'public/fotky/portret/480.jpg': 'p' });
+  const next = await tree({ 'public/tvorba/2026/rano-k3f9a/480.jpg': 'b', 'public/fotky/portret/480.jpg': 'p', 'public/_og/og-0123abcd.jpg': 'o' });
+  assert.deepEqual((await changedBinaries(dir, main, next)).sort(), ['public/_og/og-0123abcd.jpg', 'public/tvorba/2026/rano-k3f9a/480.jpg']);
+  assert.deepEqual(changedItems(await changedBinaries(dir, main, next)), ['dílo rano', 'úvodní stránka']);
+  assert.equal((await changedBinaries(dir, null, next)).length, 3);
 });
 
 test('pullRequestPaths: nothing at all gives no paths (the workflow then skips the pull request)', async () => {
@@ -67,11 +72,11 @@ test('pullRequestPaths: nothing at all gives no paths (the workflow then skips t
 test('changedFiles lists changed, new and deleted output files, nothing else', async () => {
   const { dir, write } = await siteRepo();
   await write('content/tvorba/rano.yaml', 'changed');
-  await write('public/tvorba/2026/vecer-m7q2x/480.jpg');
+  await write('binary.lock', `${'b'.repeat(40)}\n`);
   await fs.rm(path.join(dir, 'content/tvorba/plener/_index.yaml'));
   await write('src/pages/index.astro', 'not content');
   const files = await changedFiles(dir, await pullRequestPaths(dir));
-  assert.deepEqual(files.sort(), ['content/tvorba/plener/_index.yaml', 'content/tvorba/rano.yaml', 'public/tvorba/2026/vecer-m7q2x/480.jpg']);
+  assert.deepEqual(files.sort(), ['binary.lock', 'content/tvorba/plener/_index.yaml', 'content/tvorba/rano.yaml']);
 });
 
 test('changedItems names each work, collection and photo once', () => {

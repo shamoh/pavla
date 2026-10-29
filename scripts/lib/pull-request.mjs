@@ -6,13 +6,17 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { OUTPUT_ROOTS } from './site-images.mjs';
+import { SITE_BINARY } from './binary.mjs';
 import { parseWorkKey } from './works.mjs';
 
 const git = async (cwd, ...args) => (await promisify(execFile)('git', args, { cwd, maxBuffer: 64 * 1024 * 1024 })).stdout;
 
-/** Every folder and file the pipeline writes into this repo: the public copies (content/) and the images in public/. */
-export const OUTPUT_PATHS = ['content', ...OUTPUT_ROOTS.map((p) => `public/${p}`)];
+/**
+ * What a content update changes in main of this repo: the public copies (content/) and binary.lock, the name of its
+ * images. The images themselves (public/…, SITE_BINARY.paths) are not in main: they go to their branch
+ * (scripts/lib/binary.mjs) before the pull request is made.
+ */
+export const OUTPUT_PATHS = ['content', SITE_BINARY.lock];
 
 /**
  * The output folders to put into the pull request: those that exist, or that git knows (a folder deleted as a
@@ -26,6 +30,17 @@ export async function pullRequestPaths(siteDir, paths = OUTPUT_PATHS) {
     if (exists || (await git(siteDir, 'ls-files', '--', p)).trim()) out.push(p);
   }
   return out;
+}
+
+/**
+ * The images that differ between the binary files of main (`base`: a commit or tree, null = none yet: every image is
+ * new) and `tree` (the new ones, from binary.lock): their paths, for the description of the pull request.
+ */
+export async function changedBinaries(siteDir, base, tree) {
+  const out = base
+    ? await git(siteDir, 'diff-tree', '-r', '--name-only', '-z', base, tree)
+    : await git(siteDir, 'ls-tree', '-r', '--name-only', '-z', tree);
+  return out.split('\0').filter(Boolean);
 }
 
 /** Changed output files (`git status`, untracked included) of the given folders, relative to the repo. */

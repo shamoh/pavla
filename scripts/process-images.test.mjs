@@ -87,7 +87,7 @@ beforeEach(async () => {
 afterEach(() => fs.rm(tmp, { recursive: true, force: true }));
 
 test('generates web images, metadata copy and exports under <year>/<slug>-<id>', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   const r = await run(opts());
   assert.equal(r.ok, true);
   assert.equal(r.processed, 1);
@@ -190,6 +190,20 @@ test('meta_instagram_grid: the tiles and a preview of the profile grid, with the
   assert.ok(!(await exportsOf('instagram', '2026', 'slat')).some((f) => f.startsWith('grid-')), 'the grid is gone');
 });
 
+test('log: how long every regenerated work and the phases of the run take', async () => {
+  await addWork('2026', 'meri', 'title: Měří\ndate: 2026-06-14\n');
+  const lines = [];
+  assert.equal((await run(opts({ log: (l) => lines.push(l) }))).ok, true);
+  const work = lines.findIndex((l) => l === '→ 2026/meri-' + (l.split('-').pop()));
+  assert.ok(work >= 0, lines.join('\n'));
+  assert.match(lines[work + 1], /^ {2}⏱ (\w+ \d+\.\d s · )*total \d+\.\d s$/);
+  assert.match(lines.at(-1), /^⏱ run: .*total \d+\.\d s$/);
+  // a run with nothing to regenerate still says how long its phases took
+  const again = [];
+  await run(opts({ log: (l) => again.push(l), prepareOnly: true }));
+  assert.match(again.at(-1), /^⏱ run: .*total/);
+});
+
 test('second run skips unchanged works; --force regenerates', async () => {
   await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n');
   await run(opts());
@@ -230,8 +244,8 @@ test('a bad file name stops the run before anything is written, also --prepare-o
 });
 
 test('a draft gets no outputs; turning a published work back into a draft removes them all', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
-  await addWork('2026', 'skica', 'title: Skica\ndate: 2026-06-20\nmeta_draft: true\nmeta_instagram: true\nstatus: available\nprice: 900\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\n');
+  await addWork('2026', 'skica', 'title: Skica\ndate: 2026-06-20\nmeta_draft: true\nmeta_instagram: true\nstatus: available\nmeta_fler: true\nprice: 900\n');
   const r = await run(opts());
   assert.equal(r.ok, true);
   assert.equal(r.processed, 1, 'only the published work is processed');
@@ -348,7 +362,7 @@ const infoOf = async (year, slug) =>
 const setYaml = async (year, slug, text) => fs.writeFile(path.join(await workFolder(slug), `${slug}.yaml`), text);
 
 test('generates three mockups and lists them in info.json', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
   const info = await infoOf('2026', 'rano');
   assert.equal(info.mockups.length, 3);
@@ -361,15 +375,15 @@ test('generates three mockups and lists them in info.json', async () => {
 });
 
 test('changing size_cm regenerates the work, changing the price does not', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
   const id = await idOf('2026', 'rano');
   const before = (await infoOf('2026', 'rano')).fingerprint;
 
-  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nsize_cm: [40, 30]\nmockups: true\nprice: 3200\n`);
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nmeta_fler: true\nsize_cm: [40, 30]\nmockups: true\nprice: 3200\n`);
   assert.equal((await run(opts())).processed, 0);
 
-  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nsize_cm: [20, 15]\nmockups: true\nprice: 3200\n`);
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nmeta_fler: true\nsize_cm: [20, 15]\nmockups: true\nprice: 3200\n`);
   const r = await run(opts());
   assert.equal(r.processed, 1);
   const after = await infoOf('2026', 'rano');
@@ -379,12 +393,12 @@ test('changing size_cm regenerates the work, changing the price does not', async
 });
 
 test('regeneration removes mockups of scenes that are no longer picked', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [56, 38]\nmockups: true\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [56, 38]\nmockups: true\n');
   await run(opts());
   const id = await idOf('2026', 'rano');
   const dir = path.join(siteDir, 'public/tvorba/2026', `rano-${id}`);
   const old = (await infoOf('2026', 'rano')).mockups.map((m) => m.scene);
-  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [20, 15]\nmockups: true\n`);
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [20, 15]\nmockups: true\n`);
   await run(opts());
   const now = (await infoOf('2026', 'rano')).mockups.map((m) => m.scene);
   for (const scene of old.filter((s) => !now.includes(s))) {
@@ -448,7 +462,7 @@ const exportsOf = async (sub, year, slug) => {
 };
 
 test('mockups: only works with mockups: true get them, whatever their status', async () => {
-  const yaml = (title, status, extra) => `title: ${title}\ndate: 2026-06-14\nstatus: ${status}\n${status === 'available' || status === 'reserved' ? 'price: 1000\n' : ''}size_cm: [40, 30]\n${extra}`;
+  const yaml = (title, status, extra) => `title: ${title}\ndate: 2026-06-14\nstatus: ${status}\nmeta_fler: true\n${status === 'available' || status === 'reserved' ? 'price: 1000\n' : ''}size_cm: [40, 30]\n${extra}`;
   await addWork('2026', 'volny', yaml('Volný', 'available', 'mockups: true\n'));
   await addWork('2026', 'volny-bez', yaml('Volný bez', 'available', 'mockups: false\n'));
   await addWork('2026', 'doma', yaml('Doma', 'not-for-sale', 'mockups: true\n'));
@@ -470,8 +484,24 @@ test('mockups: only works with mockups: true get them, whatever their status', a
   assert.equal(copy.mockups, true);
 });
 
+test('mockups: a change of the mockup scenes regenerates only the works with mockups', async () => {
+  // a copy of the real scenes, so that their scenes.yaml can change
+  const scenesDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-scenes-'));
+  const real = new URL('../mockups/', import.meta.url);
+  for (const f of await fs.readdir(real)) if (/\.(jpg|yaml)$/.test(f)) await fs.copyFile(new URL(f, real), path.join(scenesDir, f));
+  const yaml = (title, extra) => `title: ${title}\ndate: 2026-06-14\nsize_cm: [40, 30]\n${extra}`;
+  await addWork('2026', 's-mockupy', yaml('S mockupy', 'mockups: true\n'));
+  await addWork('2026', 'bez-mockupu', yaml('Bez mockupů', 'mockups: false\n'));
+  assert.equal((await run(opts({ scenesDir }))).processed, 2);
+  await fs.appendFile(path.join(scenesDir, 'scenes.yaml'), '\n# a changed comment changes the text of the scenes\n');
+  const r = await run(opts({ scenesDir }));
+  assert.deepEqual([r.processed, r.skipped], [1, 1]);
+  assert.equal((await infoOf('2026', 's-mockupy')).mockups.length, 3);
+  await fs.rm(scenesDir, { recursive: true, force: true });
+});
+
 test('mockups: selling a work removes its Fler exports but keeps its mockups; mockups: false removes them', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
   const id = await idOf('2026', 'rano');
   assert.equal((await infoOf('2026', 'rano')).mockups.length, 3);
@@ -489,9 +519,9 @@ test('mockups: selling a work removes its Fler exports but keeps its mockups; mo
   assert.ok(!(await fs.readdir(await workDir('2026', 'rano'))).some((f) => f.startsWith('mockup-')));
 
   // available → reserved changes nothing that is generated
-  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n`);
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n`);
   await run(opts());
-  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: reserved\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n`);
+  await setYaml('2026', 'rano', `id: ${id}\ntitle: Ráno\ndate: 2026-06-14\nstatus: reserved\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n`);
   assert.equal((await run(opts())).processed, 0);
 });
 
@@ -700,7 +730,7 @@ test('collections: collection:, a missing title, nested collections, clashing na
 });
 
 test('exports: Instagram gets the original on paper and the detail photos in 4:5, never mockups', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await addDetail('2026', 'rano', '1-kvet.jpg');
   await addDetail('2026', 'rano', '2-lodka.jpg');
   await run(opts());
@@ -713,7 +743,7 @@ test('exports: Instagram gets the original on paper and the detail photos in 4:5
 });
 
 test('exports: Fler gets the original and every mockup with the watermark, only for works on sale', async () => {
-  await addWork('2026', 'volny', 'title: Volný\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
+  await addWork('2026', 'volny', 'title: Volný\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await addDetail('2026', 'volny', 'kvet.jpg');
   await addWork('2026', 'doma', 'title: Doma\ndate: 2026-06-14\nmeta_instagram: true\nstatus: not-for-sale\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
@@ -740,7 +770,7 @@ test('exports: removing a detail photo removes its Instagram export', async () =
 });
 
 test('validation: a work on sale without a price stops the run', async () => {
-  await addWork('2026', 'bez-ceny', 'title: Bez ceny\ndate: 2026-06-14\nstatus: reserved\n');
+  await addWork('2026', 'bez-ceny', 'title: Bez ceny\ndate: 2026-06-14\nstatus: reserved\nmeta_fler: true\n');
   const r = await run(opts());
   assert.equal(r.ok, false);
   assert.match(r.problems.join('\n'), /stav „reserved“ potřebuje cenu/);
@@ -761,9 +791,9 @@ test('detail captions: a caption for a missing detail photo stops the run, valid
 });
 
 test('exports: renaming or deleting a work removes its old exports on both platforms', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await addDetail('2026', 'rano', 'kvet.jpg');
-  await addWork('2025', 'stary', 'title: Starý\ndate: 2025-03-01\nmeta_instagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
+  await addWork('2025', 'stary', 'title: Starý\ndate: 2025-03-01\nmeta_instagram: true\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
   const id = await idOf('2026', 'rano');
   const oldId = await idOf('2025', 'stary');
@@ -832,7 +862,7 @@ test('exports: a stale detail export is removed even when the work is not regene
 });
 
 test('exports: stale Fler exports are removed even when the work is not regenerated', async () => {
-  await addWork('2026', 'volny', 'title: Volný\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
+  await addWork('2026', 'volny', 'title: Volný\ndate: 2026-06-14\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
   await addWork('2026', 'doma', 'title: Doma\ndate: 2026-06-14\nstatus: not-for-sale\nsize_cm: [40, 30]\nmockups: true\n');
   await run(opts());
   const flerDir = path.join(contentDir, 'export/fler');
@@ -962,6 +992,12 @@ test('collections: a chosen cover with aspect or focus is cropped (page and shar
   await run(opts());
   assert.equal(og(), before);
   assert.equal((await fs.stat(before)).mtimeMs, mtime);
+  // the name is the fingerprint of what it is drawn from: other share image settings = drawn again, a new name
+  const sharper = { ...config, images: { ...config.images, og: { ...config.images.og, quality: config.images.og.quality - 5 } } };
+  await run(opts({ config: sharper }));
+  assert.notEqual(og(), before);
+  await run(opts());
+  assert.equal(og(), before, 'back to the old settings, back to the old name');
   await setCollection('plener', `title: Plenér\ncover: ${id}\naspect: "3:2"\nfocus: [100, 50]\n`);
   await run(opts());
   assert.notEqual(og(), before, 'a new picture, a new name');
@@ -1133,7 +1169,7 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/novy'))).sort(), DRAFT_FILES);
 
   // problems are reported as in a full run
-  await setYaml('2026', 'hotovy', `id: ${await idOf('2026', 'hotovy')}\ntitle: Hotový\ndate: 2026-06-14\nstatus: available\n`);
+  await setYaml('2026', 'hotovy', `id: ${await idOf('2026', 'hotovy')}\ntitle: Hotový\ndate: 2026-06-14\nstatus: available\nmeta_fler: true\n`);
   const bad = await run(opts({ prepareOnly: true }));
   assert.equal(bad.ok, false);
   assert.match(bad.problems.join('\n'), /potřebuje cenu/);
@@ -1153,7 +1189,7 @@ test('mockups: a master with surroundings (sheet box in XMP) is framed without t
   await master(path.join(dir, 'oriznuty.jpg'), true);
   await master(path.join(dir, 'celek.jpg'), false);
   for (const slug of ['oriznuty', 'celek']) {
-    await fs.writeFile(path.join(dir, `${slug}.yaml`), `title: ${slug}\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n`);
+    await fs.writeFile(path.join(dir, `${slug}.yaml`), `title: ${slug}\ndate: 2026-06-14\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n`);
   }
   assert.equal((await run(opts())).ok, true);
   // magenta pixels, also after the mockup's light and shadow: red and blue clearly above green
@@ -1203,7 +1239,7 @@ test('existing files get every supported attribute on every run, on a branch too
   const r = await run(opts({ prepareOnly: true }));
   assert.equal(r.ok, true, r.problems.join('\n'));
   assert.deepEqual(r.updated.map((u) => u.split(':')[0]).sort(), ['fotky/kontakt.yaml', 'tvorba/plener/_index.yaml', 'tvorba/plener/vecer.yaml', 'tvorba/rano.yaml']);
-  assert.match(r.updated.find((u) => u.startsWith('tvorba/rano.yaml')), /doplněno status, technique, text \(DOPLNIT\); doplněno meta_draft, meta_edge, meta_instagram, meta_pinterest, featured, mockups, tags \(výchozí hodnota\); neznámé mockup \(NEZNÁMÝ\)/);
+  assert.match(r.updated.find((u) => u.startsWith('tvorba/rano.yaml')), /doplněno status, technique, text \(DOPLNIT\); doplněno meta_draft, meta_edge, meta_fler, meta_instagram, meta_pinterest, featured, mockups, tags \(výchozí hodnota\); neznámé mockup \(NEZNÁMÝ\)/);
 
   const text = await fs.readFile(path.join(contentDir, 'tvorba/rano.yaml'), 'utf8');
   const data = YAML.parse(text);
@@ -1446,19 +1482,27 @@ test('corners: prepare only finds the corners of every work and writes the cut p
   // a draft without a floor: the same previews (the whole photo), in the overview with its thumbnail
   assert.match(overview, /<img src="bez-podlahy\/backgrounds\.jpg"[\s\S]*<b>Bez podlahy<\/b>/);
   assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/bez-podlahy'))).sort(), DRAFT_FILES);
-  // unchanged photo and corners: the previews in git are not written again
+  // unchanged photo and corners: the previews are not drawn again, neither in git nor in full size
   const before = (await fs.stat(path.join(draftDir, 'cut.jpg'))).mtimeMs;
   await new Promise((resolve) => setTimeout(resolve, 20));
-  assert.equal((await run(opts({ prepareOnly: true, previewDir }))).ok, true);
+  const again = await run(opts({ prepareOnly: true, previewDir }));
+  assert.equal(again.ok, true);
+  assert.deepEqual(again.previews, []);
   assert.equal((await fs.stat(path.join(draftDir, 'cut.jpg'))).mtimeMs, before);
+  // a preview missing in git is drawn again (only that draft's)
+  await fs.rm(path.join(draftDir, 'cut.jpg'));
+  const missingOne = await run(opts({ prepareOnly: true, previewDir }));
+  assert.deepEqual([...missingOne.previews].sort(), [...three].sort());
+  assert.deepEqual((await fs.readdir(draftDir)).sort(), DRAFT_FILES);
   // published, the draft's preview is gone with the next full run, in export/draft/ too
   const rozpracovany = path.join(contentDir, 'tvorba/rozpracovany.yaml');
   await fs.writeFile(rozpracovany, (await fs.readFile(rozpracovany, 'utf8')).replace('meta_draft: true', 'meta_draft: false'));
   const full = await run(opts({ previewDir }));
   assert.deepEqual(full.detected, [], 'found once, kept since');
-  // the other draft (no floor) keeps its previews
-  assert.deepEqual([...full.previews].sort(), [...plain].sort());
-  assert.deepEqual((await fs.readdir(previewDir)).sort(), [...plain].sort());
+  // the other draft (no floor) keeps its previews in git; unchanged, they are not drawn again (the full run empties previewDir)
+  assert.deepEqual(full.previews, []);
+  assert.ok(!(await exists(previewDir)) || !(await fs.readdir(previewDir)).length);
+  assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft/bez-podlahy'))).sort(), DRAFT_FILES);
   // the draft without a floor stays, with the overview
   assert.deepEqual((await fs.readdir(path.join(contentDir, 'export/draft'))).sort(), ['README.md', 'bez-podlahy']);
   assert.ok(full.pruned.includes('export/draft/rozpracovany/cut.jpg') && full.pruned.includes('export/draft/rozpracovany/README.md'), full.pruned.join(', '));
@@ -1543,7 +1587,7 @@ test('drafts: previews also when nothing is cut (meta_corners: false or all zero
 });
 
 test('corners: the floor is transparent on the web, paper in the JPEG, white for Fler, gone from mockups and exports', async () => {
-  await floorMaster('podlaha', 'title: Podlaha\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\nmeta_instagram: true\n');
+  await floorMaster('podlaha', 'title: Podlaha\ndate: 2026-06-14\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\nmeta_instagram: true\n');
   const r = await run(opts());
   assert.equal(r.ok, true, r.problems.join('\n'));
   const dir = await workDir('2026', 'podlaha');
@@ -1667,7 +1711,7 @@ test('exports: Instagram folders mirror tvorba/, the post names the collection',
 });
 
 test('exports: README.md previews of the folders and overviews of both platforms', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n', { collection: '2026-plener' });
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n', { collection: '2026-plener' });
   assert.equal((await run(opts())).ok, true);
   const insta = await fs.readFile(path.join(contentDir, 'export/instagram/2026-plener/rano/README.md'), 'utf8');
   for (const f of await fs.readdir(path.join(contentDir, 'export/instagram/2026-plener/rano'))) {
@@ -1708,23 +1752,27 @@ test('attributes: instagram is a link to the post; a leftover instagram: true (t
 });
 
 test('exports: the READMEs say where a work is published, the overviews group the works by collection', async () => {
-  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\ninstagram: https://www.instagram.com/p/AbC123/\nstatus: available\nprice: 1000\n', { collection: '2026-plener' });
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\ninstagram: https://www.instagram.com/p/AbC123/\nstatus: available\nmeta_fler: true\nprice: 1000\n', { collection: '2026-plener' });
   await addWork('2026', 'vecer', 'title: Večer\ndate: 2026-06-14\nmeta_instagram: true\n');
   assert.equal((await run(opts())).ok, true);
-  assert.ok((await fs.readFile(path.join(contentDir, 'export/instagram/2026-plener/rano/README.md'), 'utf8')).includes('Na Instagramu: <https://www.instagram.com/p/AbC123/>'));
+  // already on Instagram (a link): its photos are no longer needed, no folder; the overview lists it with the link
+  assert.ok(!(await exists(path.join(contentDir, 'export/instagram/2026-plener/rano'))));
   assert.match(await fs.readFile(path.join(contentDir, 'export/instagram/vecer/README.md'), 'utf8'), /Na Instagramu: zatím nezveřejněno/);
   assert.match(await fs.readFile(path.join(contentDir, 'export/fler/2026-plener/rano/README.md'), 'utf8'), /Na Fleru: zatím nepřidáno/);
   const index = await fs.readFile(path.join(contentDir, 'export/instagram/README.md'), 'utf8');
   const title = YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/2026-plener/_index.yaml'), 'utf8')).title;
   assert.match(index, /Celkem 2, z toho na Instagramu 1, zatím nezveřejněno 1\./);
   assert.ok(index.indexOf(`## ${title}`) < index.indexOf('## Mimo kolekce'), 'collections first, the rest last');
-  assert.ok(index.indexOf('rano/') < index.indexOf('## Mimo kolekce') && index.indexOf('vecer/') > index.indexOf('## Mimo kolekce'));
+  assert.ok(index.indexOf('<b>Ráno</b>') < index.indexOf('## Mimo kolekce') && index.indexOf('vecer/') > index.indexOf('## Mimo kolekce'));
+  assert.ok(index.includes('<td></td><td><b>Ráno</b>') && index.includes('✓ <a href="https://www.instagram.com/p/AbC123/">na Instagramu</a>'));
+  assert.ok(!index.includes('href="2026-plener/rano/"'), 'no link into a folder that is gone');
   // the same overview in the folder of each collection: its works only, links relative to it, a way back (Instagram
   // also with the story of the collection)
   for (const [sub, heading] of [['instagram', 'Fotky pro Instagram'], ['fler', 'Fotky pro Fler']]) {
     const own = await fs.readFile(path.join(contentDir, `export/${sub}/2026-plener/README.md`), 'utf8');
     assert.ok(own.startsWith(`# ${heading}: ${title}\n\n[← Všechny](../README.md)\n`), sub);
-    assert.ok(own.includes('<a href="rano/"><b>Ráno</b></a>') && !own.includes('Večer') && !own.includes(`## ${title}`), sub);
+    const row = sub === 'fler' ? '<a href="rano/"><b>Ráno</b></a>' : '<td></td><td><b>Ráno</b>';
+    assert.ok(own.includes(row) && !own.includes('Večer') && !own.includes(`## ${title}`), sub);
   }
   // kept by the next run (not taken for a stale export)
   const again = await run(opts());
@@ -1737,6 +1785,54 @@ test('exports: the READMEs say where a work is published, the overviews group th
   assert.ok(sold.pruned.includes('export/fler/2026-plener/README.md'), sold.pruned.join(', '));
   assert.ok(!(await exists(path.join(contentDir, 'export/fler/2026-plener'))));
   assert.ok(await exists(path.join(contentDir, 'export/instagram/2026-plener/README.md')), 'still on Instagram');
+  // on sale again and already on Fler (a link): no Fler photos either
+  await fs.writeFile(rano, (await fs.readFile(rano, 'utf8')).replace(/^status: .*$/m, 'status: available').replace(/^# fler: .*$/m, 'fler: https://www.fler.cz/zbozi/rano-1'));
+  assert.equal((await run(opts())).ok, true);
+  assert.ok(!(await exists(path.join(contentDir, 'export/fler/2026-plener/rano'))));
+  assert.match(await fs.readFile(path.join(contentDir, 'export/fler/README.md'), 'utf8'), /<td><\/td><td><b>Ráno<\/b>.*✓ <a href="https:\/\/www\.fler\.cz\/zbozi\/rano-1">na Fleru<\/a>/);
+});
+
+test('exports: a lost Instagram export of an unchanged work brings back only the Instagram ones, Fler keeps its mockups', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nmeta_instagram: true\nstatus: available\nmeta_fler: true\nprice: 1000\nsize_cm: [40, 30]\nmockups: true\n');
+  assert.equal((await run(opts())).ok, true);
+  const insta = await exportsOf('instagram', '2026', 'rano');
+  const fler = await exportsOf('fler', '2026', 'rano');
+  const flerTime = (await fs.stat(path.join(contentDir, 'export/fler/rano/original.jpg'))).mtimeMs;
+  await fs.rm(path.join(contentDir, 'export/instagram/rano/story.jpg'));
+  const lines = [];
+  assert.equal((await run(opts({ log: (l) => lines.push(l) }))).processed, 1);
+  assert.ok(lines.some((l) => /\(exports: instagram\)$/.test(l)), lines.join('\n'));
+  assert.deepEqual(await exportsOf('instagram', '2026', 'rano'), insta);
+  assert.deepEqual(await exportsOf('fler', '2026', 'rano'), fler);
+  assert.equal((await fs.stat(path.join(contentDir, 'export/fler/rano/original.jpg'))).mtimeMs, flerTime, 'Fler untouched');
+  // a lost Fler mockup: the Fler exports again, with their mockups
+  await fs.rm(path.join(contentDir, `export/fler/rano/${fler.find((f) => f.startsWith('mockup-'))}`));
+  assert.equal((await run(opts())).processed, 1);
+  assert.deepEqual(await exportsOf('fler', '2026', 'rano'), fler);
+});
+
+test('exports: asked for since, or lost, exports of an unchanged work are made again', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\nstatus: available\nprice: 1000\nsize_cm: [40, 30]\n');
+  assert.equal((await run(opts())).ok, true);
+  assert.deepEqual(await exportsOf('fler', '2026', 'rano'), [], 'on sale alone: no Fler photos');
+  // meta_fler asked for later: the work is unchanged otherwise, only its Fler photos are made (its web images stay)
+  const web = path.join(await workDir('2026', 'rano'), 'info.json');
+  const webBefore = await fs.readFile(web, 'utf8');
+  const webTime = (await fs.stat(web)).mtimeMs;
+  const yamlPath = path.join(contentDir, 'tvorba/rano.yaml');
+  await fs.writeFile(yamlPath, (await fs.readFile(yamlPath, 'utf8')).replace('meta_fler: false', 'meta_fler: true'));
+  const lines = [];
+  const asked = await run(opts({ log: (l) => lines.push(l) }));
+  assert.equal(asked.processed, 1);
+  assert.ok(lines.some((l) => /^→ 2026\/rano-\w+ \(exports: fler\)$/.test(l)), lines.join('\n'));
+  assert.deepEqual(await exportsOf('fler', '2026', 'rano'), ['README.md', 'original.jpg']);
+  assert.equal(await fs.readFile(web, 'utf8'), webBefore);
+  assert.equal((await fs.stat(web)).mtimeMs, webTime, 'web images not made again');
+  // a lost export file (e.g. not restored on another computer) is made again too
+  await fs.rm(path.join(contentDir, 'export/fler/rano/original.jpg'));
+  assert.equal((await run(opts())).processed, 1);
+  assert.deepEqual(await exportsOf('fler', '2026', 'rano'), ['README.md', 'original.jpg']);
+  assert.equal((await run(opts())).processed, 0, 'complete: nothing to do');
 });
 
 test('drafts: an overview in the folder of each collection; both written also when the run fails', async () => {

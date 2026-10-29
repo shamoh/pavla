@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DRY_RUNS, evaluateDeploy, evaluatePullRequest, evaluateRuns, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, parseExpiration,
+  DRY_RUNS, MINUTE_LIMITS, SIZE_LIMITS, evaluateDeploy, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, parseExpiration,
 } from './health.mjs';
 
 const now = new Date('2026-09-27T10:00:00Z');
@@ -197,4 +197,74 @@ test('evaluateUntranslatedTags: a word without an English one is listed with whe
   const skipped = evaluateUntranslatedTags(null);
   assert.equal(skipped.ok, true);
   assert.match(skipped.message, /nebyly zkontrolovány/);
+});
+
+test('evaluateSizes: fine below 70 % of the limits, the sizes and shares always listed', () => {
+  const r = evaluateSizes({ site: 332_300_000, content: 501_000_000, pages: 155_000_000 });
+  assert.equal(r.ok, true);
+  assert.equal(r.message, 'Velikost: repo webu (shamoh/pavla) 332 MB (33 % z 1000 MB) · obsahové repo 501 MB (50 % z 1000 MB)'
+    + ' · nasazený web (GitHub Pages) 155 MB (16 % z 1000 MB).');
+});
+
+test('evaluateSizes: from 70 % of a limit it fails with the code and names what grows', () => {
+  const r = evaluateSizes({ site: 100 * 1e6, content: 0.7 * SIZE_LIMITS.repoBytes, pages: 950 * 1e6 });
+  assert.equal(r.ok, false);
+  assert.match(r.message, /^Blíží se limit velikosti GitHubu \(obsahové repo, nasazený web \(GitHub Pages\)\): \[blizi-se-limit\]\n/);
+  assert.match(r.message, /obsahové repo 700 MB \(70 % z 1000 MB\)/);
+  assert.match(r.message, /docs\/github-provoz\.md/);
+});
+
+test('evaluateSizes: a size that could not be read is listed as such and never fails the check', () => {
+  const r = evaluateSizes({ site: null, content: 10 * 1e6, pages: undefined });
+  assert.equal(r.ok, true);
+  assert.match(r.message, /repo webu \(shamoh\/pavla\) nezjištěno · obsahové repo 10 MB \(1 % z 1000 MB\) · nasazený web \(GitHub Pages\) nezjištěno/);
+  assert.equal(evaluateSizes({ site: 600, content: 600, pages: 600 }, { repoBytes: 1000, siteBytes: 1000, warnShare: 0.5 }).ok, false);
+});
+
+const usage = (repo, quantity, extra = {}) => ({ product: 'actions', unitType: 'Minutes', repositoryName: repo, quantity, netAmount: 0, ...extra });
+const privateRepo = (repo) => repo === 'obsah';
+
+test('evaluateMinutes: counts only Actions minutes of private repositories, per repository', () => {
+  const items = [
+    usage('obsah', 300), usage('obsah', 120), usage('pavla', 900),
+    usage('obsah', 50, { unitType: 'GigabyteHours' }), { product: 'copilot', unitType: 'Requests', repositoryName: 'obsah', quantity: 99, netAmount: 0 },
+  ];
+  const r = evaluateMinutes(items, privateRepo, { now: new Date('2026-10-15T08:00:00Z') });
+  assert.equal(r.ok, true);
+  assert.equal(r.message, `Minuty Actions soukromých rep za tento měsíc: 420 z ${MINUTE_LIMITS.included} (21 %): obsah 420; tímto tempem 868 za celý měsíc.`);
+});
+
+test('evaluateMinutes: fails from 70 % of the free minutes, or when the pace would use them all', () => {
+  const at = (day) => ({ now: new Date(`2026-10-${day}T08:00:00Z`) });
+  const many = evaluateMinutes([usage('obsah', 1400)], privateRepo, at(28));
+  assert.equal(many.ok, false);
+  assert.match(many.message, /^Docházejí volné minuty GitHub Actions: \[dochazeji-minuty\]\n.*1400 z 2000 \(70 %\)/);
+  // 700 minutes by the 10th: 2170 in a month of 31 days
+  assert.equal(evaluateMinutes([usage('obsah', 700)], privateRepo, at(10)).ok, false);
+  // the same pace before day 7 says little
+  assert.equal(evaluateMinutes([usage('obsah', 400)], privateRepo, at('05')).ok, true);
+});
+
+test('evaluateMinutes: any amount to pay fails; without the report the check is skipped', () => {
+  const paid = evaluateMinutes([usage('obsah', 10), { product: 'git_lfs', netAmount: 1.5 }], privateRepo, { now: new Date('2026-10-20T00:00:00Z') });
+  assert.equal(paid.ok, false);
+  assert.match(paid.message, /^GitHub účtuje platbu 1\.50 USD za tento měsíc\. \[placene-minuty\]/);
+  const none = evaluateMinutes(null, privateRepo);
+  assert.equal(none.ok, true);
+  assert.match(none.message, /CHECK_TOKEN/);
+});
+
+test('evaluateSettings: the same settings are fine; a difference or a missing export fails with the code; not compared = fine', () => {
+  assert.deepEqual(evaluateSettings([{ repo: 'shamoh/pavla', diffs: [] }, { repo: 'shamoh/obsah', diffs: [] }]), {
+    ok: true, message: 'Nastavení rep odpovídá uloženému exportu (shamoh/pavla, shamoh/obsah).',
+  });
+  const changed = evaluateSettings([
+    { repo: 'shamoh/pavla', diffs: ['general.allow_auto_merge: true → false'] }, { repo: 'shamoh/obsah', noSnapshot: true },
+  ]);
+  assert.equal(changed.ok, false);
+  assert.match(changed.message, /^Nastavení repa se liší od uloženého exportu: \[nastaveni-se-zmenilo\]\n- shamoh\/pavla:\n {2}- general\.allow_auto_merge: true → false\n- shamoh\/obsah: uložený export chybí\n/);
+  assert.match(changed.message, /node scripts\/repo-settings\.mjs/);
+  const many = evaluateSettings([{ repo: 'r', diffs: Array.from({ length: 25 }, (_, i) => `x${i}: 1 → 2`) }]);
+  assert.match(many.message, /- x19: 1 → 2\n {2}- … a dalších 5/);
+  assert.deepEqual(evaluateSettings(null, { reason: 'jen první pondělí v měsíci' }), { ok: true, message: 'Nastavení rep nebylo porovnáno (jen první pondělí v měsíci).' });
 });

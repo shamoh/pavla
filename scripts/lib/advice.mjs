@@ -7,7 +7,7 @@ import { todoKeys } from './metadata-yaml.mjs';
 import { plainText } from './rich-text.mjs';
 import { COLLECTION_SKELETON_TEXT, TODO, UNCOLLECTED_SKELETON_TEXT, yearSkeletonText } from './schema.mjs';
 import { SEARCH_TITLE_MAX } from './seo.mjs';
-import { detailKey, isInstagramUrl, isOnSale, validSize, wantsInstagram, wantsMockups, workPath } from './works.mjs';
+import { detailKey, isInstagramUrl, isOnSale, validSize, wantsFler, wantsInstagram, wantsMockups, workPath } from './works.mjs';
 
 /** The first letter (after quotes, brackets and digits) is a small one: "ráno" yes, "„ráno“" yes, "3 ovce" no. */
 export const startsLowercase = (text) => /^[^\p{L}\p{N}]*\p{Ll}/u.test(text);
@@ -205,14 +205,13 @@ export function consistencyAdvice(works, today) {
     if (isPublished(w) && data.featured === true && data.meta_pinterest !== true) {
       advice.push(`${where}: je ve výběru autorky (featured: true), ale není v kanálu pro Pinterest; zvaž meta_pinterest: true [featured-bez-pinu]`);
     }
-    if (isInstagramUrl(data.instagram) && !wantsInstagram(data)) {
-      advice.push(`${where}: má odkaz na příspěvek na Instagramu, ale nemá fotky pro Instagram (meta_instagram: false); pro další příspěvky dej meta_instagram: true [odkaz-instagram-bez-exportu]`);
-    }
     if (hasLink(data.fler) && !isOnSale(data.status)) {
       advice.push(`${where}: má odkaz na Fler, ale není na prodej (status: ${data.status ?? 'není'}); nabídku na Fleru ukonči a odkaz smaž [fler-neni-na-prodej]`);
     }
-    if (isPublished(w) && isOnSale(data.status) && !hasLink(data.fler)) {
-      advice.push(`${where}: je na prodej, ale chybí odkaz na Fler; po přidání na Fler ho doplň (fler: https://www.fler.cz/…) [prodej-bez-fleru]`);
+    if (wantsFler(data) && !isOnSale(data.status)) {
+      advice.push(`${where}: má fotky pro Fler (meta_fler: true), ale není na prodej (status: ${data.status ?? 'není'}); dej meta_fler: false, nebo změň stav [fler-bez-prodeje]`);
+    } else if (isPublished(w) && wantsFler(data) && !hasLink(data.fler)) {
+      advice.push(`${where}: má fotky pro Fler (meta_fler: true), ale chybí odkaz na Fler; po přidání na Fler ho doplň (fler: https://www.fler.cz/…), fotky pro Fler pak zmizí [prodej-bez-fleru]`);
     }
     if (data.price !== undefined && data.price !== null && data.price !== '' && NOT_SOLD.includes(data.status)) {
       advice.push(`${where}: má cenu (price), ale neprodává se (status: ${data.status}); cenu smaž, nebo změň stav [cena-neprodava]`);

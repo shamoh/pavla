@@ -26,11 +26,13 @@ nikdy nejdou.
   roky/<rok>.jpg                            vlastní úvodní fotka roku (nepovinné)
   _index.yaml                               úvodní stránka: text a úvodní obraz (kostru založí pipeline)
   _cover.jpg                                vlastní úvodní fotka úvodní stránky (nepovinné)
+  export/                                   vše, co vyrobí pipeline, mimo historii větve: ve větvi <větev>_binary
+                                            (jeden commit, viz Obrázky webu ve větvi)
   export/instagram/[<kolekce>/]<slug>/      pro Instagram, složka na dílo (kopíruje tvorba/): s popiskem na 3 pozadích,
                                             ve 3 scénách ateliéru, panorama pro karusel (široká díla), příběh 9:16,
-                                            detaily a text příspěvku; jen díla s meta_instagram: true
+                                            detaily a text příspěvku; jen díla s meta_instagram: true bez odkazu instagram
   export/fler/[<kolekce>/]<slug>/           pro Fler, složka na dílo (kopíruje tvorba/): originál a mockupy s vodoznakem,
-                                            jen díla na prodej
+                                            jen díla na prodej s meta_fler: true bez odkazu fler
 
 Systémové soubory obsahu mají všude stejná dvě jména: `_index.yaml` popisuje místo, kde leží (v kořeni úvodní
 stránku, ve složce kolekce kolekci, přímo v `tvorba/` díla mimo kolekce), `_cover.<jpg|png|webp>` je jeho vlastní úvodní fotka. Podtržítko je odliší
@@ -52,7 +54,7 @@ pavla/                                      (toto repo, veřejné)
   demo-content/                             testovací data: vymyšlené obsahové repo (stejná struktura jako
                                             skutečné, yaml + recept na obrázky), viz Testovací data
   .demo/                                    připravená testovací data a web z nich (npm run demo, mimo git)
-  .previews/                                náhledy ořezu (npm run images: drafty, npm run preview: cokoli; mimo git), viz Ořez pozadí
+  .previews/                                náhledy ořezu (npm run images: drafty kreslené v tomto běhu, npm run preview: cokoli; mimo git), viz Ořez pozadí
   content/                                  veřejné kopie popisů = zrcadlo obsahového repa (generuje pipeline, needitovat):
     _index.yaml                             úvodní stránka
     tvorba/<slug>.yaml                      dílo bez kolekce
@@ -62,8 +64,10 @@ pavla/                                      (toto repo, veřejné)
     roky/<rok>.yaml                         rok
     fotky/<název>.yaml                      ostatní fotka (alt, caption, focus)
     stranky/<stránka>.yaml                  text stránky (O mně, Kontakt, 404, volitelné textové stránky)
+  binary.lock                               jméno (hash stromu) vygenerovaných obrázků, které patří k tomuto stavu main
   public/                                   vygenerované obrázky leží ve složce své stránky (= adresa, generuje pipeline,
-                                            scripts/lib/site-images.mjs); statické soubory webu (favicon.svg, favicon.ico, apple-touch-icon.png, CNAME) vedle:
+                                            scripts/lib/site-images.mjs), nejsou v main: větev main_binary (npm run binary:pull);
+                                            statické soubory webu (favicon.svg, favicon.ico, apple-touch-icon.png, CNAME) vedle, v main:
     tvorba/<rok>/<slug>-<id>/               dílo: webové velikosti, detaily, mockupy, og-<otisk>.jpg, pin-<otisk>.jpg + info.json
     tvorba/<rok>/_cover/, tvorba/<rok>/_og/ rok: vlastní úvodní fotka, obrázek pro sdílení vybraného obalu (og-<otisk>.jpg)
     tvorba/kolekce/<slug>/_cover/, …/_og/   totéž pro kolekci
@@ -772,7 +776,8 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `meta_corners` | rohy obrazu na fotce, pozadí vně nich (podlaha, zeď) bude průhledné; najde je pipeline, smí se upravit, `false` = neořezávat (viz *Ořez pozadí*) |
 | `meta_draft` | `true` = rozpracované: do tohoto repa se nedostane nic (popis, obrázky), ani exporty; do veřejné kopie se nekopíruje |
 | `meta_edge` | hrana díla ve scénách ateliéru pro Instagram (`EDGE_KINDS` v `scripts/lib/instagram.mjs`): `deckle` (výchozí) = papír s roztřepenou hranou (`edge` scény), `cut` = papír s čistou rovnou hranou, oba tenké (`paper.thicknessMm`), zvlněné, se zvednutými rohy; `canvas` = plátno na rámu: čistá zaoblená hrana, tlusté 2 cm, rovné, bez podkladového listu. Bok díla (tloušťka) opakuje barvu jeho okraje (papír; u plátna rozostřenou malbu), osvětlenou podle natočení ke světlu scény; v otisku díla |
-| `meta_instagram` | `true` = exporty pro Instagram (výchozí `false`) |
+| `meta_fler` | `true` = exporty pro Fler u díla na prodej, dokud nemá odkaz `fler` (výchozí `false`) |
+| `meta_instagram` | `true` = exporty pro Instagram, dokud dílo nemá odkaz `instagram` (výchozí `false`) |
 | `meta_instagram_grid` | nepovinné (v kostře zakomentované `# meta_instagram_grid: 3x3`): mřížka na profilu Instagramu jako `<sloupce>x<řádky>`, od `1x1` do `5x5` (`parseGrid`, např. `3x3`, `2x1`, `3x1`, `1x2`, `3x4`; i `×` nebo `X`), jiná hodnota = chyba; bez hodnoty žádná; jen s `meta_instagram: true`, jen pro aplikaci (viz *Exporty*, Mřížka na profilu) |
 | `meta_pinterest` | `true` = pin pro Pinterest: pin (`pin-<otisk>.jpg`) na webu a položka kanálu `/pinterest.xml` (výchozí `false`, viz *Pinterest*) |
 | `meta_pinterest_version` | nepovinné (v kostře `# meta_pinterest_version: 2`): verze pinu v kanálu, celé číslo od 1 (bez něj 1, jiná hodnota = chyba `[spatna-verze-pinu]`); vyšší = nová adresa obrázku v kanálu, tedy nový pin (viz *Pinterest*, Stálá adresa v kanálu) |
@@ -813,18 +818,30 @@ size_cm: [40, 30]
 
 | `status` | Na webu | Export Fler | Mockupy | Export Instagram |
 |---|---|---|---|---|
-| `available` | K prodeji, cena a tlačítka | originál + mockupy (má-li je) | jen s `mockups: true` | jen s `meta_instagram: true` |
-| `reserved` | Rezervováno | originál + mockupy (má-li je) | jen s `mockups: true` | jen s `meta_instagram: true` |
+| `available` | K prodeji, cena a tlačítka | jen s `meta_fler: true`: originál + mockupy (má-li je) | jen s `mockups: true` | jen s `meta_instagram: true` |
+| `reserved` | Rezervováno | jen s `meta_fler: true`: originál + mockupy (má-li je) | jen s `mockups: true` | jen s `meta_instagram: true` |
 | `sold` | V soukromé sbírce, bez ceny | nic | jen s `mockups: true` | jen s `meta_instagram: true` |
 | `gifted` | V soukromé sbírce (stejně jako `sold`, web je nerozlišuje), bez ceny | nic | jen s `mockups: true` | jen s `meta_instagram: true` |
 | `not-for-sale` (výchozí) | bez stavu (žádný štítek ani cena) | nic | jen s `mockups: true` | jen s `meta_instagram: true` |
 
 **Instagram na vyžádání:** fotky pro Instagram (s popiskem, ve scénách ateliéru a detaily,
-viz *Exporty*) vzniknou jen u díla s `meta_instagram: true`. Výchozí je `false` (kostra ho tak zapisuje). Přepnutí
-dílo přegeneruje, vypnutí jeho exporty pro Instagram smaže. Jiná hodnota než
+viz *Exporty*) vzniknou jen u díla s `meta_instagram: true`, a to jen dokud dílo nemá odkaz `instagram`
+(`makesInstagramExports` v `scripts/lib/works.mjs`): po zveřejnění příspěvku jsou fotky použité a úklid je smaže.
+Výchozí je `false` (kostra ho tak zapisuje). Vypnutí nebo doplněný odkaz exporty pro Instagram smaže. Jiná hodnota než
 `true`/`false` je chyba. Pole zůstává jen v obsahovém repu, na web se nekopíruje.
 
-Obrazy na prodej jsou `available` a `reserved`: jen ty mají Fler exporty a jen ty
+**Fler na vyžádání (`meta_fler`):** stejně fotky pro Fler (originál a mockupy s podpisem) vzniknou jen u díla
+s `meta_fler: true`, které je na prodej (`available`/`reserved`), a jen dokud nemá odkaz `fler` (`makesFlerExports`,
+`wantsFler`). Výchozí `false`: cena a stav prodeje na webu Fler nepotřebují, obraz se může prodávat i napřímo nebo
+jiným kanálem. Pole zůstává jen v obsahovém repu.
+
+**Chybějící exporty se doplní:** otisk díla se kvůli `meta_fler` ani odkazům nezměnil (nové složení otisku by
+přegenerovalo všechna díla). Místo toho pipeline u nezměněného díla ověří, že má všechny exporty, které mít má
+(`exportsMissing`, `workExports` v `scripts/process-images.mjs`); chybí-li některý (nově `meta_fler: true`, smazaný
+odkaz, soubor ztracený při obnově z větve s binárkami), vyrobí znovu jen exporty té platformy (`workExportFiles`,
+pro Fler i jeho mockupy `renderMockups`); webové obrázky a `info.json` zůstanou, v logu `→ <rok>/<dílo> (exports: fler)`.
+
+Obrazy na prodej jsou `available` a `reserved`: jen ty mohou mít Fler exporty (s `meta_fler: true`) a jen ty
 ukazuje filtr „na prodej“. **Musí mít cenu** (`price`, kladné číslo v Kč), jinak pipeline skončí chybou.
 Mockupy na stavu nezávisí (viz *Mockupy*). Štítek stavu (K prodeji, Rezervováno, V soukromé sbírce = `sold` i `gifted`, `GONE_LABEL`) je na kartě
 v galerii, na stránce díla i v bublině nad obrazem; `not-for-sale` štítek nemá.
@@ -1071,8 +1088,8 @@ s `meta_instagram: true` součástí otisku: přesun díla do jiné kolekce ho p
 - exporty děl, která z obsahového repa zmizela, přejmenovala se nebo se přesunula do jiné kolekce,
 - exporty detailních fotek, které dílo už nemá,
 - Fler exporty mockupů scén, které dílo už nemá (podle `info.json`),
-- všechny Fler exporty díla, které není na prodej,
-- exporty pro Instagram díla, které nemá `meta_instagram: true`,
+- všechny Fler exporty díla bez `meta_fler: true`, které není na prodej nebo už má odkaz `fler`,
+- exporty pro Instagram díla, které nemá `meta_instagram: true` nebo už má odkaz `instagram`,
 - exporty pro Instagram scén ateliéru, které už nejsou (podle `mockups/instagram/scenes.yaml`), a palet, které už nejsou,
 - exporty v dřívějším plochém uspořádání podle roku (`export/<platforma>/<rok>/<slug>-<id>….jpg`, včetně starých
   `-clean.jpg` a `-wall.jpg` pro Instagram).
@@ -1084,8 +1101,8 @@ na GitHubu. Logika: `planFolderPrune` v `scripts/lib/works.mjs`.
 
 | Platforma | Kdy | Soubory |
 |---|---|---|
-| Instagram | jen dílo s `meta_instagram: true` | složka díla `export/instagram/[<kolekce>/]<slug>/` (stejná cesta jako popis v `tvorba/`, `exportFolder` v `scripts/lib/works.mjs`): `caption-<paleta>.jpg` (dílo s popiskem na papíru každé palety webu: `papir`, `pergamen`, `noc`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru: `stul-tmavy`, `stul-svetly`, `stojan`; jen dílo s `size_cm`), `pano-<n>.jpg` (panorama pro karusel, jen široká díla), `detail-<jméno>.jpg` (každý detail; dlouhý úzký jako panorama `detail-<jméno>-pano-<n>.jpg`), vše 4:5 (1080 × 1350), `story.jpg` (příběh 9:16), `grid-<n>.jpg` + `grid-preview.jpg` (mřížka na profilu, jen s `meta_instagram_grid`) a `README.md` (náhled s textem příspěvku). **Nikdy mockupy webu.** |
-| Fler | jen `available` a `reserved` | složka díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` (originál), `mockup-<scéna>.jpg` (každý mockup), vše s vodoznakem, a `README.md` (náhled). |
+| Instagram | jen dílo s `meta_instagram: true` bez odkazu `instagram` | složka díla `export/instagram/[<kolekce>/]<slug>/` (stejná cesta jako popis v `tvorba/`, `exportFolder` v `scripts/lib/works.mjs`): `caption-<paleta>.jpg` (dílo s popiskem na papíru každé palety webu: `papir`, `pergamen`, `noc`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru: `stul-tmavy`, `stul-svetly`, `stojan`; jen dílo s `size_cm`), `pano-<n>.jpg` (panorama pro karusel, jen široká díla), `detail-<jméno>.jpg` (každý detail; dlouhý úzký jako panorama `detail-<jméno>-pano-<n>.jpg`), vše 4:5 (1080 × 1350), `story.jpg` (příběh 9:16), `grid-<n>.jpg` + `grid-preview.jpg` (mřížka na profilu, jen s `meta_instagram_grid`) a `README.md` (náhled s textem příspěvku). **Nikdy mockupy webu.** |
+| Fler | jen dílo s `meta_fler: true`, `available` nebo `reserved` a bez odkazu `fler` | složka díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` (originál), `mockup-<scéna>.jpg` (každý mockup), vše s vodoznakem, a `README.md` (náhled). |
 
 Průhledné okolí díla (podlaha vně rohů listu, viz *Ořez pozadí*) dostane v exportu barvu: pro Instagram
 papír palety (snímek s popiskem) nebo scénu ateliéru, pro Fler bílou (`images.fler.background`, výchozí `#ffffff`);
@@ -1295,7 +1312,8 @@ které si obrázek berou a drží podle adresy (Pinterest, náhledy odkazů na s
 obsah = stejné jméno, nic se nepřepisuje. Jméno díla je v `info.json` (`og.file`, `pin.file`; složky vyrobené dřív
 bez něj mají `og.jpg` / `pin.jpg` a web je čte dál, dokud se dílo nepřegeneruje). Náhled stránky (rok, kolekce,
 úvod) leží jako jediný soubor ve složce `_og/` stránky (`ogDir`); web ho najde přes `pageShareFile`, pipeline při
-změně celou složku nahradí. Bývalý `public/og.jpg` úvodní stránky smaže úklid (`LEGACY_OG_FILE` v `OUTPUT_ROOTS`).
+změně celou složku nahradí. Jeho otisk je výjimečně otisk vstupů, ne obsahu (viz *Kolekce*, `shareCrop`): stejný
+účel (jiný obrázek = jiné jméno), ale bez kreslení při každém běhu. Bývalý `public/og.jpg` úvodní stránky smaže úklid (`LEGACY_OG_FILE` v `OUTPUT_ROOTS`).
 Webové obrázky (`<šířka>.avif/webp/jpg`) otisk nemají: GitHub Pages dává všemu `Cache-Control: max-age=600`, takže
 změna je u návštěvníků nejpozději do 10 minut, a stálé adresy jsou výhoda (vyhledávání obrázků, odkazy). Už
 existující pin na Pinterestu otisk nezmění: Pinterest si obrázek při založení pinu uloží a znovu ho nestahuje.
@@ -1380,8 +1398,10 @@ private_note: kde … # NEPOVINNÉ, soukromé, na web se nedostane
   `site.config.yaml`) ze stejného zdroje, jaký ukazuje stránka
   (`coverSource` v `scripts/lib/collections.mjs`), a se stejným ořezem
   (`focusCrop` v `scripts/lib/photos.mjs` počítá jako CSS `object-position`).
-  Vyrábí se při každém běhu jen pro vlastní fotku, detail a `cover` s ořezem (bez ořezu celé na papíře),
-  zapíše se jen při změně (nový obsah = nový název, viz *Otisk v názvu*). Zmizí se smazanou kolekcí nebo když obal
+  Vyrábí se jen pro vlastní fotku, detail a `cover` s ořezem (bez ořezu celé na papíře), a to jen při změně toho,
+  z čeho vzniká: název je otisk vstupů (fotka, rohy listu a prolnutí hrany, ořez, `images.og`, `PIPELINE_VERSION`,
+  `SHARE_CROP_VERSION`; změna kreslení = zvýšit `SHARE_CROP_VERSION`), takže beze změny se fotka ani nenačte
+  (dřív se při každém běhu kreslila znovu jen kvůli porovnání). Nový obrázek = nový název, viz *Otisk v názvu*. Zmizí se smazanou kolekcí nebo když obal
   přestane být vybraný; pak stránka sdílí náhled díla. Když ořez nestačí, je
   lepší připravit široký detail a použít `cover: <id>#<detail>`. Komponenta `src/components/Cover.astro`.
 - Stránka `/tvorba/kolekce/<slug>/` vznikne jen pro kolekci s aspoň jedním
@@ -1440,7 +1460,7 @@ zapisuje), jiná hodnota než `true`/`false` je chyba.
   čára, mockupy s popiskem „<scéna> (vizualizace)“ (`mockupCaption`, i v `alt`, v prohlížeči
   fotek „<název> · <scéna> (vizualizace)“) a pod všemi drobná šedá poznámka pod krátkou tenkou
   čárou „Vizualizace – rám je jen pro představu.“ (`MOCKUPS_NOTE`; vše v `scripts/lib/work-viewer.mjs`).
-- Fler exporty mockupů vzniknou jen u díla na prodej, které mockupy má. Na
+- Fler exporty mockupů vzniknou jen u díla s Fler exporty (`meta_fler: true`), které mockupy má. Na
   Instagram mockupy nejdou nikdy.
 - Přepnutí `mockups` dílo přegeneruje, `false` jeho mockupy (i ve Fler exportech)
   smaže. Prodej díla (`sold`) mockupy nechá a smaže jen Fler exporty. Změna mezi
@@ -1484,10 +1504,11 @@ Scény jsou v `mockups/`: fotka interiéru z Unsplash a v `scenes.yaml` její
 kalibrace (kolik pixelů je 1 cm, kam se obraz věší, jak velký se vejde, barva
 rámu, rám pro plátna, světlo, stín a případné předměty před obrazem, např. opěradlo židle). Novou scénu přidáš tak, že uložíš fotku (čelní pohled na
 stěnu, 2400 px na šířku), odhadneš měřítko podle předmětu známé velikosti a
-doplníš záznam do `scenes.yaml`. Pak `npm run images` přegeneruje všechna díla.
+doplníš záznam do `scenes.yaml`. Pak `npm run images` přegeneruje všechna díla s mockupy (`mockups: true`; text
+`scenes.yaml` je jen v jejich otisku, ostatní díla změna scén nepřegeneruje).
 
 Webové obrázky a mockupy se přegenerují jen při změně fotky, detailních fotek,
-`size_cm`, scén, rohů listu (`meta_corners` a `images.edges`) nebo toho, zda je dílo na prodej. Změna ceny či popisu obrázky
+`size_cm`, scén (jen dílo s mockupy), rohů listu (`meta_corners` a `images.edges`) nebo toho, zda je dílo na prodej. Změna ceny či popisu obrázky
 negeneruje znovu (zapíše se jen kopie yaml).
 
 ## Ostatní fotky (O mně, Kontakt)
@@ -1627,8 +1648,8 @@ Obě repa vedle sebe, v tomto repu jednou `npm ci`.
 2. **Na testovacích datech** (vše níže): `npm run demo` → http://localhost:4321.
    Připraví `.demo/` a spustí web nad ním; skutečná data ani tohle repo nemění.
    `npm run demo:build` postaví web z testovacích dat do `.demo/site/dist`.
-3. **Na skutečných datech:** `npm run images` zpracuje obsahové repo (`CONTENT_DIR` z `.env`)
-   (zapisuje do obou rep), `npm run dev` nebo `npm run build && npm run preview`
+3. **Na skutečných datech:** `npm run binary:pull` (obrázky nasazeného webu z `main_binary`), `npm run images`
+   zpracuje obsahové repo (`CONTENT_DIR` z `.env`) (zapisuje do obou rep), `npm run dev` nebo `npm run build && npm run preview`
    ukáže přesně to, co půjde ven.
 
 Co kde vyzkoušet (adresy platí pro `npm run demo`):
@@ -1640,6 +1661,8 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | zobrazení na úvodní stránce | `/`: „Nejnovější“ jako střední dlaždice (30, adresa bez parametrů), ikony vpravo v záhlaví; sloupce končí skoro stejně vysoko. „Velké obrazy“ → 6 děl a `?view=grid`; zpět „Dlaždice“ a `−` → malé, `?tile=s` (63, testovací data mají méně, ukážou všechna kromě úvodního obrazu), `+` `+` → velké, `?tile=l` (20). Zužuj okno: sloupců ubývá a znovu se vyrovnají; pod 1100 px méně děl (4 / 16 / 25 / 49), pod 640 px ještě méně (3 / 10 / 24 / 40). S pamětí velkých obrazů obnov `/`: rovnou velké obrazy, žádné probliknutí dlaždic. V konzoli (Verbose) `[analytics] view_change {"listing":"home","view":"grid"}`. Nikdy se neopakuje dílo z úvodního obrazu (obnovuj, obraz se střídá). Otevři `/` bez parametrů: volba zůstane (paměť `pavla.home.view` / `pavla.home.tileSize`), `/tvorba/` má dál své zobrazení. `/?view=grid` u někoho s pamětí dlaždic → velké obrazy (odkaz má přednost); `/?utm_source=x` parametr zachová. |
 | sloupce stejné výšky v galerii | `/tvorba/`, `/tvorba/2026/`, kolekce: sloupce končí dole stejně (nižší mají mírně širší mezery, případně místo nahoře nejvýš 12 px), nejplnější a nejprázdnější sloupce se střídají (`gallery.columns` v `site.config.yaml`; zkus `order: center` nebo `maxGap: 1`, úvodní stránka se nezmění, ta má `home.columns`), ve velkých obrazech i dlaždicích; změň filtr, stránku, počet na stránku, „Zobrazit vše“ i šířku okna, sloupce se vždy znovu vyrovnají. Stránkování dál podle data (2. stránka začíná dílem po posledním z 1.). Se zapamatovanými dlaždicemi obnov `/tvorba/`: rovnou dlaždice, bez probliknutí velkých obrazů. |
 | značky na úvodní stránce | `/`: v dlaždicích jen hvězdička (menší, průsvitnější), žádné košíky (`home.tileMarks`); galerie beze změny. |
+| doba běhu pipeline | `npm run demo:prepare`: pod každým přegenerovaným dílem řádek `  ⏱ … · total N s`, na konci `⏱ run: checks … · drafts … · works … · … · total …` (fáze pod 0,05 s chybí); druhé spuštění bez změn díla nepřegeneruje a nenakreslí znovu ani náhledy draftů (celý běh ~10 s, `.demo/site/.previews/` je prázdná). |
+| velikosti v kontrole automatiky | `node scripts/check-health.mjs` (bez tokenů; za proxy `NODE_USE_ENV_PROXY=1`): řádek „Velikost: repo webu … MB (… % z 1000 MB) · obsahové repo nezjištěno · nasazený web (GitHub Pages) … MB …“ a „Minuty GitHub Actions nebyly zkontrolovány (chybí secret CHECK_TOKEN …)“; s `CHECK_TOKEN=<token> ` před příkazem (a `--settings`, `REPO=<obsahové repo>`, `SETTINGS_DIR=<obsahové repo>/docs/github-nastaveni` = i porovnání nastavení) řádek „Minuty Actions soukromých rep za tento měsíc: N z 2000 …“. |
 | prototypy | `npm run prototypes` a `open .prototypes/zarovnani-sloupcu.html`, `open .prototypes/znacky-dlazdic.html`: posuvníky začínají na hodnotách ze `site.config.yaml`, „Nastavení“ přepne na úvodní stránku / galerii. `open .prototypes/kamera-scen.html`: hrany stolů a stojanu protažené až za fotku, kroužek (průsečík hran) a křížek (úběžník kamery) leží u sebe a čárkované hrany díla do nich míří; „Z rohů listu“ je od sebe vzdálí, „Z hran“ je vrátí; u stojanu úhel spodní hrany díla proti liště skoro 0°; „Vyrovnat natočení“ ho změní, zaškrtni „ohnisko drží velikost listu“ a posuň ohnisko: list zůstane stejně velký, změní se perspektiva mřížky; „Pomocné čáry“ je schovají a ukážou dílo čistě, „Obnovit doporučené“ po rozladění posuvníků vrátí kameru ze `scenes.yaml`; „jen díla, která se nevejdou“ nechá v seznamu jen díla hlášená „Ke kontrole“ (na skutečných datech tři velká díla na stolech); zkopírovaný řádek `camera` vlož do `mockups/instagram/scenes.yaml` a `npm run demo:prepare` vyrobí scény s ní. Testovací data: `npm run demo:prepare`, `SITE_DATA_DIR=.demo/site npm run prototypes -- .demo/prototypes`. |
 | značky na dlaždicích | `/tvorba/?view=tiles`: obrazy z výběru autorky mají vlevo nahoře hvězdičku, obrazy na prodej vpravo dole košík; `−` na malé dlaždice: košíky zmizí, hvězdičky zůstanou; `+` na velké: značky větší (nejvýš 22 px). Přepni paletu Noc: značky světlé s tmavým lemem. Velké obrazy: žádné značky, hvězdička u názvu a štítek „K prodeji“. Totéž na úvodní stránce. Zkus `tileMarks.sale.icon: tag` nebo `sale.corner: tl` v `site.config.yaml` (košík vedle hvězdičky). |
 | dlaždice | `/tvorba/`: vpravo dole ikona „Dlaždice“: malé obrazy bez textů, 36 na stránku, „Na stránku“ nabízí 36 / 72 / 144, v URL `?view=tiles`; z 4. stránky velkých obrazů skočí na 2. stránku dlaždic (stejné první dílo). Zvol 72, přepni na velké obrazy a zpět: každé zobrazení si pamatuje svůj počet. Změň filtr, dlaždice zůstanou. Otevři `/tvorba/` znovu bez parametrů → dlaždice a `?view=tiles` (paměť); `/tvorba/?view=grid` → velké obrazy (odkaz má přednost); „Velké obrazy“ paměť smaže (DevTools → Local Storage → `pavla.gallery.view`). Na šířce telefonu 3 sloupce. |
@@ -1654,6 +1677,8 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | stav a mockupy | v yaml díla s `mockups: true` změň `status` (např. `available` → `sold`), `npm run images`: v logu `→ <dílo>`, mockupy na detailu zůstanou (nadpis „Jak by mohl vypadat na zdi“), z `export/fler` zmizí; pak `mockups: false`: mockupy zmizí i z webu. Testovací data: Ráno u rybníka (na prodej) × Slunečnice, Šumava v mlze (ne) × Pivoňky (vypnuté) |
 | exporty | `ls .demo/content/export/*/*/`: Instagram jen díla s `meta_instagram: true` (Ráno u rybníka, Pivoňky, Kytice z louky, Máky, Na podlaze, Lípa u kaple, Zimní sad, Oblaka, Hřeben nad údolím), každé ve své složce `export/instagram/[<kolekce>/]<slug>/` (`ls -R .demo/content/export/instagram`) s `caption-papir/-pergamen/-noc.jpg`, `scene-stul-tmavy/-stul-svetly/-stojan.jpg`, `story.jpg`, `pano-*.jpg` (jen široká díla, Oblaka 3 snímky), `grid-*.jpg` + `grid-preview.jpg` (Pivoňky 9, Oblaka 3, Ráno u rybníka 2), `README.md` (s textem příspěvku, pořadím karuselu a adresou pro nálepku příběhu) a `detail-*.jpg`; Fler jen díla `available`/`reserved`; smaž `meta_instagram: true` u Máků v `demo-content/`, `npm run demo:prepare`, jejich export pro Instagram zmizí |
 | Instagram: snímky s popiskem a scény | `open .demo/content/export/instagram/demo-plener-sumava-2026/demo-rano-u-rybnika/*`: tři snímky s popiskem (název, technika · rozměr · rok, adresa webu) na papíru palet, dílo na tmavém a světlém stole (natočené k divákovi, vodorovně na fotce, mimo rekvizity) a na stojanu (na liště, za paletkou); Lípa u kaple přiblížená, Zimní sad hlášený jako nevejde se na stoly, Oblaka a Hřeben nad údolím (70 × 50) i na stojan („does not fit into the photo of the scene stojan“); snímek scény, do které se dílo nevejde, chybí (log; souhrn „Ke kontrole“ dostane plný běh obsahového repa); `cat …/README.md`: text příspěvku s popisem, adresa webu s `id` díla, „Kolekce: …“ u Ráno u rybníka, „Obraz je na prodej.“ u Máků, hashtagy česky a anglicky; štítek bez anglického překladu = „Doporučení“ v souhrnu |
+| exporty jen na vyžádání a do odkazu | `ls .demo/content/export/fler/`: složky jen u děl na prodej s `meta_fler: true` (Oblaka, Zimní sad, Na podlaze, Lesní cesta, Pivoňky), ne Máky (už mají odkaz `fler`) ani Bouřka nad polem (na prodej bez `meta_fler`); `.demo/content/export/instagram/demo-plener-sumava-2026/` bez složky Ráno u rybníka (má odkaz `instagram`), v přehledu `export/instagram/README.md` řádek „Ráno u rybníka … ✓ na Instagramu“ bez miniatury. |
+| obrázky ve větvi | `node --test scripts/lib/binary.test.mjs` (pack, unpack, promote, prune nad dočasnými repy); `npm run binary:pull` stáhne obrázky nasazeného webu do `public/`, `git status` je nevidí (ignorované). |
 | náhledy exportů | `cat .demo/content/export/instagram/README.md .demo/content/export/fler/README.md`: přehledy s miniaturami; v každé složce díla `README.md` se všemi fotkami (u Instagramu i textem příspěvku, u Fleru s cenou); vykreslené je uvidíš na GitHubu obsahového repa nebo v náhledu Markdownu v editoru |
 | odkaz na Instagram | `/tvorba/2026/demo-rano-u-rybnika-pf7ru/`: v řádku „Sdílet“ odkaz „Na Instagramu“ (vymyšlený `instagram:` v testovacích datech); v `.demo/content/export/instagram/README.md` u něj „✓ na Instagramu“, u ostatních „○ zatím nezveřejněno“, skupiny podle kolekcí; `instagram: true` v popisu = chyba „instagram musí být odkaz…“ |
 | autorství v obrázcích | `node --input-type=module -e "import s from 'sharp';console.log(String((await s('.demo/site/public/tvorba/2026/demo-rano-u-rybnika-pf7ru/480.avif').metadata()).xmp))"`: autorka, „© 2026 …“, odkaz na stránku; v JSON-LD stránky díla `"image":{"@type":"ImageObject",…,"copyrightNotice":"© 2026 …"}`; fotka `public/fotky/…` XMP nemá |
@@ -1676,30 +1701,95 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 Pozn.: když Astro při buildu padá na zápisu telemetrie (sandbox, CI bez domovského
 adresáře), pomůže `ASTRO_TELEMETRY_DISABLED=1`.
 
+## Obrázky webu ve větvi (`main_binary`)
+
+Vygenerované obrázky (`public/tvorba/`, `public/fotky/`, `public/_cover/`, `public/_og/`, bývalý `public/og.jpg`:
+`SITE_BINARY.paths` = `OUTPUT_ROOTS`) **nejsou v historii `main`** (`.gitignore`): každá jejich verze by tam zůstala
+navždy a repo by brzy narazilo na limit velikosti GitHubu. Leží ve vlastní větvi s **jediným commitem bez rodiče**,
+kterou každá aktualizace celou nahradí (force push, nikdy pull request), takže staré verze nic nedrží a GitHub je časem
+uklidí (`scripts/lib/binary.mjs`, příkazy `scripts/binary.mjs`):
+
+| Větev | Obsah |
+|---|---|
+| `main_binary` | obrázky, které patří k `main` (nasazený web) |
+| `obsah/aktualizace_binary` | obrázky čekajícího pull requestu aktualizace obsahu |
+
+**`binary.lock`** v `main` (a v pull requestu) je hash stromu obrázků, které ke stavu patří: stejné obrázky = stejný
+hash (nezávisí na čase ani běhu), takže pull request bez změny obrázků ho nemění a build nikdy nesmíchá obrázky
+jiného stavu. Příkazy:
+
+- `pack <větev> [--push]`: zabalí soubory z `public/…` (i ignorované) do commitu bez rodiče, zapíše `binary.lock`
+  a s `--push` z něj udělá jediný commit větve na `origin`; má-li `origin` stejné soubory, nic neposílá. Index ani
+  historie pracovní větve se nemění (dočasný index).
+- `unpack`: obnoví `public/…` z té z větví `main_binary`, `obsah/aktualizace_binary`, jejíž strom `binary.lock`
+  jmenuje (soubory nahradí, nesloučí); žádná taková = chyba. **`npm run binary:pull`** = totéž lokálně (obrázky
+  nasazeného webu pro `npm run dev`/`build` bez vlastního běhu pipeline).
+- `promote`: po sloučení aktualizace obsahu udělá z `obsah/aktualizace_binary` větev `main_binary` (jen když
+  `binary.lock` jmenuje její strom; posune se jen odkaz, nic se neposílá znovu). Už aktuální `main_binary` = nic.
+- `prune`: smaže větve `<x>_binary`, jejichž větev `<x>` už neexistuje (obsahové repo, kde má binární větev každá větev).
+
+Kdo je volá: workflow obsahového repa (`promote` a `unpack` před pipeline, `pack obsah/aktualizace_binary --push`
+před pull requestem), „Kontrola kódu“ (`unpack` před buildem; pull request aktualizace dostane obrázky
+z `obsah/aktualizace_binary`, ostatní z `main_binary`), „Deploy na GitHub Pages“ (`promote`, `unpack`, build;
+potřebuje `contents: write`), „Zkušební běh zpracování“ (`pack` bez `--push`). Binární větev se stahuje obyčejným
+fetch, nikdy s `--depth`: její commit nemá rodiče, takže víc se nestáhne, a `--depth` by udělal mělký klon (v obsahovém
+repu by rozbil doporučení z historie gitu).
+
+Lokálně: `npm run images` píše do `public/…` jako dřív (do gitu nic). Před ním `npm run binary:pull`, jinak pipeline
+vyrobí všechna díla znovu. Výsledek na web lokálně: `node scripts/binary.mjs pack main_binary --push`, commit
+`binary.lock` (a `content/`) a push `main` (stejně jako automatika, jen přímo do `main`).
+
+Obsahové repo stejně drží `export/` ve větvi `<větev>_binary` (viz jeho dokumentace): `unpack --dir <obsah> --paths
+export --no-lock --branch <větev>_binary,main_binary` před pipeline, `pack <větev>_binary --dir <obsah> --paths export
+--no-lock --push` po ní, `prune` na `main`.
+
+**Export nastavení repa** (`node scripts/repo-settings.mjs <vlastník/repo> [--out soubor.md]`, `scripts/lib/repo-settings.mjs`):
+přes `gh api` (přihlášení GitHub CLI) přečte vše, co API o repu řekne (obecná nastavení a pull requesty, rulesety
+s pravidly a výjimkami, klasickou ochranu větve, Pages, prostředí s větvemi, oprávnění Actions, jména secrets
+a proměnných, spolupracovníky, webhooky, deploy keys, bezpečnost) a vypíše česky kontrolní seznam podle sekcí
+*Settings* včetně toho, co API neřekne (fine-grained tokeny, hodnoty secrets, DNS, notifikace); co nejde přečíst
+(např. rulesety soukromého repa na GitHub Free), uvede. Nic nemění. S `--out` zapíše vedle i `<soubor>.json`: snímek
+pro měsíční porovnání v kontrole automatiky (`settingsSnapshot`, bez id a adres, seznamy seřazené). Slouží k založení nového repa se stejným
+nastavením (např. nové repo s čistou historií); exporty obou rep leží v dokumentaci obsahového repa.
+
 ## Automatické zpracování obsahu
 
 Obsah se na web dostává automaticky: workflow **obsahového repa** (je soukromé a popisuje ho jeho vlastní
 dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z pohledu tohoto repa:
 
-- **plný běh** (`npm run images` s `CONTENT_DIR` = checkout obsahového repa): vygeneruje `content/` a
-  `public/…` a otevře do tohoto repa pull request z větve `obsah/aktualizace` se zapnutým **auto-merge**:
+- **plný běh** (`npm run images` s `CONTENT_DIR` = checkout obsahového repa): nejdřív `node scripts/binary.mjs promote`
+  a `unpack` (obrázky webu z `main_binary` do `public/…`, viz *Obrázky webu ve větvi*), pak vygeneruje `content/` a
+  `public/…`, obrázky zabalí do `obsah/aktualizace_binary` (`node scripts/binary.mjs pack obsah/aktualizace_binary --push`,
+  zapíše `binary.lock`) a otevře do tohoto repa pull request z větve `obsah/aktualizace` se zapnutým **auto-merge**:
   sloučí se sám, jakmile projde povinná „Kontrola kódu“ (ruleset na `main`), větev se pak smaže a web se nasadí.
   Nastavení repa: *Allow auto-merge*, *Automatically delete head branches* a ruleset pro výchozí větev
   s *Require status checks to pass* (`check`) a výjimkou pro správce (přímé pushe do `main`).
   Pull request připraví `node scripts/pull-request.mjs <soubor-popisu>` (`scripts/lib/pull-request.mjs`):
-  - do `add-paths` dá jen výstupní cesty z `OUTPUT_PATHS` (`content`, `public/tvorba`, `public/fotky`,
-    `public/_cover`, `public/_og` a bývalý `public/og.jpg`, aby se jeho smazání dostalo do pull requestu), a to jen ty,
-    které existují nebo je git zná (smazaná složka). Chybějící cestu (např. `public/_cover`, dokud úvodní stránka nemá
-    vlastní `_cover.jpg`) přeskočí, jinak by `git add` selhal a pull request by nevznikl; bez jediné složky se pull
-    request přeskočí. Nová výstupní složka pipeline = doplnit do `OUTPUT_PATHS`,
-  - popis: číslo běhu a seznam změněných děl, kolekcí a fotek. Pull request je veřejný, takže **nikdy
+  - do `add-paths` dá jen výstupní cesty z `OUTPUT_PATHS` (`content` a `binary.lock`; obrázky do pull requestu
+    nejdou, jsou ve své větvi), a to jen ty, které existují nebo je git zná; bez jediné se pull request přeskočí,
+  - popis: číslo běhu a seznam změněných děl, kolekcí a fotek (ze změn v `content/` a ze změněných obrázků proti
+    `main_binary`, `changedBinaries`). Pull request je veřejný, takže **nikdy
     neuvádí název ani odkaz na obsahové repo** (to platí i pro jeho titulek a commit).
 - **přípravný běh** (`npm run images -- --prepare-only`, na větvích obsahového repa): jen kostry popisů, `id`,
   rohy listu (`meta_corners`), srovnání popisů, kontroly a náhledy ořezu rozpracovaných děl (`.previews/` a zmenšené
   v `export/draft/` obsahového repa), bez obrázků webu, ostatních exportů a zápisu do tohoto repa.
 - **náhledy ořezu** (`.previews/`, plná velikost, mimo git) se nikam nenahrávají (artefakt běhu zabíral GB úložiště
   Actions účtu); zmenšené v `export/draft/` commitne workflow obsahového repa zpět s ostatními změnami
-  (viz *Ořez pozadí*); zkušební běh totéž s testovacími daty.
+  (viz *Ořez pozadí*); zkušební běh totéž s testovacími daty. Kreslí se jen náhledy draftu s novou nebo změněnou
+  fotkou či rohy (nebo s chybějícím souborem v `export/draft/`): kreslení trvá sekundy na draft a dřív zabíralo
+  většinu běhu ve větvi.
+- **Doba běhu v logu** (`scripts/lib/timing.mjs`: `stopwatch`, `formatLaps`): pod každým přegenerovaným dílem
+  řádek `  ⏱ master 1.2 s · pin 0.8 s · web 9.4 s · mockups 21.0 s · details 6.3 s · other 0.9 s · instagram 8.1 s ·
+  fler 2.2 s · total 50.0 s` (kroky pod 0,05 s vynechá, mockupy a detaily sečte; `other` = náhled pro sdílení,
+  `info.json` a úklid exportů) a na konci běhu fáze `⏱ run: checks … · drafts … · works … · exports … · … · total …`
+  (`checks` = načtení a kontroly obsahu, `drafts` = náhledy draftů a přehledy, `works` = obrázky a exporty děl,
+  `exports` = přehledy a úklid exportů, `photos` = ostatní fotky, `covers` = úvodní obrazy kolekcí, roků a úvodu,
+  `prune` = úklid webu, `overview` = přehled `export/README.md`; přípravný běh a běh s chybami jen první dvě).
+  Umístění díla ve scénách ateliéru (`scenePlacement`, sekundy na dílo) se počítá jen u děl s `meta_instagram`
+  a jednou za běh (`fittingScenes`); dřív se počítalo u všech zveřejněných děl při každém úklidu exportů. Jen do logu běhu, ne do
+  souhrnu. Rychlost: obrázky jednoho díla trvají na GitHubu 20–100 s (2 jádra), nejvíc kódování AVIF
+  (`effort: 4` v `responsive`: stejná velikost jako 5 o třetinu rychleji). Podrobnější rozbor, odhad pro stovky děl
+  a možnosti dalšího zrychlení jsou v dokumentaci obsahového repa.
 - Souhrn běhu (`scripts/lib/summary.mjs`) jde do `GITHUB_STEP_SUMMARY`, celý česky (čte ho autorka). Jména souborů
   obsahového repa v něm jsou odkazy na GitHub do větve běhu (`fileLinks` v `scripts/lib/summary-links.mjs`, adresu dává
   workflow v `CONTENT_BLOB_URL`, např. `<server>/<repo>/blob/<větev>`; zkušební běh `…/blob/<větev>/demo-content`; bez ní
@@ -1743,12 +1833,13 @@ dokumentace) si stáhne tento kód a pipeline spustí stejně jako lokálně. Z 
      (úvodní obraz je vždy nejnovější) nebo jen jedno (nestřídá se; `featuredAdvice`). Z historie gitu obsahového repa
      (`scripts/lib/git-dates.mjs`: den commitu, který soubor přidal, i přes přesun do kolekce; bez gitu nebo v mělkém
      klonu nic, proto `fetch-depth: 0` ve workflow obsahového repa): rozpracované dílo déle než `DRAFT_DAYS` (30) dní
-     (`draftAgeAdvice`) a zveřejněné dílo s `meta_instagram: true` bez odkazu `instagram`, jehož `README.md` v
-     `export/instagram/` je v gitu déle než `INSTAGRAM_LINK_DAYS` (14) dní (`instagramLinkAdvice`).
+     (`draftAgeAdvice`) a zveřejněné dílo s `meta_instagram: true` bez odkazu `instagram`, které má řádek
+     `meta_instagram: true` v gitu déle než `INSTAGRAM_LINK_DAYS` (14) dní (`instagramLinkAdvice`, den poslední změny
+     toho řádku `lineDates`; exporty samy v historii gitu nejsou).
      Nesoulad atributů díla (`consistencyAdvice`, i u rozpracovaných, pokud není řečeno jinak):
-     `featured-bez-pinu` (zveřejněné dílo ve výběru autorky bez `meta_pinterest: true`), `odkaz-instagram-bez-exportu`
-     (odkaz `instagram`, ale `meta_instagram` není `true`), `fler-neni-na-prodej` (odkaz `fler` u díla, které není
-     `available`/`reserved`), `prodej-bez-fleru` (zveřejněné dílo na prodej bez odkazu `fler`), `cena-neprodava`
+     `featured-bez-pinu` (zveřejněné dílo ve výběru autorky bez `meta_pinterest: true`), `fler-neni-na-prodej` (odkaz
+     `fler` u díla, které není `available`/`reserved`), `fler-bez-prodeje` (`meta_fler: true` u díla, které není na
+     prodej), `prodej-bez-fleru` (zveřejněné dílo s `meta_fler: true` bez odkazu `fler`), `cena-neprodava`
      (`price` u `not-for-sale` nebo `gifted`; prodané si cenu nechává), `mockupy-bez-rozmeru` (`mockups: true` bez
      platného `size_cm`), `mrizka-bez-instagramu` (`meta_instagram_grid` bez `meta_instagram: true`, mřížka nevznikne),
      `datum-v-budoucnu` (`date` po dnešku).
@@ -1775,7 +1866,8 @@ běhu, nebo nech pracovat automatiku.
 **Týdenní kontrola automatiky** běží v obsahovém repu, kód je tady: `scripts/check-health.mjs` (volání API,
 čtení popisů) a `scripts/lib/health.mjs` (vyhodnocení, české zprávy). Proměnné: `TOKEN` (token pro zápis do
 tohoto repa), `RUNS_TOKEN` a `REPO` (běhy workflow obsahového repa), `CONTENT_DIR` (checkout popisů,
-nepovinný). Kontroluje:
+nepovinný), `CHECK_TOKEN` (spotřeba minut Actions a nastavení rep, nepovinný; dřívější `BILLING_TOKEN` se čte taky),
+`SETTINGS_DIR` (uložené exporty nastavení `<jméno repa>.json`, nepovinný). Kontroluje:
 
 - že token funguje a nevyprší do 14 dní (`--days`),
 - že poslední dokončený běh zpracování obsahu neselhal (selhání opravené pozdějším během jen zmíní),
@@ -1807,6 +1899,25 @@ nepovinný). Kontroluje:
   uzlu): `evaluatePageTexts` ve `scripts/lib/page-check.mjs`, stejná pravidla jako `npm run check:images` u buildu,
   hlášky česky (nejvýš 10, pak „… a dalších N“). Když se web nepodařilo načíst, tahle kontrola se přeskočí
   (chybu ohlásí kontrola obrázků).
+- že minuty GitHub Actions soukromých rep za tento měsíc nedocházejí (`evaluateMinutes`, `MINUTE_LIMITS`): GitHub Free
+  má 2000 minut měsíčně jen pro soukromá repa (veřejná běží zdarma), po jejich vyčerpání GitHub běhy zastaví do dalšího
+  měsíce. Čte přehled spotřeby účtu (`/users/<vlastník>/settings/billing/usage?year=&month=`) s tokenem `CHECK_TOKEN`
+  (fine-grained token vlastníka jen pro čtení, oprávnění účtu *Plan: read*; bez něj se kontrola přeskočí a hláška to řekne). Sečte
+  minuty (`product: actions`, jednotka minuty) soukromých rep (soukromé = jeho veřejná stránka v API vrátí 404), vypíše
+  je po repech a tempo na celý měsíc. Selže od 70 % (`warnShare`) nebo když by tempo od 7. dne (`paceFromDay`) vyčerpalo
+  všechny (`dochazeji-minuty`), a při jakékoli částce k zaplacení (`netAmount`, `placene-minuty`).
+- první pondělí v měsíci (dny 1–7; `--settings` kdykoli), že nastavení obou rep odpovídá uloženému exportu
+  (`evaluateSettings`; `collectSettings` přes API s `CHECK_TOKEN` = oprávnění repa *Administration, Environments, Pages,
+  Secrets, Variables, Webhooks: read* pro obě repa, `settingsSnapshot` proti `SETTINGS_DIR/<jméno repa>.json`
+  z `scripts/repo-settings.mjs --out`, `compareSnapshots`: rozdíly po cestách, seznamy jmen jako „přibylo/ubylo“, část,
+  kterou nejde přečíst, jen tímto faktem). Rozdíl nebo chybějící export = `nastaveni-se-zmenilo`; bez tokenu nebo
+  exportů se kontrola přeskočí.
+- že obě repa a nasazený web zůstávají daleko pod limity velikosti GitHubu (`evaluateSizes`, `SIZE_LIMITS`): repo
+  ideálně do 1 GB (celá historie, každá verze každého obrázku), web na GitHub Pages nejvýš 1 GB. Velikost repa je
+  `size` z API (`/repos/<repo>`, v KiB; obsahové repo s `RUNS_TOKEN`), velikost webu je poslední artefakt
+  `github-pages` tohoto repa (zabalený, obrázky se v něm skoro nezmenší). Hláška vždy vypíše všechny tři velikosti
+  a jejich podíl z limitu (týden po týdnu je vidět, jak rostou); od 70 % kteréhokoli limitu (`warnShare`) kontrola
+  selže s kódem `blizi-se-limit`, aby bylo dost času jednat. Co nejde načíst, je „nezjištěno“ a kontrolu neshodí.
 
 Výsledek je markdown (`formatReport`) na stránce běhu a ve výstupu kroku `report`; když je něco špatně,
 skript skončí kódem 1. Kódy neúspěšných kontrol (i problémů, které vypisují) jsou v `report.codes` (`formatReport`)
@@ -1814,7 +1925,8 @@ a jako výstup kroku `codes` (`[token-vyprsi] [obrazky-chybi]`): workflow obsaho
 aby šly e-maily filtrovat podle kódu. Každá neúspěšná kontrola končí první řádek své hlášky kódem ze stejného registru jako hlášky
 pipeline (`scripts/lib/codes.mjs`, úroveň `health`): `token-chybi`, `token-neplatny`, `token-nedostupny`,
 `token-vyprsi`, `beh-selhal`, `zkusebni-beh-selhal`, `nasazeni-selhalo`, `nasazeni-chybi`, `aktualizace-ceka`,
-`neznamy-atribut`, `nova-technika`, `preklad-chybi`, `obrazky-chybi`, `stranky-nedostupne`, `nacteni-selhalo` (API nebo obsah se
+`neznamy-atribut`, `nova-technika`, `preklad-chybi`, `obrazky-chybi`, `stranky-nedostupne`, `blizi-se-limit`, `dochazeji-minuty`, `nastaveni-se-zmenilo`,
+`placene-minuty`, `nacteni-selhalo` (API nebo obsah se
 nepodařilo načíst). Problémy textů stránek mají kód každý (`titulek-chybi`, `stejny-titulek`, `popis-stranky-chybi`,
 `stejny-popis-stranky`, `dlouhy-popis-stranky`, `jsonld-chybi`, `jsonld-neplatny`, `jsonld-neni-objekt`,
 `jsonld-bez-contextu`, `jsonld-prazdny-graf`, `jsonld-bez-typu`); jsou to přímo kódy `pageProblems`, takže je
@@ -2153,9 +2265,11 @@ obojí stejnou funkcí): `<slug>-<id>-cut.jpg` a `<slug>-<id>-frames.jpg` popsan
 čarou čtyřúhelníku rohů a u každého rohu se dvěma řádky, odkud a kolik ořízne: `zleva 2,5 % = 93 px` a `shora 1,7 % = 46 px`
 (zleva/zprava v % šířky, shora/zdola v % výšky fotky a v px fotky = hodnota `meta_corners`; `cutLabelLines`). Řádek nad
 `images.edges.suspicious` (výchozí 5 %) je červeně, druhý řádek téhož rohu ne. Na světlém je vidět zbylá podlaha, na tmavém i to, kolik papíru se odřízlo. Plný běh
-složku vždy vyprázdní a naplní znovu (zveřejněné dílo náhled nemá). Na GitHubu se plné náhledy nikam nenahrávají
+složku vždy vyprázdní; kreslí se jen náhledy draftů s novou nebo změněnou fotkou či rohy (otisk v `README.md` jejich
+složky v `export/draft/`) nebo s chybějícím souborem tam, takže ve složce jsou jen náhledy nakreslené v tomto běhu
+(zveřejněné dílo náhled nemá; všechny drafty v plné velikosti `npm run preview`). Na GitHubu se plné náhledy nikam nenahrávají
 (artefakt běhu zabíral GB úložiště Actions účtu): zůstávají zmenšené v `export/draft/`, plnou velikost vyrobí lokálně
-`npm run preview`; souhrn běhu náhledy vyjmenuje. Jinou složku dá `run({ previewDir })`.
+`npm run preview`; souhrn běhu vyjmenuje náhledy nakreslené v tomto běhu. Jinou složku dá `run({ previewDir })`.
 
 **Náhledy rozpracovaných děl v gitu (`export/draft/`):** tytéž tři náhledy (`previewBuffers`) zmenšené na delší stranu
 `DRAFT_EDGE` = 2000 px (`shrinkPreview`, nikdy nezvětšené; popisky a čáry rostou s fotkou, čísla zůstávají v px původní
@@ -2263,7 +2377,7 @@ npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s po
   To vše proto, aby šlo
   ořez prohlédnout na jakémkoli pozadí. Soubory se při každém spuštění přepíšou; prohlížeč obrázků (Náhled na Macu)
   může ukazovat starou verzi, dokud soubor znovu neotevřeš. `meta_corners: false` náhled nemá. Plný běh
-  `npm run images` složku `.previews/` vyprázdní (nechá v ní jen náhledy draftů).
+  `npm run images` složku `.previews/` vyprázdní (nechá v ní jen náhledy draftů nakreslené v tomto běhu).
 
 **Oklikání rohů (`npm run corners`, `scripts/corners.mjs`):** místo přepisování čísel z náhledů se rohy dají
 naklikat myší. Příkaz spustí lokální server (jen `127.0.0.1`, výchozí port 4327, jiný `--port <číslo>`) nad obsahovým

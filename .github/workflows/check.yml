@@ -1,8 +1,10 @@
 # Checks that nothing stopped working after a change of the code: unit tests, a build of the site from
-# the committed data (it also compiles every page template), its images and sitemap (npm run check:images), and
+# the committed data and its images (the branch binary.lock names: main_binary, or obsah/aktualizace_binary for a
+# content pull request; scripts/binary.mjs), which also compiles every page template, its images and sitemap
+# (npm run check:images), and
 # the workflows themselves (actionlint). The site from the test data (`npm run demo:build`)
 # is not built here: it takes minutes on a GitHub runner and is never published; build it locally instead.
-# A push of content updates (content/, public/ generated data) or documentation to main does not trigger it,
+# A push of content updates (content/, binary.lock) or documentation to main does not trigger it,
 # but every pull request does: it is the required check of the ruleset on main, so a content pull request (auto-merge)
 # is merged only when the site still builds.
 # A failure on a push to main, or on the content pull request (branch obsah/aktualizace, it would otherwise just
@@ -15,10 +17,7 @@ on:
     branches: [main]
     paths-ignore:
       - 'content/**'
-      - 'public/tvorba/**'
-      - 'public/fotky/**'
-      - 'public/_cover/**'
-      - 'public/og.jpg'
+      - 'binary.lock'
       - '**/*.md'
   pull_request:
   workflow_dispatch:
@@ -49,6 +48,10 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      # the images are not in main: the branch whose tree binary.lock names (an error when none has them)
+      - name: Images of the site
+        run: node scripts/binary.mjs unpack
 
       - name: Build the site
         run: npm run build

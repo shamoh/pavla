@@ -11,6 +11,7 @@
     "check:images": "node scripts/check-images.mjs",
     "test": "node --test \"scripts/**/*.test.mjs\"",
     "demo:prepare": "node scripts/demo.mjs",
+    "binary:pull": "node scripts/binary.mjs unpack",
     "demo": "node scripts/demo.mjs && SITE_DATA_DIR=.demo/site astro dev",
     "demo:build": "node scripts/demo.mjs && SITE_DATA_DIR=.demo/site astro build",
     "straighten": "node scripts/straighten.mjs",

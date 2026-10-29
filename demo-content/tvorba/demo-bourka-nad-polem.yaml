@@ -22,8 +22,13 @@ meta_draft: false
 # - canvas - plátno na rámu: čistá zaoblená hrana, tlusté asi 2 cm, rovné; v mockupech bez pasparty
 meta_edge: deckle
 
+# Fotky pro Fler, možnosti:
+# - true - připravit, dokud obraz nemá odkaz fler (export/fler: originál a mockupy s podpisem)
+# - false - žádné (cena a stav prodeje na webu Fler nepotřebují, obraz se může prodávat i napřímo)
+meta_fler: false
+
 # Fotky pro Instagram, možnosti:
-# - true - připravit (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, panorama pro karusel, příběh, detailní fotky)
+# - true - připravit, dokud obraz nemá odkaz instagram (export/instagram: s popiskem na 3 pozadích, ve 3 scénách ateliéru, panorama pro karusel, příběh, detailní fotky)
 # - false - žádné
 meta_instagram: false
 

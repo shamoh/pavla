@@ -225,8 +225,8 @@ export const NO_COLLECTION = 'Mimo kolekce';
 export function exportIndex(platform, entries, { within = '' } = {}) {
   const p = PLATFORM[platform];
   const head = platform === 'instagram'
-    ? overviewHead('Fotky pro Instagram', 'Obrazy s `meta_instagram: true`. Každý má svou složku (stejně jako v `tvorba/`): fotky s popiskem, ve scénách ateliéru, panorama pro karusel (široké obrazy), příběh, detaily a text příspěvku.', within)
-    : overviewHead('Fotky pro Fler', 'Obrazy na prodej (`available`, `reserved`). Každý má svou složku (stejně jako v `tvorba/`): originál a mockupy s podpisem.', within);
+    ? overviewHead('Fotky pro Instagram', 'Obrazy s `meta_instagram: true`. Dokud nemají odkaz `instagram`, má každý svou složku (stejně jako v `tvorba/`): fotky s popiskem, ve scénách ateliéru, panorama pro karusel (široké obrazy), příběh, detaily a text příspěvku. Po doplnění odkazu složka zmizí.', within)
+    : overviewHead('Fotky pro Fler', 'Obrazy na prodej s `meta_fler: true`. Dokud nemají odkaz `fler`, má každý svou složku (stejně jako v `tvorba/`): originál a mockupy s podpisem. Po doplnění odkazu složka zmizí.', within);
   if (!entries.length) return `${[...head, '', 'Zatím žádné.'].join('\n')}\n`;
   const done = entries.filter((e) => e.url).length;
   const { groups, order } = byCollection(entries);
@@ -235,8 +235,11 @@ export function exportIndex(platform, entries, { within = '' } = {}) {
     lines.push(...groupHead(key, within));
     for (const e of groups.get(key)) {
       const state = e.url ? `✓ <a href="${e.url}">${p.done}</a>` : `○ ${p.todo}`;
-      lines.push(`<tr><td><a href="${e.folder}/"><img src="${e.folder}/${e.thumb}" width="120" alt="${escMd(e.title)}"></a></td>`
-        + `<td><a href="${e.folder}/"><b>${escMd(e.title)}</b></a>${e.code ? ` <code>${escMd(e.code)}</code>` : ''}<br>${escMd(e.note ?? '')}<br>${state}</td></tr>`);
+      // without a thumbnail the work has no folder (its photos went once the link was in): no links into it
+      const picture = e.thumb ? `<a href="${e.folder}/"><img src="${e.folder}/${e.thumb}" width="120" alt="${escMd(e.title)}"></a>` : '';
+      const title = e.thumb ? `<a href="${e.folder}/"><b>${escMd(e.title)}</b></a>` : `<b>${escMd(e.title)}</b>`;
+      lines.push(`<tr><td>${picture}</td>`
+        + `<td>${title}${e.code ? ` <code>${escMd(e.code)}</code>` : ''}<br>${escMd(e.note ?? '')}<br>${state}</td></tr>`);
     }
     lines.push('</table>');
     if (platform === 'instagram' && key) lines.push(...collectionStory(groups.get(key)));

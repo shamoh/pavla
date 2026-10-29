@@ -28,11 +28,15 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `run`, chyba `[neplatne-jmeno]` s návrhem jména zastaví běh dřív, než se cokoli zapíše (i `--prepare-only`).
 - `npm run images` (`scripts/process-images.mjs`) z něj generuje `content/` = zrcadlo obsahového repa (stejné složky
   a jména, jen veřejné atributy, `scripts/lib/site-content.mjs`, needitovat; plný běh smaže vše, co nezapsal)
-  a obrázky v `public/` ve složce své stránky (= adresa, `scripts/lib/site-images.mjs`): dílo
+  a obrázky v `public/` (**nejsou v historii `main`**: `.gitignore`, větev `main_binary` s jediným commitem, `binary.lock`
+  v `main` = hash jejich stromu, `scripts/binary.mjs` pack/unpack/promote/prune, `npm run binary:pull`; pull request
+  aktualizace obsahu má obrázky v `obsah/aktualizace_binary`, deploy je `promote` povýší; viz README „Obrázky webu ve větvi“;
+  obsahové repo stejně drží `export/` v `<větev>_binary`) ve složce své stránky (= adresa, `scripts/lib/site-images.mjs`): dílo
   `public/tvorba/<rok>/<slug>-<id>/`, rok `public/tvorba/<rok>/_cover/` + `_og/`, kolekce
   `public/tvorba/kolekce/<slug>/_cover/` + `_og/`, úvod `public/_cover/` + `public/_og/`, fotky `public/fotky/<název>/`;
   náhled pro sdílení a pin mají otisk obsahu v názvu (`og-<otisk>.jpg`, `pin-<otisk>.jpg`, `fingerprintedName`; u díla
-  jméno v `info.json` `og.file`/`pin.file`, u stránky jediný soubor ve složce `_og/`, `pageShareFile`), aby si
+  jméno v `info.json` `og.file`/`pin.file`, u stránky jediný soubor ve složce `_og/`, `pageShareFile`, tam otisk vstupů
+  `shareCrop`, aby se beze změny nekreslil), aby si
   Pinterest a náhledy odkazů po změně vzaly nový; webové obrázky otisk nemají (GitHub Pages `max-age=600`);
   plný běh smaže vše, co nevyrobil (`staleOutputs`).
   Exporty pro Instagram a Fler jdou do `export/` obsahového repa.
@@ -55,13 +59,18 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   / `PUBLIC_YEAR_FIELDS` / `PUBLIC_HOME_FIELDS` / `PUBLIC_PHOTO_FIELDS`, nikdy ručně),
   bez komentářů. `meta_*`, `private_*` a neznámá pole nesmí nikdy do repa `pavla` (je veřejné).
 - Stav prodeje: `isOnSale` = `available` | `reserved` a musí mít `price` (kontrola v pipeline). Jen tato díla
-  mají Fler exporty a filtr „na prodej“; `not-for-sale`, `sold` a `gifted` (darováno) nikdy.
+  mohou mít Fler exporty (s `meta_fler: true`, `makesFlerExports`) a filtr „na prodej“; `not-for-sale`, `sold` a `gifted` (darováno) nikdy.
   Filtr Stav (`STATUS_FILTERS`): na prodej (`unsold`), ještě mám (`kept`), už nemám (`gone` = `sold` + `gifted`);
   staré `?status=available` = `unsold` (`STATUS_ALIASES`); volba bez děl nebo se všemi díly (= „vše“) se nenabízí
   (`offersOption`), bez žádné filtr zašedne (`facetDisplay`), stejně přepínač „Doporučené“. Štítek stavu na kartě i stránce díla, `not-for-sale` bez štítku; `sold` i `gifted` mají
   společný štítek „V soukromé sbírce“ (`GONE_LABEL`), web je nikdy nerozlišuje.
 - Mockupy jen s `mockups: true` v popisu díla (výchozí false), nezávisle na stavu prodeje (`wantsMockups`);
-  Fler mockupy jen u díla na prodej, které mockupy má.
+  Fler mockupy jen u díla s Fler exporty, které mockupy má.
+- Exporty jen dokud jsou potřeba: Instagram s `meta_instagram: true` a bez odkazu `instagram` (`makesInstagramExports`),
+  Fler s `meta_fler: true` (výchozí false; cena sama Fler nepotřebuje, prodej i napřímo), na prodej a bez odkazu `fler`
+  (`makesFlerExports`); s odkazem úklid složku smaže, přehled platformy dílo ukáže s odkazem bez miniatury. Otisk díla
+  se podle nich nemění (nové složení otisku = přegenerovat vše): nezměněnému dílu s chybějícím exportem vyrobí jen exporty té
+  platformy (`exportsMissing` → `workExportFiles`, webové obrázky zůstanou).
 - Exporty: Instagram jen u díla s `meta_instagram: true` (výchozí false), nikdy mockupy webu, ve složce díla
   `export/instagram/[<kolekce>/]<slug>/` (kopíruje `tvorba/`, `exportFolder`; složka je v otisku díla): `caption-<paleta>.jpg` (dílo
   na papíru každé palety s popiskem název / technika · rozměr · rok / adresa webu, písma z `fonts/` jako křivky přes
@@ -93,7 +102,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (`pinKeywords`, vlastní slovník `pinterestKeywords.en` s obyčejnými slovy, chybějící překlad = `pinterestAdvice`). Profil `site.pinterest` v patičce, na Kontaktu a v `sameAs` autorky.
   Stránka díla má řádek „Sdílet“ s ikonami (`shareLinks` v `scripts/lib/share.mjs`: Pinterest s pinem `pinSaveUrl`/`workPinImage`,
   Facebook, WhatsApp; tlačítko odkazu `src/lib/share-button.ts` = sdílení telefonu nebo zkopírování), bez skriptů a cookies služeb, událost GA `share` s `method`. `check:images` ověří obrázky kanálu.
-  Fler jen díla na prodej, také ve složce díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` + `mockup-<scéna>.jpg`,
+  Fler jen díla s `makesFlerExports`, také ve složce díla `export/fler/[<kolekce>/]<slug>/`: `original.jpg` + `mockup-<scéna>.jpg`,
   vše s vodoznakem. Při přegenerování se složky díla mažou (`clearExports`), plný běh navíc porovná `export/`
   s `expectedExports` a smaže vše navíc (`planFolderPrune`, jen jména z `EXPORT_FILES`, neznámé soubory nechá,
   staré ploché `<rok>/<slug>-<id>…` smaže), i bez přegenerování.
@@ -105,8 +114,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   komponenta `Cover.astro`): vlastní fotka (`_cover.jpg` kolekce, `roky/<rok>.jpg`, `_cover.jpg` v kořeni) > `cover: <id>` nebo
   `<id>#<detail>` > náhodně z výběru autorky > nejnovější dílo. Vše se ukáže celé; vybraný obraz (vlastní fotka nebo
   `cover`) s `aspect` nebo `focus` se ořízne (`coverCrop`, chybějící = `"1:1"` / `[50, 50]`; stejný výřez je `og:image`
-  v `_og/og-<otisk>.jpg` ve složce stránky). Náhodný se neořezává, `aspect`/`focus` u něj = chyba; v kostrách prázdné. Každá výstupní složka pipeline v tomto repu musí být
-  v `OUTPUT_PATHS` (`scripts/lib/pull-request.mjs`; do PR jdou jen ty z nich, které existují nebo je git zná).
+  v `_og/og-<otisk>.jpg` ve složce stránky). Náhodný se neořezává, `aspect`/`focus` u něj = chyba; v kostrách prázdné. Každá výstupní složka obrázků pipeline v tomto repu musí být
+  v `OUTPUT_ROOTS` (= `SITE_BINARY.paths`, větev `main_binary`, a v `.gitignore`); do PR jdou jen `OUTPUT_PATHS`
+  (`content`, `binary.lock`; `scripts/lib/pull-request.mjs`), popis PR jmenuje i díla se změněnými obrázky (`changedBinaries`).
 - Detailní fotky díla: `tvorba/[<kolekce>/]<slug>/*.jpg` (obsahové repo) → `detail-<název>-<šířka>.*` a `info.json#details`;
   popisky v yaml díla `details: { <název fotky>: <popisek> }`.
 - Filtry galerie (`scripts/lib/gallery-filter.mjs`): všechny se kombinují a každá změna se hned zapisuje do URL,
@@ -212,7 +222,11 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Náhledy pro sdílení (`og:image` + rozměry): dílo = `og-<otisk>.jpg` celý obraz na papíře (nikdy neořezávat),
   úvodní obraz kolekce/roku/úvodu = ořez vybraného (`aspect`/`focus`), vlastní fotka nebo detail celé na papíře, jinak náhled
   díla (`coverShareSource`); helpery `*ShareImage` v `src/lib/site.ts`.
-- Mockupy: scény v `mockups/scenes.yaml` (kalibrace px/cm), výběr a vykreslení `scripts/lib/mockups.mjs`.
+- Mockupy: scény v `mockups/scenes.yaml` (kalibrace px/cm), výběr a vykreslení `scripts/lib/mockups.mjs`; text scén je
+  v otisku jen u díla s mockupy (změna scén nepřegeneruje ostatní).
+- Doba běhu: pod každým přegenerovaným dílem `  ⏱ <krok> <s> · … · total` a na konci `⏱ run: <fáze> …` (`scripts/lib/timing.mjs`,
+  jen log); nový pomalý krok díla = `watch.lap('<krok>')`. Obrázky díla trvají na GitHubu 20–100 s, nejvíc AVIF (`effort: 4`).
+  Zpomalení i velikost rep hlídat: rozbor a plány v dokumentaci obsahového repa.
 - Ořez pozadí (podlaha i světlá zeď / podkladový papír): `meta_corners` díla (`photo` + rohy `tl`/`tr`/`br`/`bl` v px dovnitř, `false` = neořezávat) najde
   pipeline u každého díla s fotkou bez atributu (i zveřejněného, i `--prepare-only`; `scripts/lib/corners.mjs`,
   detekce a maska `scripts/lib/edges.mjs`; podlaha `floorDepth`/`looksLikeFloor`, světlé pozadí `backgroundDepth`/
@@ -221,7 +235,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   průhledné s prolnutím (`images.edges`) a obrázek oříznutý na nejmenší obdélník s celým listem (`trimTransparent`;
   mockup přepočítá rohy i `pavla:sheet` o posun `offset`): web AVIF/WebP průhledné (`transparent` v `info.json`, třída `cutout`:
   bez `--ph`, stín jen `filter: var(--drop-…)`, nikdy `box-shadow`), JPEG na papíře první palety, og/Instagram na
-  svém pozadí, Fler bílá, mockup jen vnitřní obdélník (průnik s `pavla:sheet`). Náhledy ořezu draftů (všechny tři, `writePreviews`, stejně jako `npm run preview`) do
+  svém pozadí, Fler bílá, mockup jen vnitřní obdélník (průnik s `pavla:sheet`). Náhledy ořezu draftů (všechny tři, `writePreviews`, stejně jako `npm run preview`; kreslí se jen při změně otisku
+  v README draftu nebo chybějícím souboru, kreslení trvá sekundy na draft) do
   `.previews/` (mimo git; workflow je nikam nenahrávají, žádný artefakt běhu: úložiště Actions účtu má jen 0,5 GB zdarma); zmenšené
   (`DRAFT_EDGE`, `shrinkPreview`) i v `export/draft/[<kolekce>/]<slug>/` obsahového repa s `README.md` (`draftReadme`,
   přehled `draftIndex`), i ve větvi, přepsané jen při změně otisku v README; zveřejněním zmizí (`EXPORT_FILES.draft`).
@@ -271,11 +286,17 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   „Zkušební běh zpracování“ (`.github/workflows/dry-run.yml`, každou neděli na testovacích datech, nic nepushne)
   prochází tytéž kroky: změna kroků zpracování obsahu = stejná změna ve `dry-run.yml`.
   Týdenní kontrola (token, selhané běhy, zkušební běh, nasazení, čekající PR, neznámé atributy, chybějící obrázky
-  nasazeného webu `scripts/lib/site-check.mjs`, texty a JSON-LD jeho stránek `evaluatePageTexts`; hlášky `pageProblems`
+  nasazeného webu `scripts/lib/site-check.mjs`, texty a JSON-LD jeho stránek `evaluatePageTexts`, velikost obou rep
+  a nasazeného webu proti limitům GitHubu `evaluateSizes` (od 70 % `blizi-se-limit`), minuty Actions soukromých rep
+  `evaluateMinutes` (`CHECK_TOKEN`, dřív `BILLING_TOKEN`; `dochazeji-minuty`, `placene-minuty`), první pondělí v měsíci
+  nastavení obou rep proti uloženým exportům `evaluateSettings` (`compareSnapshots`, `nastaveni-se-zmenilo`); hlášky `pageProblems`
   jsou kódy s anglickým i českým textem `problemText`):
   `scripts/check-health.mjs` + `scripts/lib/health.mjs`, spouští ji obsahové repo.
   Workflow kontroluje `actionlint` (job `workflows` v `check.yml`); po každé úpravě workflow ho spusť i lokálně.
-- Deploy workflow tohoto repa obrázky negeneruje, jen staví web z toho, co je commitnuté. Při selhání buildu nebo
+- Nastavení repa na GitHubu jako kontrolní seznam: `node scripts/repo-settings.mjs <vlastník/repo> --out …`
+  (`gh api`, jen čte; exporty v dokumentaci obsahového repa). Změna nastavení repa = export obnovit.
+- Deploy workflow tohoto repa obrázky negeneruje, jen staví web z `main` a obrázků větve, kterou jmenuje `binary.lock`
+  (`promote`, `unpack`; `contents: write`); „Kontrola kódu“ před buildem `unpack`. Při selhání buildu nebo
   nasazení job `notify` založí (nebo komentuje) issue „Nasazení webu selhalo“ přidělené vlastníkovi (e-mail), další
   úspěšné nasazení ho zavře; issue je veřejné, jen odkaz na běh a commit. Stejně „Kontrola kódu“ při pushi do `main`
   a u PR z `obsah/aktualizace` (jiné PR ne); obojí přes `.github/failure-issue.sh`.

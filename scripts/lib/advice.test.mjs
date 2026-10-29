@@ -354,9 +354,10 @@ test('consistencyAdvice: every mismatch once, with its code; a consistent work s
   };
   one({ featured: true, meta_pinterest: false }, 'featured-bez-pinu');
   one({ featured: true }, 'featured-bez-pinu');
-  one({ instagram: 'https://www.instagram.com/p/abc/', meta_instagram: false }, 'odkaz-instagram-bez-exportu');
   one({ fler: 'https://www.fler.cz/zbozi/x', status: 'sold' }, 'fler-neni-na-prodej');
-  one({ status: 'reserved', price: 2500 }, 'prodej-bez-fleru');
+  one({ status: 'reserved', price: 2500, meta_fler: true }, 'prodej-bez-fleru');
+  one({ meta_fler: true }, 'fler-bez-prodeje');
+  one({ meta_fler: true, meta_draft: true }, 'fler-bez-prodeje');
   one({ price: 2500 }, 'cena-neprodava');
   one({ status: 'gifted', price: 2500 }, 'cena-neprodava');
 });
@@ -367,6 +368,9 @@ test('consistencyAdvice: no advice where the attributes fit together', () => {
   assert.deepEqual(at({ featured: true, meta_pinterest: false, meta_draft: true }), [], 'a draft is not on the site yet');
   assert.deepEqual(at({ instagram: 'https://www.instagram.com/p/abc/', meta_instagram: true }), []);
   assert.deepEqual(at({ instagram: '', meta_instagram: false }), [], 'an empty link is no link');
+  assert.deepEqual(at({ instagram: 'https://www.instagram.com/p/abc/', meta_instagram: false }), [], 'posted: the photos are no longer needed');
+  assert.deepEqual(at({ status: 'available', price: 2500 }), [], 'on sale without Fler: sold directly');
+  assert.deepEqual(at({ status: 'available', price: 2500, meta_fler: true, fler: 'https://www.fler.cz/zbozi/x' }), []);
   assert.deepEqual(at({ status: 'available', price: 2500, fler: 'https://www.fler.cz/zbozi/x' }), []);
   assert.deepEqual(at({ status: 'sold', price: 2500 }), [], 'a sold work keeps its price as a record');
   assert.deepEqual(at({ status: 'available', price: 2500, meta_draft: true }), [], 'a draft is not on Fler yet');

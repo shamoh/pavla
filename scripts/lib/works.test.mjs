@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsMockups, wantsPinterest, workCodeHint, workKey, workShortPath, instagramGrid, orderDetails, parseGrid } from './works.mjs';
+import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsFler, makesFlerExports, makesInstagramExports, wantsMockups, wantsPinterest, workCodeHint, workKey, workShortPath, instagramGrid, orderDetails, parseGrid } from './works.mjs';
 
 /** Deterministic "random" returning the given values in a loop. */
 const sequence = (...values) => {
@@ -213,24 +213,33 @@ test('exportPattern matches every export of one work and nothing of another', ()
   for (const f of ['rano-k3f9a.png', 'rano-m7q2x.jpg', 'x-rano-k3f9a.jpg', 'rano-k3f9a-poznamka.jpg']) assert.ok(!re.test(f), f);
 });
 
-test('expectedExports: Instagram (when asked for) captions, scenes and details, Fler only on sale with original and mockups', () => {
+test('expectedExports: Instagram (when asked for) captions, scenes and details, Fler (when asked for) original and mockups', () => {
   const details = ['kvet'];
   const mockupScenes = ['police', 'pracovna'];
   const instagramVariants = ['-caption-papir', '-scene-stojan'];
-  assert.deepEqual(expectedExports({ status: 'available', details, mockupScenes, instagram: true, instagramVariants }), {
+  assert.deepEqual(expectedExports({ fler: true, details, mockupScenes, instagram: true, instagramVariants }), {
     instagram: ['-caption-papir', '-scene-stojan', '-detail-kvet'],
     fler: ['', '-mockup-police', '-mockup-pracovna'],
   });
-  assert.deepEqual(expectedExports({ status: 'reserved', details: [], mockupScenes: [], instagram: true, instagramVariants }), { instagram: instagramVariants, fler: [''] });
-  // Instagram only when asked for
-  assert.deepEqual(expectedExports({ status: 'available', details, mockupScenes, instagramVariants }).instagram, []);
-  for (const status of ['sold', 'not-for-sale', undefined]) {
-    assert.deepEqual(expectedExports({ status, details, mockupScenes }).fler, [], String(status));
-  }
-  // web images not generated yet: Fler exports of a work on sale are left alone
-  assert.equal(expectedExports({ status: 'available', details, mockupScenes: null }).fler, null);
+  assert.deepEqual(expectedExports({ fler: true, details: [], mockupScenes: [], instagram: true, instagramVariants }), { instagram: instagramVariants, fler: [''] });
+  // only when asked for
+  assert.deepEqual(expectedExports({ details, mockupScenes, instagramVariants }), { instagram: [], fler: [] });
+  // web images not generated yet: Fler exports are left alone
+  assert.equal(expectedExports({ fler: true, details, mockupScenes: null }).fler, null);
 });
 
+test('makesInstagramExports / makesFlerExports: asked for and no link yet; a price alone never makes Fler exports', () => {
+  assert.equal(makesInstagramExports({ meta_instagram: true }), true);
+  assert.equal(makesInstagramExports({ meta_instagram: true, instagram: 'https://www.instagram.com/p/abc/' }), false);
+  assert.equal(makesInstagramExports({ meta_instagram: true, instagram: '' }), true, 'an empty link is no link');
+  assert.equal(makesInstagramExports({ instagram: '' }), false);
+  assert.equal(makesFlerExports({ meta_fler: true, status: 'available', price: 1000 }), true);
+  assert.equal(makesFlerExports({ meta_fler: true, status: 'available', fler: 'https://www.fler.cz/zbozi/obraz-123' }), false);
+  assert.equal(makesFlerExports({ meta_fler: true, status: 'sold' }), false, 'only on sale');
+  assert.equal(makesFlerExports({ status: 'available', price: 1000 }), false);
+  assert.equal(wantsFler({ meta_fler: true }), true);
+  assert.equal(wantsFler({ meta_fler: 'true' }), false);
+});
 test('wantsMockups: only an explicit mockups: true, independent of the status; the flag is public', () => {
   assert.equal(wantsMockups({ mockups: true, status: 'not-for-sale' }), true);
   for (const data of [{ mockups: false, status: 'available' }, { status: 'available' }, { mockups: 'true' }, null]) {
