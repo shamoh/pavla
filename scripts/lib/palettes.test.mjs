@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {
-  AUTO, PALETTES, PALETTE_KEY, checkPalettes, contrast, paletteCss, paletteEventParams, paletteScript, paperBlend, pictureShadows, resolvePalette, tokenVar,
+  AUTO, PALETTES, PALETTE_KEY, checkPalettes, contrast, paletteCss, scopedPaletteCss, paletteEventParams, paletteScript, paperBlend, pictureShadows, resolvePalette, tokenVar,
 } from './palettes.mjs';
 
 const fake = (id, scheme, over = {}) => ({ id, label: id, scheme, colors: { ...PALETTES[0].colors, ...over }, picture: { shadow: 1, edge: null } });
@@ -42,6 +42,14 @@ test('tokenVar and paletteCss: one rule per palette, the system default without 
   assert.match(css, /^:root\{color-scheme:light;--paper:#f7f4ee;/);
   assert.match(css, /@media \(prefers-color-scheme: dark\)\{:root\{color-scheme:dark;--paper:#1c1a18;/);
   for (const p of PALETTES) assert.match(css, new RegExp(`:root\\[data-palette="${p.id}"\\]\\{color-scheme:${p.scheme};`));
+});
+
+test('scopedPaletteCss: every palette and auto (by the system) on one element of its own', () => {
+  const css = scopedPaletteCss('.cinema');
+  assert.match(css, /^\.cinema\[data-palette="auto"\]\{color-scheme:light;--paper:#f7f4ee;/);
+  assert.match(css, /@media \(prefers-color-scheme: dark\)\{\.cinema\[data-palette="auto"\]\{color-scheme:dark;--paper:#1c1a18;/);
+  for (const p of PALETTES) assert.match(css, new RegExp(`\\.cinema\\[data-palette="${p.id}"\\]\\{color-scheme:${p.scheme};.*--drop-deep:`));
+  assert.doesNotMatch(css, /:root/, 'never the page');
 });
 
 /** Runs the inline script against a tiny fake page; returns what it set. */

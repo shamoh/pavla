@@ -6,11 +6,12 @@
 // `collections`: slug → title and address of each collection of the listing, for "Kolekce: …" on top; the settings
 // are those of site.config.yaml `cinema` (cinemaSettings).
 import { config } from '../lib/site';
-import { cinemaSettings } from '../../scripts/lib/cinema.mjs';
+import { cinemaPalettes, cinemaSettings } from '../../scripts/lib/cinema.mjs';
+import { scopedPaletteCss } from '../../scripts/lib/palettes.mjs';
 interface Props { collections: Record<string, { title: string; url: string }> }
 const { collections } = Astro.props;
 ---
-<div class="cinema idle" id="cinema" hidden role="dialog" aria-modal="true" aria-label="Promítání obrazů" tabindex="-1" data-collections={JSON.stringify(collections)} data-settings={JSON.stringify(cinemaSettings(config))}>
+<div class="cinema idle" id="cinema" hidden role="dialog" aria-modal="true" aria-label="Promítání obrazů" tabindex="-1" data-collections={JSON.stringify(collections)} data-settings={JSON.stringify(cinemaSettings(config))} data-palettes={JSON.stringify(cinemaPalettes())}>
   {/* AVIF where the browser can, else WebP, else JPEG (cinemaSources) */}
   <figure class="cinema-layer current"><picture><source type="image/avif" /><source type="image/webp" /><img alt="" draggable="false" /></picture></figure>
   <figure class="cinema-layer"><picture><source type="image/avif" /><source type="image/webp" /><img alt="" draggable="false" /></picture></figure>
@@ -21,6 +22,7 @@ const { collections } = Astro.props;
       <span class="cinema-intervals" role="group" aria-label="Jak dlouho zůstane obraz"></span>
       <button type="button" class="cinema-pause"></button>
       <button type="button" class="cinema-captions"></button>
+      <button type="button" class="cinema-palette"></button>
       <button type="button" class="cinema-share" title="Odkaz na toto promítání (sdílet nebo zkopírovat)">Odkaz</button>
       <button type="button" class="cinema-fullscreen" title="Přes celou obrazovku" hidden>Celá obrazovka</button>
       <button type="button" class="cinema-close" aria-label="Zavřít (Esc)" title="Zavřít (Esc)">×</button>
@@ -31,13 +33,17 @@ const { collections } = Astro.props;
   <div class="cinema-toast" role="status" aria-live="polite"></div>
 </div>
 
+{/* the colours of the cinema, its own (data-palette on it, the default cinema.palette = Noc), apart from the pages */}
+<style is:inline set:html={scopedPaletteCss('.cinema')} />
 <style>
   /* Everything here is :global: the script moves the cinema to the end of <body> and makes its buttons. */
   :global(html.cinema-open) { overflow: hidden; }
   :global(.cinema) {
     position: fixed; inset: 0; height: 100dvh; z-index: 1000; background: var(--paper); color: var(--ink); overflow: hidden;
     /* sideways moves are the swipe of the cinema, not a scroll or a back gesture of the phone */
-    touch-action: pan-y pinch-zoom; user-select: none; -webkit-user-select: none; outline: none;
+    /* every move of one finger is the cinema's (sideways = next, up = collection, down = the work), never a scroll or
+       the pull-to-refresh of a phone; two fingers still zoom */
+    touch-action: pinch-zoom; overscroll-behavior: none; user-select: none; -webkit-user-select: none; outline: none;
   }
   :global(.cinema[hidden]) { display: none; }
   :global(.cinema.idle) { cursor: none; }

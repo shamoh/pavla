@@ -9,6 +9,7 @@
 import { ownText } from './rich-text.mjs';
 import { summarize } from './seo.mjs';
 import { VIEWER_TEXT_MAX } from './work-viewer.mjs';
+import { AUTO, PALETTES } from './palettes.mjs';
 
 /** The settings of the cinema when site.config.yaml leaves them out. */
 export const CINEMA_DEFAULTS = {
@@ -18,6 +19,7 @@ export const CINEMA_DEFAULTS = {
   controlsMs: 3000, // how long the controls stay after the last move of the mouse or a tap
   captionMs: 4000, // captions "for a while" (the default): how long the caption of a work stays before it fades
   marginPercent: 0, // the paper around a work, % of the shorter side of the screen
+  palette: 'noc', // the colours of the cinema (an id of PALETTES or auto), apart from those of the pages
   swipe: { fraction: 0.2, minPx: 50, flickPxPerMs: 0.5 }, // a step by a finger: far enough, or a quick flick
 };
 
@@ -32,6 +34,7 @@ export function cinemaSettings(config) {
   if (!s.intervals.includes(s.defaultInterval)) throw new Error('site.config.yaml cinema.defaultInterval: one of cinema.intervals');
   for (const k of ['fadeMs', 'controlsMs', 'captionMs']) if (!(Number.isInteger(s[k]) && s[k] >= 0)) throw new Error(`site.config.yaml cinema.${k}: whole milliseconds`);
   if (!(typeof s.marginPercent === 'number' && s.marginPercent >= 0 && s.marginPercent < 50)) throw new Error('site.config.yaml cinema.marginPercent: 0 to 50');
+  if (!cinemaPalettes().some((p) => p.id === s.palette)) throw new Error(`site.config.yaml cinema.palette: one of ${cinemaPalettes().map((p) => p.id).join(', ')}`);
   for (const k of ['fraction', 'minPx', 'flickPxPerMs']) if (!positive(s.swipe[k])) throw new Error(`site.config.yaml cinema.swipe.${k}: a positive number`);
   return { ...s, intervals: [...s.intervals].sort((a, b) => a - b) };
 }
@@ -54,8 +57,21 @@ export function cinemaCard(work, { url, base, size }) {
   };
 }
 
-/** Keys in localStorage: the captions picked (CAPTION_MODES) and the interval picked; nothing stored = the defaults. */
-export const CINEMA_STORAGE_KEYS = { captions: 'pavla.cinema.captions', interval: 'pavla.cinema.interval' };
+/**
+ * Keys in localStorage: the captions picked (CAPTION_MODES), the interval and the colours of the cinema (its own,
+ * never those of the pages); nothing stored = the defaults.
+ */
+export const CINEMA_STORAGE_KEYS = { captions: 'pavla.cinema.captions', interval: 'pavla.cinema.interval', palette: 'pavla.cinema.palette' };
+
+/** The colours the cinema offers, in the order of its switch: every palette of the site, then "by the system". */
+export function cinemaPalettes(palettes = PALETTES) {
+  return [...palettes.map((p) => ({ id: p.id, label: p.label })), { id: AUTO, label: 'podle systému' }];
+}
+
+/** The colours of the cinema: the remembered ones (`stored`) when offered, otherwise the default of the settings. */
+export function cinemaPalette(stored, settings, palettes = PALETTES) {
+  return cinemaPalettes(palettes).some((p) => p.id === stored) ? stored : settings.palette;
+}
 
 /**
  * The captions of the works, in the order of their switch: `timed` = each for captionMs, then it fades (the default),

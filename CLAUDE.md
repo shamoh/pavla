@@ -199,7 +199,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   Promítání („▶ Promítat“ za počtem děl a „▶“ v liště filtrů, každý výpis s filtry): `src/components/Cinema.astro`,
   `src/lib/cinema.ts`, logika `scripts/lib/cinema.mjs`, všechny časy a swipe v `site.config.yaml` `cinema` (`cinemaSettings`),
   data karet `data-cinema` (`cinemaCard`), obrázky `<picture>` AVIF/WebP/JPEG (`cinemaSources`); adresa `?…&cinema=<id>&interval=<s>` (výchozí se nepíše, `cinemaToParams`),
-  tlačítko přidá záznam historie; popisky na chvíli / stále / skryté (`CAPTION_MODES`) a čas v paměti
+  tlačítko přidá záznam historie; vlastní barvy promítání (výchozí `cinema.palette` Noc, `scopedPaletteCss`, paměť zvlášť
+  od webu); prst nahoru = kolekce, dolů = dílo (`vertical` ve follow-swipe); popisky na chvíli / stále / skryté (`CAPTION_MODES`) a čas v paměti
   (`CINEMA_STORAGE_KEYS`); události `cinema_open`, `cinema_close`. Tah prstem, který jde s prstem (promítání i prohlížeč
   fotek díla): `src/lib/follow-swipe.ts` + `dragStep`. Nové volby nejdřív v prototypu `promitani.html`.
   Velikost dlaždic `TILE_SIZES` s/m/l (`TILE_WIDTHS`, třídy `tiles-<velikost>`, tlačítka −/+ v `Pager.astro`): `?tile=` jen s

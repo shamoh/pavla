@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import YAML from 'yaml';
 import {
-  CAPTION_MODES, CINEMA_DEFAULTS, captionMode, cinemaCard, cinemaSources, cinemaFromParams, intervalLabel, cinemaSettings, cinemaToParams, dragStep, fitBox, imageWidth, shuffledOrder, wrapIndex,
+  CAPTION_MODES, CINEMA_DEFAULTS, captionMode, cinemaCard, cinemaPalette, cinemaPalettes, cinemaSources, cinemaFromParams, intervalLabel, cinemaSettings, cinemaToParams, dragStep, fitBox, imageWidth, shuffledOrder, wrapIndex,
 } from './cinema.mjs';
 
 const settings = cinemaSettings({});
@@ -19,6 +19,8 @@ test('cinemaSettings: the defaults, own values over them, bad values are errors;
   assert.throws(() => cinemaSettings({ cinema: { intervals: [2.5], defaultInterval: 2.5 } }), /intervals/);
   assert.throws(() => cinemaSettings({ cinema: { fadeMs: -1 } }), /fadeMs/);
   assert.throws(() => cinemaSettings({ cinema: { captionMs: 1.5 } }), /captionMs/);
+  assert.throws(() => cinemaSettings({ cinema: { palette: 'cerna' } }), /cinema.palette: one of papir, pergamen, noc, auto/);
+  assert.equal(cinemaSettings({ cinema: { palette: 'auto' } }).palette, 'auto');
   assert.throws(() => cinemaSettings({ cinema: { marginPercent: 60 } }), /marginPercent/);
   assert.throws(() => cinemaSettings({ cinema: { swipe: { fraction: 0 } } }), /swipe.fraction/);
   const config = YAML.parse(fs.readFileSync(new URL('../../site.config.yaml', import.meta.url), 'utf8'));
@@ -53,6 +55,15 @@ test('cinemaCard: what the cinema shows of a work, its text plain and short, a D
   });
   const bare = cinemaCard({ ...work, technique: '', text: 'DOPLNIT popisek', image: { width: 3, height: 1, widths: [480] } }, { url: '/', base: '/x', size: '' });
   assert.deepEqual([bare.meta, bare.text, bare.cutout, bare.ratio], ['2026', '', false, 0.3333]);
+});
+
+test('cinemaPalettes / cinemaPalette: every palette and auto; remembered colours of the cinema or its default (Noc)', () => {
+  assert.deepEqual(cinemaPalettes().map((p) => p.id), ['papir', 'pergamen', 'noc', 'auto']);
+  assert.equal(cinemaPalettes().at(-1).label, 'podle systému');
+  assert.equal(cinemaPalette(null, settings), 'noc');
+  assert.equal(cinemaPalette('auto', settings), 'auto');
+  assert.equal(cinemaPalette('pergamen', settings), 'pergamen');
+  assert.equal(cinemaPalette('cerna', settings), 'noc', 'no longer offered: the default');
 });
 
 test('shuffledOrder: every id once, the first one first; wrapIndex goes round', () => {

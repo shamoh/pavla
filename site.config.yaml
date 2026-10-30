@@ -202,6 +202,8 @@ cinema:
   controlsMs: 3000             # jak dlouho zůstane ovládání po pohybu myši nebo ťuknutí (ms)
   captionMs: 4000              # popisky „na chvíli“ (výchozí): jak dlouho zůstane popisek obrazu, než zmizí (ms)
   marginPercent: 0             # papír kolem obrazu, % kratší strany obrazovky
+  palette: noc                 # barvy promítání (papir, pergamen, noc, auto = podle systému), nezávisle na barvách webu;
+                               # návštěvník je v promítání přepne a pamatují se zvlášť (pavla.cinema.palette)
   swipe:                       # krok prstem: aspoň tento podíl šířky obrazovky, nebo rychlé švihnutí
     fraction: 0.2
     minPx: 50                  # kratší pohyb je ťuknutí

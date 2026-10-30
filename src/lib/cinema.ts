@@ -2,14 +2,18 @@
 // listing one after another over the whole screen (Fullscreen API; opened by a link only after the first click, tap
 // or key, a browser allows it no sooner; iPhone has none for pages, the window stays), in a random order, each for
 // its interval, fading into the next. No controls until the mouse moves or a tap; then the collection on top, the
-// intervals, pause, captions, link and ×, the arrows on the sides; the caption of the work over its bottom is a link
-// to its page; "Celá obrazovka" while the browser has not gone to the whole screen by itself (opened by a link).
-// The pictures are AVIF where the browser can (<picture>, cinemaSources), else WebP, else JPEG. Keys: ← → step, Space pause, ↓ the page of the work, ↑ its collection, Esc closes. A finger (or the
-// mouse) moves the work along and brings its neighbour (src/lib/follow-swipe.ts). The screen stays on while it runs
-// (Screen Wake Lock). Where it is in the address, the history and the statistics is up to the gallery (the hooks).
+// intervals, pause, captions, colours, link and ×, the arrows on the sides; the caption of the work over its bottom is
+// a link to its page. "Barvy: …" switches the colours of the cinema (its own, cinema.palette = Noc by default,
+// remembered apart from those of the pages); "Celá obrazovka" while the browser has not gone to the whole screen by
+// itself (opened by a link). The pictures are AVIF where the browser can (<picture>, cinemaSources), else WebP, else
+// JPEG. Keys: ← → step, Space pause, ↓ the page of the work, ↑ its collection, Esc closes. A finger (or the mouse)
+// moves the work along and brings its neighbour (src/lib/follow-swipe.ts); a finger up = its collection, down = the
+// page of the work, like ↑ ↓. The screen stays on while it runs (Screen Wake Lock). Where it is in the address, the
+// history and the statistics of the show is up to the gallery (the hooks).
 import { autoHide } from '../../scripts/lib/work-viewer.mjs';
-import { CINEMA_STORAGE_KEYS, captionMode, cinemaSources, fitBox, imageWidth, intervalLabel, shuffledOrder, wrapIndex } from '../../scripts/lib/cinema.mjs';
-import { SHARE_COPY, SHARE_NATIVE } from '../../scripts/lib/analytics.mjs';
+import { CINEMA_STORAGE_KEYS, captionMode, cinemaPalette, cinemaSources, fitBox, imageWidth, intervalLabel, shuffledOrder, wrapIndex } from '../../scripts/lib/cinema.mjs';
+import { EVENTS, SHARE_COPY, SHARE_NATIVE, trackEvent } from '../../scripts/lib/analytics.mjs';
+import { paletteEventParams } from '../../scripts/lib/palettes.mjs';
 import { copiedText } from '../../scripts/lib/share.mjs';
 import { followSwipe } from './follow-swipe';
 
@@ -19,7 +23,7 @@ export interface CinemaWork {
   base: string; widths: number[]; ratio: number; cutout: boolean;
 }
 export interface CinemaSettings {
-  intervals: number[]; defaultInterval: number; fadeMs: number; controlsMs: number; captionMs: number; marginPercent: number;
+  intervals: number[]; defaultInterval: number; fadeMs: number; controlsMs: number; captionMs: number; marginPercent: number; palette: string;
   swipe: { fraction: number; minPx: number; flickPxPerMs: number };
 }
 export interface CinemaHooks {
@@ -54,6 +58,9 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   const toast = $('.cinema-toast');
   const captionsStore = storage(CINEMA_STORAGE_KEYS.captions);
   const intervalStore = storage(CINEMA_STORAGE_KEYS.interval);
+  const paletteStore = storage(CINEMA_STORAGE_KEYS.palette);
+  const palettes: { id: string; label: string }[] = JSON.parse(root.dataset.palettes!);
+  const paletteButton = $<HTMLButtonElement>('.cinema-palette');
 
   type Show = { works: CinemaWork[]; order: string[]; index: number; interval: number; paused: boolean; full: boolean; shown: number; since: number };
   let show: Show | null = null;
@@ -137,6 +144,23 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     captionsStore.set(next === 'timed' ? null : next);
     applyCaptions();
   });
+  // ---- colours: the cinema's own (data-palette on it), remembered apart from the pages ----
+  function applyPalette() {
+    const id = cinemaPalette(paletteStore.get(), settings);
+    root.dataset.palette = id;
+    const label = palettes.find((p) => p.id === id)?.label ?? id;
+    paletteButton.textContent = `Barvy: ${label}`;
+    paletteButton.title = `Barvy promítání (${palettes.map((p) => p.label).join(', ')}), jen pro promítání`;
+  }
+  paletteButton.addEventListener('click', () => {
+    const at = palettes.findIndex((p) => p.id === root.dataset.palette);
+    const next = palettes[(at + 1) % palettes.length].id;
+    paletteStore.set(next === settings.palette ? null : next);
+    applyPalette();
+    trackEvent(EVENTS.palette, { ...paletteEventParams(next), source: 'cinema' });
+  });
+  applyPalette();
+
   function setCaption(w: CinemaWork) {
     $('.cinema-title').textContent = w.title;
     $('.cinema-meta').textContent = w.meta;
@@ -268,6 +292,21 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   function leave(reason: 'work' | 'collection') {
     if (show) hooks.closed(reason, { ms: Date.now() - show.since, shown: show.shown });
   }
+  // ↓ or a finger down: the page of the work; ↑ or a finger up: its collection (none: it says so); whether it leaves
+  function toWork() {
+    if (!show) return false;
+    leave('work');
+    location.assign(work(show.index).url);
+    return true;
+  }
+  function toItsCollection() {
+    if (!show) return false;
+    const c = collections[work(show.index).collection];
+    if (!c) { say('Obraz není v žádné kolekci'); return false; }
+    leave('collection');
+    location.assign(c.url);
+    return true;
+  }
   for (const el of root.querySelectorAll<HTMLElement>('.cinema-controls, .cinema-caption')) {
     el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') controls.hold(true); });
     el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') controls.hold(false); });
@@ -279,12 +318,11 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const target = e.target instanceof Element ? e.target : null;
     if (e.key === ' ' && !target?.closest('button, a')) { e.preventDefault(); togglePause(); fullscreen(); return; }
-    const w = work(show.index);
     const act: Record<string, () => void> = {
       ArrowLeft: () => step(-1),
       ArrowRight: () => step(1),
-      ArrowDown: () => { leave('work'); location.assign(w.url); },
-      ArrowUp: () => { const c = collections[w.collection]; if (c) { leave('collection'); location.assign(c.url); } },
+      ArrowDown: toWork,
+      ArrowUp: toItsCollection,
     };
     if (act[e.key]) { e.preventDefault(); act[e.key](); }
     fullscreen();
@@ -319,6 +357,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
       if (e.pointerType === 'mouse') controls.show(); else controls.toggle();
       fullscreen();
     },
+    vertical: (dir) => (dir > 0 ? toItsCollection() : toWork()),
     ignore: (e) => Boolean((e.target as HTMLElement).closest('button, a')),
     swipe: settings.swipe,
   });

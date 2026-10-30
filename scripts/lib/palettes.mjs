@@ -130,6 +130,20 @@ export function paletteCss(palettes = PALETTES) {
 }
 
 /**
+ * The palettes for one element of its own (`selector`, the cinema): `data-palette="<id>"` on it, `auto` by the system,
+ * whatever the page has. Its custom properties override those it would inherit from <html>.
+ */
+export function scopedPaletteCss(selector, palettes = PALETTES) {
+  const light = resolvePalette(AUTO, false, palettes);
+  const dark = resolvePalette(AUTO, true, palettes);
+  return [
+    `${selector}[data-palette="${AUTO}"]{${block(light)}}`,
+    `@media (prefers-color-scheme: dark){${selector}[data-palette="${AUTO}"]{${block(dark)}}}`,
+    ...palettes.map((p) => `${selector}[data-palette="${p.id}"]{${block(p)}}`),
+  ].join('\n');
+}
+
+/**
  * Inline script for <head>: reads the choice, sets data-palette (the palette shown) and data-palette-choice (what was
  * chosen, AUTO included) on <html>, the theme-color of the browser bar, follows the system while on AUTO, and offers
  * window.pavlaPalette.set(choice) to the switcher. Kept small and dependency free; it runs before anything else.
