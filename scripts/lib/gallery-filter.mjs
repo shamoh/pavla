@@ -223,13 +223,22 @@ export function pagingToParams(params, state) {
  * (only when the visitor picked a non-default one) and the view (only tiles) to URL search params.
  */
 export function stateToParams(state) {
+  const params = filtersToParams(state);
+  pagingToParams(params, state);
+  return viewToParams(params, state);
+}
+
+/**
+ * Only the filters of `state` as URL params, without the paging and the view: what decides which works are shown
+ * (the address of the cinema, where the view of the gallery means nothing).
+ */
+export function filtersToParams(state) {
   const params = new URLSearchParams();
   for (const key of FILTER_KEYS) {
     if (key === 'tag') state.tag.forEach((t) => params.append('tag', t));
     else if (state[key]) params.set(key, state[key]);
   }
-  pagingToParams(params, state);
-  return viewToParams(params, state);
+  return params;
 }
 
 /**

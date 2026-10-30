@@ -1,6 +1,7 @@
 ---
 import MessagePanel from '../components/MessagePanel.astro';
-import { analyticsId, messages, site, url, version, type ShareImage } from '../lib/site';
+import { analyticsId, hasWorksOnSale, messages, site, url, version, type ShareImage } from '../lib/site';
+import { saleShowPath } from '../../scripts/lib/cinema.mjs';
 import { gtagConfigScript, gtagSrc } from '../../scripts/lib/analytics.mjs';
 import { jsonLdText, summarize, verificationMeta } from '../../scripts/lib/seo.mjs';
 import { pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
@@ -31,6 +32,8 @@ const ogImage = image ? new URL(image.src, site.url).href : undefined;
 const canonical = new URL(Astro.url.pathname, site.url).href;
 // "Napište mi": the panel in the corner and the footer link (to the contact page without JavaScript).
 const withMessages = Boolean(messages.mode) && messagePanel;
+// "Obrazy na prodej": the show of the works on sale (the cinema of the gallery), only while there are some.
+const onSale = hasWorksOnSale();
 const messageContext = Astro.props.message !== undefined ? Astro.props.message : pageContext(Astro.url.pathname, title ?? site.title);
 ---
 <!doctype html>
@@ -100,6 +103,7 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
       </span>
       <span class="links">
         <PalettePicker />
+        {onSale && <a href={url(saleShowPath())} title="Obrazy na prodej jeden po druhém přes celou obrazovku">Obrazy na prodej</a>}
         {site.instagram && <a href={`https://www.instagram.com/${site.instagram}/`} rel="me">Instagram</a>}
         {site.pinterest && <a href={pinterestProfileLink(site.pinterest)} rel="me">Pinterest</a>}
         {site.fler && <a href={site.fler}>Fler</a>}

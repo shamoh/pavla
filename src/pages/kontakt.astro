@@ -2,18 +2,21 @@
 import Base from '../layouts/Base.astro';
 import Photo from '../components/Photo.astro';
 import MessageForm from '../components/MessageForm.astro';
-import { getPage, messages, site } from '../lib/site';
+import { getPage, hasWorksOnSale, messages, site, url } from '../lib/site';
+import { saleShowPath } from '../../scripts/lib/cinema.mjs';
 import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
 import { EVENTS } from '../../scripts/lib/analytics.mjs';
 import { mailtoLink } from '../../scripts/lib/messages.mjs';
 import { pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
 
-// Where to find me: e-mail, profiles and the shop (the ones set in site.config.yaml), in this order.
+// Where to find me: e-mail, profiles and the shop (the ones set in site.config.yaml), in this order; then the works on
+// sale shown one after another (the cinema of the gallery, saleShowPath) while there are some.
 const links = [
   site.email && { label: 'E-mail', href: mailtoLink(site.email, 'greeting', null), text: site.email, track: EVENTS.email },
   site.instagram && { label: 'Instagram', href: `https://www.instagram.com/${site.instagram}/`, text: `@${site.instagram}`, rel: 'me' },
   site.pinterest && { label: 'Pinterest', href: pinterestProfileLink(site.pinterest), text: 'Pavla na Pinterestu', rel: 'me' },
   site.fler && { label: 'Obchůdek', href: site.fler, text: 'Fler' },
+  hasWorksOnSale() && { label: 'Obrazy na prodej', href: url(saleShowPath()), text: 'Promítnout' },
 ].filter(Boolean) as { label: string; href: string; text: string; rel?: string; track?: string }[];
 // The texts are in stranky/kontakt.yaml of the content repository.
 const { description, paragraphs, locationLabel } = getPage('kontakt')!;

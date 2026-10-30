@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
 import { PIN_FILE } from '../../scripts/lib/pinterest.mjs';
-import { coverCandidates, dateYear, detailKey, formatSizeCm, isValidId, orderDetails, workKey } from '../../scripts/lib/works.mjs';
+import { coverCandidates, dateYear, detailKey, formatSizeCm, isOnSale, isValidId, orderDetails, workKey } from '../../scripts/lib/works.mjs';
 import { photoFocus } from '../../scripts/lib/photos.mjs';
 import { GENERIC_PAGES, PAGES } from '../../scripts/lib/pages.mjs';
 import { plainText, richParagraphs, searchDescription } from '../../scripts/lib/rich-text.mjs';
@@ -137,6 +137,9 @@ let cache: Work[] | null = null;
 let copiesCache: ReturnType<typeof readCopies> | null = null;
 /** The public copies of the descriptions (content/, a mirror of the content repository, scripts/lib/site-content.mjs). */
 const copies = () => (copiesCache ??= readCopies(dataRoot));
+
+/** Whether some published work is on sale: "Obrazy na prodej" (the footer, the contact page) only then. */
+export const hasWorksOnSale = () => getWorks().some((w) => isOnSale(w.status));
 
 /**
  * All published works (with generated images; drafts never reach this repository), newest first.

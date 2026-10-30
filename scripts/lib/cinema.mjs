@@ -10,6 +10,8 @@ import { ownText } from './rich-text.mjs';
 import { summarize } from './seo.mjs';
 import { VIEWER_TEXT_MAX } from './work-viewer.mjs';
 import { AUTO, PALETTES } from './palettes.mjs';
+import { isOnSale } from './works.mjs';
+import { galleryFilterPath } from './gallery-filter.mjs';
 
 /** The settings of the cinema when site.config.yaml leaves them out. */
 export const CINEMA_DEFAULTS = {
@@ -40,13 +42,16 @@ export function cinemaSettings(config) {
 }
 
 /**
- * What the cinema needs of a work, as data-cinema of its card (JSON): the title, "technique · size · year", its text
+ * What the cinema needs of a work, as data-cinema of its card (JSON): the title, whether it is the author's selection
+ * (`featured`), its sale (`sale`: the label of `statusLabel` for a work on sale, none otherwise), "technique · size · year", its text
  * (plain, shortened as in the viewer of a work), the address of its page (`url`), the folder of its pictures (`base`,
  * <base>/<width>.webp), their widths, the ratio height / width and whether it is cut out (transparent surroundings).
  */
-export function cinemaCard(work, { url, base, size }) {
+export function cinemaCard(work, { url, base, size, statusLabel }) {
   return {
     title: work.title,
+    featured: Boolean(work.featured),
+    sale: isOnSale(work.status) ? statusLabel[work.status] : '',
     meta: [work.technique, size, work.year].filter(Boolean).join(' · '),
     text: summarize(ownText(work.text), VIEWER_TEXT_MAX),
     url,
@@ -62,6 +67,44 @@ export function cinemaCard(work, { url, base, size }) {
  * never those of the pages); nothing stored = the defaults.
  */
 export const CINEMA_STORAGE_KEYS = { captions: 'pavla.cinema.captions', interval: 'pavla.cinema.interval', palette: 'pavla.cinema.palette' };
+
+/**
+ * `?cinema=random`: the show starts with any work of the listing ("▶ Promítat", links); once a work is shown the address
+ * names it instead.
+ */
+export const CINEMA_RANDOM = 'random';
+
+/** The work a show opened by `id` starts with (null = any). */
+export const cinemaFirst = (id) => (id === CINEMA_RANDOM ? null : id);
+
+/** The show of the works on sale (the footer "Obrazy na prodej"), without the site base (url() adds it). */
+export const saleShowPath = () => `${galleryFilterPath('status', 'unsold')}&cinema=${CINEMA_RANDOM}`;
+
+/**
+ * The hint on the first opening of the cinema in a tab (sessionStorage `CINEMA_HINT_KEY`, every new tab once more):
+ * the controls and this line for `HINT_MS`. `touch` = a finger is the pointer (a phone, a tablet); `fullscreen` = opened
+ * by a link where the browser could go to the whole screen: it may only after a click, a tap or a key, so the hint says
+ * so (fullscreenHint; any key does, F is the one known from video players).
+ */
+export const CINEMA_HINT_KEY = 'pavla.cinema.hinted';
+export const HINT_MS = 4000;
+export function cinemaHint(touch, fullscreen = false) {
+  const moves = touch ? 'tahem do stran listovat · dolů obraz · nahoru kolekce' : '← → listovat · ↓ obraz · ↑ kolekce';
+  return fullscreen ? `${moves} · ${fullscreenHint(touch)}` : moves;
+}
+
+/** How to go to the whole screen; alone on every opening by a link once the whole hint was shown in the tab. */
+export function fullscreenHint(touch) {
+  return touch ? 'ťuknutí = celá obrazovka' : 'klik nebo F = celá obrazovka';
+}
+
+/**
+ * How long the work shown stays when the visitor moves the mouse or swipes with `leftMs` to go: at least the shortest
+ * interval offered, never less than it had (someone looking at it should not see it go at once).
+ */
+export function lingerMs(leftMs, settings) {
+  return Math.max(leftMs, Math.min(...settings.intervals) * 1000);
+}
 
 /** The colours the cinema offers, in the order of its switch: every palette of the site, then "by the system". */
 export function cinemaPalettes(palettes = PALETTES) {

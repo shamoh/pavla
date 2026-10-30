@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import YAML from 'yaml';
 import {
-  CAPTION_MODES, CINEMA_DEFAULTS, captionMode, cinemaCard, cinemaPalette, cinemaPalettes, cinemaSources, cinemaFromParams, intervalLabel, cinemaSettings, cinemaToParams, dragStep, fitBox, imageWidth, shuffledOrder, wrapIndex,
+  CAPTION_MODES, CINEMA_DEFAULTS, CINEMA_STORAGE_KEYS, CINEMA_RANDOM, CINEMA_HINT_KEY, cinemaHint, fullscreenHint, cinemaFirst, lingerMs, saleShowPath, captionMode, cinemaCard, cinemaPalette, cinemaPalettes, cinemaSources, cinemaFromParams, intervalLabel, cinemaSettings, cinemaToParams, dragStep, fitBox, imageWidth, shuffledOrder, wrapIndex,
 } from './cinema.mjs';
 
 const settings = cinemaSettings({});
@@ -47,14 +47,19 @@ test('captionMode / intervalLabel: the remembered mode or "for a while"; seconds
   assert.deepEqual([5, 15, 60, 90, 180].map(intervalLabel), ['5 s', '15 s', '1 min', '90 s', '3 min']);
 });
 
-test('cinemaCard: what the cinema shows of a work, its text plain and short, a DOPLNIT text none', () => {
-  const work = { title: 'Mlha', technique: 'akvarel', year: 2026, text: 'Ráno nad **rybníkem**.', image: { width: 300, height: 210, widths: [480, 960], transparent: true } };
-  assert.deepEqual(cinemaCard(work, { url: '/tvorba/2026/mlha-a1b2c/', base: '/tvorba/2026/mlha-a1b2c', size: '30 × 21 cm' }), {
-    title: 'Mlha', meta: 'akvarel · 30 × 21 cm · 2026', text: 'Ráno nad rybníkem.', url: '/tvorba/2026/mlha-a1b2c/',
+test('cinemaCard: what the cinema shows of a work, its text plain and short, a DOPLNIT text none, the sale only on sale', () => {
+  const statusLabel = { available: 'K prodeji', reserved: 'Rezervováno', sold: 'V soukromé sbírce', gifted: 'V soukromé sbírce', 'not-for-sale': 'Není na prodej' };
+  const work = { title: 'Mlha', featured: true, status: 'available', technique: 'akvarel', year: 2026, text: 'Ráno nad **rybníkem**.', image: { width: 300, height: 210, widths: [480, 960], transparent: true } };
+  assert.deepEqual(cinemaCard(work, { url: '/tvorba/2026/mlha-a1b2c/', base: '/tvorba/2026/mlha-a1b2c', size: '30 × 21 cm', statusLabel }), {
+    title: 'Mlha', featured: true, sale: 'K prodeji', meta: 'akvarel · 30 × 21 cm · 2026', text: 'Ráno nad rybníkem.', url: '/tvorba/2026/mlha-a1b2c/',
     base: '/tvorba/2026/mlha-a1b2c', widths: [480, 960], ratio: 0.7, cutout: true,
   });
-  const bare = cinemaCard({ ...work, technique: '', text: 'DOPLNIT popisek', image: { width: 3, height: 1, widths: [480] } }, { url: '/', base: '/x', size: '' });
+  const bare = cinemaCard({ ...work, technique: '', text: 'DOPLNIT popisek', image: { width: 3, height: 1, widths: [480] } }, { url: '/', base: '/x', size: '', statusLabel });
   assert.deepEqual([bare.meta, bare.text, bare.cutout, bare.ratio], ['2026', '', false, 0.3333]);
+  const card = (status, featured) => cinemaCard({ ...work, status, featured }, { url: '/', base: '/x', size: '', statusLabel });
+  assert.equal(card('reserved').sale, 'Rezervováno');
+  for (const status of ['sold', 'gifted', 'not-for-sale', undefined]) assert.equal(card(status).sale, '', `${status}: nothing`);
+  assert.equal(card('available', undefined).featured, false);
 });
 
 test('cinemaPalettes / cinemaPalette: every palette and auto; remembered colours of the cinema or its default (Noc)', () => {
@@ -100,4 +105,32 @@ test('fitBox / imageWidth: as large as fits with the margin; the smallest sharp 
   assert.deepEqual(cinemaSources('/tvorba/2026/mlha-a1b2c', 1600), {
     avif: '/tvorba/2026/mlha-a1b2c/1600.avif', webp: '/tvorba/2026/mlha-a1b2c/1600.webp', jpg: '/tvorba/2026/mlha-a1b2c/1600.jpg',
   });
+});
+
+test('CINEMA_RANDOM / cinemaFirst / saleShowPath: ?cinema=random starts anywhere; the show of the works on sale', () => {
+  assert.equal(cinemaFirst(CINEMA_RANDOM), null);
+  assert.equal(cinemaFirst('a1b2c'), 'a1b2c');
+  assert.equal(cinemaFirst(null), null);
+  assert.equal(saleShowPath(), '/tvorba/?status=unsold&cinema=random');
+  const params = new URLSearchParams(saleShowPath().split('?')[1]);
+  assert.equal(cinemaFromParams(params, settings).id, CINEMA_RANDOM, 'opens the show');
+  assert.equal(cinemaToParams(new URLSearchParams('status=unsold'), { id: CINEMA_RANDOM, interval: 15 }, settings).toString(), 'status=unsold&cinema=random');
+});
+
+test('lingerMs: a move or a swipe keeps the work at least the shortest interval, never shortens', () => {
+  assert.equal(lingerMs(1200, settings), 5000);
+  assert.equal(lingerMs(0, settings), 5000);
+  assert.equal(lingerMs(-300, settings), 5000, 'overdue (still loading)');
+  assert.equal(lingerMs(9000, settings), 9000);
+  assert.equal(lingerMs(100, cinemaSettings({ cinema: { intervals: [20, 8], defaultInterval: 8 } })), 8000);
+});
+
+test('cinemaHint: keys with a mouse and a keyboard, swipes with a finger; its own key in the tab', () => {
+  assert.equal(cinemaHint(false), '← → listovat · ↓ obraz · ↑ kolekce');
+  assert.match(cinemaHint(true), /^tahem do stran listovat · dolů obraz · nahoru kolekce$/);
+  assert.equal(cinemaHint(false, true), '← → listovat · ↓ obraz · ↑ kolekce · klik nebo F = celá obrazovka', 'opened by a link');
+  assert.equal(fullscreenHint(false), 'klik nebo F = celá obrazovka');
+  assert.equal(fullscreenHint(true), 'ťuknutí = celá obrazovka');
+  assert.equal(cinemaHint(true, true), 'tahem do stran listovat · dolů obraz · nahoru kolekce · ťuknutí = celá obrazovka');
+  assert.ok(!Object.values(CINEMA_STORAGE_KEYS).includes(CINEMA_HINT_KEY), 'not among the remembered settings');
 });

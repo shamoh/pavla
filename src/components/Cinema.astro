@@ -1,7 +1,7 @@
 ---
 // The cinema of a listing of works (src/lib/cinema.ts runs it, WorkGallery.astro opens it with "▶ Promítat"): over
 // the whole screen, the paper of the palette, the work as large as fits, its caption over its bottom (one line: the
-// title and "technique · size · year" on the left, the text on the right ending with "…"), the controls only after a
+// title with ★ of the author's selection, "technique · size · year" and "K prodeji" of a work on sale on the left, the text on the right ending with "…"), the controls only after a
 // move of the mouse or a tap. Hidden until opened; the script moves it to the end of <body>.
 // `collections`: slug → title and address of each collection of the listing, for "Kolekce: …" on top; the settings
 // are those of site.config.yaml `cinema` (cinemaSettings).
@@ -15,7 +15,7 @@ const { collections } = Astro.props;
   {/* AVIF where the browser can, else WebP, else JPEG (cinemaSources) */}
   <figure class="cinema-layer current"><picture><source type="image/avif" /><source type="image/webp" /><img alt="" draggable="false" /></picture></figure>
   <figure class="cinema-layer"><picture><source type="image/avif" /><source type="image/webp" /><img alt="" draggable="false" /></picture></figure>
-  <a class="cinema-caption"><span class="cinema-title"></span><span class="cinema-meta"></span><span class="cinema-text"></span></a>
+  <a class="cinema-caption"><span class="cinema-title"></span><span class="cinema-star" role="img" title="Výběr autorky" aria-label="Výběr autorky" hidden>★</span><span class="cinema-meta"></span><span class="cinema-sale"></span><span class="cinema-text"></span></a>
   <div class="cinema-top cinema-controls">
     <a class="cinema-collection" hidden>Kolekce: <span class="cinema-collection-title"></span></a>
     <div class="cinema-buttons">
@@ -69,10 +69,15 @@ const { collections } = Astro.props;
   :global(.cinema-meta) { flex: none; white-space: nowrap; font-size: 1.15rem; color: var(--ink-soft); }
   :global(.cinema-text) { flex: 1 1 0; min-width: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1.28rem; }
   :global(.cinema-meta:empty) { display: none; }
+  /* the author's selection right after the title, the sale ("K prodeji", "Rezervováno") after the details; a work not
+     on sale says nothing; both only with the caption */
+  :global(.cinema-star) { flex: none; margin-left: -0.9em; font-size: 1rem; align-self: flex-start; padding-top: 0.2em; }
+  :global(.cinema-star[hidden]) { display: none; }
+  :global(.cinema-sale) { flex: none; align-self: center; white-space: nowrap; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border: 1px solid var(--line); border-radius: 99px; color: var(--ink-soft); }
+  :global(.cinema-sale:empty) { display: none; }
   :global(.cinema-caption:hover .cinema-title) { text-decoration: underline; text-underline-offset: 4px; }
   /* Captions "for a while" fade after cinema.captionMs, "never" not at all; with the controls they are always there. */
-  :global(.cinema.cap-off .cinema-caption), :global(.cinema.cap-timed.cap-faded .cinema-caption) { opacity: 0; pointer-events: none; transition: opacity 1.2s; }
-  :global(.cinema.show .cinema-caption) { opacity: 1; pointer-events: auto; transition: opacity .4s; }
+  :global(.cinema.cap-off:not(.show) .cinema-caption), :global(.cinema.cap-timed.cap-faded:not(.show) .cinema-caption) { opacity: 0; pointer-events: none; transition: opacity 1.2s; }
 
   /* The controls: only after a move of the mouse or a tap, then they fade (cinema.controlsMs). */
   :global(.cinema-controls) { opacity: 0; pointer-events: none; transition: opacity .4s; }
@@ -112,7 +117,9 @@ const { collections } = Astro.props;
     :global(.cinema-top) { flex-direction: column; align-items: stretch; }
     :global(.cinema-buttons) { margin-left: 0; justify-content: center; }
     :global(.cinema-title) { font-size: 1.35rem; }
-    :global(.cinema-meta) { font-size: 0.9rem; }
+    /* a phone: the title keeps its room, the details end with "…" first (the sale chip stays whole) */
+    :global(.cinema-title) { flex: 0 0 auto; max-width: 55%; }
+    :global(.cinema-meta) { font-size: 0.9rem; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     :global(.cinema-text) { font-size: 1rem; }
   }
   @media (prefers-reduced-motion: reduce) {

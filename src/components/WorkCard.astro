@@ -12,7 +12,7 @@ import { cinemaCard } from '../../scripts/lib/cinema.mjs';
 // `cinema`: the card carries what the cinema of its listing shows (data-cinema, cinemaCard; the gallery only).
 interface Props { work: Work; marks?: ReturnType<typeof tileMarks>; eager?: boolean; hidden?: boolean; sizes?: string; cinema?: boolean }
 const { work, marks, eager, hidden, sizes = CARD_IMAGE_SIZES, cinema = false } = Astro.props;
-const cinemaData = cinema ? JSON.stringify(cinemaCard(work, { url: workUrl(work), base: url(workImagePath(work)), size: formatSize(work.size_cm) ?? '' })) : undefined;
+const cinemaData = cinema ? JSON.stringify(cinemaCard(work, { url: workUrl(work), base: url(workImagePath(work)), size: formatSize(work.size_cm) ?? '', statusLabel })) : undefined;
 // Marks over the picture, shown only with tiles (site.config.yaml home/gallery.tileMarks): with big pictures the title has the star
 // and the card the status chip. Decorative: the tooltip of the picture and the hidden texts tell the same.
 const shownMarks = marks ? workMarks({ featured: Boolean(work.featured), onSale: isOnSale(work.status) }, marks) : [];

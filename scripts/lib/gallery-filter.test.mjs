@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ALL_PAGES, FEATURED_ON, NO_COLLECTION, czechOrder, galleryFilterPath, galleryLinkTitle,
   countStatuses, matchesFilters, offersOption, statusOptions, yearFilterOptions, pageAfterFilterChange, pageLinks, pageSizeOf, pageSizeToRemember, paginate, rememberedPageSize,
-  DEFAULT_TILE_PAGE_SIZES, DEFAULT_TILE_SIZE, TILE_SIZES, TILE_WIDTHS, stepTileSize, tileSizeFromParams, tileSizeToRemember, DEFAULT_VIEW, PAGE_SIZE_STORAGE_KEY, TILE_PAGE_SIZE_STORAGE_KEY, VIEWS, pageSizeStorageKey, viewPageSizes, withView, facetChoices, facetDisplay, viewFromParams, viewToParams, viewToRemember, CARD_IMAGE_SIZES, TILE_PHONE_COLUMNS, viewImageSizes, facetValues, pagingFromParams, pagingToParams, sortTags, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
+  DEFAULT_TILE_PAGE_SIZES, DEFAULT_TILE_SIZE, TILE_SIZES, TILE_WIDTHS, stepTileSize, tileSizeFromParams, tileSizeToRemember, DEFAULT_VIEW, PAGE_SIZE_STORAGE_KEY, TILE_PAGE_SIZE_STORAGE_KEY, VIEWS, pageSizeStorageKey, viewPageSizes, withView, facetChoices, facetDisplay, viewFromParams, viewToParams, viewToRemember, CARD_IMAGE_SIZES, TILE_PHONE_COLUMNS, viewImageSizes, facetValues, pagingFromParams, pagingToParams, sortTags, filtersToParams, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, withPageSize,
 } from './gallery-filter.mjs';
 
 const work = (status, extra = {}) => ({ tags: ['krajina'], technique: 'akvarel', year: '2026', collection: '', status, ...extra });
@@ -452,4 +452,11 @@ test('galleryLinkTitle: one wording for the links to fellow works', () => {
   assert.equal(galleryLinkTitle('collection', 'Plenér Šumava 2026'), 'Všechny obrazy z kolekce Plenér Šumava 2026');
   assert.equal(galleryLinkTitle('year', '2026'), 'Všechny obrazy z roku 2026');
   assert.equal(galleryLinkTitle('all'), 'Všechny obrazy');
+});
+
+test('filtersToParams: only the filters (the address of the cinema), never the view, the tile size or the paging', () => {
+  const state = stateFromParams(new URLSearchParams('tag=voda&tag=les&status=unsold&page=3&perPage=24&view=tiles&tile=l'));
+  assert.equal(filtersToParams(state).toString(), 'tag=les&tag=voda&status=unsold');
+  assert.match(stateToParams(state).toString(), /page=3/, 'the gallery keeps its paging');
+  assert.equal(filtersToParams(stateFromParams(new URLSearchParams('view=tiles'))).toString(), '');
 });

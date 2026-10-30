@@ -11,7 +11,7 @@
 // page of the work, like ↑ ↓. The screen stays on while it runs (Screen Wake Lock). Where it is in the address, the
 // history and the statistics of the show is up to the gallery (the hooks).
 import { autoHide } from '../../scripts/lib/work-viewer.mjs';
-import { CINEMA_STORAGE_KEYS, captionMode, cinemaPalette, cinemaSources, fitBox, imageWidth, intervalLabel, shuffledOrder, wrapIndex } from '../../scripts/lib/cinema.mjs';
+import { CINEMA_STORAGE_KEYS, captionMode, cinemaPalette, cinemaSources, fitBox, imageWidth, intervalLabel, lingerMs, CINEMA_HINT_KEY, HINT_MS, cinemaHint, fullscreenHint, shuffledOrder, wrapIndex } from '../../scripts/lib/cinema.mjs';
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, trackEvent } from '../../scripts/lib/analytics.mjs';
 import { paletteEventParams } from '../../scripts/lib/palettes.mjs';
 import { copiedText } from '../../scripts/lib/share.mjs';
@@ -19,7 +19,7 @@ import { followSwipe } from './follow-swipe';
 
 /** A work of the show: its id and collection (slug, '' without) with the data-cinema of its card (cinemaCard). */
 export interface CinemaWork {
-  id: string; collection: string; title: string; meta: string; text: string; url: string;
+  id: string; collection: string; title: string; featured: boolean; sale: string; meta: string; text: string; url: string;
   base: string; widths: number[]; ratio: number; cutout: boolean;
 }
 export interface CinemaSettings {
@@ -68,6 +68,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   let cur = 0; // the layer shown
   let seq = 0; // the newest change of the picture; an older one still loading gives way
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let due = 0; // when the timer moves on to the next work (0 = no timer running)
   let inerted: HTMLElement[] = [];
   const work = (i: number) => byId.get(show!.order[wrapIndex(i, show!.order.length)])!;
   const fadeMs = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? Math.min(settings.fadeMs, 200) : settings.fadeMs);
@@ -77,11 +78,26 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     root.classList.toggle('idle', !visible);
   }, { ms: settings.controlsMs });
 
-  function say(text: string) {
+  function say(text: string, ms = 2200) {
     toast.textContent = text;
     toast.classList.add('on');
     clearTimeout((say as any).timer);
-    (say as any).timer = setTimeout(() => toast.classList.remove('on'), 2200);
+    (say as any).timer = setTimeout(() => toast.classList.remove('on'), ms);
+  }
+  // the first opening in this tab: the controls and how to move on (cinemaHint) for a while, once; opened by a link
+  // there is no whole screen yet (a browser allows it only after a click, a tap or a key): how to get it, every time
+  function hint(method: 'button' | 'link') {
+    const touch = matchMedia('(pointer: coarse)').matches;
+    const fullscreenLater = method === 'link' && Boolean(root.requestFullscreen) && !document.fullscreenElement;
+    let first = false;
+    try {
+      first = !sessionStorage.getItem(CINEMA_HINT_KEY);
+      sessionStorage.setItem(CINEMA_HINT_KEY, '1');
+    } catch { /* storage blocked: no hint rather than one every time */ }
+    if (first) {
+      controls.show();
+      say(cinemaHint(touch, fullscreenLater), HINT_MS);
+    } else if (fullscreenLater) say(fullscreenHint(touch), HINT_MS);
   }
 
   // ---- pictures ----
@@ -163,7 +179,9 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
 
   function setCaption(w: CinemaWork) {
     $('.cinema-title').textContent = w.title;
+    $('.cinema-star').hidden = !w.featured;
     $('.cinema-meta').textContent = w.meta;
+    $('.cinema-sale').textContent = w.sale;
     $('.cinema-text').textContent = w.text;
     caption.href = w.url;
     caption.title = w.text;
@@ -177,9 +195,23 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   }
 
   // ---- the show ----
-  function schedule() {
+  function schedule(ms = show ? show.interval * 1000 : 0) {
     clearTimeout(timer);
-    if (show && !show.paused) timer = setTimeout(() => step(1), show.interval * 1000);
+    due = 0;
+    if (!show || show.paused) return;
+    due = Date.now() + ms;
+    timer = setTimeout(() => { due = 0; step(1); }, ms);
+  }
+  /** Stops the timer; the time it had left. */
+  function stopTimer() {
+    clearTimeout(timer);
+    const left = due ? due - Date.now() : 0;
+    due = 0;
+    return left;
+  }
+  // a move of the mouse or a tap: someone is looking, the work stays at least the shortest interval (lingerMs)
+  function linger() {
+    if (due && due - Date.now() < lingerMs(0, settings)) schedule(lingerMs(due - Date.now(), settings));
   }
   /** Shown: work `index` in the layer `layer` (after a fade or a swipe). */
   function landed(index: number) {
@@ -194,7 +226,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   async function step(delta: number) {
     if (!show) return;
     const mine = ++seq;
-    clearTimeout(timer);
+    stopTimer();
     const index = wrapIndex(show.index + delta, show.order.length);
     const next = layers[1 - cur];
     await paint(next, work(index));
@@ -213,6 +245,13 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     root.requestFullscreen().then(() => { if (show) show.full = true; renderFullscreen(); }).catch(() => {});
   }
   // "Celá obrazovka": only while the browser could go to the whole screen and has not (iPhone has no such thing)
+  // F (f or F, any layout that types it): in and out of the whole screen; out by F the show goes on in the window
+  function toggleFullscreen() {
+    if (!show) return;
+    if (!document.fullscreenElement) { fullscreen(); return; }
+    show.full = false;
+    document.exitFullscreen().catch(() => {});
+  }
   const fullscreenButton = $<HTMLButtonElement>('.cinema-fullscreen');
   const renderFullscreen = () => { fullscreenButton.hidden = !root.requestFullscreen || Boolean(document.fullscreenElement); };
   fullscreenButton.addEventListener('click', fullscreen);
@@ -311,13 +350,14 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') controls.hold(true); });
     el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') controls.hold(false); });
   }
-  root.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' && show) controls.show(); });
+  root.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' && show) { controls.show(); linger(); } });
   document.addEventListener('keydown', (e) => {
     if (!show) return;
     if (e.key === 'Escape') { close('esc'); return; }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const target = e.target instanceof Element ? e.target : null;
     if (e.key === ' ' && !target?.closest('button, a')) { e.preventDefault(); togglePause(); fullscreen(); return; }
+    if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); return; }
     const act: Record<string, () => void> = {
       ArrowLeft: () => step(-1),
       ArrowRight: () => step(1),
@@ -328,6 +368,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     fullscreen();
   });
 
+  let swipeLeft = 0; // the time the timer had left when a swipe began
   followSwipe({
     surface: root,
     shown: () => layers[cur],
@@ -350,9 +391,11 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
       cur = 1 - cur;
       landed(wrapIndex(show!.index + dir, show!.order.length));
     },
-    settled: (near) => { if (near) near.style.opacity = ''; schedule(); },
-    started: () => clearTimeout(timer),
+    // a swipe that slid back: the time left, at least the shortest interval
+    settled: (near) => { if (near) near.style.opacity = ''; schedule(lingerMs(swipeLeft, settings)); },
+    started: () => { swipeLeft = stopTimer(); },
     tapped: (e) => {
+      linger();
       // a tap: the controls on, the next tap off (a mouse shows them by moving)
       if (e.pointerType === 'mouse') controls.show(); else controls.toggle();
       fullscreen();
@@ -392,6 +435,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     preload(-1);
     lock();
     schedule();
+    hint(method);
     return true;
   }
   function close(reason: 'button' | 'esc' | 'back') {
@@ -399,7 +443,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     const run = { ms: Date.now() - show.since, shown: show.shown };
     show = null;
     seq++;
-    clearTimeout(timer);
+    stopTimer();
     clearTimeout(captionTimer);
     root.hidden = true;
     document.documentElement.classList.remove('cinema-open');
