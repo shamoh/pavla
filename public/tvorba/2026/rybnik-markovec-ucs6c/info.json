@@ -1,0 +1,79 @@
+{
+  "width": 3609,
+  "height": 2617,
+  "widths": [
+    480,
+    960,
+    1600,
+    2400
+  ],
+  "dominant": "rgb(168,184,232)",
+  "transparent": true,
+  "mockups": [
+    {
+      "scene": "obyvak-vecer",
+      "label": "Obývák večer",
+      "width": 1771,
+      "height": 1181,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(88,56,8)"
+    },
+    {
+      "scene": "loznice",
+      "label": "Ložnice",
+      "width": 1426,
+      "height": 951,
+      "widths": [
+        480,
+        960,
+        1426
+      ],
+      "dominant": "rgb(56,40,8)"
+    },
+    {
+      "scene": "predsin",
+      "label": "Předsíň",
+      "width": 2400,
+      "height": 1578,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(216,216,200)"
+    }
+  ],
+  "details": [
+    {
+      "name": "scenerie",
+      "width": 4080,
+      "height": 3060,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(168,216,248)"
+    }
+  ],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-cca6f703.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 186463,
+    "file": "pin-83b309bf.jpg",
+    "feed": true,
+    "feedFile": "pin-3a54a876.jpg",
+    "feedVersion": 1
+  },
+  "fingerprint": "8e8b5cda2dc2f069"
+}

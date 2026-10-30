@@ -1,0 +1,39 @@
+{
+  "width": 1644,
+  "height": 456,
+  "widths": [
+    480,
+    960,
+    1600,
+    1644
+  ],
+  "dominant": "rgb(88,72,72)",
+  "transparent": true,
+  "mockups": [],
+  "details": [
+    {
+      "name": "matrice",
+      "width": 1861,
+      "height": 625,
+      "widths": [
+        480,
+        960,
+        1600,
+        1861
+      ],
+      "dominant": "rgb(104,104,104)"
+    }
+  ],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-bcd8367f.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 99269,
+    "file": "pin-3d5c2eb6.jpg"
+  },
+  "fingerprint": "1ad6fafdec1cadd5"
+}

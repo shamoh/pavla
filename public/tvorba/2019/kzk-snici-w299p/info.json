@@ -1,0 +1,54 @@
+{
+  "width": 3640,
+  "height": 2589,
+  "widths": [
+    480,
+    960,
+    1600,
+    2400
+  ],
+  "dominant": "rgb(120,152,168)",
+  "transparent": true,
+  "mockups": [],
+  "details": [
+    {
+      "name": "snici-kzk-fotka",
+      "width": 4160,
+      "height": 3120,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(184,136,88)"
+    },
+    {
+      "name": "snici-kzk-paleta-fotka",
+      "width": 4160,
+      "height": 3120,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(184,136,88)"
+    }
+  ],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-68d1c336.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 148149,
+    "file": "pin-66ada78b.jpg",
+    "feed": true,
+    "feedFile": "pin-66ada78b.jpg",
+    "feedVersion": 1
+  },
+  "fingerprint": "5e48c5394663a39e"
+}

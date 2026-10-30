@@ -1,0 +1,79 @@
+{
+  "width": 3084,
+  "height": 2281,
+  "widths": [
+    480,
+    960,
+    1600,
+    2400
+  ],
+  "dominant": "rgb(136,152,168)",
+  "transparent": true,
+  "mockups": [
+    {
+      "scene": "obyvak-svetly",
+      "label": "Světlý obývák",
+      "width": 2253,
+      "height": 1267,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(232,232,232)"
+    },
+    {
+      "scene": "komoda",
+      "label": "Komoda",
+      "width": 2218,
+      "height": 1479,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(200,200,200)"
+    },
+    {
+      "scene": "predsin",
+      "label": "Předsíň",
+      "width": 2400,
+      "height": 1578,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(216,216,200)"
+    }
+  ],
+  "details": [
+    {
+      "name": "scenerie",
+      "width": 4080,
+      "height": 3060,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(152,136,120)"
+    }
+  ],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-eb2a5ddb.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 172175,
+    "file": "pin-4a951915.jpg",
+    "feed": true,
+    "feedFile": "pin-e2d5d272.jpg",
+    "feedVersion": 1
+  },
+  "fingerprint": "b8e4c0467896ccd0"
+}
