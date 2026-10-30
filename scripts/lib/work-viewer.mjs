@@ -92,3 +92,21 @@ export function autoHide(setVisible, { ms = CONTROLS_MS, setTimer = setTimeout, 
   };
   return controls;
 }
+
+/**
+ * `sizes` of a picture in the viewer of `ratio` = width / height: as large as its CSS lets it be (.viewer img), in the
+ * window 96 % of the width and 90 % of the height, in the whole screen (`full`) all of it.
+ */
+export function viewerSizes(ratio, full = false) {
+  return full ? `min(100vw, ${Math.round(ratio * 100)}vh)` : `min(96vw, ${Math.round(ratio * 90)}vh)`;
+}
+
+/**
+ * Where ← or → on the page of a work leads: 'prev' / 'next' (the links at the bottom of the page), or null when the key
+ * is someone else's: another key, with a modifier (the browser's shortcuts), while typing (`editable`: a form field)
+ * or while a dialog is open (the viewer steps through its own pictures).
+ */
+export function pageArrow({ key, altKey, ctrlKey, metaKey, shiftKey, editable, dialogOpen }) {
+  if (altKey || ctrlKey || metaKey || shiftKey || editable || dialogOpen) return null;
+  return key === 'ArrowLeft' ? 'prev' : key === 'ArrowRight' ? 'next' : null;
+}

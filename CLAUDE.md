@@ -202,7 +202,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   tlačítka jsou odkazy `…&cinema=random` (`CINEMA_RANDOM`: libovolné první dílo; klik otevře na místě a přidá záznam historie), patička a Kontakt „Obrazy na prodej“ = `saleShowPath` (`hasWorksOnSale`); první otevření v kartě nápověda `cinemaHint` (`sessionStorage`), otevření odkazem pokaždé `fullscreenHint`; F přepíná celou obrazovku (ven = promítání dál v okně, Esc zavře); ? a „?“ v ovládání nápověda znovu; pohyb myši, ťuknutí a vrácený tah drží dílo aspoň nejkratší čas (`lingerMs`); s ovládáním vždy i popisek; vlastní barvy promítání (výchozí `cinema.palette` Noc, `scopedPaletteCss`, paměť zvlášť
   od webu); prst nahoru = kolekce, dolů = dílo (`vertical` ve follow-swipe); popisky na chvíli / stále / skryté (`CAPTION_MODES`) a čas v paměti
   (`CINEMA_STORAGE_KEYS`); události `cinema_open`, `cinema_close`. Tah prstem, který jde s prstem (promítání i prohlížeč
-  fotek díla): `src/lib/follow-swipe.ts` + `dragStep`. Nové volby nejdřív v prototypu `promitani.html`.
+  fotek díla): `src/lib/follow-swipe.ts` + `dragStep`. Prohlížeč fotek díla: barvy jen z palety, 96 % × 90 % okna
+  (`viewerSizes`), F / tlačítko = celá obrazovka (`div.stage`, dialog sám nesmí; Esc v ní nezavře prohlížeč); ← → na
+  stránce díla = předchozí / další dílo (`pageArrow`, `data-page-arrow`). Nové volby nejdřív v prototypu `promitani.html`.
   Velikost dlaždic `TILE_SIZES` s/m/l (`TILE_WIDTHS`, třídy `tiles-<velikost>`, tlačítka −/+ v `Pager.astro`): `?tile=` jen s
   `view=tiles` a nevýchozí, paměť `pavla.gallery.tileSize`, odkaz má přednost.
 - **Atributy popisů (dílo, kolekce, fotka) jsou jen v `scripts/lib/schema.mjs`**: pořadí, výchozí hodnota kostry,

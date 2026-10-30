@@ -172,6 +172,8 @@ const story = textHtml(work.text);
     </div>
   </article>
   <dialog class="viewer" id="viewer" aria-label="Prohlížení obrázků" data-views={JSON.stringify(views)} data-work-id={work.id} data-work-title={work.title} data-swipe={JSON.stringify(cinemaSettings(config).swipe)}>
+    {/* everything of the viewer: what goes to the whole screen (a dialog itself cannot) */}
+    <div class="stage">
     <figure>
       <div class="frame">
         <img id="viewer-img" alt="" draggable="false" />
@@ -186,25 +188,44 @@ const story = textHtml(work.text);
         <button type="button" class="nav next" data-step="1" aria-label="Další">›</button>
       </>
     )}
+    {/* the whole screen (F): shown only where the browser can (an iPhone cannot for pages) */}
+    <button type="button" class="full-toggle" aria-label="Celá obrazovka (F)" title="Celá obrazovka (F)" hidden>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" /></svg>
+    </button>
     <button type="button" class="close" aria-label="Zavřít">×</button>
+    </div>
   </dialog>
   <nav class="pager" aria-label="Další díla">
-    {prev ? <a href={workUrl(prev)}>← {prev.title}</a> : <span />}
-    {next && <a href={workUrl(next)}>{next.title} →</a>}
+    {prev ? <a href={workUrl(prev)} data-page-arrow="prev" aria-keyshortcuts="ArrowLeft" title="Předchozí obraz (←)">← {prev.title}</a> : <span />}
+    {next && <a href={workUrl(next)} data-page-arrow="next" aria-keyshortcuts="ArrowRight" title="Další obraz (→)">{next.title} →</a>}
   </nav>
 </Base>
 <script>
   import { applyCopyButtons, applyShareButtons } from '../../../lib/share-button';
+  import { pageArrow } from '../../../../scripts/lib/work-viewer.mjs';
   applyShareButtons();
   applyCopyButtons();
+  // ← / → on the page: the previous / next work, as the links at the bottom (pageArrow: never while typing, with a
+  // modifier or in an open dialog; ↑ ↓ keep scrolling the page)
+  document.addEventListener('keydown', (e) => {
+    if (e.defaultPrevented) return;
+    const target = e.target instanceof Element ? e.target : null;
+    const editable = Boolean(target?.closest('input, textarea, select, [contenteditable]'));
+    const dir = pageArrow({ key: e.key, altKey: e.altKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey, editable, dialogOpen: Boolean(document.querySelector('dialog[open]')) });
+    const link = dir && document.querySelector<HTMLAnchorElement>(`[data-page-arrow="${dir}"]`);
+    if (!link) return;
+    e.preventDefault();
+    location.assign(link.href);
+  });
 </script>
 <script>
-  // Viewer: a dialog (not fullscreen) that steps through the work, its details and its mockups.
+  // Viewer: a dialog over the page that steps through the work, its details and its mockups; F (or its button) takes
+  // it to the whole screen and back, with the caption over the bottom of the picture as in the cinema.
   // Without JavaScript the links simply open the largest image.
   // The picture shown is in the address (#obraz, #detail-<name>, #mockup-<scene>; scripts/lib/work-viewer.mjs):
   // opening adds a history entry (Back closes the viewer), stepping replaces it, a link with it opens that picture,
   // an unknown one is dropped from the address.
-  import { autoHide, hashId, viewIndex } from '../../../../scripts/lib/work-viewer.mjs';
+  import { autoHide, hashId, viewIndex, viewerSizes } from '../../../../scripts/lib/work-viewer.mjs';
   import { followSwipe } from '../../../lib/follow-swipe';
   import { EVENTS, imageEventParams, trackEvent } from '../../../../scripts/lib/analytics.mjs';
   type View = { id: string; label: string; src: string; srcset: string; width: number; height: number; cutout: boolean };
@@ -269,7 +290,7 @@ const story = textHtml(work.text);
   /** Picture `v` in the image element `el`. */
   function fill(el: HTMLImageElement, v: View) {
     el.srcset = v.srcset;
-    el.sizes = `min(92vw, ${Math.round((v.width / v.height) * 80)}vh)`;
+    el.sizes = viewerSizes(v.width / v.height, isFull());
     el.src = v.src;
     el.width = v.width;
     el.height = v.height;
@@ -308,11 +329,36 @@ const story = textHtml(work.text);
   // A click on the backdrop (outside the figure) closes the viewer; not the click that ends a swipe (follow-swipe
   // swallows that one).
   dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) dialog.close();
+    if (e.target === dialog || e.target === dialog.querySelector('.stage')) dialog.close();
   });
   dialog.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight') step(current + 1, 'key');
     if (e.key === 'ArrowLeft') step(current - 1, 'key');
+    if ((e.key === 'f' || e.key === 'F') && !(e.metaKey || e.ctrlKey || e.altKey)) { e.preventDefault(); toggleFull(); }
+  });
+  // The whole screen: F or the button, in and out; Esc in it only leaves it (the browser does), the viewer stays.
+  const fullButton = dialog.querySelector<HTMLButtonElement>('.full-toggle')!;
+  const stage = dialog.querySelector<HTMLElement>('.stage')!;
+  const isFull = () => document.fullscreenElement === stage;
+  let leftFull = 0; // when the whole screen was left: the Esc that left it does not close the viewer too
+  fullButton.hidden = !(stage.requestFullscreen && document.fullscreenEnabled);
+  function toggleFull() {
+    if (fullButton.hidden) return;
+    if (isFull()) document.exitFullscreen().catch(() => {});
+    else stage.requestFullscreen().catch(() => {});
+  }
+  fullButton.addEventListener('click', toggleFull);
+  document.addEventListener('fullscreenchange', () => {
+    const full = isFull();
+    if (!full) leftFull = Date.now();
+    dialog.classList.toggle('full', full);
+    const name = full ? 'Zpět do okna (F)' : 'Celá obrazovka (F)';
+    fullButton.setAttribute('aria-label', name);
+    fullButton.title = name;
+    if (dialog.open) fill(img, views[current]); // the sizes of the new space
+  });
+  dialog.addEventListener('cancel', (e) => {
+    if (isFull() || Date.now() - leftFull < 500) e.preventDefault();
   });
   // Swipe (a finger or the mouse): the picture moves with it and its neighbour slides in beside it (to the left =
   // next); let go far enough or with a flick and it steps (src/lib/follow-swipe.ts, site.config.yaml cinema.swipe),
@@ -345,6 +391,7 @@ const story = textHtml(work.text);
   // or (opened by a link) the same entry without the hash.
   dialog.addEventListener('close', () => {
     controls.hide();
+    if (isFull()) document.exitFullscreen().catch(() => {});
     if (closingFromHistory) {
       closingFromHistory = false;
       return;
@@ -424,25 +471,47 @@ const story = textHtml(work.text);
   .mockup-grid.wide { grid-template-columns: 1fr; }
   .mockup-grid a { display: flex; flex-direction: column; gap: 6px; text-decoration: none; font-size: 0.82rem; cursor: zoom-in; }
   /* pan-y: sideways moves are the swipe of the viewer, not a scroll or a back gesture of the phone; pinch zoom stays */
-  .viewer { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96vh; overflow: visible; touch-action: pan-y pinch-zoom; }
-  .viewer::backdrop { background: rgba(30, 26, 22, .82); }
+  /* Over the whole window in the paper of the palette (every colour from the palette): the picture as large as fits,
+     the caption under it; in the whole screen (.full, F) the picture fills it and the caption lies over its bottom. */
+  .viewer {
+    border: 0; padding: 0; overflow: hidden; touch-action: pan-y pinch-zoom; color: var(--ink);
+    background: color-mix(in srgb, var(--paper) 94%, transparent);
+  }
+  .viewer[open] { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; }
+  .viewer::backdrop { background: transparent; }
+  .viewer .stage { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .viewer.full .stage { background: var(--paper); }
   .viewer figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-  .viewer img { display: block; max-width: 92vw; max-height: 82vh; width: auto; height: auto; box-shadow: 0 24px 64px rgba(0,0,0,.45); background: var(--paper-2); }
-  .viewer img.cutout { box-shadow: none; background: none; filter: drop-shadow(0 18px 28px rgba(0,0,0,.45)); }
+  /* as large as the screen allows with a little room around it: 96 % of the width, 90 % of the height, and always
+     room for the caption under it (a low screen: a phone on its side) */
+  .viewer img { display: block; max-width: 96vw; max-height: min(90dvh, 100dvh - 64px); width: auto; height: auto; box-shadow: var(--shadow-deep); background: var(--paper-2); }
+  .viewer img.cutout { box-shadow: none; background: none; filter: var(--drop-deep); }
+  .viewer.full img { max-width: 100vw; max-height: 100dvh; }
   /* the neighbour of a swipe: over the picture's place, moved aside by the script */
   .viewer .frame { position: relative; }
   .viewer img.side { position: absolute; inset: 0; margin: auto; }
   .viewer img[hidden] { display: none; }
-  .viewer figcaption { color: #f3eee6; font-size: 0.9rem; text-align: center; }
-  .viewer figcaption .muted { color: #bdb3a6; margin-left: 8px; }
-  .viewer button { position: fixed; background: rgba(0,0,0,.35); color: #fff; border: 0; cursor: pointer; font: 300 2.4rem/1 var(--sans); width: 52px; height: 52px; border-radius: 50%; }
-  .viewer button:hover { background: rgba(0,0,0,.6); }
+  .viewer figcaption { color: var(--ink); font-size: 0.9rem; text-align: center; padding: 0 16px; }
+  .viewer figcaption .muted { color: var(--ink-soft); margin-left: 8px; }
+  .viewer.full figcaption {
+    position: absolute; left: 0; right: 0; bottom: 0; text-align: left; font-size: 1.05rem;
+    padding: 40px max(16px, 3vw) calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(to top, color-mix(in srgb, var(--paper) 70%, transparent) 45%, transparent);
+  }
+  .viewer button {
+    position: fixed; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+    color: var(--ink); background: color-mix(in srgb, var(--paper) 75%, transparent); border: 1px solid var(--line);
+    font: 300 2.4rem/1 var(--sans); width: 52px; height: 52px; border-radius: 50%;
+  }
+  .viewer button:hover { background: var(--paper); border-color: var(--ink); }
+  .viewer button[hidden] { display: none; }
   .viewer .nav { transition: opacity .4s; }
   .viewer.idle .nav { opacity: 0; }
   @media (prefers-reduced-motion: reduce) { .viewer .nav { transition: none; } }
   .viewer .prev { left: 16px; top: 50%; transform: translateY(-50%); }
   .viewer .next { right: 16px; top: 50%; transform: translateY(-50%); }
   .viewer .close { right: 16px; top: 16px; font-size: 2rem; }
+  .viewer .full-toggle { right: 80px; top: 16px; }
   .pager { display: flex; justify-content: space-between; gap: 16px; margin-top: 72px; padding-top: 24px; border-top: 1px solid var(--line); font-family: var(--serif); font-size: 1.2rem; }
   .pager a { text-decoration: none; }
   @media (max-width: 900px) {

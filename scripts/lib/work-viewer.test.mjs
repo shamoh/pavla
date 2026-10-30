@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { viewKind, autoHide, CONTROLS_MS, VIEWER_TEXT_MAX, workCaption, hashId, MAIN_VIEW, MOCKUPS_NOTE, mockupCaption, mockupsHeading, viewId, viewIndex } from './work-viewer.mjs';
+import { viewKind, autoHide, pageArrow, viewerSizes, CONTROLS_MS, VIEWER_TEXT_MAX, workCaption, hashId, MAIN_VIEW, MOCKUPS_NOTE, mockupCaption, mockupsHeading, viewId, viewIndex } from './work-viewer.mjs';
 
 test('viewId names the work, its details and its mockups', () => {
   assert.equal(viewId({ kind: 'main' }), MAIN_VIEW);
@@ -107,4 +107,21 @@ test('viewKind tells the work, a detail and a mockup apart by the id', () => {
   assert.equal(viewKind('detail-oci'), 'detail');
   assert.equal(viewKind('mockup-obyvak-vecer'), 'mockup');
   for (const id of ['', undefined, 'detail-', 'mockup', 'oci', 'viewer']) assert.equal(viewKind(id), '', String(id));
+});
+
+test('viewerSizes: as large as the CSS of the viewer, in the window and in the whole screen', () => {
+  assert.equal(viewerSizes(1.5), 'min(96vw, 135vh)');
+  assert.equal(viewerSizes(1.5, true), 'min(100vw, 150vh)');
+  assert.equal(viewerSizes(2 / 3), 'min(96vw, 60vh)');
+});
+
+test('pageArrow: ← / → to the previous / next work, never with a modifier, while typing or in a dialog', () => {
+  const key = (k, more = {}) => pageArrow({ key: k, ...more });
+  assert.equal(key('ArrowLeft'), 'prev');
+  assert.equal(key('ArrowRight'), 'next');
+  assert.equal(key('ArrowUp'), null, 'up and down scroll the page');
+  assert.equal(key('ArrowDown'), null);
+  for (const mod of ['altKey', 'ctrlKey', 'metaKey', 'shiftKey']) assert.equal(key('ArrowLeft', { [mod]: true }), null, mod);
+  assert.equal(key('ArrowRight', { editable: true }), null, 'typing a message');
+  assert.equal(key('ArrowRight', { dialogOpen: true }), null, 'the viewer steps itself');
 });
