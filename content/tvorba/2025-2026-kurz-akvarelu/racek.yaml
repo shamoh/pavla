@@ -2,7 +2,7 @@
 id: np8v8
 date: 2025-11-26
 details:
-  detail-racka: Racek z blízka.
+  racek: Racek z blízka.
 featured: true
 mockups: true
 size_cm:
@@ -18,4 +18,4 @@ technique: akvarel
 text: |
   Racek na pláži, malováno podle fotky.
 title: Racek
-derived_modified: 2026-10-29
+derived_modified: 2026-10-30
