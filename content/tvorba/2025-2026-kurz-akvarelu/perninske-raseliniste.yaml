@@ -2,8 +2,8 @@
 id: ubwwd
 date: 2025-11-12
 details:
-  detail-brizy: Bříza z blízka.
-  detail-rybnika: Bližší pohled na rybník.
+  briza: Bříza z blízka.
+  raseliniste: Bližší pohled na rašeliniště.
 featured: true
 mockups: true
 price: 1500
@@ -20,4 +20,4 @@ technique: akvarel
 text: |
   Perninské rašeliniště, malováno podle vlastní fotky.
 title: Perninské rašeliniště
-derived_modified: 2026-10-29
+derived_modified: 2026-10-30
