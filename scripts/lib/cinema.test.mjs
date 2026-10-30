@@ -128,9 +128,11 @@ test('lingerMs: a move or a swipe keeps the work at least the shortest interval,
 test('cinemaHint: keys with a mouse and a keyboard, swipes with a finger; its own key in the tab', () => {
   assert.equal(cinemaHint(false), '← → listovat · ↓ obraz · ↑ kolekce');
   assert.match(cinemaHint(true), /^tahem do stran listovat · dolů obraz · nahoru kolekce$/);
-  assert.equal(cinemaHint(false, true), '← → listovat · ↓ obraz · ↑ kolekce · klik nebo F = celá obrazovka', 'opened by a link');
+  assert.equal(cinemaHint(false, 'window'), '← → listovat · ↓ obraz · ↑ kolekce · klik nebo F = celá obrazovka', 'not in the whole screen yet');
+  assert.equal(cinemaHint(false, 'full'), '← → listovat · ↓ obraz · ↑ kolekce · F = celá obrazovka / okno', 'in it: how to leave it');
+  assert.equal(cinemaHint(true, 'full'), cinemaHint(true), 'a finger has no F');
   assert.equal(fullscreenHint(false), 'klik nebo F = celá obrazovka');
   assert.equal(fullscreenHint(true), 'ťuknutí = celá obrazovka');
-  assert.equal(cinemaHint(true, true), 'tahem do stran listovat · dolů obraz · nahoru kolekce · ťuknutí = celá obrazovka');
+  assert.equal(cinemaHint(true, 'window'), 'tahem do stran listovat · dolů obraz · nahoru kolekce · ťuknutí = celá obrazovka');
   assert.ok(!Object.values(CINEMA_STORAGE_KEYS).includes(CINEMA_HINT_KEY), 'not among the remembered settings');
 });

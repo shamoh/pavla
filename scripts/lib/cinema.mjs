@@ -82,15 +82,18 @@ export const saleShowPath = () => `${galleryFilterPath('status', 'unsold')}&cine
 
 /**
  * The hint on the first opening of the cinema in a tab (sessionStorage `CINEMA_HINT_KEY`, every new tab once more):
- * the controls and this line for `HINT_MS`. `touch` = a finger is the pointer (a phone, a tablet); `fullscreen` = opened
- * by a link where the browser could go to the whole screen: it may only after a click, a tap or a key, so the hint says
- * so (fullscreenHint; any key does, F is the one known from video players).
+ * the controls and this line for `HINT_MS`; again by the key ? or "?" in the controls. `touch` = a finger is the pointer
+ * (a phone, a tablet). `screen` = where the show is, where the browser can go to the whole screen: `window` = not yet
+ * (it may only after a click, a tap or a key: fullscreenHint; any key does, F is the one known from video players),
+ * `full` = in it (with keys: F leaves it, the show goes on in the window); none = nothing about it.
  */
 export const CINEMA_HINT_KEY = 'pavla.cinema.hinted';
 export const HINT_MS = 4000;
-export function cinemaHint(touch, fullscreen = false) {
+export function cinemaHint(touch, screen = '') {
   const moves = touch ? 'tahem do stran listovat · dolů obraz · nahoru kolekce' : '← → listovat · ↓ obraz · ↑ kolekce';
-  return fullscreen ? `${moves} · ${fullscreenHint(touch)}` : moves;
+  if (screen === 'window') return `${moves} · ${fullscreenHint(touch)}`;
+  if (screen === 'full' && !touch) return `${moves} · F = celá obrazovka / okno`;
+  return moves;
 }
 
 /** How to go to the whole screen; alone on every opening by a link once the whole hint was shown in the tab. */

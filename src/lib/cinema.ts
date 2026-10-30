@@ -86,18 +86,23 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   }
   // the first opening in this tab: the controls and how to move on (cinemaHint) for a while, once; opened by a link
   // there is no whole screen yet (a browser allows it only after a click, a tap or a key): how to get it, every time
+  const touch = () => matchMedia('(pointer: coarse)').matches;
+  const fullscreenLater = () => Boolean(root.requestFullscreen) && !document.fullscreenElement;
+  // where the show is for the hint (cinemaHint): `assumeFull` = it has just asked for the whole screen (the button)
+  const screen = (assumeFull = false) => (!root.requestFullscreen ? '' : document.fullscreenElement || assumeFull ? 'full' : 'window');
   function hint(method: 'button' | 'link') {
-    const touch = matchMedia('(pointer: coarse)').matches;
-    const fullscreenLater = method === 'link' && Boolean(root.requestFullscreen) && !document.fullscreenElement;
     let first = false;
     try {
       first = !sessionStorage.getItem(CINEMA_HINT_KEY);
       sessionStorage.setItem(CINEMA_HINT_KEY, '1');
     } catch { /* storage blocked: no hint rather than one every time */ }
-    if (first) {
-      controls.show();
-      say(cinemaHint(touch, fullscreenLater), HINT_MS);
-    } else if (fullscreenLater) say(fullscreenHint(touch), HINT_MS);
+    if (first) showHint(method === 'button');
+    else if (method === 'link' && fullscreenLater()) say(fullscreenHint(touch()), HINT_MS);
+  }
+  /** The whole hint with the controls, with how to go to the whole screen or out of it (cinemaHint). */
+  function showHint(assumeFull = false) {
+    controls.show();
+    say(cinemaHint(touch(), screen(assumeFull)), HINT_MS);
   }
 
   // ---- pictures ----
@@ -322,6 +327,8 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     if (ok) hooks.shared(SHARE_COPY);
     say(copiedText(ok, url, 'Odkaz'));
   });
+  // "?" in the controls (a phone has no keys) and the key ?: the hint again
+  $('.cinema-help').addEventListener('click', () => showHint());
   $('.cinema-close').addEventListener('click', () => close('button'));
   $('.cinema-prev').addEventListener('click', () => step(-1));
   $('.cinema-next').addEventListener('click', () => step(1));
@@ -358,6 +365,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     const target = e.target instanceof Element ? e.target : null;
     if (e.key === ' ' && !target?.closest('button, a')) { e.preventDefault(); togglePause(); fullscreen(); return; }
     if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); return; }
+    if (e.key === '?') { e.preventDefault(); showHint(); return; }
     const act: Record<string, () => void> = {
       ArrowLeft: () => step(-1),
       ArrowRight: () => step(1),
