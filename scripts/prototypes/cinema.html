@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="cs" data-palette="papir">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Promítání – prototyp</title>
+<!-- The cinema of a listing of works (scripts/lib/cinema.mjs): the works one after another in the whole screen, in a
+     random order, fading into each other; the controls only after a move of the mouse or a tap. The palettes are those
+     of the site (filled in below), the calculations the functions of the site copied as text. -->
+<style id="palettes"></style>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Work Sans', system-ui, sans-serif; }
+  html[data-cinema] { overflow: hidden; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: .9rem; }
+  header h1 { font: 500 1.3rem 'Cormorant Garamond', Georgia, serif; margin: 0; }
+  header select, header button, #tuning select, #tuning button { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 3px; padding: 4px 8px; cursor: pointer; }
+  header button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  #play { background: var(--ink); color: var(--paper); border-color: var(--ink); padding: 5px 14px; }
+  #play[hidden] { display: none; }
+  .muted { color: var(--ink-soft); }
+  #tuning { position: fixed; z-index: 20; right: 12px; top: 64px; width: min(360px, calc(100vw - 24px)); max-height: calc(100vh - 80px); overflow: auto; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-deep); padding: 12px 14px; font-size: .85rem; }
+  #tuning[hidden] { display: none; }
+  #tuning h2 { font: 500 1.1rem 'Cormorant Garamond', Georgia, serif; margin: 0 0 8px; }
+  #tuning label { display: grid; grid-template-columns: 1fr 64px; gap: 2px 8px; margin: 8px 0; align-items: center; }
+  #tuning label input[type='range'], #tuning label select { grid-column: 1 / -1; width: 100%; }
+  #tuning output { text-align: right; font-variant-numeric: tabular-nums; }
+  #tuning p { margin: 8px 0; }
+  main { padding: 16px; columns: 6 160px; column-gap: 12px; }
+  main img { display: block; width: 100%; height: auto; margin-bottom: 12px; break-inside: avoid; box-shadow: var(--shadow-soft); background: var(--paper-2); }
+  main img.cutout { box-shadow: none; background: none; filter: var(--drop-soft); }
+
+  /* The cinema: the whole window (the whole screen with the Fullscreen API), paper of the palette, nothing else. */
+  .cinema { position: fixed; inset: 0; height: 100dvh; z-index: 50; background: var(--paper); color: var(--ink); overflow: hidden;
+    touch-action: pan-y pinch-zoom; user-select: none; -webkit-user-select: none; --cap-alpha: .75; --cap-size: 1; }
+  .cinema[hidden] { display: none; }
+  .cinema.idle { cursor: none; }
+  .layer { position: absolute; inset: 0; margin: 0; display: flex; align-items: center; justify-content: center; opacity: 0; will-change: opacity, transform; }
+  .layer.current { opacity: 1; }
+  .layer img { display: block; box-shadow: var(--shadow-deep); background: var(--paper-2); -webkit-user-drag: none; }
+  .layer img.cutout { box-shadow: none; background: none; filter: var(--drop-deep); }
+  /* The caption over the bottom of the work: a link to its page. */
+  .caption { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;
+    padding: 14px max(16px, 5vw) calc(14px + env(safe-area-inset-bottom)); color: var(--ink); text-decoration: none; transition: opacity .4s; }
+  .caption.band { background: color-mix(in srgb, var(--paper) calc(var(--cap-alpha) * 100%), transparent); }
+  .caption.fade { padding-top: 56px; background: linear-gradient(to top, color-mix(in srgb, var(--paper) calc(var(--cap-alpha) * 100%), transparent) 45%, transparent); }
+  .caption .c-title { font: 500 calc(var(--cap-size) * 1.6rem)/1.15 'Cormorant Garamond', Georgia, serif; }
+  .caption .c-line { font-size: calc(var(--cap-size) * .85rem); color: var(--ink-soft); }
+  .caption .c-text { font-size: calc(var(--cap-size) * .95rem); max-width: 70ch; line-height: 1.4; }
+  .caption .c-text:empty { display: none; }
+  .caption:hover .c-title { text-decoration: underline; text-underline-offset: 4px; }
+  /* One line (captionLayout): the title and the details never wrap, the text gets the rest and ends with "…". */
+  .caption.one-line { flex-direction: row; align-items: baseline; justify-content: flex-start; gap: 0 1.2em; text-align: left; padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+  .caption.one-line.fade { padding-top: 36px; }
+  .caption.one-line .c-title { font-size: calc(var(--cap-size) * 1.3rem); }
+  .caption.one-line .c-title, .caption.one-line .c-line { flex: none; white-space: nowrap; }
+  .caption.one-line .c-title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .caption.one-line .c-text { flex: 1 1 0; min-width: 0; max-width: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .caption.row .c-text { text-align: right; }
+  .caption.row-meta-right .c-text { order: 1; text-align: center; }
+  .caption.row-meta-right .c-line { order: 2; }
+  .caption.row-center { justify-content: center; gap: 0 .6em; }
+  .caption.row-center .c-text { flex: 0 1 auto; }
+  .caption.row-center .c-line:not(:empty)::before, .caption.row-center .c-text::before { content: '·'; margin-right: .6em; color: var(--ink-soft); }
+  .caption.row-no-text .c-text { display: none; }
+  .caption .c-line:empty { display: none; }
+  /* Captions (CAPTION_MODES): "for a while" fade after captionMs, "never" not at all; with the controls always there. */
+  .cinema.cap-off .caption, .cinema.cap-timed.cap-faded .caption { opacity: 0; pointer-events: none; transition: opacity 1.2s; }
+  .cinema.show .caption { opacity: 1; pointer-events: auto; transition: opacity .4s; }
+  /* The controls: only after a move of the mouse or a tap, then they fade (controlsMs). */
+  .controls { opacity: 0; pointer-events: none; transition: opacity .4s; }
+  .cinema.show .controls { opacity: 1; pointer-events: auto; }
+  .top { position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: calc(12px + env(safe-area-inset-top)) max(12px, 2vw) 12px; background: linear-gradient(to bottom, color-mix(in srgb, var(--paper) 80%, transparent), transparent); }
+  .collection { color: var(--ink); text-decoration: none; font-size: .95rem; }
+  .collection span { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.25rem; }
+  .collection:hover span { text-decoration: underline; text-underline-offset: 4px; }
+  .collection[hidden] { display: inline; visibility: hidden; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: auto; }
+  .cinema button { font: inherit; font-size: .9rem; color: var(--ink); background: color-mix(in srgb, var(--paper) 75%, transparent); border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  .cinema button:hover { background: var(--paper); }
+  .cinema button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .cinema .close { font-size: 1.4rem; line-height: 1; width: 40px; height: 40px; padding: 0; }
+  .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 52px; height: 52px; padding: 0 !important; font: 300 2rem/1 'Work Sans', system-ui, sans-serif !important; }
+  .nav.prev { left: max(10px, 1.5vw); }
+  .nav.next { right: max(10px, 1.5vw); }
+  .toast { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 90vw; background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 6px; font-size: .9rem; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .toast.on { opacity: 1; }
+  @media (max-width: 640px) {
+    .nav { display: none; }
+    .top { flex-direction: column; align-items: stretch; }
+    .buttons { margin-left: 0; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Promítání</h1>
+  <label>Výpis <select id="listing"></select></label>
+  <span class="muted" id="count"></span>
+  <button type="button" id="play">▶ Promítat</button>
+  <span id="palette-buttons">Paleta </span>
+  <button type="button" id="tune-toggle" aria-pressed="false">Ladění (L)</button>
+</header>
+
+<aside id="tuning" hidden aria-label="Ladění promítání">
+  <h2>Ladění</h2>
+  <p class="muted">Hodnoty se pamatují v tomto prohlížeči a platí hned (swipe a časy od příštího kroku). Výchozí jsou ze
+    <code>site.config.yaml</code> <code>cinema</code>; nalezené tam pak zapíšeme.</p>
+  <div id="tuning-fields"></div>
+  <p><button type="button" id="tune-reset">Obnovit výchozí</button></p>
+  <p class="muted" id="status"></p>
+</aside>
+
+<main id="grid"></main>
+
+<div class="cinema" id="cinema" hidden aria-label="Promítání obrazů" role="dialog">
+  <div class="stage" id="stage">
+    <figure class="layer current"><img alt="" draggable="false" /></figure>
+    <figure class="layer"><img alt="" draggable="false" /></figure>
+  </div>
+  <a class="caption band" id="caption" href="#"><span class="c-title"></span><span class="c-line"></span><span class="c-text"></span></a>
+  <div class="top controls" id="top">
+    <a class="collection" id="to-collection" href="#">Kolekce: <span></span></a>
+    <div class="buttons">
+      <span class="buttons" id="intervals" role="group" aria-label="Jak dlouho zůstane obraz"></span>
+      <button type="button" id="pause" aria-label="Pozastavit">⏸</button>
+      <button type="button" id="captions">Popisky</button>
+      <button type="button" id="share" title="Odkaz na toto promítání (sdílet nebo zkopírovat)">Odkaz</button>
+      <button type="button" class="close" id="close" aria-label="Zavřít (Esc)">×</button>
+    </div>
+  </div>
+  <button type="button" class="nav prev controls" id="prev" aria-label="Předchozí">‹</button>
+  <button type="button" class="nav next controls" id="next" aria-label="Další">›</button>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+  const DATA = /*DATA*/{};
+/*FUNCTIONS*/
+  const WORKS = DATA.works;
+  const PUBLIC = DATA.public;
+  const CONFIG = DATA.config;
+  const BASE = CONFIG.cinema;
+  const $ = (id) => document.getElementById(id);
+  $('palettes').textContent = CONFIG.paletteCss;
+
+  // ---- tuning: the values being looked for, remembered in this browser ----
+  const TUNING_KEY = 'pavla.prototype.cinema';
+  const DEFAULTS = {
+    defaultInterval: BASE.defaultInterval, fadeMs: BASE.fadeMs, controlsMs: BASE.controlsMs, marginPercent: BASE.marginPercent,
+    fraction: BASE.swipe.fraction, minPx: BASE.swipe.minPx, flickPxPerMs: BASE.swipe.flickPxPerMs,
+    captionLayout: 'row', captionMeta: 'all', captionStyle: 'fade', captionAlpha: 0.7, captionSize: 1.35, captionMs: BASE.captionMs, palette: 'papir',
+  };
+  const FIELDS = [
+    { key: 'defaultInterval', label: 'Výchozí doba obrazu (bez zapamatované)', options: BASE.intervals.map((v) => [v, intervalLabel(v)]) },
+    { key: 'fadeMs', label: 'Prolnutí (ms)', min: 0, max: 4000, step: 100 },
+    { key: 'controlsMs', label: 'Ovládání zůstane (ms)', min: 1000, max: 10000, step: 250 },
+    { key: 'captionMs', label: 'Popisky „na chvíli“ zůstanou (ms)', min: 1000, max: 20000, step: 500 },
+    { key: 'marginPercent', label: 'Okraj kolem obrazu (%)', min: 0, max: 12, step: 0.5 },
+    { key: 'captionLayout', label: 'Rozložení popisku', options: [
+      ['row', 'jeden řádek: název a údaje vlevo, text vpravo'],
+      ['row-meta-right', 'jeden řádek: název vlevo, text uprostřed, údaje vpravo'],
+      ['row-center', 'jeden řádek na střed: název · údaje · text'],
+      ['row-no-text', 'jeden řádek: jen název a údaje vlevo'],
+      ['stack', 'pod sebou na střed (tři řádky)'],
+    ] },
+    { key: 'captionMeta', label: 'Údaje za názvem', options: [
+      ['all', 'technika · rozměr · rok'], ['size-year', 'rozměr · rok'], ['year', 'rok'], ['none', 'nic'],
+    ] },
+    { key: 'captionStyle', label: 'Podklad popisku', options: [['band', 'pás přes šířku'], ['fade', 'přechod do papíru']] },
+    { key: 'captionAlpha', label: 'Krytí podkladu popisku', min: 0, max: 1, step: 0.05 },
+    { key: 'captionSize', label: 'Velikost písma popisku (×)', min: 0.7, max: 1.6, step: 0.05 },
+    { key: 'fraction', label: 'Swipe: podíl šířky obrazovky', min: 0.05, max: 0.6, step: 0.01 },
+    { key: 'minPx', label: 'Swipe: nejkratší pohyb (px)', min: 10, max: 150, step: 5 },
+    { key: 'flickPxPerMs', label: 'Swipe: rychlost švihnutí (px/ms)', min: 0.1, max: 2, step: 0.05 },
+  ];
+  let tune = { ...DEFAULTS };
+  try { Object.assign(tune, JSON.parse(localStorage.getItem(TUNING_KEY) || '{}')); } catch { /* none */ }
+  if (!BASE.intervals.includes(tune.defaultInterval)) tune.defaultInterval = DEFAULTS.defaultInterval;
+  const saveTune = () => { try { localStorage.setItem(TUNING_KEY, JSON.stringify(tune)); } catch { /* ignore */ } };
+  const settings = () => ({
+    intervals: BASE.intervals, defaultInterval: tune.defaultInterval,
+    swipe: { fraction: tune.fraction, minPx: tune.minPx, flickPxPerMs: tune.flickPxPerMs },
+  });
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const fadeMs = () => (reduced.matches ? Math.min(tune.fadeMs, 200) : tune.fadeMs);
+  const slideMs = () => (reduced.matches ? 0 : 280);
+
+  function renderTuning() {
+    $('tuning-fields').replaceChildren(...FIELDS.map((f) => {
+      const label = document.createElement('label');
+      label.append(f.label);
+      const out = document.createElement('output');
+      let input;
+      if (f.options) {
+        input = document.createElement('select');
+        input.append(...f.options.map(([v, t]) => new Option(t, v)));
+        input.value = String(tune[f.key]);
+      } else {
+        input = Object.assign(document.createElement('input'), { type: 'range', min: f.min, max: f.max, step: f.step, value: tune[f.key] });
+        out.textContent = tune[f.key];
+      }
+      input.addEventListener('input', () => {
+        const v = f.options ? (typeof DEFAULTS[f.key] === 'number' ? Number(input.value) : input.value) : Number(input.value);
+        tune[f.key] = v;
+        if (!f.options) out.textContent = v;
+        saveTune();
+        applyTune();
+      });
+      label.append(out, input);
+      return label;
+    }));
+  }
+  function applyTune() {
+    const c = $('cinema');
+    c.style.setProperty('--cap-alpha', tune.captionAlpha);
+    c.style.setProperty('--cap-size', tune.captionSize);
+    $('caption').className = `caption ${tune.captionStyle} ${tune.captionLayout}${tune.captionLayout === 'stack' ? '' : ' one-line'}`;
+    if (show) setCaption(work(show.index));
+    document.documentElement.dataset.palette = tune.palette;
+    for (const b of document.querySelectorAll('#palette-buttons button')) b.setAttribute('aria-pressed', String(b.dataset.palette === tune.palette));
+    controls = makeControls();
+    if (show) fitLayers();
+  }
+  $('tune-reset').addEventListener('click', () => { tune = { ...DEFAULTS, palette: tune.palette }; saveTune(); renderTuning(); applyTune(); });
+  const toggleTuning = () => {
+    $('tuning').hidden = !$('tuning').hidden;
+    $('tune-toggle').setAttribute('aria-pressed', String(!$('tuning').hidden));
+  };
+  $('tune-toggle').addEventListener('click', toggleTuning);
+  for (const p of CONFIG.palettes) {
+    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: p.label });
+    b.dataset.palette = p.id;
+    b.addEventListener('click', () => { tune.palette = p.id; saveTune(); applyTune(); });
+    $('palette-buttons').append(b);
+  }
+
+  // ---- the listing: on the site the gallery with its filters, here a simple choice ----
+  const years = [...new Set(WORKS.map((w) => w.year))].sort((a, b) => b - a);
+  const collections = [...new Map(WORKS.filter((w) => w.collection).map((w) => [w.collection, w.collectionTitle])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], 'cs'));
+  const tags = [...new Set(WORKS.flatMap((w) => w.tags))].sort((a, b) => a.localeCompare(b, 'cs'));
+  const listingSelect = $('listing');
+  listingSelect.append(
+    new Option(`Celá tvorba (${WORKS.length})`, ''),
+    ...years.map((y) => new Option(`Rok ${y}`, `year=${y}`)),
+    ...collections.map(([slug, title]) => new Option(`Kolekce: ${title}`, `collection=${encodeURIComponent(slug)}`)),
+    new Option('Mimo kolekce', 'collection=none'),
+    ...tags.map((t) => new Option(`#${t}`, `tag=${encodeURIComponent(t)}`)),
+  );
+  const LISTING_KEYS = ['year', 'collection', 'tag'];
+  let listing = new URLSearchParams();
+  function listed() {
+    const year = listing.get('year');
+    const collection = listing.get('collection');
+    const tag = listing.get('tag');
+    return WORKS.filter((w) => (!year || String(w.year) === year)
+      && (!collection || (collection === 'none' ? !w.collection : w.collection === collection))
+      && (!tag || w.tags.includes(tag)));
+  }
+  const src = (w, width) => `${PUBLIC}/${w.folder}/${width}.webp`;
+  function renderListing() {
+    listingSelect.value = String(listing);
+    const works = listed();
+    $('count').textContent = `${works.length} děl`;
+    $('play').hidden = works.length === 0;
+    $('grid').replaceChildren(...works.map((w) => {
+      const img = Object.assign(document.createElement('img'), { src: src(w, w.widths[0]), alt: w.title, loading: 'lazy', title: w.title });
+      img.classList.toggle('cutout', w.transparent);
+      return img;
+    }));
+  }
+  listingSelect.addEventListener('change', () => { listing = new URLSearchParams(listingSelect.value); renderListing(); writeHash(false); });
+
+  // ---- the address: on the site ?…&cinema=<id>&interval=15, here the same in the hash (the file opens from the disk) ----
+  let lastHash = null;
+  function hashParams() {
+    const p = new URLSearchParams();
+    for (const [k, v] of listing) p.append(k, v);
+    return cinemaToParams(p, { id: show ? show.order[show.index] : null, interval: show ? show.interval : tune.defaultInterval }, settings());
+  }
+  // push: a new history entry (opening the cinema: Back closes it); otherwise the entry is replaced
+  function writeHash(push) {
+    const hash = `#${hashParams()}`;
+    if (hash === (location.hash || '#')) return;
+    lastHash = hash;
+    if (push) location.hash = hash; else location.replace(hash);
+  }
+  function readHash() {
+    const p = new URLSearchParams(location.hash.slice(1));
+    listing = new URLSearchParams();
+    for (const k of LISTING_KEYS) if (p.get(k)) listing.set(k, p.get(k));
+    if (![...listingSelect.options].some((o) => o.value === String(listing))) listing = new URLSearchParams();
+    renderListing();
+    return cinemaFromParams(p, settings(), stored(CONFIG.cinemaKeys.interval));
+  }
+  // localStorage may be blocked (private mode): then nothing is remembered
+  function stored(key, value) {
+    try {
+      if (value === undefined) return localStorage.getItem(key);
+      if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value);
+    } catch { /* ignore */ }
+    return null;
+  }
+  addEventListener('hashchange', () => {
+    if (location.hash === lastHash) return;
+    lastHash = location.hash;
+    const wanted = readHash();
+    if (show && !wanted.id) close('back', { back: false });
+    else if (!show && wanted.id) open(wanted.id, 'link', wanted.interval);
+  });
+
+  // ---- the cinema ----
+  const cinema = $('cinema');
+  const layers = [...cinema.querySelectorAll('.layer')];
+  const caption = $('caption');
+  let show = null; // { order, index, interval, paused, pushed, full, shown, since }
+  let cur = 0; // the layer shown
+  let seq = 0; // the newest change of the picture; an older one in flight gives way
+  let timer = null;
+  const byId = new Map(WORKS.map((w) => [w.id, w]));
+  const work = (i) => byId.get(show.order[wrapIndex(i, show.order.length)]);
+
+  function toast(text) {
+    const t = $('toast');
+    t.textContent = text;
+    t.classList.add('on');
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => t.classList.remove('on'), 2200);
+  }
+  function setCaption(w) {
+    caption.querySelector('.c-title').textContent = w.title;
+    const meta = { all: [w.technique, w.size, w.year], 'size-year': [w.size, w.year], year: [w.year], none: [] }[tune.captionMeta] ?? [];
+    caption.querySelector('.c-line').textContent = meta.filter(Boolean).join(' · ');
+    caption.querySelector('.c-text').textContent = w.text;
+    // a text cut short on one line: whole in the tooltip
+    caption.title = tune.captionLayout === 'stack' ? '' : w.text;
+    caption.href = `#dilo-${w.id}`;
+    if (show) captionShown();
+    const link = $('to-collection');
+    link.hidden = !w.collection;
+    link.querySelector('span').textContent = w.collectionTitle;
+  }
+  // the picture of work `w` in layer `layer`, as large as fits the screen, in the width it needs; resolves once decoded
+  function paint(layer, w) {
+    const img = layer.querySelector('img');
+    const box = fitBox(w.ratio, innerWidth, cinema.clientHeight || innerHeight, tune.marginPercent);
+    img.style.width = `${box.width}px`;
+    img.style.height = `${box.height}px`;
+    img.classList.toggle('cutout', w.transparent);
+    img.alt = w.title;
+    layer.dataset.id = w.id;
+    const want = src(w, imageWidth(w.widths, box.width, devicePixelRatio || 1));
+    if (img.getAttribute('src') !== want) img.src = want;
+    return img.decode().catch(() => {});
+  }
+  function fitLayers() { for (const l of layers) if (l.dataset.id) paint(l, byId.get(l.dataset.id)); }
+  addEventListener('resize', () => { if (show) fitLayers(); });
+  const preload = (i) => { const w = work(i); new Image().src = src(w, imageWidth(w.widths, fitBox(w.ratio, innerWidth, innerHeight, tune.marginPercent).width, devicePixelRatio || 1)); };
+  const reset = (l) => { l.style.transition = 'none'; l.style.transform = ''; };
+
+  function schedule() {
+    clearTimeout(timer);
+    timer = null;
+    if (show && !show.paused) timer = setTimeout(() => step(1, 'auto'), show.interval * 1000);
+    status();
+  }
+  // shows the work `delta` places further (fading into it), or at `index` with { to }
+  async function step(delta, how) {
+    if (!show) return;
+    const mine = ++seq;
+    clearTimeout(timer);
+    const index = wrapIndex(show.index + delta, show.order.length);
+    const next = layers[1 - cur];
+    const w = work(index);
+    await paint(next, w);
+    if (mine !== seq || !show) return;
+    const prev = layers[cur];
+    for (const l of [prev, next]) { reset(l); l.style.transition = `opacity ${fadeMs()}ms ease`; }
+    next.classList.add('current');
+    prev.classList.remove('current');
+    cur = 1 - cur;
+    show.index = index;
+    show.shown++;
+    setCaption(w);
+    writeHash(false);
+    preload(index + 1);
+    preload(index - 1);
+    schedule();
+    if (how !== 'auto') status(`krok: ${how}`);
+  }
+
+  function open(firstId, method, interval = cinemaFromParams(new URLSearchParams(), settings(), stored(CONFIG.cinemaKeys.interval)).interval) {
+    const works = listed();
+    if (!works.length) return writeHash(false);
+    const ids = works.map((w) => w.id);
+    show = { order: shuffledOrder(ids, ids.includes(firstId) ? firstId : null), index: 0, interval, paused: false, pushed: method === 'button', full: false, shown: 1, since: Date.now() };
+    cinema.hidden = false;
+    document.documentElement.dataset.cinema = '';
+    for (const l of layers) { reset(l); l.classList.remove('current'); delete l.dataset.id; }
+    cur = 0;
+    layers[0].classList.add('current');
+    const w = work(0);
+    paint(layers[0], w);
+    setCaption(w);
+    applyCaptions();
+    renderIntervals();
+    renderPause();
+    controls.hide();
+    if (method === 'button') fullscreen();
+    writeHash(method === 'button');
+    preload(1);
+    preload(-1);
+    lock();
+    schedule();
+  }
+  function close(reason, { back = true } = {}) {
+    if (!show) return;
+    const pushed = show.pushed;
+    const seconds = Math.round((Date.now() - show.since) / 1000);
+    status(`zavřeno: ${reason}, ${seconds} s, ${show.shown} obrazů`);
+    show = null;
+    seq++;
+    clearTimeout(timer);
+    cinema.hidden = true;
+    delete document.documentElement.dataset.cinema;
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    release();
+    if (!back) return;
+    if (pushed) { lastHash = null; history.back(); } else writeHash(false);
+  }
+
+  // the whole screen: allowed only right after a click, a tap or a key; opened by a link, the first of them asks
+  function fullscreen() {
+    if (!show || document.fullscreenElement || !cinema.requestFullscreen) return;
+    cinema.requestFullscreen().then(() => { if (show) show.full = true; status(); }).catch(() => {});
+  }
+  document.addEventListener('fullscreenchange', () => {
+    // leaving the whole screen (Esc, the browser) closes the cinema too
+    if (!document.fullscreenElement && show?.full) close('esc');
+    status();
+  });
+
+  // the screen stays on while the show runs (Screen Wake Lock)
+  let wake = null;
+  let wakeState = 'není';
+  async function lock() {
+    if (!show || show.paused || wake) return;
+    if (!('wakeLock' in navigator)) { wakeState = 'nepodporováno'; return status(); }
+    try {
+      wake = await navigator.wakeLock.request('screen');
+      wakeState = 'aktivní';
+      wake.addEventListener('release', () => { wake = null; wakeState = 'uvolněno'; status(); });
+    } catch (e) { wakeState = `odmítnuto (${e.name})`; }
+    status();
+  }
+  function release() { wake?.release().catch(() => {}); wake = null; }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') lock(); });
+
+  // ---- controls ----
+  let controls;
+  function makeControls() {
+    return autoHide((visible) => {
+      cinema.classList.toggle('show', visible);
+      cinema.classList.toggle('idle', !visible);
+    }, { ms: tune.controlsMs });
+  }
+  controls = makeControls();
+  for (const el of cinema.querySelectorAll('.controls, .caption')) {
+    el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') controls.hold(true); });
+    el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') controls.hold(false); });
+  }
+  function renderIntervals() {
+    $('intervals').replaceChildren(...BASE.intervals.map((v) => {
+      const b = Object.assign(document.createElement('button'), { type: 'button', textContent: intervalLabel(v) });
+      b.setAttribute('aria-pressed', String(show && v === show.interval && !show.paused));
+      b.addEventListener('click', () => {
+        show.interval = v;
+        show.paused = false;
+        // remembered for the next show (a link with its own interval still decides)
+        stored(CONFIG.cinemaKeys.interval, v === BASE.defaultInterval ? null : String(v));
+        renderIntervals(); renderPause(); writeHash(false); lock(); schedule();
+      });
+      return b;
+    }));
+  }
+  function renderPause() {
+    $('pause').textContent = show.paused ? '▶' : '⏸';
+    $('pause').setAttribute('aria-label', show.paused ? 'Pokračovat' : 'Pozastavit');
+    $('pause').setAttribute('aria-pressed', String(show.paused));
+  }
+  function togglePause() {
+    show.paused = !show.paused;
+    renderPause();
+    renderIntervals();
+    if (show.paused) release(); else lock();
+    schedule();
+    toast(show.paused ? 'Pozastaveno (mezerník pokračuje)' : `Pokračuje po ${intervalLabel(show.interval)}`);
+  }
+  $('pause').addEventListener('click', togglePause);
+  const CAPTION_LABELS = { timed: 'Popisky: na chvíli', on: 'Popisky: stále', off: 'Popisky: skryté' };
+  const captionsMode = () => captionMode(stored(CONFIG.cinemaKeys.captions));
+  let captionTimer = null;
+  // the caption of a new work: "for a while" shows it again and fades it after captionMs
+  function captionShown() {
+    clearTimeout(captionTimer);
+    cinema.classList.remove('cap-faded');
+    if (captionsMode() === 'timed') captionTimer = setTimeout(() => cinema.classList.add('cap-faded'), tune.captionMs);
+  }
+  function applyCaptions() {
+    const mode = captionsMode();
+    for (const m of ['timed', 'on', 'off']) cinema.classList.toggle(`cap-${m}`, m === mode);
+    $('captions').textContent = CAPTION_LABELS[mode];
+    captionShown();
+  }
+  $('captions').addEventListener('click', () => {
+    const modes = ['timed', 'on', 'off'];
+    const next = modes[(modes.indexOf(captionsMode()) + 1) % modes.length];
+    stored(CONFIG.cinemaKeys.captions, next === 'timed' ? null : next);
+    applyCaptions();
+  });
+  // the address of this show: shared from a phone, copied elsewhere (the whole screen shows no address bar)
+  async function shareLink() {
+    const url = location.href;
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+      try { await navigator.share({ title: document.title, url }); return; } catch (e) { if (e.name === 'AbortError') return; }
+    }
+    try { await navigator.clipboard.writeText(url); return toast('Odkaz zkopírován'); } catch { /* not allowed here */ }
+    // without a secure context (a phone over the local network): copy through a selected field
+    const field = Object.assign(document.createElement('textarea'), { value: url });
+    field.style.cssText = 'position:absolute;opacity:0;pointer-events:none';
+    cinema.append(field);
+    field.select();
+    const copied = document.execCommand('copy');
+    field.remove();
+    toast(copied ? 'Odkaz zkopírován' : url);
+  }
+  $('share').addEventListener('click', shareLink);
+  $('close').addEventListener('click', () => close('button'));
+  $('prev').addEventListener('click', () => step(-1, 'arrow'));
+  $('next').addEventListener('click', () => step(1, 'arrow'));
+  // on the site: the page of the work and of its collection; here only what would open
+  const openWork = (how) => { const w = work(show.index); toast(`Otevřela by se stránka díla /${w.folder}/ (${how})`); };
+  const openCollection = (how) => {
+    const w = work(show.index);
+    toast(w.collection ? `Otevřela by se kolekce /tvorba/kolekce/${w.collection}/ (${how})` : 'Dílo není v kolekci: ↑ nic nedělá');
+  };
+  caption.addEventListener('click', (e) => { e.preventDefault(); openWork('popisek'); });
+  $('to-collection').addEventListener('click', (e) => { e.preventDefault(); openCollection('odkaz nahoře'); });
+
+  addEventListener('keydown', (e) => {
+    if (!show) {
+      if ((e.key === 'l' || e.key === 'L') && !e.target.closest('select, input')) toggleTuning();
+      return;
+    }
+    if (e.key === 'Escape') return close('esc');
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === ' ' && !e.target.closest('button, a')) { e.preventDefault(); togglePause(); fullscreen(); return; }
+    const act = { ArrowLeft: () => step(-1, 'key'), ArrowRight: () => step(1, 'key'), ArrowDown: () => openWork('↓'), ArrowUp: () => openCollection('↑') }[e.key];
+    if (act) { e.preventDefault(); act(); }
+    fullscreen();
+  });
+
+  // ---- swipe: the work follows the finger (or the mouse), its neighbour slides in beside it ----
+  let drag = null;
+  cinema.addEventListener('pointerdown', (e) => {
+    if (!show || e.button > 0 || e.target.closest('button, a')) return;
+    drag = { x: e.clientX, y: e.clientY, t: performance.now(), moving: false, dir: 0, id: e.pointerId, type: e.pointerType };
+  });
+  cinema.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) {
+      if (e.pointerType === 'mouse' && show) controls.show();
+      return;
+    }
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    if (!drag.moving) {
+      if (Math.abs(dx) < 8 || Math.abs(dx) <= Math.abs(dy)) return;
+      drag.moving = true;
+      cinema.setPointerCapture?.(e.pointerId);
+      clearTimeout(timer);
+      seq++;
+    }
+    const dir = dx < 0 ? 1 : -1;
+    const near = layers[1 - cur];
+    if (dir !== drag.dir) {
+      drag.dir = dir;
+      paint(near, work(show.index + dir));
+    }
+    const w = innerWidth;
+    for (const l of layers) { l.style.transition = 'none'; }
+    near.style.opacity = '1';
+    layers[cur].style.transform = `translateX(${dx}px)`;
+    near.style.transform = `translateX(${dx + dir * w}px)`;
+  });
+  function endDrag(e, cancelled) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (!d.moving) {
+      if (cancelled) return;
+      // a tap: the controls on (a mouse shows them by moving), the next tap off
+      if (d.type !== 'mouse') controls.toggle(); else controls.show();
+      fullscreen();
+      return;
+    }
+    const w = innerWidth;
+    const s = cancelled ? 0 : dragStep(dx, dy, w, performance.now() - d.t, settings().swipe);
+    const here = layers[cur];
+    const near = layers[1 - cur];
+    for (const l of [here, near]) l.style.transition = `transform ${slideMs()}ms ease-out`;
+    if (s === d.dir) {
+      here.style.transform = `translateX(${-s * w}px)`;
+      near.style.transform = 'translateX(0)';
+      setTimeout(() => {
+        reset(here); reset(near);
+        here.classList.remove('current');
+        here.style.opacity = '';
+        near.style.opacity = '';
+        near.classList.add('current');
+        cur = 1 - cur;
+        show.index = wrapIndex(show.index + s, show.order.length);
+        show.shown++;
+        setCaption(work(show.index));
+        writeHash(false);
+        preload(show.index + 1);
+        preload(show.index - 1);
+        schedule();
+        status('krok: swipe');
+      }, slideMs());
+    } else {
+      here.style.transform = 'translateX(0)';
+      near.style.transform = `translateX(${d.dir * w}px)`;
+      setTimeout(() => { reset(here); reset(near); near.style.opacity = ''; schedule(); }, slideMs());
+    }
+    fullscreen();
+  }
+  cinema.addEventListener('pointerup', (e) => endDrag(e, false));
+  cinema.addEventListener('pointercancel', (e) => endDrag(e, true));
+
+  function status(note) {
+    if (note) status.note = note;
+    $('status').textContent = [
+      `Celá obrazovka: ${document.fullscreenElement ? 'ano' : 'ne'}${cinema.requestFullscreen ? '' : ' (nepodporováno)'}`,
+      `Wake lock: ${wakeState}`,
+      show ? `obraz ${show.index + 1}/${show.order.length}, ${show.paused ? 'pauza' : `${show.interval} s`}` : 'promítání zavřené',
+      status.note,
+    ].filter(Boolean).join(' · ');
+  }
+
+  $('play').addEventListener('click', () => open(null, 'button'));
+  renderTuning();
+  applyTune();
+  const wanted = readHash();
+  lastHash = location.hash;
+  if (wanted.id) open(wanted.id, 'link', wanted.interval);
+  status();
+</script>
+</body>
+</html>

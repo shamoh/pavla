@@ -51,18 +51,6 @@ export function workCaption(work) {
   return text ? `${work.title} · ${text}` : work.title;
 }
 
-/** Minimum horizontal move (CSS px) of a swipe in the viewer. */
-export const SWIPE_PX = 50;
-
-/**
- * Step of a swipe from a pointer moved by (dx, dy): 1 = next (moved to the left), -1 = previous, 0 = no swipe
- * (too short, or more up and down than sideways).
- */
-export function swipeStep(dx, dy, min = SWIPE_PX) {
-  if (Math.abs(dx) < min || Math.abs(dx) <= Math.abs(dy)) return 0;
-  return dx < 0 ? 1 : -1;
-}
-
 /** How long the arrows of the viewer stay after the last move of the mouse or a tap (ms). */
 export const CONTROLS_MS = 3000;
 

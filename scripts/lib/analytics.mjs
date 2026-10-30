@@ -55,7 +55,30 @@ export const EVENTS = {
   palette: 'palette_change', // palette: the chosen colours (papir, pergamen, noc, auto)
   view: 'view_change', // the view of works switched: listing (home, gallery), view (grid, tiles-s, tiles-m, tiles-l)
   image: 'image_view', // a picture shown in the viewer of a work: work_id, work_title, image, image_kind, method
+  cinema: 'cinema_open', // the cinema of a listing opened: listing (gallery, year, collection), results, interval, method (button, link)
+  cinemaClose: 'cinema_close', // the cinema closed: listing, reason (CINEMA_CLOSE_REASONS), seconds, shown (works shown)
 };
+
+/** How the cinema opened (`method` of cinema_open): button = "▶ Promítat", link = the page opened with ?cinema=. */
+export const CINEMA_OPEN_METHODS = ['button', 'link'];
+
+/**
+ * Why the cinema closed (`reason` of cinema_close): button = ×, esc = Esc (or leaving the whole screen), back = Back
+ * of the browser, work / collection = to the page of the work shown or of its collection.
+ */
+export const CINEMA_CLOSE_REASONS = ['button', 'esc', 'back', 'work', 'collection'];
+
+/** Parameters of cinema_open. */
+export function cinemaOpenParams({ listing, results, interval, method }) {
+  if (!CINEMA_OPEN_METHODS.includes(method)) throw new Error(`unknown method of cinema_open: ${method}`);
+  return { listing, results, interval, method };
+}
+
+/** Parameters of cinema_close: how long it ran (whole seconds) and how many works it showed. */
+export function cinemaCloseParams({ listing, reason, ms, shown }) {
+  if (!CINEMA_CLOSE_REASONS.includes(reason)) throw new Error(`unknown reason of cinema_close: ${reason}`);
+  return { listing, reason, seconds: Math.round(ms / 1000), shown };
+}
 
 /**
  * How a picture got into the viewer (`method` of image_view): open = a click on the picture, a detail or a mockup on

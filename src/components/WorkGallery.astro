@@ -1,7 +1,8 @@
 ---
 import WorkGrid from './WorkGrid.astro';
 import Pager from './Pager.astro';
-import { type Work, config, getCollections, getYears, url } from '../lib/site';
+import Cinema from './Cinema.astro';
+import { type Work, collectionUrl, config, getCollections, getYears, url } from '../lib/site';
 import { DEFAULT_VIEW, NO_COLLECTION, NO_COLLECTION_TITLE, TILE_SIZE_STORAGE_KEY, VIEW_STORAGE_KEY, czechOrder, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
 import { columnsFor, viewScript, viewSetup } from '../../scripts/lib/view-layout.mjs';
 import { overviewLink, yearCounts, yearOptions } from '../../scripts/lib/collection-filter.mjs';
@@ -23,6 +24,10 @@ const techniques = czechOrder(count(works.map((w) => w.technique)), ([t]) => t);
 // the collection filter is a combobox over this select (src/lib/combobox.ts).
 const inPage = new Map(count(works.flatMap((w) => (w.collection ? [w.collection] : []))));
 const collections = czechOrder(getCollections()).filter((c) => inPage.has(c.slug)).map((c) => ({ slug: c.slug, n: inPage.get(c.slug)!, title: c.title }));
+// "Kolekce: …" in the cinema: each collection of the works here.
+const cinemaCollections = Object.fromEntries(collections.map((c) => [c.slug, { title: c.title, url: collectionUrl(c.slug) }]));
+// The listing in the statistics of the cinema (cinema_open, cinema_close).
+const listing = collection ? 'collection' : year ? 'year' : 'gallery';
 // "žádná" right after "vše": the works in no collection (?collection=none), when some are.
 const uncollected = works.filter((w) => !w.collection).length;
 // Every status option with some works; the browser greys the filter out while none of them narrows (facetDisplay).
@@ -62,6 +67,7 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     <span class="bar-chips" id="bar-chips" role="group" aria-label="Vybrané filtry"></span>
     <button type="button" class="bar-reset" data-filters-reset hidden>Zrušit vše</button>
     <span class="bar-count" id="bar-count"></span>
+    <button type="button" class="bar-play" data-cinema-open aria-label="Promítat vybraná díla přes celou obrazovku" title="Promítat vybraná díla přes celou obrazovku">▶</button>
     <button type="button" class="filter-toggle" id="filter-toggle" aria-expanded="false" aria-controls="filters">Upravit</button>
   </div>
 </div>
@@ -96,6 +102,7 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     <span class="count-group">
       <span class="muted" id="count" aria-live="polite">{works.length} děl</span>
       <button type="button" class="reset-link" data-filters-reset hidden><span aria-hidden="true">×</span> Zrušit filtry</button>
+      <button type="button" class="play-link" data-cinema-open title="Vybraná díla jedno po druhém přes celou obrazovku"><span aria-hidden="true">▶</span> Promítat</button>
     </span>
   </div>
   <!-- The selects first (one line on a computer), the tag chips under them. -->
@@ -110,10 +117,11 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
 </form>
 </div>
 
-<WorkGrid works={works} place="gallery" eager={3} id="grid" data-page-sizes={JSON.stringify({ grid: pageSizes, tiles: tilePageSizes })} data-view={JSON.stringify(setup)} />
+<WorkGrid works={works} place="gallery" eager={3} cinema id="grid" data-listing={listing} data-page-sizes={JSON.stringify({ grid: pageSizes, tiles: tilePageSizes })} data-view={JSON.stringify(setup)} />
 <script is:inline set:html={viewScript} />
 <p class="muted empty" id="empty" hidden>Tomuhle výběru nic neodpovídá.</p>
 <Pager pageSizes={pageSizes} total={works.length} views />
+<Cinema collections={cinemaCollections} />
 
 <script>
   // Every filter and the page are written to the URL right away (?tag=krajina&status=unsold&page=2), so the
@@ -132,7 +140,9 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     ALL_PAGES, DEFAULT_VIEW, FEATURED_ON, TILE_SIZE_STORAGE_KEY, stepTileSize, tileSizeToRemember, NO_COLLECTION, VIEW_STORAGE_KEY, facetChoices, pageSizeStorageKey, viewPageSizes, withView, facetDisplay, matchesFilters, pageAfterFilterChange, pageSizeOf, pageSizeToRemember, paginate,
     rememberedPageSize, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, viewToRemember, withPageSize,
   } from '../../scripts/lib/gallery-filter.mjs';
-  import { EVENTS, filterEventParams, trackEvent, viewEventParams } from '../../scripts/lib/analytics.mjs';
+  import { EVENTS, cinemaCloseParams, cinemaOpenParams, filterEventParams, trackEvent, viewEventParams } from '../../scripts/lib/analytics.mjs';
+  import { CINEMA_STORAGE_KEYS, cinemaFromParams, cinemaToParams } from '../../scripts/lib/cinema.mjs';
+  import { type CinemaWork, createCinema } from '../lib/cinema';
   import { rememberListing, revealReturned } from '../lib/page-return';
   import { fitYearRow } from '../lib/year-row';
   import { pagerTarget, renderPager } from '../lib/pager';
@@ -170,6 +180,8 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   // "Zrušit filtry" next to the count, in the open panel and "Zrušit vše" in the bar: all filters off (withoutFilters)
   const resets = [...document.querySelectorAll<HTMLButtonElement>('[data-filters-reset]')];
   const emptyEl = document.getElementById('empty')!;
+  // "▶ Promítat" next to the count and in the bar (the cinema, at the end)
+  const playButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-cinema-open]')];
   const pager = document.getElementById('pager')!;
   // Page sizes of each view (big pictures, tiles); `pageSizes` = those of the current view.
   const sizes: { grid: number[]; tiles: number[] } = JSON.parse(grid.dataset.pageSizes!);
@@ -298,6 +310,8 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     countEl.textContent = filteredCount(shown, cards.length, active > 0);
     for (const b of resets) b.hidden = b.classList.contains('bar-reset') ? active < 2 : active === 0;
     renderBar(shown);
+    // "▶ Promítat" only with something to show
+    for (const b of playButtons) b.hidden = shown === 0;
     collectionCombo?.sync();
     emptyEl.hidden = shown > 0;
     const p = stateToParams(state);
@@ -515,6 +529,57 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
 
   // Back from a work page (← Tvorba, its year or collection): to the card of that work, when on the shown page.
   revealReturned(cards, 'id');
+
+  // The cinema ("▶ Promítat", src/lib/cinema.ts): every work of the current filters (not only this page) over the whole
+  // screen. The address keeps it with the filters (?…&cinema=<id>&interval=45, the default interval left out), so the
+  // show can be sent as a link and opens on that work; opening by the button adds a history entry (Back closes it),
+  // the page of a work or a collection reached from it leaves the address as it is (Back returns to the show).
+  const cinemaRoot = document.getElementById('cinema')!;
+  const cinemaConf = JSON.parse(cinemaRoot.dataset.settings!);
+  const listing = grid.dataset.listing!;
+  const intervalStorage = stored(CINEMA_STORAGE_KEYS.interval);
+  // history entries added by opening the cinema carry this mark: closing it goes back instead of adding another
+  const CINEMA_OPENED = 'pavla-cinema';
+  const cinemaWorks = (): CinemaWork[] => cards.filter((_, i) => matchesFilters(works[i], state))
+    .map((c) => ({ id: c.dataset.id!, collection: c.dataset.collection!, ...JSON.parse(c.dataset.cinema!) }));
+  const cinemaHref = (id: string | null, interval: number) => {
+    const p = cinemaToParams(stateToParams(state), { id, interval }, cinemaConf);
+    return p.size ? `?${p}` : location.pathname;
+  };
+  const cinema = createCinema(cinemaRoot, cinemaConf, JSON.parse(cinemaRoot.dataset.collections!), {
+    shown: (id, interval) => history.replaceState(history.state, '', cinemaHref(id, interval)),
+    closed: (reason, run) => {
+      trackEvent(EVENTS.cinemaClose, cinemaCloseParams({ listing, reason, ...run }));
+      // to a work or a collection: the address stays (Back returns to the show); Back itself has moved already
+      if (reason === 'work' || reason === 'collection' || reason === 'back') return;
+      if (history.state?.[CINEMA_OPENED]) history.back();
+      else history.replaceState(history.state, '', cinemaHref(null, 0));
+    },
+    shared: (method) => trackEvent(EVENTS.share, { method, source: 'cinema', work_id: cinema.current ?? '' }),
+  });
+  function openCinema(firstId: string | null, interval: number, method: 'button' | 'link') {
+    const list = cinemaWorks();
+    if (!cinema.open(list, firstId, interval, method)) return false;
+    trackEvent(EVENTS.cinema, cinemaOpenParams({ listing, results: list.length, interval, method }));
+    return true;
+  }
+  for (const b of playButtons) {
+    b.addEventListener('click', () => {
+      const { interval } = cinemaFromParams(new URLSearchParams(), cinemaConf, intervalStorage.get());
+      if (!openCinema(null, interval, 'button')) return;
+      history.pushState({ ...history.state, [CINEMA_OPENED]: true }, '', cinemaHref(cinema.current, interval));
+    });
+  }
+  // Back / Forward: the show follows the address
+  addEventListener('popstate', () => {
+    const wanted = cinemaFromParams(new URLSearchParams(location.search), cinemaConf, intervalStorage.get());
+    if (!wanted.id && cinema.isOpen) cinema.close('back');
+    else if (wanted.id && !cinema.isOpen) openCinema(wanted.id, wanted.interval, 'link');
+  });
+  // A link with the show (apply() above has written the address without it): open it on its work; a work not among
+  // these (filtered out, gone) starts anywhere, no works = no show.
+  const linked = cinemaFromParams(params, cinemaConf, intervalStorage.get());
+  if (linked.id && openCinema(linked.id, linked.interval, 'link')) history.replaceState(history.state, '', cinemaHref(cinema.current, linked.interval));
 </script>
 
 <style>
@@ -564,6 +629,15 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   /* The count at the end of the selects, "× Zrušit filtry" after it while a filter is on. */
   .count-group { margin-left: auto; display: flex; gap: 12px; align-items: baseline; white-space: nowrap; }
   .reset-link { font-size: 0.9rem; }
+  /* "▶ Promítat": the works of the filters over the whole screen (Cinema.astro); in the bar only "▶". */
+  .play-link, .bar-play {
+    flex: none; font: inherit; font-size: 0.9rem; color: var(--ink); background: transparent; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 99px; padding: 3px 12px; white-space: nowrap;
+  }
+  .play-link:hover, .bar-play:hover { border-color: var(--ink); }
+  .play-link span { font-size: 0.8em; margin-right: 2px; }
+  .bar-play { padding: 3px 10px; font-size: 0.8rem; }
+  .play-link[hidden], .bar-play[hidden] { display: none; }
   .filter-toggle, .filters-done {
     flex: none; font: inherit; font-size: 0.88rem; color: var(--ink); background: transparent; cursor: pointer;
     border: 1px solid var(--line); border-radius: 99px; padding: 5px 14px;

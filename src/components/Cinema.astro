@@ -1,0 +1,115 @@
+---
+// The cinema of a listing of works (src/lib/cinema.ts runs it, WorkGallery.astro opens it with "▶ Promítat"): over
+// the whole screen, the paper of the palette, the work as large as fits, its caption over its bottom (one line: the
+// title and "technique · size · year" on the left, the text on the right ending with "…"), the controls only after a
+// move of the mouse or a tap. Hidden until opened; the script moves it to the end of <body>.
+// `collections`: slug → title and address of each collection of the listing, for "Kolekce: …" on top; the settings
+// are those of site.config.yaml `cinema` (cinemaSettings).
+import { config } from '../lib/site';
+import { cinemaSettings } from '../../scripts/lib/cinema.mjs';
+interface Props { collections: Record<string, { title: string; url: string }> }
+const { collections } = Astro.props;
+---
+<div class="cinema idle" id="cinema" hidden role="dialog" aria-modal="true" aria-label="Promítání obrazů" tabindex="-1" data-collections={JSON.stringify(collections)} data-settings={JSON.stringify(cinemaSettings(config))}>
+  {/* AVIF where the browser can, else WebP, else JPEG (cinemaSources) */}
+  <figure class="cinema-layer current"><picture><source type="image/avif" /><source type="image/webp" /><img alt="" draggable="false" /></picture></figure>
+  <figure class="cinema-layer"><picture><source type="image/avif" /><source type="image/webp" /><img alt="" draggable="false" /></picture></figure>
+  <a class="cinema-caption"><span class="cinema-title"></span><span class="cinema-meta"></span><span class="cinema-text"></span></a>
+  <div class="cinema-top cinema-controls">
+    <a class="cinema-collection" hidden>Kolekce: <span class="cinema-collection-title"></span></a>
+    <div class="cinema-buttons">
+      <span class="cinema-intervals" role="group" aria-label="Jak dlouho zůstane obraz"></span>
+      <button type="button" class="cinema-pause"></button>
+      <button type="button" class="cinema-captions"></button>
+      <button type="button" class="cinema-share" title="Odkaz na toto promítání (sdílet nebo zkopírovat)">Odkaz</button>
+      <button type="button" class="cinema-fullscreen" title="Přes celou obrazovku" hidden>Celá obrazovka</button>
+      <button type="button" class="cinema-close" aria-label="Zavřít (Esc)" title="Zavřít (Esc)">×</button>
+    </div>
+  </div>
+  <button type="button" class="cinema-nav cinema-prev cinema-controls" aria-label="Předchozí (←)">‹</button>
+  <button type="button" class="cinema-nav cinema-next cinema-controls" aria-label="Další (→)">›</button>
+  <div class="cinema-toast" role="status" aria-live="polite"></div>
+</div>
+
+<style>
+  /* Everything here is :global: the script moves the cinema to the end of <body> and makes its buttons. */
+  :global(html.cinema-open) { overflow: hidden; }
+  :global(.cinema) {
+    position: fixed; inset: 0; height: 100dvh; z-index: 1000; background: var(--paper); color: var(--ink); overflow: hidden;
+    /* sideways moves are the swipe of the cinema, not a scroll or a back gesture of the phone */
+    touch-action: pan-y pinch-zoom; user-select: none; -webkit-user-select: none; outline: none;
+  }
+  :global(.cinema[hidden]) { display: none; }
+  :global(.cinema.idle) { cursor: none; }
+  :global(.cinema-layer) {
+    position: absolute; inset: 0; margin: 0; display: flex; align-items: center; justify-content: center; opacity: 0;
+    will-change: opacity, transform;
+  }
+  :global(.cinema-layer.current) { opacity: 1; }
+  :global(.cinema-layer picture) { display: contents; }
+  :global(.cinema-layer img) { display: block; box-shadow: var(--shadow-deep); background: var(--paper-2); -webkit-user-drag: none; }
+  :global(.cinema-layer img.cutout) { box-shadow: none; background: none; filter: var(--drop-deep); }
+  :global(.cinema-layer img:not([src])) { visibility: hidden; }
+
+  /* The caption: one line over the bottom of the work on a fade into the paper; a link to the page of the work. */
+  :global(.cinema-caption) {
+    position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: baseline; gap: 0 1.2em;
+    padding: 40px max(16px, 3vw) calc(12px + env(safe-area-inset-bottom)); color: var(--ink); text-decoration: none;
+    background: linear-gradient(to top, color-mix(in srgb, var(--paper) 70%, transparent) 45%, transparent);
+    transition: opacity .4s;
+  }
+  /* the details never shrink, the text gives way first, then a long title ends with "…" too (a phone) */
+  :global(.cinema-title) { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--serif); font-size: 1.75rem; line-height: 1.15; }
+  :global(.cinema-meta) { flex: none; white-space: nowrap; font-size: 1.15rem; color: var(--ink-soft); }
+  :global(.cinema-text) { flex: 1 1 0; min-width: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1.28rem; }
+  :global(.cinema-meta:empty) { display: none; }
+  :global(.cinema-caption:hover .cinema-title) { text-decoration: underline; text-underline-offset: 4px; }
+  /* Captions "for a while" fade after cinema.captionMs, "never" not at all; with the controls they are always there. */
+  :global(.cinema.cap-off .cinema-caption), :global(.cinema.cap-timed.cap-faded .cinema-caption) { opacity: 0; pointer-events: none; transition: opacity 1.2s; }
+  :global(.cinema.show .cinema-caption) { opacity: 1; pointer-events: auto; transition: opacity .4s; }
+
+  /* The controls: only after a move of the mouse or a tap, then they fade (cinema.controlsMs). */
+  :global(.cinema-controls) { opacity: 0; pointer-events: none; transition: opacity .4s; }
+  :global(.cinema.show .cinema-controls) { opacity: 1; pointer-events: auto; }
+  :global(.cinema-top) {
+    position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: calc(12px + env(safe-area-inset-top)) max(12px, 2vw) 24px;
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--paper) 80%, transparent), transparent);
+  }
+  :global(.cinema-collection) { color: var(--ink); text-decoration: none; font-size: 0.95rem; }
+  :global(.cinema-collection-title) { font-family: var(--serif); font-size: 1.3rem; }
+  :global(.cinema-collection:hover .cinema-collection-title) { text-decoration: underline; text-underline-offset: 4px; }
+  :global(.cinema-collection[hidden]) { display: inline; visibility: hidden; }
+  :global(.cinema-buttons) { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; margin-left: auto; }
+  :global(.cinema button) {
+    font: inherit; font-size: 0.9rem; color: var(--ink); background: color-mix(in srgb, var(--paper) 75%, transparent);
+    border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; cursor: pointer; white-space: nowrap;
+  }
+  :global(.cinema button:hover) { background: var(--paper); }
+  :global(.cinema button[hidden]) { display: none; }
+  :global(.cinema button[aria-pressed='true']) { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  :global(.cinema .cinema-close) { font-size: 1.4rem; line-height: 1; width: 40px; height: 40px; padding: 0; }
+  :global(.cinema .cinema-nav) {
+    position: absolute; top: 50%; transform: translateY(-50%); width: 52px; height: 52px; padding: 0;
+    font: 300 2rem/1 var(--sans);
+  }
+  :global(.cinema-prev) { left: max(10px, 1.5vw); }
+  :global(.cinema-next) { right: max(10px, 1.5vw); }
+  :global(.cinema-toast) {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 90vw; overflow-wrap: anywhere;
+    background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 6px; font-size: 0.9rem;
+    opacity: 0; transition: opacity .3s; pointer-events: none;
+  }
+  :global(.cinema-toast.on) { opacity: 1; }
+  @media (max-width: 640px) {
+    :global(.cinema .cinema-nav) { display: none; }
+    :global(.cinema-top) { flex-direction: column; align-items: stretch; }
+    :global(.cinema-buttons) { margin-left: 0; justify-content: center; }
+    :global(.cinema-title) { font-size: 1.35rem; }
+    :global(.cinema-meta) { font-size: 0.9rem; }
+    :global(.cinema-text) { font-size: 1rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :global(.cinema-caption), :global(.cinema-controls), :global(.cinema-toast) { transition: none; }
+  }
+</style>

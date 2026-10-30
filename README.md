@@ -118,6 +118,9 @@ na `VIEWER_TEXT_MAX` znaků, `workCaption`, u detailu „<název> · <popisek de
 do adresy za `#` (`scripts/lib/work-viewer.mjs`, `viewId`/`viewIndex`): `#obraz` = celý obraz, `#detail-<jméno detailu>`
 (např. `/tvorba/2011/orangutan-g4psg/#detail-oci`), `#mockup-<scéna>`. Otevření přidá záznam do historie (tlačítko
 Zpět prohlížeč zavře), listování šipkami nebo tahem adresu jen přepíše, zavření (×, Esc, klik vedle) kotvu odebere.
+Tah prstem (nebo myší) obrázek posouvá s prstem a vedle něj vysouvá sousední (`src/lib/follow-swipe.ts`, stejně jako
+promítání, práh `site.config.yaml` `cinema.swipe`, `dragStep`): puštěný dost daleko nebo rychlým švihnutím přejde
+na sousední, jinak oba sjedou zpět.
 Odkaz s kotvou otevře rovnou ten obrázek; neznámou kotvu (smazaný detail, překlep) stránka z adresy odebere a ukáže
 dílo normálně (kotva prvku na stránce, např. `#viewer`, zůstane). Bez JavaScriptu odkazy otevřou největší obrázek.
 
@@ -542,6 +545,31 @@ pro Instagram z `mockups/instagram/` (`prototypeScenes`), takže prototyp ukazuj
   středu toho, co je vidět, obrázek se pak posouvá ve svém rámu. Nad obrázkem zvětšuje i Cmd (nebo Ctrl) + kolečko
   a sevření prstů na touchpadu, a to kolem místa pod kurzorem; obyčejné kolečko dál posouvá. Společné „Okolí fotky“
   přidá plochu kolem fotky.
+- `promitani.html`: promítání obrazů výpisu přes celou obrazovku, předloha *Promítání* na webu, s volbami navíc (`scripts/lib/cinema.mjs`, nastavení
+  `site.config.yaml` `cinema`, `cinemaSettings`). Nahoře výběr výpisu (celá tvorba, rok, kolekce, „Mimo kolekce“, štítek;
+  na webu to budou filtry galerie), paleta a „▶ Promítat“. Promítání ukáže díla výpisu v náhodném pořadí
+  (`shuffledOrder`, otevřené dílo první), každé `interval` sekund, s prolnutím `fadeMs`, jako velké, jak se s okrajem
+  `marginPercent` vejde (`fitBox`), v nejmenší dost ostré šířce (`imageWidth`). Pozadí je papír palety, dole přes
+  obraz popisek (název, technika · rozměr · rok, zkrácený text) = odkaz na stránku díla. Ovládání se ukáže
+  pohybem myši nebo ťuknutím a po `controlsMs` zmizí (`autoHide`):
+  - nahoře „Kolekce: …“ (odkaz na kolekci),
+  - časy `intervals` (`intervalLabel`: „15 s“, „1 min“; zvolený se pamatuje `pavla.cinema.interval`, odkaz s `interval`
+    má přednost), pauza,
+  - „Popisky“ přepíná `CAPTION_MODES`: na chvíli (výchozí, popisek každého obrazu zmizí po `captionMs`), stále, skryté;
+    s ovládáním je popisek vždy vidět; pamatuje se `pavla.cinema.captions`,
+  - „Odkaz“: adresa promítání (v celé obrazovce není vidět), na telefonu sdílení, jinak do schránky,
+  - × (zavřít),
+  - po stranách ‹ ›.
+  Klávesy: ← → listují, mezerník pauza a pokračování se stejným časem, ↓ stránka díla, ↑ kolekce, Esc zavře. Tažení prstem nebo myší posouvá obraz s prstem a vedle něj
+  vysouvá souseda; krok nad podíl šířky `swipe.fraction` nebo rychlým švihnutím (`dragStep`), jinak zpět.
+  Adresa v `#` (na webu v `?`): výpis + `cinema=<id>` + `interval` (výchozí se nepíše; `cinemaFromParams`,
+  `cinemaToParams`); otevření tlačítkem přidá záznam historie (Zpět zavře), odkaz otevře promítání na tom díle.
+  Tlačítko žádá o celou obrazovku (Fullscreen API; odkazem až po prvním kliknutí, ťuknutí nebo klávese; iPhone ji pro
+  stránky nemá, zůstane okno) a promítání drží obrazovku rozsvícenou (Screen Wake Lock, ne v pauze). Stránky díla a
+  kolekce prototyp jen oznámí. Panel „Ladění“ (klávesa `L`) mění prolnutí, dobu ovládání, okraj, styl, krytí a velikost
+  popisku, swipe a výchozí dobu obrazu, pamatuje si je (`pavla.prototype.cinema`); dole stav celé obrazovky,
+  wake locku a promítání. Z disku Chrome Fullscreen a wake lock nemusí povolit: `python3 -m http.server` v repu
+  a `http://127.0.0.1:8000/.prototypes/promitani.html`.
 
 ### Hledání
 
@@ -564,6 +592,41 @@ i kolekce (`searchText`: název a popis, u díla i `id` z textu příspěvku na 
   odkaz s `?q=<id>` jen vyfiltruje.
 - Statistika: událost `gallery_filter` s parametrem `q` až po dopsání (Enter, opuštění pole), ne po každém písmenu.
 - „Mimo kolekce“ při hledání na přehledu kolekcí chybí (hledá se v kolekcích, ta to není); rok sleduje dál.
+
+### Promítání („▶ Promítat“)
+
+Každý výpis děl (`/tvorba/`, stránka roku, stránka kolekce, s jakýmikoli filtry, i „Mimo kolekce“ `?collection=none`)
+umí díla promítat přes celou obrazovku: tlačítko „▶ Promítat“ za počtem děl (a „▶“ v tenké liště filtrů, skryté, když
+výpisu nic neodpovídá) ukáže **všechna díla podle filtrů** (ne jen stránku) jedno po druhém (`src/components/Cinema.astro`,
+`src/lib/cinema.ts`, logika `scripts/lib/cinema.mjs`, nastavení `site.config.yaml` `cinema`, `cinemaSettings`;
+hodnoty hledal prototyp `promitani.html`, viz *Prototypy*):
+
+- **Celá obrazovka** (Fullscreen API; otevřené odkazem až po prvním kliknutí, ťuknutí nebo klávese, dřív ji prohlížeč
+  nedovolí, do té doby je v ovládání tlačítko „Celá obrazovka“; iPhone ji pro stránky nemá, zůstane okno bez tlačítka). Pozadí je papír zvolené palety, dílo tak velké, jak
+  se s okrajem `marginPercent` vejde (`fitBox`), v nejmenší dost ostré šířce (`imageWidth`) jako `<picture>`: AVIF, kde
+  ho prohlížeč umí, jinak WebP, jinak JPEG (`cinemaSources`, `<šířka>.avif|webp|jpg`; i dopředu načítané sousední). Zbytek
+  stránky je mezitím `inert` a neposouvá se. Opuštění celé obrazovky (Esc) promítání zavře.
+- **Náhodné pořadí** (`shuffledOrder`, bez opakování, dokud se nevystřídají všechna; otevřené dílo první), každé dílo
+  `interval` sekund (`intervals`: 5 s, 10 s, 15 s, 45 s, 3 min, `intervalLabel`; výchozí `defaultInterval` 15 s),
+  prolnutí `fadeMs`; další se předem načte. Obrazovka zůstane rozsvícená (Screen Wake Lock, ne v pauze; jen přes https).
+- **Popisek** přes spodek díla na jednom řádku: vlevo název a „technika · rozměr · rok“, vpravo text díla zkrácený „…“
+  (`cinemaCard`: data karty `data-cinema`, text jako v prohlížeči fotek `VIEWER_TEXT_MAX`), celý text v bublině;
+  odkaz na stránku díla. Tři polohy (`CAPTION_MODES`, tlačítko je přepíná dokola): **na chvíli** (výchozí, popisek
+  každého díla zmizí po `captionMs`), **stále**, **skryté**; s ovládáním je popisek vždy vidět.
+- **Ovládání** jen po pohybu myši nebo ťuknutí (další ťuknutí ho skryje), zmizí po `controlsMs` (`autoHide`):
+  nahoře „Kolekce: <název>“ (odkaz na kolekci díla), časy, pauza, „Popisky: …“, „Odkaz“ (adresa promítání: na
+  telefonu nabídka sdílení, jinak do schránky, `copiedText`), „Celá obrazovka“ (jen mimo celou obrazovku, kde ji
+  prohlížeč umí) a ×; po stranách ‹ › (na telefonu jen tah).
+- **Klávesy:** ← → listují, mezerník pauza a pokračování se stejným časem, ↓ stránka díla, ↑ jeho kolekce, Esc zavře.
+- **Tah prstem nebo myší:** dílo jde s prstem, sousední se vysouvá vedle něj; puštěné aspoň `swipe.fraction` šířky
+  obrazovky nebo rychlým švihnutím (`swipe.flickPxPerMs`) přejde, jinak zpět (`src/lib/follow-swipe.ts`, `dragStep`).
+- **Adresa** nese filtry, dílo a nevýchozí čas: `/tvorba/?tag=voda&cinema=k3f9a&interval=45` (`cinemaToParams`,
+  `cinemaFromParams`); každé další dílo adresu přepíše. Otevření tlačítkem přidá záznam historie (Zpět promítání
+  zavře), odkaz otevře promítání rovnou na tom díle (dílo mimo výpis = náhodný začátek, prázdný výpis = bez
+  promítání). Ze stránky díla nebo kolekce (popisek, ↓, ↑) vede Zpět zpátky do promítání na stejné dílo.
+- **Paměť** (`CINEMA_STORAGE_KEYS`): poloha popisků `pavla.cinema.captions` a zvolený čas `pavla.cinema.interval`
+  (odkaz s `interval` má přednost).
+- Statistiky: `cinema_open`, `cinema_close` a `share` se `source: cinema` (viz *Návštěvnost*).
 
 ### Stránkování
 
@@ -1663,7 +1726,8 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | značky na úvodní stránce | `/`: v dlaždicích jen hvězdička (menší, průsvitnější), žádné košíky (`home.tileMarks`); galerie beze změny. |
 | doba běhu pipeline | `npm run demo:prepare`: pod každým přegenerovaným dílem řádek `  ⏱ … · total N s`, na konci `⏱ run: checks … · drafts … · works … · … · total …` (fáze pod 0,05 s chybí); druhé spuštění bez změn díla nepřegeneruje a nenakreslí znovu ani náhledy draftů (celý běh ~10 s, `.demo/site/.previews/` je prázdná). |
 | velikosti v kontrole automatiky | `node scripts/check-health.mjs` (bez tokenů; za proxy `NODE_USE_ENV_PROXY=1`): řádek „Velikost: repo webu … MB (… % z 1000 MB) · obsahové repo nezjištěno · nasazený web (GitHub Pages) … MB …“ a „Minuty GitHub Actions nebyly zkontrolovány (chybí secret CHECK_TOKEN …)“; s `CHECK_TOKEN=<token> ` před příkazem (a `--settings`, `REPO=<obsahové repo>`, `SETTINGS_DIR=<obsahové repo>/docs/github-nastaveni` = i porovnání nastavení) řádek „Minuty Actions soukromých rep za tento měsíc: N z 2000 …“. |
-| prototypy | `npm run prototypes` a `open .prototypes/zarovnani-sloupcu.html`, `open .prototypes/znacky-dlazdic.html`: posuvníky začínají na hodnotách ze `site.config.yaml`, „Nastavení“ přepne na úvodní stránku / galerii. `open .prototypes/kamera-scen.html`: hrany stolů a stojanu protažené až za fotku, kroužek (průsečík hran) a křížek (úběžník kamery) leží u sebe a čárkované hrany díla do nich míří; „Z rohů listu“ je od sebe vzdálí, „Z hran“ je vrátí; u stojanu úhel spodní hrany díla proti liště skoro 0°; „Vyrovnat natočení“ ho změní, zaškrtni „ohnisko drží velikost listu“ a posuň ohnisko: list zůstane stejně velký, změní se perspektiva mřížky; „Pomocné čáry“ je schovají a ukážou dílo čistě, „Obnovit doporučené“ po rozladění posuvníků vrátí kameru ze `scenes.yaml`; „jen díla, která se nevejdou“ nechá v seznamu jen díla hlášená „Ke kontrole“ (na skutečných datech tři velká díla na stolech); zkopírovaný řádek `camera` vlož do `mockups/instagram/scenes.yaml` a `npm run demo:prepare` vyrobí scény s ní. Testovací data: `npm run demo:prepare`, `SITE_DATA_DIR=.demo/site npm run prototypes -- .demo/prototypes`. |
+| promítání | `npm run demo`, `/tvorba/?tag=voda` → „▶ Promítat“: celá obrazovka, adresa `?tag=voda&cinema=<id>`, díla se po 15 s prolnou; pohyb myši ukáže ovládání („Kolekce: …“, 5 s … 3 min, pauza, Popisky, Odkaz, ×), za 3 s zmizí. „45 s“ → `&interval=45` a pamatuje se (nové promítání začne na 45 s), „15 s“ ho z adresy smaže. ← →, mezerník (hláška „Pozastaveno“), tah myší (dílo jde s myší, sousední vedle), ↓ stránka díla a Zpět vrátí promítání na stejné dílo, Esc zavře a Zpět po „▶ Promítat“ také. Popisky: „na chvíli“ zmizí po 4 s, „stále“, „skryté“. Odkaz `/tvorba/?cinema=<id>&interval=5` otevře promítání rovnou (celá obrazovka až po prvním kliknutí, v ovládání „Celá obrazovka“, v DevTools → Network se načítají `….avif`). Prohlížeč fotek díla (Ráno u rybníka): tah myší posouvá obrázek a vedle něj detail. V konzoli (Verbose) `[analytics] cinema_open` / `cinema_close`. |
+| prototypy | `npm run prototypes` a `open .prototypes/zarovnani-sloupcu.html`, `open .prototypes/znacky-dlazdic.html`: posuvníky začínají na hodnotách ze `site.config.yaml`, „Nastavení“ přepne na úvodní stránku / galerii. `open .prototypes/kamera-scen.html`: hrany stolů a stojanu protažené až za fotku, kroužek (průsečík hran) a křížek (úběžník kamery) leží u sebe a čárkované hrany díla do nich míří; „Z rohů listu“ je od sebe vzdálí, „Z hran“ je vrátí; u stojanu úhel spodní hrany díla proti liště skoro 0°; „Vyrovnat natočení“ ho změní, zaškrtni „ohnisko drží velikost listu“ a posuň ohnisko: list zůstane stejně velký, změní se perspektiva mřížky; „Pomocné čáry“ je schovají a ukážou dílo čistě, „Obnovit doporučené“ po rozladění posuvníků vrátí kameru ze `scenes.yaml`; „jen díla, která se nevejdou“ nechá v seznamu jen díla hlášená „Ke kontrole“ (na skutečných datech tři velká díla na stolech); zkopírovaný řádek `camera` vlož do `mockups/instagram/scenes.yaml` a `npm run demo:prepare` vyrobí scény s ní. `promitani.html`: „▶ Promítat“, pohyb myši ukáže ovládání, ← → ↑ ↓ Esc, tažení myší, `L` ladění; adresa se mění v `#`. Testovací data: `npm run demo:prepare`, `SITE_DATA_DIR=.demo/site npm run prototypes -- .demo/prototypes`. |
 | značky na dlaždicích | `/tvorba/?view=tiles`: obrazy z výběru autorky mají vlevo nahoře hvězdičku, obrazy na prodej vpravo dole košík; `−` na malé dlaždice: košíky zmizí, hvězdičky zůstanou; `+` na velké: značky větší (nejvýš 22 px). Přepni paletu Noc: značky světlé s tmavým lemem. Velké obrazy: žádné značky, hvězdička u názvu a štítek „K prodeji“. Totéž na úvodní stránce. Zkus `tileMarks.sale.icon: tag` nebo `sale.corner: tl` v `site.config.yaml` (košík vedle hvězdičky). |
 | dlaždice | `/tvorba/`: vpravo dole ikona „Dlaždice“: malé obrazy bez textů, 36 na stránku, „Na stránku“ nabízí 36 / 72 / 144, v URL `?view=tiles`; z 4. stránky velkých obrazů skočí na 2. stránku dlaždic (stejné první dílo). Zvol 72, přepni na velké obrazy a zpět: každé zobrazení si pamatuje svůj počet. Změň filtr, dlaždice zůstanou. Otevři `/tvorba/` znovu bez parametrů → dlaždice a `?view=tiles` (paměť); `/tvorba/?view=grid` → velké obrazy (odkaz má přednost); „Velké obrazy“ paměť smaže (DevTools → Local Storage → `pavla.gallery.view`). Na šířce telefonu 3 sloupce. |
 | štítky v bublině | `/tvorba/`: najeď myší na obraz se štítky, bublina má řádek `#štítek …` česky podle abecedy. |
@@ -2065,11 +2129,13 @@ analytics:
   | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav, hledání) nebo na přehledu kolekcí rok či hledání; ne stránkování ani počet na stránku | aktivní filtry `tag` (víc štítků jako jedna hodnota spojená čárkou v abecedním pořadí, např. `krajina,voda`), `technique`, `year`, `collection`, `status`, `featured`, `q` (hledání, i na přehledu kolekcí; prázdné se neposílají) a `results` (kolik děl, na přehledu kolekcí kolik kolekcí odpovídá) |
   | `fler_click` | klik na „Koupit na Fleru“ u díla | `work_id`, `work_title` |
   | `instagram_click` | klik na „Na Instagramu“ u díla (atribut `instagram`) | `work_id`, `work_title` |
-  | `share` | klik na ikonu v řádku „Sdílet“ u díla (doporučená událost GA) | `method` (`pinterest`, `facebook`, `whatsapp`, `native` = nabídka sdílení telefonu, `copy` = zkopírování odkazu), `work_id`, `work_title` |
+  | `share` | klik na ikonu v řádku „Sdílet“ u díla (doporučená událost GA); i „Odkaz“ v promítání | `method` (`pinterest`, `facebook`, `whatsapp`, `native` = nabídka sdílení telefonu, `copy` = zkopírování odkazu), `work_id`, `work_title`; z promítání `source: cinema` a `work_id` právě promítaného díla |
   | `email_click` | jen odkazy `mailto:`: klik na e-mailovou adresu na Kontaktu (kdo píše rovnou z pošty místo formuláře); bez formuláře zpráv i klik na „Napsat autorce“ u díla. Předmět e-mailu má stejný tvar jako odeslaná zpráva (`[pavla-web] Pozdrav nebo vzkaz`, u díla `[pavla-web] Dotaz na obraz: <název> (<id>)` / `Zájem o koupi: …`) | u díla `work_id`, `work_title`, na Kontaktu žádné |
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
   | `palette_change` | návštěvník v patičce přepne barvy webu (jen skutečná změna, ne opakovaný klik na tutéž) | `palette` (`papir`, `pergamen`, `noc`, `auto`) |
   | `view_change` | návštěvník přepne zobrazení děl (velké obrazy / dlaždice) nebo velikost dlaždic, na úvodní stránce i v galerii (`viewEventParams`) | `listing` (`home`, `gallery`), `view` (`grid`, `tiles-s`, `tiles-m`, `tiles-l`) |
+  | `cinema_open` | promítání výpisu otevřené (`cinemaOpenParams`) | `listing` (`gallery`, `year`, `collection`), `results` (kolik děl promítá), `interval` (s), `method` (`CINEMA_OPEN_METHODS`: `button` „▶ Promítat“, `link` adresa s `cinema`) |
+  | `cinema_close` | promítání zavřené nebo opuštěné na stránku díla či kolekce (`cinemaCloseParams`) | `listing`, `reason` (`CINEMA_CLOSE_REASONS`: `button` ×, `esc` Esc nebo konec celé obrazovky, `back` Zpět, `work` stránka díla, `collection` kolekce), `seconds`, `shown` (kolik děl ukázalo) |
   | `image_view` | každý obrázek ukázaný v prohlížeči fotek na stránce díla (`imageEventParams`): otevření i každé listování; Zpět/Vpřed jen při jiném obrázku | `work_id`, `work_title`, `image` (kotva obrázku: `obraz`, `detail-<jméno>`, `mockup-<scéna>`), `image_kind` (`main`, `detail`, `mockup`), `method` (`IMAGE_METHODS`: `open` klik na stránce, `arrow` šipka prohlížeče, `swipe` tah, `key` klávesa ←/→, `link` stránka otevřená s kotvou, `history` Zpět/Vpřed) |
 
   Tlačítka nesou `data-track="<událost>"`, `data-work-id` a `data-work-title`; posluchač kliků je v `Base.astro`,
@@ -2090,16 +2156,21 @@ analytics:
   | Hledání | `q` | Text hledání v galerii nebo v přehledu kolekcí (gallery_filter). |
   | ID díla | `work_id` | Trvalý kód díla (např. g4psg) u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek. |
   | Název díla | `work_title` | Název díla u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek. |
-  | Způsob | `method` | share: kde sdílel (pinterest, facebook, whatsapp, native, copy); image_view: jak přišel na obrázek (open, arrow, swipe, key, link, history). |
+  | Způsob | `method` | Jak: share pinterest, facebook, whatsapp, native, copy; image_view open, arrow, swipe, key, link, history; cinema_open button, link. |
   | Typ zprávy | `message_type` | Typ odeslané zprávy (message_sent): greeting, work, purchase, collaboration, bug, other. |
   | Barvy webu | `palette` | Barvy zvolené v patičce (palette_change): papir, pergamen, noc, auto. |
-  | Výpis | `listing` | Kde se přepnulo zobrazení děl (view_change): home = úvodní stránka, gallery = galerie. |
+  | Výpis | `listing` | Kde: view_change home = úvodní stránka, gallery = galerie; cinema_open/close gallery, year, collection. |
   | Zobrazení | `view` | Nové zobrazení děl (view_change): grid = velké obrazy, tiles-s / tiles-m / tiles-l = dlaždice malé / střední / velké. |
   | Obrázek | `image` | Obrázek v prohlížeči fotek díla (image_view): obraz, detail-<jméno>, mockup-<scéna>; stejně jako kotva v adrese. |
+  | Doba obrazu | `interval` | Promítání (cinema_open): kolik sekund zůstane každé dílo. |
+  | Důvod zavření | `reason` | Promítání (cinema_close): button, esc, back, work = na stránku díla, collection = na kolekci. |
+  | Odkud | `source` | Sdílení (share): cinema = tlačítko Odkaz v promítání; jinak prázdné (řádek Sdílet u díla). |
   | Druh obrázku | `image_kind` | Druh obrázku v prohlížeči fotek (image_view): main = celý obraz, detail = detailní fotka, mockup = vizualizace v interiéru. |
 
   A *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru, jednotka Standardní, popis: „Kolik děl (na přehledu
-  kolekcí kolik kolekcí) odpovídá filtru po jeho změně (gallery_filter).“). Data se v nich ukazují až od chvíle
+  kolekcí kolik kolekcí) odpovídá filtru po jeho změně (gallery_filter); u cinema_open kolik děl promítá.“),
+  `seconds` (Doba promítání, jednotka Sekundy, „Jak dlouho běželo promítání (cinema_close).“) a `shown` (Promítnutá díla,
+  Standardní, „Kolik děl promítání ukázalo (cinema_close).“). Data se v nich ukazují až od chvíle
   registrace, zpětně ne. Nový parametr události = nový řádek v této tabulce.
   Přehledy: *Přehledy → Zapojení → Události* (počty a proklik na parametry) nebo *Průzkum* (tabulka např.
   Událost × Technika).
@@ -2108,7 +2179,8 @@ analytics:
   díla na prodej s odkazem na Fler (v testovacích datech Máky) klik na „Koupit na Fleru“ → `[analytics] fler_click`,
   na detailu Ráno u rybníka klik na „Na Instagramu“ → `[analytics] instagram_click`, na ikonu v řádku „Sdílet“ →
   `[analytics] share` s `method` (např. `pinterest`, `copy`); klik na obraz, detail nebo mockup a listování v prohlížeči
-  fotek → `[analytics] image_view` s `image`, `image_kind` a `method`.
+  fotek → `[analytics] image_view` s `image`, `image_kind` a `method`; „▶ Promítat“ → `[analytics] cinema_open`,
+  Esc → `[analytics] cinema_close` se `seconds` a `shown`.
   Na nasazeném webu: GA → *Administrátor → DebugView* s Tag Assistantem, nebo *V reálném čase → Počet událostí*.
 - Kód: `scripts/lib/analytics.mjs` (kdy měřit, obsah značky, kontrola ID), `analyticsId` v `src/lib/site.ts`.
 - Vyzkoušení: `npm run build`, pak `grep -c googletagmanager dist/index.html` (1 = značka je tam);

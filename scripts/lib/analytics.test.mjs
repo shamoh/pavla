@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  EVENTS, IMAGE_METHODS, imageEventParams, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
+  CINEMA_CLOSE_REASONS, CINEMA_OPEN_METHODS, EVENTS, IMAGE_METHODS, cinemaCloseParams, cinemaOpenParams, imageEventParams, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
 } from './analytics.mjs';
 
 const analytics = { googleMeasurementId: 'G-HPZNHYZ2MQ' };
@@ -68,6 +68,17 @@ test('trackEvent: sends through gtag when the Google tag is on the page, otherwi
   trackEvent('gallery_filter', { results: 3 }, { console: { debug: (...args) => logged.push(args) } });
   assert.deepEqual(logged, [['[analytics]', 'gallery_filter', { results: 3 }]]);
   assert.doesNotThrow(() => trackEvent('gallery_filter', {}, {}));
+});
+
+test('cinema_open / cinema_close: the listing, how it opened, why it closed, how long and how many works', () => {
+  assert.equal(EVENTS.cinema, 'cinema_open');
+  assert.equal(EVENTS.cinemaClose, 'cinema_close');
+  assert.deepEqual(CINEMA_OPEN_METHODS, ['button', 'link']);
+  assert.deepEqual(cinemaOpenParams({ listing: 'year', results: 12, interval: 15, method: 'link' }), { listing: 'year', results: 12, interval: 15, method: 'link' });
+  assert.throws(() => cinemaOpenParams({ listing: 'gallery', results: 1, interval: 15, method: 'tap' }), /unknown method of cinema_open: tap/);
+  assert.ok(CINEMA_CLOSE_REASONS.includes('collection'));
+  assert.deepEqual(cinemaCloseParams({ listing: 'gallery', reason: 'esc', ms: 61499, shown: 5 }), { listing: 'gallery', reason: 'esc', seconds: 61, shown: 5 });
+  assert.throws(() => cinemaCloseParams({ listing: 'gallery', reason: 'swipe', ms: 1, shown: 1 }), /unknown reason/);
 });
 
 test('viewEventParams: where and which view, tiles with their size', () => {

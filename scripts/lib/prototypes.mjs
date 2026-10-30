@@ -14,12 +14,18 @@ import {
   aimRotation, cameraAngles, cameraFromAngles, circleRatio, facingDeg, fitCamera, fitCameraToLines, insidePolygon, ledgeDepth, lineMisfit, lineY,
   planPlacement, polygonDistance, project, quadFits, sceneCamera, sceneWindow, segmentDistance, tiltDeg, unit, unproject, workQuad,
 } from './instagram.mjs';
+import { CINEMA_STORAGE_KEYS, captionMode, cinemaFromParams, intervalLabel, cinemaSettings, cinemaToParams, dragStep, fitBox, imageWidth, shuffledOrder, wrapIndex } from './cinema.mjs';
+import { VIEWER_TEXT_MAX, autoHide } from './work-viewer.mjs';
+import { ownText } from './rich-text.mjs';
+import { summarize } from './seo.mjs';
+import { PALETTES, paletteCss } from './palettes.mjs';
 
 /** The prototypes: published file name → template in scripts/prototypes/. */
 export const PROTOTYPES = {
   'zarovnani-sloupcu.html': 'columns.html',
   'znacky-dlazdic.html': 'marks.html',
   'kamera-scen.html': 'scene-camera.html',
+  'promitani.html': 'cinema.html',
 };
 
 /** The functions of the site a prototype calculates with, copied into it by their source text (self-contained ones). */
@@ -28,18 +34,27 @@ export const PROTOTYPE_FUNCTIONS = [
   project, unproject, lineY, ledgeDepth, circleRatio, aimRotation, cameraFromAngles, cameraAngles, lineMisfit, fitCameraToLines,
   // where the pipeline puts a work in a scene and the 4:5 window it cuts
   unit, tiltDeg, facingDeg, insidePolygon, segmentDistance, polygonDistance, quadFits, workQuad, planPlacement, sceneWindow,
+  // the cinema (autoHide always gets its `ms`: its default is a constant of its module)
+  cinemaFromParams, cinemaToParams, captionMode, intervalLabel, shuffledOrder, wrapIndex, dragStep, fitBox, imageWidth, autoHide,
 ];
 
 /**
  * The works of the site data at `dataRoot` (content/tvorba/[<collection>/]<slug>.yaml + public/tvorba/<year>/<slug>-<id>/info.json),
- * newest first, as much as a prototype needs: date, title, technique · size, featured, on sale, the picture's ratio,
- * whether it is cut out, its widths and folder (relative to public/). Works without pictures are left out, like on the site.
+ * newest first, as much as a prototype needs: date, year, title, technique · size (and each apart), its text (plain, shortened as in the
+ * viewer of a work), tags, collection (slug and title, '' without), featured, on sale, the picture's ratio, whether it
+ * is cut out, its widths and folder (relative to public/). Works without pictures are left out, like on the site.
  */
 export function prototypeWorks(dataRoot) {
   const works = [];
   const root = path.join(dataRoot, COPIES_DIR, 'tvorba');
   if (!fs.existsSync(root)) return works;
+  const collectionTitle = (dir) => {
+    const index = path.join(dir, '_index.yaml');
+    return fs.existsSync(index) ? String(YAML.parse(fs.readFileSync(index, 'utf8'))?.title ?? '') : '';
+  };
   (function walk(dir) {
+    const collection = dir === root ? '' : path.relative(root, dir).split(path.sep).join('/');
+    const title = collection ? collectionTitle(dir) || collection : '';
     for (const name of fs.readdirSync(dir).sort()) {
       const file = path.join(dir, name);
       if (fs.statSync(file).isDirectory()) walk(file);
@@ -53,9 +68,16 @@ export function prototypeWorks(dataRoot) {
         works.push({
           id: data.id,
           date: String(data.date),
+          year: Number(String(data.date).slice(0, 4)),
           title: data.title ?? data.id,
           sub: [data.technique, data.size_cm ? formatSizeCm(data.size_cm) : ''].filter(Boolean).join(' · '),
+          technique: String(data.technique ?? ''),
+          size: data.size_cm ? formatSizeCm(data.size_cm) : '',
           sizeCm: Array.isArray(data.size_cm) ? data.size_cm : null,
+          text: summarize(ownText(data.text), VIEWER_TEXT_MAX),
+          tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
+          collection,
+          collectionTitle: title,
           featured: data.featured === true,
           forSale: isOnSale(data.status),
           ratio: info.height / info.width,
@@ -69,13 +91,21 @@ export function prototypeWorks(dataRoot) {
   return works.sort((a, b) => b.date.localeCompare(a.date));
 }
 
-/** The settings of site.config.yaml (`config`) a prototype starts from: the counts of the home page, columns and marks of each place. */
+/**
+ * The settings of site.config.yaml (`config`) a prototype starts from: the counts of the home page, columns and marks of
+ * each place, the cinema; and the palettes of the site.
+ */
 export function prototypeConfig(config) {
   return {
     recent: homeRecent(config?.home?.recent),
     columns: { home: columnsFor(config, 'home'), gallery: columnsFor(config, 'gallery') },
     marks: { home: tileMarksFor(config, 'home'), gallery: tileMarksFor(config, 'gallery') },
     icons: Object.fromEntries(['star', ...SALE_ICONS].map((icon) => [icon, `<svg viewBox="0 0 24 24">${MARK_ICONS[icon]}</svg>`])),
+    cinema: cinemaSettings(config),
+    cinemaKeys: CINEMA_STORAGE_KEYS,
+    // the palettes of the site: their CSS (data-palette on <html>) and the switcher
+    paletteCss: paletteCss(),
+    palettes: PALETTES.map((p) => ({ id: p.id, label: p.label })),
   };
 }
 

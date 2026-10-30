@@ -196,6 +196,12 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (s/m/l), košík `isOnSale` vpravo dole (m/l), silueta barvy písma s lemem barvy papíru, nastavení `site.config.yaml`
   `home.tileMarks` (jen hvězdička) a `gallery.tileMarks`, každé zvlášť (`tileMarksFor`). Prototypy zobrazení: `npm run prototypes`
   (`scripts/lib/prototypes.mjs`, šablony `scripts/prototypes/`, výstup `.prototypes/` mimo git, funkce webu vložené jako text).
+  Promítání („▶ Promítat“ za počtem děl a „▶“ v liště filtrů, každý výpis s filtry): `src/components/Cinema.astro`,
+  `src/lib/cinema.ts`, logika `scripts/lib/cinema.mjs`, všechny časy a swipe v `site.config.yaml` `cinema` (`cinemaSettings`),
+  data karet `data-cinema` (`cinemaCard`), obrázky `<picture>` AVIF/WebP/JPEG (`cinemaSources`); adresa `?…&cinema=<id>&interval=<s>` (výchozí se nepíše, `cinemaToParams`),
+  tlačítko přidá záznam historie; popisky na chvíli / stále / skryté (`CAPTION_MODES`) a čas v paměti
+  (`CINEMA_STORAGE_KEYS`); události `cinema_open`, `cinema_close`. Tah prstem, který jde s prstem (promítání i prohlížeč
+  fotek díla): `src/lib/follow-swipe.ts` + `dragStep`. Nové volby nejdřív v prototypu `promitani.html`.
   Velikost dlaždic `TILE_SIZES` s/m/l (`TILE_WIDTHS`, třídy `tiles-<velikost>`, tlačítka −/+ v `Pager.astro`): `?tile=` jen s
   `view=tiles` a nevýchozí, paměť `pavla.gallery.tileSize`, odkaz má přednost.
 - **Atributy popisů (dílo, kolekce, fotka) jsou jen v `scripts/lib/schema.mjs`**: pořadí, výchozí hodnota kostry,
@@ -311,7 +317,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   + do `STATIC_PAGES` (mapa webu). `robots.txt` a 404 (`noindex`) generuje web; ověřovací kódy `site.verification`.
 - Návštěvnost: Google Analytics 4 (`analytics.googleMeasurementId` v `site.config.yaml`, `scripts/lib/analytics.mjs`,
   značka v `Base.astro`), jen produkční build skutečného webu, nikdy dev ani testovací data; URL i s parametry filtrů.
-  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `share`, `email_click`, `message_sent`, `palette_change`, `view_change`); nový parametr události = zapsat do README
+  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `share`, `email_click`, `message_sent`, `palette_change`, `view_change`, `image_view`, `cinema_open`, `cinema_close`); nový parametr události = zapsat do README
   (tabulka událostí + seznam vlastních dimenzí k registraci v GA).
 - Zprávy od návštěvníků: Web3Forms (`messages.accessKey` v `site.config.yaml`, jedna adresa, předmět `[pavla-web] <typ>: …`),
   formulář na Kontaktu a panel „Napište mi“ na ostatních stránkách (`scripts/lib/messages.mjs`, `message-draft.mjs`,

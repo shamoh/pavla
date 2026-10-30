@@ -7,6 +7,7 @@ import { PROTOTYPES, PROTOTYPE_FUNCTIONS, fillTemplate, prototypeConfig, prototy
 import { COLUMN_DEFAULTS } from './view-layout.mjs';
 import { HOME_RECENT } from './home-view.mjs';
 import { TILE_MARK_DEFAULTS } from './tile-marks.mjs';
+import { CINEMA_DEFAULTS } from './cinema.mjs';
 
 const templatesDir = new URL('../prototypes/', import.meta.url).pathname;
 
@@ -22,7 +23,7 @@ function siteData() {
       fs.writeFileSync(path.join(folder, 'info.json'), JSON.stringify(info));
     }
   };
-  work('plener', 'mlha', 'id: a1b2c\ndate: 2026-05-01\ntitle: Mlha\ntechnique: akvarel\nsize_cm: [30, 21]\nfeatured: true\n', { width: 300, height: 210, widths: [480, 960], transparent: true });
+  work('plener', 'mlha', 'id: a1b2c\ndate: 2026-05-01\ntitle: Mlha\ntechnique: akvarel\nsize_cm: [30, 21]\nfeatured: true\ntags: [voda, mlha]\ntext: |\n  Ráno nad **rybníkem**.\n', { width: 300, height: 210, widths: [480, 960], transparent: true });
   work('', 'les', 'id: d3e4f\ndate: 2026-07-02\ntitle: Les\nstatus: reserved\n', { width: 200, height: 300, widths: [480] });
   work('', 'bez-obrazku', 'id: g5h6i\ndate: 2026-08-01\ntitle: Bez obrázku\n', null);
   fs.writeFileSync(path.join(root, 'content', 'tvorba', 'plener', '_index.yaml'), 'title: Plenér\n');
@@ -33,9 +34,11 @@ test('prototypeWorks: works with pictures, newest first, with what a prototype n
   const works = prototypeWorks(siteData());
   assert.deepEqual(works.map((w) => w.title), ['Les', 'Mlha'], 'no pictures = left out, like on the site; _index.yaml is no work');
   assert.deepEqual(works[1], {
-    id: 'a1b2c', date: '2026-05-01', title: 'Mlha', sub: 'akvarel · 30 × 21 cm', sizeCm: [30, 21], featured: true, forSale: false,
+    id: 'a1b2c', date: '2026-05-01', year: 2026, title: 'Mlha', sub: 'akvarel · 30 × 21 cm', technique: 'akvarel', size: '30 × 21 cm', sizeCm: [30, 21], text: 'Ráno nad rybníkem.',
+    tags: ['voda', 'mlha'], collection: 'plener', collectionTitle: 'Plenér', featured: true, forSale: false,
     ratio: 0.7, transparent: true, widths: [480, 960], folder: 'tvorba/2026/mlha-a1b2c',
   });
+  assert.deepEqual([works[0].collection, works[0].collectionTitle, works[0].text, works[0].tags], ['', '', '', []], 'no collection, text or tags');
   assert.equal(works[0].forSale, true, 'reserved is on sale');
   assert.equal(works[0].sub, '');
   assert.deepEqual(prototypeWorks(path.join(os.tmpdir(), 'no-such-site')), []);
@@ -50,6 +53,10 @@ test('prototypeConfig: the settings of site.config.yaml with the icons of the si
   assert.deepEqual(Object.keys(config.icons), ['star', 'cart', 'tag', 'bag']);
   assert.match(config.icons.star, /^<svg viewBox="0 0 24 24">.*<\/svg>$/);
   assert.throws(() => prototypeConfig({ columns: {} }), /moved/, 'bad settings stop it like the build');
+  assert.deepEqual(config.cinema, CINEMA_DEFAULTS);
+  assert.equal(prototypeConfig({ cinema: { fadeMs: 400 } }).cinema.fadeMs, 400);
+  assert.match(config.paletteCss, /:root\[data-palette="noc"\]\{color-scheme:dark;--paper:/);
+  assert.deepEqual(config.palettes.map((p) => p.id), ['papir', 'pergamen', 'noc']);
 });
 
 test('publicPath: from the folder of the pages to public/ of the data', () => {
@@ -79,6 +86,9 @@ test('writePrototypes: both pages from the templates, valid scripts over the dat
     assert.match(html, /"folder":"tvorba\/2026\/les-d3e4f"/);
     assert.match(html, /"scenes":\[\{"name":"stul"/);
   }
+  // the cinema page: the controls, the tuning panel and the address in the hash
+  const cinema = fs.readFileSync(path.join(outDir, 'promitani.html'), 'utf8');
+  for (const text of ['▶ Promítat', 'id="cinema"', 'id="tuning"', 'Popisky', 'Kolekce:', 'requestFullscreen', 'wakeLock', 'location.replace', 'Odkaz zkopírován', 'Popisky: na chvíli', 'togglePause']) assert.ok(cinema.includes(text), text);
   // every scene of the camera page: the guides on / off and back to the recommended setup
   const camera = fs.readFileSync(path.join(outDir, 'kamera-scen.html'), 'utf8');
   for (const text of ['Pomocné čáry: zapnuto', 'Pomocné čáry: vypnuto', 'Obnovit doporučené', 'jen díla, která se nevejdou', 'id="misfits-only"', "class: 'pointer'", 'mimo fotku', "class: 'zoom'", "'paint-order': 'stroke'", 'zkopírováno', 'Cmd + kolečko', 'press.shift', 'pointLabel(p, [0, -1]', 'pointLabel(scene.center', 'data-layer="obstacles"', 'před obrazem (front)']) assert.ok(camera.includes(text), text);
@@ -136,7 +146,17 @@ test('PROTOTYPE_FUNCTIONS: self-contained, they work copied as text', () => {
       props: [[[0, 0], [50, 0], [50, 50]]] }, geo, [20, 15], 'abcde');
     const standing = planPlacement({ mode: 'stand', imageSize: [1000, 1250], props: [], maxSlideCm: 5 }, geo, [20, 15], 'abcde');
     const window = sceneWindow(1000, 1250, workQuad(geo, [20, 15], lying.cx, lying.cy, lying.deg), {});
-    return { back: unproject(cam, x, y), angles: cameraAngles(cam, [40, 30], 'stand'), ratio: circleRatio(cam, x, y), fit: fit.lineRms + fit.rms,
+    // the cinema: the address, the order, a drag, the box and the picture of a work, the controls
+    const settings = { intervals: [5, 10], defaultInterval: 10, swipe: { fraction: 0.2, minPx: 50, flickPxPerMs: 0.5 } };
+    const shown = [];
+    const controls = autoHide((v) => shown.push(v), { ms: 5, setTimer: (fn) => { fn(); return 1; }, clearTimer: () => {} });
+    controls.show();
+    const cinema = {
+      params: String(cinemaToParams(new URLSearchParams('tag=voda'), cinemaFromParams(new URLSearchParams('cinema=ab&interval=5'), settings), settings)),
+      first: shuffledOrder(['a', 'b', 'c'], 'c')[0], last: wrapIndex(-1, 3), step: dragStep(-300, 0, 1000, 500, settings.swipe),
+      box: fitBox(1, 100, 100, 0).width, width: imageWidth([480, 960], 500, 1), shown,
+    };
+    return { cinema, back: unproject(cam, x, y), angles: cameraAngles(cam, [40, 30], 'stand'), ratio: circleRatio(cam, x, y), fit: fit.lineRms + fit.rms,
       depth: ledgeDepth(cam, [40, 30], [[0, 1100], [1000, 1100]]), line: lineY([[0, 0], [10, 10]], 5), lying, standing, window };`);
   const r = run();
   assert.ok(Math.abs(r.back[0] - 10) < 1e-9 && Math.abs(r.back[1] - 5) < 1e-9);
@@ -145,4 +165,5 @@ test('PROTOTYPE_FUNCTIONS: self-contained, they work copied as text', () => {
   assert.equal(r.line, 5);
   assert.ok(r.fit < 0.1);
   assert.ok(r.lying.fits && r.standing.fits && r.window.width > 0, 'planPlacement and sceneWindow work copied as text');
+  assert.deepEqual(r.cinema, { params: 'tag=voda&cinema=ab&interval=5', first: 'c', last: 2, step: 1, box: 100, width: 960, shown: [true, false] });
 });

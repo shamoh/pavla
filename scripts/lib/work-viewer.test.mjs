@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { viewKind, autoHide, CONTROLS_MS, VIEWER_TEXT_MAX, workCaption, hashId, MAIN_VIEW, MOCKUPS_NOTE, mockupCaption, mockupsHeading, swipeStep, SWIPE_PX, viewId, viewIndex } from './work-viewer.mjs';
+import { viewKind, autoHide, CONTROLS_MS, VIEWER_TEXT_MAX, workCaption, hashId, MAIN_VIEW, MOCKUPS_NOTE, mockupCaption, mockupsHeading, viewId, viewIndex } from './work-viewer.mjs';
 
 test('viewId names the work, its details and its mockups', () => {
   assert.equal(viewId({ kind: 'main' }), MAIN_VIEW);
@@ -33,17 +33,6 @@ test('a mockup is called a visualisation, the note says the frame is not part of
   assert.equal(mockupCaption('Obývák večer'), 'Obývák večer (vizualizace)');
   assert.match(MOCKUPS_NOTE, /^Vizualizace/);
   assert.match(MOCKUPS_NOTE, /rám/);
-});
-
-test('swipeStep: to the left = next, to the right = previous, short or vertical moves are no swipe', () => {
-  assert.equal(swipeStep(-80, 10), 1);
-  assert.equal(swipeStep(80, -10), -1);
-  assert.equal(swipeStep(-SWIPE_PX, 0), 1);
-  assert.equal(swipeStep(-(SWIPE_PX - 1), 0), 0);
-  assert.equal(swipeStep(0, 0), 0);
-  assert.equal(swipeStep(-80, 120), 0, 'scrolling down');
-  assert.equal(swipeStep(-80, -80), 0, 'diagonal');
-  assert.equal(swipeStep(-30, 0, 20), 1, 'own minimum');
 });
 
 // a fake clock: timers run when the test moves the time on

@@ -193,6 +193,20 @@ gallery:
       icon: cart      # cart = košík, tag = cenovka, bag = taška
       tiles: [m, l]   # na malých dlaždicích jen hvězdička
 
+cinema:
+  # Promítání obrazů výpisu přes celou obrazovku („▶ Promítat“ v galerii, roku a kolekci; scripts/lib/cinema.mjs,
+  # src/lib/cinema.ts; hodnoty hledá prototyp promitani.html, npm run prototypes). Chybějící = výchozí hodnota.
+  intervals: [5, 10, 15, 45, 180]   # jak dlouho (s) zůstane obraz, volby v ovládání (180 = „3 min“)
+  defaultInterval: 15          # výchozí z nich; do adresy se nepíše, zvolený si prohlížeč pamatuje
+  fadeMs: 1000                 # prolnutí do dalšího obrazu (ms)
+  controlsMs: 3000             # jak dlouho zůstane ovládání po pohybu myši nebo ťuknutí (ms)
+  captionMs: 4000              # popisky „na chvíli“ (výchozí): jak dlouho zůstane popisek obrazu, než zmizí (ms)
+  marginPercent: 0             # papír kolem obrazu, % kratší strany obrazovky
+  swipe:                       # krok prstem: aspoň tento podíl šířky obrazovky, nebo rychlé švihnutí
+    fraction: 0.2
+    minPx: 50                  # kratší pohyb je ťuknutí
+    flickPxPerMs: 0.5          # rychlost švihnutí (px/ms)
+
 home:
   # Sloupce obrazů stejné výšky na úvodní stránce (galerie má své v gallery.columns): nižší sloupec nejdřív rozšíří
   # mezery mezi obrazy, zbytek místa se rozdělí nad a pod sloupec. Chybějící = výchozí hodnota.

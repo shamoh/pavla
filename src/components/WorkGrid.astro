@@ -4,21 +4,22 @@
 // their scripts switch it with showViewOf (scripts/lib/view-layout.mjs), which toggles the classes below and the
 // `sizes`, and lay the shown cards out in columns of about the same height (balanceGrid).
 // `hidden`: the cards hidden in the HTML (by index); `eager`: how many first cards load their images right away.
-// `place`: whose marks over the tiles (site.config.yaml home.tileMarks or gallery.tileMarks).
+// `place`: whose marks over the tiles (site.config.yaml home.tileMarks or gallery.tileMarks). `cinema`: the cards carry
+// what the cinema of the listing shows (WorkCard.astro).
 // Any other attribute (id, data-*) goes to the grid element.
 import WorkCard from './WorkCard.astro';
 import { type Work, marks } from '../lib/site';
 import { DEFAULT_TILE_SIZE, DEFAULT_VIEW, viewImageSizes } from '../../scripts/lib/gallery-filter.mjs';
 
-interface Props { works: Work[]; place: 'home' | 'gallery'; view?: string; tile?: string; hidden?: boolean[]; eager?: number; [attr: string]: unknown }
-const { works, place, view = DEFAULT_VIEW, tile = DEFAULT_TILE_SIZE, hidden = [], eager = 0, ...attrs } = Astro.props;
+interface Props { works: Work[]; place: 'home' | 'gallery'; view?: string; tile?: string; hidden?: boolean[]; eager?: number; cinema?: boolean; [attr: string]: unknown }
+const { works, place, view = DEFAULT_VIEW, tile = DEFAULT_TILE_SIZE, hidden = [], eager = 0, cinema = false, ...attrs } = Astro.props;
 const placeMarks = marks[place];
 const tiles = view === 'tiles';
 const sizes = viewImageSizes(view, tile);
 // The size and opacity of the marks over the tiles (site.config.yaml tileMarks, WorkCard.astro).
 const markStyle = `--mark-share: ${placeMarks.size}; --mark-min: ${placeMarks.min}px; --mark-max: ${placeMarks.max}px; --mark-opacity: ${placeMarks.opacity / 100}`;
 ---
-<div class:list={['grid', { tiles, [`tiles-${tile}`]: tiles }]} style={markStyle} {...attrs}>{works.map((w, i) => <WorkCard work={w} marks={placeMarks} sizes={sizes} eager={i < eager} hidden={hidden[i]} />)}</div>
+<div class:list={['grid', { tiles, [`tiles-${tile}`]: tiles }]} style={markStyle} {...attrs}>{works.map((w, i) => <WorkCard work={w} marks={placeMarks} sizes={sizes} eager={i < eager} hidden={hidden[i]} cinema={cinema} />)}</div>
 <style>
   .grid { columns: 3 300px; column-gap: 36px; }
   .grid :global(.card[hidden]) { display: none; }
