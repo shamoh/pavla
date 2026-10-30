@@ -2415,7 +2415,7 @@ repem z `CONTENT_DIR` v `.env` (nebo `npm run corners -- <obsahové repo>`) a vy
   `crossedCorners`): čtyřúhelník a dotčené body červeně, jejich lupy pod červeným filtrem s blikajícím rámečkem,
   řádky ořezu červeně, nad fotkou varování a *Zapsat do yaml…* nejde (zapsanou hodnotu překřížit nejde ani tak:
   každý roh nejvýš čtvrtinu fotky od svého rohu, `cornersProblems`).
-- **Vpravo rohy zblízka**: každý roh ve zvětšení 2×/4×/8× (pixel fotky = 2/4/8 bodů, bez vyhlazení) s nitkovým
+- **Vpravo rohy zblízka**: každý roh ve zvětšení 2×/4×/8× (výchozí 2×; pixel fotky = 2/4/8 bodů, bez vyhlazení) s nitkovým
   křížem; klik do lupy dá roh přesně na ten pixel. Pod nimi ořez každého rohu v px a v % fotky (nad
   `images.edges.suspicious` červeně) a hotový blok `meta_corners:` (`editorYaml`, stejný text jako výpis `npm run preview`).
 - **Tlačítka:** *Kopírovat* (blok do schránky), *Zapsat do yaml…* (po potvrzení na stránce zapíše `meta_corners` do

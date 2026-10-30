@@ -275,3 +275,10 @@ test('trustedRequest: only the editor itself, writes only from its own page', ()
   assert.ok(!trustedRequest('POST', { host: '127.0.0.1:4327', origin: 'https://evil.example' }, 4327), 'another site');
   assert.ok(!trustedRequest('POST', { host: '127.0.0.1:4327' }, 4327), 'a write without Origin');
 });
+
+test('the page: the loupes of the corners open at 2×, with 4× and 8× to switch to', async () => {
+  const html = await fs.readFile(new URL('../corners.html', import.meta.url), 'utf8');
+  const select = html.match(/<select id="zoom">(.*?)<\/select>/)[1];
+  assert.deepEqual([...select.matchAll(/value="(\d+)"/g)].map((m) => m[1]), ['2', '4', '8']);
+  assert.deepEqual([...select.matchAll(/value="(\d+)" selected/g)].map((m) => m[1]), ['2']);
+});
