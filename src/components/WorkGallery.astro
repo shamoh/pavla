@@ -140,8 +140,8 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     ALL_PAGES, DEFAULT_VIEW, FEATURED_ON, TILE_SIZE_STORAGE_KEY, stepTileSize, tileSizeToRemember, NO_COLLECTION, VIEW_STORAGE_KEY, facetChoices, pageSizeStorageKey, viewPageSizes, withView, facetDisplay, matchesFilters, pageAfterFilterChange, pageSizeOf, pageSizeToRemember, paginate,
     rememberedPageSize, filtersToParams, stateFromForm, stateFromParams, stateToParams, tagChoices, toggleTag, viewToRemember, withPageSize,
   } from '../../scripts/lib/gallery-filter.mjs';
-  import { EVENTS, cinemaCloseParams, cinemaOpenParams, filterEventParams, trackEvent, viewEventParams } from '../../scripts/lib/analytics.mjs';
-  import { CINEMA_RANDOM, CINEMA_STORAGE_KEYS, cinemaFirst, cinemaFromParams, cinemaToParams } from '../../scripts/lib/cinema.mjs';
+  import { EVENTS, cinemaCloseParams, cinemaLinkMethod, cinemaOpenParams, filterEventParams, trackEvent, viewEventParams } from '../../scripts/lib/analytics.mjs';
+  import { CINEMA_FROM, CINEMA_RANDOM, CINEMA_STORAGE_KEYS, cinemaFirst, cinemaFromParams, cinemaToParams } from '../../scripts/lib/cinema.mjs';
   import { type CinemaWork, createCinema } from '../lib/cinema';
   import { rememberListing, revealReturned } from '../lib/page-return';
   import { fitYearRow } from '../lib/year-row';
@@ -567,10 +567,11 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     },
     shared: (method) => trackEvent(EVENTS.share, { method, source: 'cinema', work_id: cinema.current ?? '' }),
   });
-  function openCinema(firstId: string | null, interval: number, method: 'button' | 'link') {
+  // `tracked`: the method of cinema_open when another than `method` (a link of the site, cinemaLinkMethod)
+  function openCinema(firstId: string | null, interval: number, method: 'button' | 'link', tracked: string = method) {
     const list = cinemaWorks();
     if (!cinema.open(list, cinemaFirst(firstId), interval, method)) return false;
-    trackEvent(EVENTS.cinema, cinemaOpenParams({ listing, results: list.length, interval, method }));
+    trackEvent(EVENTS.cinema, cinemaOpenParams({ listing, results: list.length, interval, method: tracked }));
     return true;
   }
   for (const b of playButtons) {
@@ -590,9 +591,10 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     else if (wanted.id && !cinema.isOpen) openCinema(wanted.id, wanted.interval, 'link');
   });
   // A link with the show (apply() above has written the address without it): open it on its work; a work not among
-  // these (filtered out, gone) starts anywhere, no works = no show.
+  // these (filtered out, gone) starts anywhere, no works = no show. A link of the site names itself by ?from= (counted
+  // apart in cinema_open; the address written above is without it).
   const linked = cinemaFromParams(params, cinemaConf, intervalStorage.get());
-  if (linked.id && openCinema(linked.id, linked.interval, 'link')) history.replaceState(history.state, '', cinemaHref(cinema.current, linked.interval));
+  if (linked.id && openCinema(linked.id, linked.interval, 'link', cinemaLinkMethod(params.get(CINEMA_FROM)))) history.replaceState(history.state, '', cinemaHref(cinema.current, linked.interval));
 </script>
 
 <style>

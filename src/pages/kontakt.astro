@@ -2,22 +2,33 @@
 import Base from '../layouts/Base.astro';
 import Photo from '../components/Photo.astro';
 import MessageForm from '../components/MessageForm.astro';
-import { getPage, hasWorksOnSale, messages, site, url } from '../lib/site';
-import { saleShowPath } from '../../scripts/lib/cinema.mjs';
+import { getPage, hasFeaturedWorks, hasWorksOnSale, messages, site, url } from '../lib/site';
+import { featuredShowPath, saleShowPath } from '../../scripts/lib/cinema.mjs';
 import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
 import { EVENTS } from '../../scripts/lib/analytics.mjs';
 import { mailtoLink } from '../../scripts/lib/messages.mjs';
-import { pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
+import { pinterestHandle, pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
+import { handleParts } from '../../scripts/lib/handle-parts.mjs';
 
-// Where to find me: e-mail, profiles and the shop (the ones set in site.config.yaml), in this order; then the works on
-// sale shown one after another (the cinema of the gallery, saleShowPath) while there are some.
+// Where to find me: e-mail, profiles and the shop (the ones set in site.config.yaml), in this order; each shows its
+// address or account (Pinterest as @<user name> like Instagram; given name, surname and the rest in three shades,
+// handleParts) and says in its tooltip where it leads.
+const pinterestUser = pinterestHandle(site.pinterest);
 const links = [
-  site.email && { label: 'E-mail', href: mailtoLink(site.email, 'greeting', null), text: site.email, track: EVENTS.email },
-  site.instagram && { label: 'Instagram', href: `https://www.instagram.com/${site.instagram}/`, text: `@${site.instagram}`, rel: 'me' },
-  site.pinterest && { label: 'Pinterest', href: pinterestProfileLink(site.pinterest), text: 'Pavla na Pinterestu', rel: 'me' },
-  site.fler && { label: 'Obchůdek', href: site.fler, text: 'Fler' },
-  hasWorksOnSale() && { label: 'Obrazy na prodej', href: url(saleShowPath()), text: 'Promítnout' },
-].filter(Boolean) as { label: string; href: string; text: string; rel?: string; track?: string }[];
+  site.email && { label: 'E-mail', href: mailtoLink(site.email, 'greeting', null), text: site.email, title: 'Napsat mi e-mail', track: EVENTS.email },
+  site.instagram && { label: 'Instagram', href: `https://www.instagram.com/${site.instagram}/`, text: `@${site.instagram}`, title: 'Můj profil na Instagramu', rel: 'me' },
+  site.pinterest && {
+    label: 'Pinterest', href: pinterestProfileLink(site.pinterest), text: pinterestUser ? `@${pinterestUser}` : 'Pavla na Pinterestu',
+    title: 'Moje obrazy na Pinterestu', rel: 'me',
+  },
+  site.fler && { label: 'Obchůdek', href: site.fler, text: 'Fler', title: 'Můj obchůdek na Fleru' },
+].filter(Boolean) as { label: string; href: string; text: string; title: string; rel?: string; track?: string }[];
+// Then "Promítnout": the works shown one after another (the cinema of the gallery), each show while it has works.
+const SHOW_TITLE = 'jeden po druhém přes celou obrazovku';
+const shows = [
+  hasWorksOnSale() && { text: 'Obrazy na prodej', href: url(saleShowPath('contact')), title: `Obrazy na prodej ${SHOW_TITLE}` },
+  hasFeaturedWorks() && { text: 'Moje nejmilejší', href: url(featuredShowPath('contact')), title: `Obrazy z mého výběru ${SHOW_TITLE}` },
+].filter(Boolean) as { text: string; href: string; title: string }[];
 // The texts are in stranky/kontakt.yaml of the content repository.
 const { description, paragraphs, locationLabel } = getPage('kontakt')!;
 // For search engines: the contact page of the author.
@@ -34,7 +45,8 @@ const jsonLd = graphLd(
       {messages.mode && <MessageForm variant="inline" />}
       {!messages.mode && (
         <ul class="contact">
-          {links.map((l) => <li><span class="eyebrow">{l.label}</span><a href={l.href} rel={l.rel} data-track={l.track}>{l.text}</a></li>)}
+          {links.map((l) => <li><span class="eyebrow">{l.label}</span><a href={l.href} title={l.title} rel={l.rel} data-track={l.track}>{handleParts(l.text, site.author).map((part) => (part.kind ? <span class={part.kind}>{part.text}</span> : part.text))}</a></li>)}
+          {shows.length > 0 && <li><span class="eyebrow">Promítnout</span><span class="shows">{shows.map((s) => <a href={s.href} title={s.title}>{s.text}</a>)}</span></li>}
           {site.location && <li><span class="eyebrow">{locationLabel}</span><span class="value">{site.location}</span></li>}
         </ul>
       )}
@@ -46,7 +58,8 @@ const jsonLd = graphLd(
     {messages.mode && (
       <div class="contact-row">
         <ul class="contact compact">
-          {links.map((l) => <li><span class="eyebrow">{l.label}</span><a href={l.href} rel={l.rel} data-track={l.track}>{l.text}</a></li>)}
+          {links.map((l) => <li><span class="eyebrow">{l.label}</span><a href={l.href} title={l.title} rel={l.rel} data-track={l.track}>{handleParts(l.text, site.author).map((part) => (part.kind ? <span class={part.kind}>{part.text}</span> : part.text))}</a></li>)}
+          {shows.length > 0 && <li><span class="eyebrow">Promítnout</span><span class="shows">{shows.map((s) => <a href={s.href} title={s.title}>{s.text}</a>)}</span></li>}
         </ul>
         {site.location && <p class="where"><span class="eyebrow">{locationLabel}</span><span class="value">{site.location}</span></p>}
       </div>
@@ -71,4 +84,12 @@ const jsonLd = graphLd(
   @media (max-width: 800px) { .where { text-align: left; } }
   .contact a, .contact .value, .where .value { font-family: var(--serif); font-size: 1.7rem; text-decoration: none; }
   .contact.compact a, .contact-row .value { font-size: 1.25rem; }
+  /* The addresses in three shades (spans inside the link: it clicks and copies as before): the given name in the accent,
+     the surname in the ink (both strong, told apart by their hue in every palette), @ . and the domain the quietest. */
+  .contact .given { color: var(--accent); }
+  .contact .surname { color: var(--ink); }
+  .contact .rest { color: var(--ink-soft); opacity: 0.7; }
+  /* The shows side by side under one "Promítnout", parted by a quiet dot (wrapping on a narrow screen). */
+  .shows { display: flex; flex-wrap: wrap; gap: 0 0.5em; }
+  .shows a + a::before { content: '·'; margin-right: 0.5em; color: var(--ink-soft); }
 </style>

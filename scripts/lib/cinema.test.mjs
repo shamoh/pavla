@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import YAML from 'yaml';
 import {
-  CAPTION_MODES, CINEMA_DEFAULTS, CINEMA_STORAGE_KEYS, CINEMA_RANDOM, CINEMA_HINT_KEY, cinemaHint, fullscreenHint, cinemaFirst, lingerMs, saleShowPath, captionMode, cinemaCard, cinemaPalette, cinemaPalettes, cinemaSources, cinemaFromParams, intervalLabel, cinemaSettings, cinemaToParams, dragStep, fitBox, imageWidth, shuffledOrder, wrapIndex,
+  CAPTION_MODES, CINEMA_DEFAULTS, CINEMA_STORAGE_KEYS, CINEMA_RANDOM, CINEMA_HINT_KEY, cinemaHint, fullscreenHint, cinemaFirst, lingerMs, saleShowPath, featuredShowPath, CINEMA_FROM, captionMode, cinemaCard, cinemaPalette, cinemaPalettes, cinemaSources, cinemaFromParams, intervalLabel, cinemaSettings, cinemaToParams, dragStep, fitBox, imageWidth, shuffledOrder, wrapIndex,
 } from './cinema.mjs';
+import { FEATURED_ON, filtersToParams, stateFromParams } from './gallery-filter.mjs';
 
 const settings = cinemaSettings({});
 
@@ -107,14 +108,25 @@ test('fitBox / imageWidth: as large as fits with the margin; the smallest sharp 
   });
 });
 
-test('CINEMA_RANDOM / cinemaFirst / saleShowPath: ?cinema=random starts anywhere; the show of the works on sale', () => {
+test('CINEMA_RANDOM / cinemaFirst / saleShowPath / featuredShowPath: ?cinema=random starts anywhere; the shows of the works on sale and of the selection', () => {
   assert.equal(cinemaFirst(CINEMA_RANDOM), null);
   assert.equal(cinemaFirst('a1b2c'), 'a1b2c');
   assert.equal(cinemaFirst(null), null);
-  assert.equal(saleShowPath(), '/tvorba/?status=unsold&cinema=random');
-  const params = new URLSearchParams(saleShowPath().split('?')[1]);
+  assert.equal(saleShowPath('footer'), '/tvorba/?status=unsold&cinema=random&from=footer');
+  assert.equal(saleShowPath('contact'), '/tvorba/?status=unsold&cinema=random&from=contact');
+  assert.throws(() => saleShowPath(), /unknown link of the show: undefined/);
+  const params = new URLSearchParams(saleShowPath('footer').split('?')[1]);
   assert.equal(cinemaFromParams(params, settings).id, CINEMA_RANDOM, 'opens the show');
   assert.equal(cinemaToParams(new URLSearchParams('status=unsold'), { id: CINEMA_RANDOM, interval: 15 }, settings).toString(), 'status=unsold&cinema=random');
+  assert.equal(featuredShowPath('home'), '/tvorba/?featured=1&cinema=random&from=home');
+  assert.equal(featuredShowPath('footer'), '/tvorba/?featured=1&cinema=random&from=footer');
+  assert.equal(featuredShowPath('contact'), '/tvorba/?featured=1&cinema=random&from=contact');
+  assert.throws(() => featuredShowPath('menu'), /unknown link of the show: menu/);
+  const featured = new URLSearchParams(featuredShowPath('home').split('?')[1]);
+  assert.equal(featured.get(CINEMA_FROM), 'home');
+  assert.equal(filtersToParams(stateFromParams(featured)).toString(), 'featured=1', 'the address of the gallery drops from');
+  assert.equal(cinemaFromParams(featured, settings).id, CINEMA_RANDOM, 'opens the show');
+  assert.equal(stateFromParams(featured).featured, FEATURED_ON, 'of the author\'s selection only');
 });
 
 test('lingerMs: a move or a swipe keeps the work at least the shortest interval, never shortens', () => {

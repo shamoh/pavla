@@ -5,6 +5,10 @@
 # Text tlačítka pod textem úvodní stránky, které vede na celou tvorbu. Povinné.
 button: Prohlédnout tvorbu
 
+# Text druhého tlačítka vedle něj, které promítne obrazy z výběru autorky (featured) přes celou obrazovku.
+# Ukáže se, jen když je ve výběru autorky aspoň jeden obraz. Prázdné "" = bez tlačítka.
+button_show: ▶ Moje nejmilejší
+
 # NEPOVINNÉ. Vybraný úvodní obraz: id díla z celé tvorby (např. k3f9a), nebo jeho detailní fotka (k3f9a#1-kvet), bez mezer;
 # vede na to dílo. Nebo místo toho vlastní fotka _cover.jpg vedle tohoto souboru (bez odkazu). Ukáže se celý, s aspect nebo focus oříznutý.
 # Prázdné = náhodně jeden z 10 nejnovějších obrazů ve výběru autorky (featured), celý, bez ořezu.

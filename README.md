@@ -392,18 +392,24 @@ text: |
 ### Úvodní stránka (`_index.yaml`)
 
 Text vedle velkého obrazu na úvodní stránce a její úvodní obraz jsou v kořeni obsahového repa v `_index.yaml`
-(`HOME_SCHEMA`, pipeline `scripts/lib/home.mjs`): `text`, `description` (pro vyhledávače), `heading`, `button`, `empty_text`,
+(`HOME_SCHEMA`, pipeline `scripts/lib/home.mjs`): `text`, `description` (pro vyhledávače), `heading`, `button`, `button_show`, `empty_text`,
 `empty_closing`, `cover`, `aspect`, `focus` a `private_note`, vlastní fotka
 `_cover.jpg`. Když soubor chybí, pipeline založí kostru s výchozím textem úvodu (`HOME_TEXT`, stejný jako ve skutečném obsahu), takže se
 nic nezmění. Veřejná kopie je `content/_index.yaml` (web `getHome`); bez ní web ukáže výchozí text `HOME_TEXT`.
 `text` je formátovaný (viz *Texty popisů*), `description` pro vyhledávače je nepovinný (jinak začátek textu).
 `heading` je velký nadpis (blok `|`, každý řádek = řádek nadpisu, mezi nimi `<br>`; povinný, prázdný = chyba
 `[prazdny-nadpis]`; výchozí `HOME_HEADING` „Barvy, voda / a trochu náhody“, doplní se i do existujícího souboru).
-`button` = text tlačítka na tvorbu (výchozí `HOME_BUTTON` „Prohlédnout tvorbu“), `empty_text` = velká věta prázdného
-webu, dokud není žádné dílo (`HOME_EMPTY_TEXT` „Obrazy tu brzy přibudou.“), obojí povinné (`[prazdny-nadpis]`);
+`button` = text tlačítka na tvorbu (výchozí `HOME_BUTTON` „Prohlédnout tvorbu“), `button_show` = text druhého, slabšího
+tlačítka vedle něj, které promítne výběr autorky od náhodného díla `/tvorba/?featured=1&cinema=random&from=home` (`featuredShowPath('home')`;
+výchozí `HOME_SHOW_BUTTON` „▶ Moje nejmilejší“, doplní se i do existujícího souboru; jen když je nějaké dílo s `featured: true`,
+`hasFeaturedWorks`; `button_show: ""` tlačítko schová, jiná hodnota než text = `[prazdny-nadpis]`, kopie bez atributu = výchozí
+text), `empty_text` = velká věta prázdného webu, dokud není žádné dílo (`HOME_EMPTY_TEXT` „Obrazy tu brzy přibudou.“);
+`button` a `empty_text` jsou povinné (`[prazdny-nadpis]`);
 `empty_closing` = menší formátovaná věta pod ní, kostra i doplnění do existujícího souboru dostane
 `homeEmptyClosing(site.instagram)` (odkaz na Instagram ze `site.config.yaml`, předává ho `prepareHome`), prázdné = nic.
-Vyzkoušení: `demo-content/_index.yaml` (nadpis „Testovací nadpis / na dva řádky“), `/`; prázdný web jen unit testy.
+Vyzkoušení: `demo-content/_index.yaml` (nadpis „Testovací nadpis / na dva řádky“), `/`; „▶ Moje nejmilejší“ otevře
+promítání děl s `featured: true` (stejně „Moje nejmilejší“ v patičce; adresa pak bez `from`, v konzoli
+`[analytics] cinema_open` s `method: "home"` / `"footer"`); `button_show: ""` tlačítko schová; prázdný web jen unit testy.
 
 ### Texty stránek (`stranky/`)
 
@@ -649,9 +655,15 @@ hodnoty hledal prototyp `promitani.html`, viz *Prototypy*):
   odkaz na promítání nechá každému jeho vlastní zobrazení; po zavření se adresa vrátí k galerii, jak ji návštěvník má; každé další dílo adresu přepíše. Otevření tlačítkem přidá záznam historie (Zpět promítání
   zavře), odkaz otevře promítání rovnou na tom díle (dílo mimo výpis = náhodný začátek, prázdný výpis = bez
   promítání), `cinema=random` (`CINEMA_RANDOM`, `cinemaFirst`) začne kterýmkoli dílem a adresa pak jmenuje to promítané.
-  Patička každé stránky má nenápadný odkaz „Obrazy na prodej“ a Kontakt v řádku adres položku „Obrazy na prodej:
-  Promítnout“; obojí = promítání děl na prodej `/tvorba/?status=unsold&cinema=random` (`saleShowPath`, jen když nějaké
-  dílo na prodej je, `hasWorksOnSale`). Ze stránky díla nebo kolekce (popisek, ↓, ↑) vede Zpět zpátky do promítání na stejné dílo.
+  Promítání odkazem z webu: „Obrazy na prodej“ = díla na prodej `/tvorba/?status=unsold&cinema=random&from=…`
+  (`saleShowPath`, jen když nějaké dílo na prodej je, `hasWorksOnSale`), „Moje nejmilejší“ = výběr autorky
+  `/tvorba/?featured=1&cinema=random&from=…` (`featuredShowPath`, jen když nějaké dílo s `featured: true` je,
+  `hasFeaturedWorks`). Obojí je nenápadný odkaz v patičce každé stránky (`from=footer`) a na Kontaktu pod společným
+  popiskem „Promítnout“ v řádku adres (`Obrazy na prodej · Moje nejmilejší`, `from=contact`); výběr autorky navíc
+  tlačítko „▶ Moje nejmilejší“ na úvodní stránce vedle „Prohlédnout tvorbu“ (`button_show` v `_index.yaml`, `""` = bez
+  něj; `from=home`). Parametr `from` (`CINEMA_FROM`, `CINEMA_LINK_SOURCES`) jen pojmenuje odkaz webu pro událost
+  `cinema_open` (`method` `home` / `footer` / `contact`, `cinemaLinkMethod`; které promítání, ukáže adresa stránky);
+  galerie ho z adresy hned smaže, do sdíleného odkazu se nedostane. Ze stránky díla nebo kolekce (popisek, ↓, ↑) vede Zpět zpátky do promítání na stejné dílo.
 - **Nápověda:** první otevření promítání v kartě prohlížeče ukáže ovládání a na `HINT_MS` (4 s) hlášku „← → listovat
   · ↓ obraz · ↑ kolekce“, na dotykové obrazovce „tahem do stran listovat · dolů obraz · nahoru kolekce“ (`cinemaHint`); otevřené odkazem
   (kde prohlížeč celou obrazovku umí) navíc „· klik nebo F = celá obrazovka“ / „· ťuknutí = celá obrazovka“
@@ -1072,6 +1084,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | texty stránek (`description`, odstavce `text`, tlumený `closing`, formátování a odkazy, `location_label`, texty 404) | `demo-content/stranky/o-mne.yaml`, `kontakt.yaml`, `404.yaml`; `/o-mne/`, `/kontakt/`, neexistující adresa |
 | obecná textová stránka jen se souborem (`optional`), v mapě webu | `demo-content/stranky/kurzy.yaml`; `/kurzy/`, `/sitemap.xml` |
 | nadpis úvodní stránky na dva řádky (`heading`) | `demo-content/_index.yaml`; `/` |
+| tlačítko „▶ Moje nejmilejší“ (`button_show`), „Moje nejmilejší“ v patičce a „Promítnout“ na Kontaktu = promítání výběru autorky (`method` `home` / `footer` / `contact`) | `demo-content/_index.yaml`, díla s `featured: true`; `/`; `button_show: ""` jen unit testy |
 | doporučení „vzorová věta z kostry“ (`sampleAdvice`) | v kopii testovacích dat nastav `text` kolekce na „Toto je moje nejvíc nejoblíbenější kolekce.“ a spusť `npm run demo:prepare` (log `? advice:`), pak `git checkout demo-content/` |
 | doporučení v souhrnu běhu: bez štítků, popis s malým písmenem a bez tečky / popisky detailů bez tečky / na prodej bez mockupů / text kolekce bez tečky / popis a popisek fotky bez tečky | Rozpracovaný obraz / Ráno u rybníka, Pivoňky / Máky, Bouřka nad polem, Modravské slatě, Pivoňky / Město 2026 / fotky stránek |
 | zrušení filtrů | `/tvorba/`: vyber techniku a štítek, vpravo „N z 60 děl × Zrušit filtry“; klik vrátí všechna díla i „60 děl“ a 1. stránku, dlaždice a počet na stránku zůstanou. `/tvorba/2025/`: rok zůstane. Lišta po posunu: se dvěma filtry „Zrušit vše“, s jedním ne. Panel „Upravit“: „Zrušit filtry“ vedle „Hotovo“. |
@@ -1619,8 +1632,15 @@ používají tyto názvy; dokud fotka neexistuje, na stránce prostě chybí:
 | `portret.jpg` | O mně, vedle textu, úzký sloupec (ideálně fotka na výšku) |
 | `kontakt.jpg` | Kontakt, vedle formuláře (pod formulářem i fotkou je přes celou šířku řádek s e-mailem, Instagramem, Pinterestem a Flerem vlevo a „Žiji a maluji“ vpravo; na telefonu pod sebou), oříznutá na šířku 3:2 podle `focus` (fotka 3:2 zůstane celá); bílý okraj přechází do papíru stránky (`blendEdge={10}`) |
 
-Kontakt ukazuje z `site.config.yaml` e-mail (`site.email`), Instagram (`site.instagram`), obchůdek na Fleru
-(`site.fler`) a místo, kde autorka žije a maluje (`site.location`, „Žiji a maluji“); prázdná hodnota = položka chybí.
+Kontakt ukazuje z `site.config.yaml` e-mail (`site.email`), Instagram (`site.instagram`, jako `@účet`), Pinterest
+(`site.pinterest`, jako `@uživatel` z adresy profilu `pinterestHandle`, nepoznaná adresa = „Pavla na Pinterestu“),
+obchůdek na Fleru (`site.fler`) a místo, kde autorka žije a maluje (`site.location`, „Žiji a maluji“); prázdná hodnota
+= položka chybí. Každý odkaz má bublinu, kam vede („Napsat mi e-mail“, „Můj profil na Instagramu“, „Moje obrazy
+na Pinterestu“, „Můj obchůdek na Fleru“), stejně položka „Promítnout“. Adresy jsou ve třech odstínech
+(`handleParts`, části v `<span>` uvnitř odkazu, takže se dál kliká i kopíruje jako jeden text): křestní jméno autorky
+(`site.author`, první slovo) `var(--accent)`, příjmení (poslední slovo) `var(--ink)`, ostatní (`@`, tečky, doména)
+nejslabší `var(--ink-soft)` s průhledností 0,7; jméno = nejdelší začátek bez diakritiky, aspoň 5 písmen (kratší jméno
+celé), např. pavla | @ | kramolis | .cz; text bez jména (Fler) beze změny.
 
 Přípona může být i `.png` apod. (ne `.jpeg`, viz kontrola jmen). Další fotku lze na libovolnou stránku
 přidat komponentou `<Photo name="…" />`.
@@ -1759,7 +1779,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | značky na úvodní stránce | `/`: v dlaždicích jen hvězdička (menší, průsvitnější), žádné košíky (`home.tileMarks`); galerie beze změny. |
 | doba běhu pipeline | `npm run demo:prepare`: pod každým přegenerovaným dílem řádek `  ⏱ … · total N s`, na konci `⏱ run: checks … · drafts … · works … · … · total …` (fáze pod 0,05 s chybí); druhé spuštění bez změn díla nepřegeneruje a nenakreslí znovu ani náhledy draftů (celý běh ~10 s, `.demo/site/.previews/` je prázdná). |
 | velikosti v kontrole automatiky | `node scripts/check-health.mjs` (bez tokenů; za proxy `NODE_USE_ENV_PROXY=1`): řádek „Velikost: repo webu … MB (… % z 1000 MB) · obsahové repo nezjištěno · nasazený web (GitHub Pages) … MB …“ a „Minuty GitHub Actions nebyly zkontrolovány (chybí secret CHECK_TOKEN …)“; s `CHECK_TOKEN=<token> ` před příkazem (a `--settings`, `REPO=<obsahové repo>`, `SETTINGS_DIR=<obsahové repo>/docs/github-nastaveni` = i porovnání nastavení) řádek „Minuty Actions soukromých rep za tento měsíc: N z 2000 …“. |
-| promítání | `npm run demo`, `/tvorba/?tag=voda` → „▶ Promítat“: celá obrazovka, adresa `?tag=voda&cinema=<id>`, díla se po 15 s prolnou; pohyb myši ukáže ovládání („Kolekce: …“, 5 s … 3 min, pauza, Popisky, Odkaz, ×), za 3 s zmizí. „45 s“ → `&interval=45` a pamatuje se (nové promítání začne na 45 s), „15 s“ ho z adresy smaže. ← →, mezerník (hláška „Pozastaveno“), tah myší (dílo jde s myší, sousední vedle), ↓ stránka díla a Zpět vrátí promítání na stejné dílo, Esc zavře a Zpět po „▶ Promítat“ také. Popisky: „na chvíli“ zmizí po 4 s, „stále“, „skryté“ (s nimi i ★ a „K PRODEJI“: Máky mají obojí, díla v soukromé sbírce nic); pohyb myši ukáže popisek i ve „skryté“. Čas „5 s“, po 4 s pohnout myší: dílo zůstane ještě 5 s. Pravé tlačítko na „▶ Promítat“ → kopírovat odkaz (`…&cinema=random`). S dlaždicemi (`?view=tiles`) adresa promítání `view` nemá, po zavření ho galerie zase ukáže. Patička „Obrazy na prodej“ (i Kontakt: „Obrazy na prodej: Promítnout“) → promítání `?status=unsold` od náhodného díla, v nové kartě s nápovědou „← → listovat · ↓ obraz · ↑ kolekce · klik nebo F = celá obrazovka“ (podruhé v téže kartě jen „klik nebo F = celá obrazovka“; F přepne do celé obrazovky a zase zpět do okna; klávesa ? i „?“ v ovládání ukáže nápovědu znovu). Promítání je v barvách Noc, i když web je Papír; „Barvy: …“ je přepíná (Papír, Pergamen, Noc, podle systému), patička webu zůstane beze změny a nové promítání začne v posledních zvolených. Na telefonu (DevTools, zařízení s dotykem) tah prstem nahoru otevře kolekci díla, dolů stránku díla. Odkaz `/tvorba/?cinema=<id>&interval=5` otevře promítání rovnou (celá obrazovka až po prvním kliknutí, v ovládání „Celá obrazovka“, v DevTools → Network se načítají `….avif`). Prohlížeč fotek díla (Ráno u rybníka): tah myší posouvá obrázek a vedle něj detail; F celá obrazovka s popiskem přes spodek, → další detail, F zpět do okna; barvy prohlížeče podle palety v patičce. Na stránce díla (zavřený prohlížeč) ← / → otevře předchozí / další dílo z odkazů dole, v poli zprávy na Kontaktu šipky jen posouvají kurzor. V konzoli (Verbose) `[analytics] cinema_open` / `cinema_close`. |
+| promítání | `npm run demo`, `/tvorba/?tag=voda` → „▶ Promítat“: celá obrazovka, adresa `?tag=voda&cinema=<id>`, díla se po 15 s prolnou; pohyb myši ukáže ovládání („Kolekce: …“, 5 s … 3 min, pauza, Popisky, Odkaz, ×), za 3 s zmizí. „45 s“ → `&interval=45` a pamatuje se (nové promítání začne na 45 s), „15 s“ ho z adresy smaže. ← →, mezerník (hláška „Pozastaveno“), tah myší (dílo jde s myší, sousední vedle), ↓ stránka díla a Zpět vrátí promítání na stejné dílo, Esc zavře a Zpět po „▶ Promítat“ také. Popisky: „na chvíli“ zmizí po 4 s, „stále“, „skryté“ (s nimi i ★ a „K PRODEJI“: Máky mají obojí, díla v soukromé sbírce nic); pohyb myši ukáže popisek i ve „skryté“. Čas „5 s“, po 4 s pohnout myší: dílo zůstane ještě 5 s. Pravé tlačítko na „▶ Promítat“ → kopírovat odkaz (`…&cinema=random`). S dlaždicemi (`?view=tiles`) adresa promítání `view` nemá, po zavření ho galerie zase ukáže. Patička „Obrazy na prodej“ (i Kontakt: „Promítnout: Obrazy na prodej“) → promítání `?status=unsold` od náhodného díla, v nové kartě s nápovědou „← → listovat · ↓ obraz · ↑ kolekce · klik nebo F = celá obrazovka“ (podruhé v téže kartě jen „klik nebo F = celá obrazovka“; F přepne do celé obrazovky a zase zpět do okna; klávesa ? i „?“ v ovládání ukáže nápovědu znovu). Promítání je v barvách Noc, i když web je Papír; „Barvy: …“ je přepíná (Papír, Pergamen, Noc, podle systému), patička webu zůstane beze změny a nové promítání začne v posledních zvolených. Na telefonu (DevTools, zařízení s dotykem) tah prstem nahoru otevře kolekci díla, dolů stránku díla. Odkaz `/tvorba/?cinema=<id>&interval=5` otevře promítání rovnou (celá obrazovka až po prvním kliknutí, v ovládání „Celá obrazovka“, v DevTools → Network se načítají `….avif`). Prohlížeč fotek díla (Ráno u rybníka): tah myší posouvá obrázek a vedle něj detail; F celá obrazovka s popiskem přes spodek, → další detail, F zpět do okna; barvy prohlížeče podle palety v patičce. Na stránce díla (zavřený prohlížeč) ← / → otevře předchozí / další dílo z odkazů dole, v poli zprávy na Kontaktu šipky jen posouvají kurzor. V konzoli (Verbose) `[analytics] cinema_open` / `cinema_close`. |
 | prototypy | `npm run prototypes` a `open .prototypes/zarovnani-sloupcu.html`, `open .prototypes/znacky-dlazdic.html`: posuvníky začínají na hodnotách ze `site.config.yaml`, „Nastavení“ přepne na úvodní stránku / galerii. `open .prototypes/kamera-scen.html`: hrany stolů a stojanu protažené až za fotku, kroužek (průsečík hran) a křížek (úběžník kamery) leží u sebe a čárkované hrany díla do nich míří; „Z rohů listu“ je od sebe vzdálí, „Z hran“ je vrátí; u stojanu úhel spodní hrany díla proti liště skoro 0°; „Vyrovnat natočení“ ho změní, zaškrtni „ohnisko drží velikost listu“ a posuň ohnisko: list zůstane stejně velký, změní se perspektiva mřížky; „Pomocné čáry“ je schovají a ukážou dílo čistě, „Obnovit doporučené“ po rozladění posuvníků vrátí kameru ze `scenes.yaml`; „jen díla, která se nevejdou“ nechá v seznamu jen díla hlášená „Ke kontrole“ (na skutečných datech tři velká díla na stolech); zkopírovaný řádek `camera` vlož do `mockups/instagram/scenes.yaml` a `npm run demo:prepare` vyrobí scény s ní. `promitani.html`: „▶ Promítat“, pohyb myši ukáže ovládání, ← → ↑ ↓ Esc, tažení myší, `L` ladění; adresa se mění v `#`. Testovací data: `npm run demo:prepare`, `SITE_DATA_DIR=.demo/site npm run prototypes -- .demo/prototypes`. |
 | značky na dlaždicích | `/tvorba/?view=tiles`: obrazy z výběru autorky mají vlevo nahoře hvězdičku, obrazy na prodej vpravo dole košík; `−` na malé dlaždice: košíky zmizí, hvězdičky zůstanou; `+` na velké: značky větší (nejvýš 22 px). Přepni paletu Noc: značky světlé s tmavým lemem. Velké obrazy: žádné značky, hvězdička u názvu a štítek „K prodeji“. Totéž na úvodní stránce. Zkus `tileMarks.sale.icon: tag` nebo `sale.corner: tl` v `site.config.yaml` (košík vedle hvězdičky). |
 | dlaždice | `/tvorba/`: vpravo dole ikona „Dlaždice“: malé obrazy bez textů, 36 na stránku, „Na stránku“ nabízí 36 / 72 / 144, v URL `?view=tiles`; z 4. stránky velkých obrazů skočí na 2. stránku dlaždic (stejné první dílo). Zvol 72, přepni na velké obrazy a zpět: každé zobrazení si pamatuje svůj počet. Změň filtr, dlaždice zůstanou. Otevři `/tvorba/` znovu bez parametrů → dlaždice a `?view=tiles` (paměť); `/tvorba/?view=grid` → velké obrazy (odkaz má přednost); „Velké obrazy“ paměť smaže (DevTools → Local Storage → `pavla.gallery.view`). Na šířce telefonu 3 sloupce. |
@@ -2087,7 +2107,7 @@ roky. Web je na Pinterest dává sám, přes kanál RSS (`scripts/lib/pinterest.
   překladu jen česky a u díla s `meta_pinterest: true` ho souhrn běhu ukáže v „Doporučení“ (`pinterestAdvice`).
 - **Profil:** `site.pinterest` (URL profilu) = `sameAs` autorky v JSON-LD a odkaz „Pinterest“ v patičce a na Kontaktu
   (`rel="me"`), který vede na záložku vytvořených pinů `<profil>/_created/` (`pinterestProfileLink`; tu adresu má každý
-  profil na Pinterestu); prázdné = nic.
+  profil na Pinterestu); na Kontaktu s textem `@<uživatel>` (`pinterestHandle`); prázdné = nic.
 - **Připojení (jednou, v Pinterestu):** firemní účet (zdarma), ověření webu (značka HTML: kód do `site.verification.pinterest` →
   `<meta name="p:domain_verify">`, adresa webu `https://pavla.kramolis.cz`; ověřit až po nasazení), pak v nastavení „Hromadné vytváření pinů“ → automatické publikování z RSS: adresa
   `https://<web>/pinterest.xml` a nástěnka. Pinterest kanál čte asi jednou denně a připne jen nové položky; úprava už
@@ -2167,7 +2187,7 @@ analytics:
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
   | `palette_change` | návštěvník v patičce přepne barvy webu (jen skutečná změna, ne opakovaný klik na tutéž); i „Barvy: …“ v promítání | `palette` (`papir`, `pergamen`, `noc`, `auto`); z promítání `source: cinema` |
   | `view_change` | návštěvník přepne zobrazení děl (velké obrazy / dlaždice) nebo velikost dlaždic, na úvodní stránce i v galerii (`viewEventParams`) | `listing` (`home`, `gallery`), `view` (`grid`, `tiles-s`, `tiles-m`, `tiles-l`) |
-  | `cinema_open` | promítání výpisu otevřené (`cinemaOpenParams`) | `listing` (`gallery`, `year`, `collection`), `results` (kolik děl promítá), `interval` (s), `method` (`CINEMA_OPEN_METHODS`: `button` „▶ Promítat“, `link` adresa s `cinema`) |
+  | `cinema_open` | promítání výpisu otevřené (`cinemaOpenParams`) | `listing` (`gallery`, `year`, `collection`), `results` (kolik děl promítá), `interval` (s), `method` (`CINEMA_OPEN_METHODS`: `button` „▶ Promítat“, `link` adresa s `cinema`, `home` tlačítko „▶ Moje nejmilejší“ na úvodní stránce, `footer` „Obrazy na prodej“ / „Moje nejmilejší“ v patičce, `contact` „Promítnout“ na Kontaktu) |
   | `cinema_close` | promítání zavřené nebo opuštěné na stránku díla či kolekce (`cinemaCloseParams`) | `listing`, `reason` (`CINEMA_CLOSE_REASONS`: `button` ×, `esc` Esc nebo konec celé obrazovky, `back` Zpět, `work` stránka díla, `collection` kolekce), `seconds`, `shown` (kolik děl ukázalo) |
   | `image_view` | každý obrázek ukázaný v prohlížeči fotek na stránce díla (`imageEventParams`): otevření i každé listování; Zpět/Vpřed jen při jiném obrázku | `work_id`, `work_title`, `image` (kotva obrázku: `obraz`, `detail-<jméno>`, `mockup-<scéna>`), `image_kind` (`main`, `detail`, `mockup`), `method` (`IMAGE_METHODS`: `open` klik na stránce, `arrow` šipka prohlížeče, `swipe` tah, `key` klávesa ←/→, `link` stránka otevřená s kotvou, `history` Zpět/Vpřed) |
 
@@ -2178,7 +2198,7 @@ analytics:
   (název, popis do 150 znaků, parametr události). Existující dimenzi upravíš přes ⋮ → *Upravit* (parametr ani rozsah
   se změnit nedají, název a popis ano):
 
-  | Název dimenze | Parametr | Popis (do pole *Popis*) |
+  | Název dimenze | Parametr | Popis (do pole *Popis*, nejvýš 150 znaků) |
   |---|---|---|
   | Štítek | `tag` | Filtr štítků v galerii (gallery_filter); víc štítků jako jedna hodnota spojená čárkou, např. krajina,voda. |
   | Technika | `technique` | Filtr techniky v galerii (gallery_filter), např. akvarel. |
@@ -2189,7 +2209,7 @@ analytics:
   | Hledání | `q` | Text hledání v galerii nebo v přehledu kolekcí (gallery_filter). |
   | ID díla | `work_id` | Trvalý kód díla (např. g4psg) u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek. |
   | Název díla | `work_title` | Název díla u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek. |
-  | Způsob | `method` | Jak: share pinterest, facebook, whatsapp, native, copy; image_view open, arrow, swipe, key, link, history; cinema_open button, link. |
+  | Způsob | `method` | share pinterest, facebook, whatsapp, native, copy; image_view open, arrow, swipe, key, link, history; cinema_open button, link, home, footer, contact. |
   | Typ zprávy | `message_type` | Typ odeslané zprávy (message_sent): greeting, work, purchase, collaboration, bug, other. |
   | Barvy webu | `palette` | Barvy zvolené v patičce (palette_change): papir, pergamen, noc, auto. |
   | Výpis | `listing` | Kde: view_change home = úvodní stránka, gallery = galerie; cinema_open/close gallery, year, collection. |

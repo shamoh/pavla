@@ -3,7 +3,8 @@ import Base from '../layouts/Base.astro';
 import WorkGrid from '../components/WorkGrid.astro';
 import ViewSwitch from '../components/ViewSwitch.astro';
 import Cover from '../components/Cover.astro';
-import { config, coverShareImage, coverWorkId, getHome, getWorks, photoImageUrl, site, url } from '../lib/site';
+import { config, coverShareImage, coverWorkId, getHome, getWorks, hasFeaturedWorks, photoImageUrl, site, url } from '../lib/site';
+import { featuredShowPath } from '../../scripts/lib/cinema.mjs';
 import { graphLd, personLd, websiteLd } from '../../scripts/lib/seo.mjs';
 import { hiddenInList } from '../../scripts/lib/random-pick.mjs';
 import { HOME_START, homeMost, homeRecent, homeScript, homeSetup } from '../../scripts/lib/home-view.mjs';
@@ -35,7 +36,12 @@ const jsonLd = graphLd(websiteLd(site), personLd(site, { image: photoImageUrl('p
         <p class="eyebrow">{site.tagline}</p>
         <h1>{home.heading.map((line, i) => <>{i > 0 && <br />}{line}</>)}</h1>
         {home.paragraphs.map((p) => <p class="muted desc" set:html={p} />)}
-        <a class="btn" href={url('/tvorba')}>{home.button}</a>
+        <p class="actions">
+          <a class="btn" href={url('/tvorba')}>{home.button}</a>
+          {home.showButton && hasFeaturedWorks() && (
+            <a class="btn ghost" href={url(featuredShowPath('home'))} title="Obrazy z mého výběru jeden po druhém přes celou obrazovku">{home.showButton}</a>
+          )}
+        </p>
       </div>
     </section>
   ) : (
@@ -115,7 +121,8 @@ const jsonLd = graphLd(websiteLd(site), personLd(site, { image: photoImageUrl('p
   .hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: clamp(24px, 5vw, 72px); align-items: center; margin-bottom: 96px; }
   .hero-text h1 { margin-top: 0.1em; }
   .desc { white-space: pre-line; }
-  .hero-text .btn { margin-top: 12px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0 0; }
+  .actions .ghost { border-color: var(--line); }
   .section-head { display: flex; align-items: baseline; gap: 12px 20px; border-top: 1px solid var(--line); padding-top: 24px; margin-bottom: 28px; }
   .section-head h2 { margin: 0 auto 0 0; }
   .section-head :global(.views) { align-self: center; }

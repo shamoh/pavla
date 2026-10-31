@@ -9,7 +9,7 @@ import { plainText, richParagraphs, searchDescription } from '../../scripts/lib/
 import { readCopies } from '../../scripts/lib/site-content.mjs';
 import { HOME_PAGE_DIR, LEGACY_OG_FILE, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, pageShareFile, photoDir, workImageDir, yearPageDir } from '../../scripts/lib/site-images.mjs';
 import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
-import { HOME_BUTTON, HOME_EMPTY_TEXT, HOME_HEADING, HOME_TEXT, UNCOLLECTED_TEXT, homeEmptyClosing } from '../../scripts/lib/schema.mjs';
+import { HOME_BUTTON, HOME_EMPTY_TEXT, HOME_HEADING, HOME_SHOW_BUTTON, HOME_TEXT, UNCOLLECTED_TEXT, homeEmptyClosing } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
 import { NO_COLLECTION_TITLE } from '../../scripts/lib/gallery-filter.mjs';
 import { sortCollections } from '../../scripts/lib/collection-filter.mjs';
@@ -140,6 +140,8 @@ const copies = () => (copiesCache ??= readCopies(dataRoot));
 
 /** Whether some published work is on sale: "Obrazy na prodej" (the footer, the contact page) only then. */
 export const hasWorksOnSale = () => getWorks().some((w) => isOnSale(w.status));
+/** True when the author's selection (`featured`) has a work: the show of it on the home page. */
+export const hasFeaturedWorks = () => getWorks().some((w) => w.featured === true);
 
 /**
  * All published works (with generated images; drafts never reach this repository), newest first.
@@ -322,7 +324,7 @@ export function getYear(year: number): { paragraphs: string[]; description: stri
  * page always had) and its cover.
  */
 export function getHome(): {
-  paragraphs: string[]; description: string; heading: string[]; button: string; emptyText: string; emptyClosing: string[];
+  paragraphs: string[]; description: string; heading: string[]; button: string; showButton: string; emptyText: string; emptyClosing: string[];
   cover: Cover | null;
 } {
   const data = copies().home ?? { text: HOME_TEXT, empty_closing: homeEmptyClosing(site.instagram) };
@@ -331,7 +333,10 @@ export function getHome(): {
   const heading = String(data.heading ?? HOME_HEADING).split('\n').map((l) => l.trim()).filter(Boolean);
   return {
     paragraphs: textHtml(data.text), description: searchDescription(data), heading,
-    button: line(data.button, HOME_BUTTON), emptyText: line(data.empty_text, HOME_EMPTY_TEXT), emptyClosing: textHtml(data.empty_closing),
+    button: line(data.button, HOME_BUTTON),
+    // "" = no second button; a copy from before the attribute has none: the default one
+    showButton: data.button_show === undefined ? HOME_SHOW_BUTTON : String(data.button_show).trim(),
+    emptyText: line(data.empty_text, HOME_EMPTY_TEXT), emptyClosing: textHtml(data.empty_closing),
     cover: resolveCover(getWorks(), data, HOME_PAGE_DIR, site.title),
   };
 }

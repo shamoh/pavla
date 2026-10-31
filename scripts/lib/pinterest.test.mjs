@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FEED_UTM, PIN_DESCRIPTION_CHARS, clip, pinterestProfileLink, withParams, feedImages, pinDescription, pinKeywords, pinSaveUrl, pinterestFeed } from './pinterest.mjs';
+import { FEED_UTM, PIN_DESCRIPTION_CHARS, clip, pinterestHandle, pinterestProfileLink, withParams, feedImages, pinDescription, pinKeywords, pinSaveUrl, pinterestFeed } from './pinterest.mjs';
 
 test('clip: whitespace collapsed, cut after a whole word with "…"', () => {
   assert.equal(clip('  Ráno   u\nrybníka ', 100), 'Ráno u rybníka');
@@ -80,4 +80,14 @@ test('withParams: UTM parameters of the feed added to the address of a page', ()
 test('pinterestProfileLink: the tab of the pins made by the author', () => {
   assert.equal(pinterestProfileLink('https://cz.pinterest.com/pavla/'), 'https://cz.pinterest.com/pavla/_created/');
   assert.equal(pinterestProfileLink('https://cz.pinterest.com/pavla'), 'https://cz.pinterest.com/pavla/_created/');
+});
+
+test('pinterestHandle: the user name of the profile, any form of its address; else empty', () => {
+  for (const address of [
+    'https://cz.pinterest.com/pavlakramolisova/', 'https://cz.pinterest.com/pavlakramolisova',
+    'https://cz.pinterest.com/pavlakramolisova/_created/', 'https://www.pinterest.com/pavlakramolisova/', 'https://pinterest.co.uk/pavlakramolisova',
+  ]) assert.equal(pinterestHandle(address), 'pavlakramolisova', address);
+  for (const bad of ['', undefined, 'pavlakramolisova', 'https://cz.pinterest.com/', 'https://example.com/pavlakramolisova/']) {
+    assert.equal(pinterestHandle(bad), '', String(bad));
+  }
 });

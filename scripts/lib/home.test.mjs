@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
 import { HOME_FIELDS, prepareHome } from './home.mjs';
-import { HOME_BUTTON, HOME_EMPTY_TEXT, HOME_HEADING, HOME_SCHEMA, HOME_TEXT, homeEmptyClosing } from './schema.mjs';
+import { HOME_BUTTON, HOME_EMPTY_TEXT, HOME_HEADING, HOME_SCHEMA, HOME_SHOW_BUTTON, HOME_TEXT, homeEmptyClosing } from './schema.mjs';
 import { textProblems } from './content.mjs';
 import { schemaKeysIn } from './metadata-yaml.mjs';
 
@@ -20,7 +20,7 @@ test('prepareHome writes a skeleton with the text the home page had, every attri
   assert.deepEqual(schemaKeysIn(text, HOME_SCHEMA), HOME_FIELDS);
   assert.match(text, /\n# aspect: "3:2"\n/, 'optional attributes commented out');
   assert.equal(r.home.data.text, HOME_TEXT);
-  assert.deepEqual([r.home.data.button, r.home.data.empty_text], [HOME_BUTTON, HOME_EMPTY_TEXT]);
+  assert.deepEqual([r.home.data.button, r.home.data.button_show, r.home.data.empty_text], [HOME_BUTTON, HOME_SHOW_BUTTON, HOME_EMPTY_TEXT]);
   assert.equal(r.home.data.empty_closing, homeEmptyClosing('pavla.test'));
   assert.match(r.home.data.empty_closing, /\[na Instagramu\]\(https:\/\/www\.instagram\.com\/pavla\.test\/\)/);
   assert.equal(r.home.coverPath, null);
@@ -73,10 +73,15 @@ test('prepareHome: the heading of the home page, added with its default and requ
   assert.equal(r.home.data.heading, HOME_HEADING, 'a file from before the heading gets the heading the page had');
   assert.ok(r.updated.some((u) => /doplněno [a-z_, ]*\bheading\b[a-z_, ]* \(výchozí hodnota\)/.test(u)), r.updated.join('\n'));
   assert.deepEqual(r.problems, []);
-  await fs.writeFile(path.join(dir, '_index.yaml'), 'text: Ahoj.\nheading: ""\nbutton: " "\n');
+  await fs.writeFile(path.join(dir, '_index.yaml'), 'text: Ahoj.\nheading: ""\nbutton: " "\nbutton_show: 5\n');
   const empty = await prepareHome(dir);
   assert.deepEqual(empty.problems, [
     '_index.yaml: heading (velký nadpis úvodní stránky) je prázdný nebo není text, napiš ho [prazdny-nadpis]',
     '_index.yaml: button (text tlačítka na tvorbu) je prázdný nebo není text, napiš ho [prazdny-nadpis]',
+    '_index.yaml: button_show (text tlačítka na promítání výběru autorky) není text, napiš ho, nebo "" bez tlačítka [prazdny-nadpis]',
   ]);
+  await fs.writeFile(path.join(dir, '_index.yaml'), 'text: Ahoj.\nbutton_show: ""\n');
+  const off = await prepareHome(dir);
+  assert.deepEqual(off.problems, [], '"" switches the second button off');
+  assert.equal(off.home.data.button_show, '');
 });

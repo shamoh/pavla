@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
 import {
-  CINEMA_CLOSE_REASONS, CINEMA_OPEN_METHODS, EVENTS, IMAGE_METHODS, cinemaCloseParams, cinemaOpenParams, imageEventParams, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
+  CINEMA_CLOSE_REASONS, CINEMA_LINK_SOURCES, CINEMA_OPEN_METHODS, EVENTS, IMAGE_METHODS, cinemaCloseParams, cinemaLinkMethod, cinemaOpenParams, imageEventParams, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
 } from './analytics.mjs';
 
 const analytics = { googleMeasurementId: 'G-HPZNHYZ2MQ' };
@@ -73,7 +74,10 @@ test('trackEvent: sends through gtag when the Google tag is on the page, otherwi
 test('cinema_open / cinema_close: the listing, how it opened, why it closed, how long and how many works', () => {
   assert.equal(EVENTS.cinema, 'cinema_open');
   assert.equal(EVENTS.cinemaClose, 'cinema_close');
-  assert.deepEqual(CINEMA_OPEN_METHODS, ['button', 'link']);
+  assert.deepEqual(CINEMA_OPEN_METHODS, ['button', 'link', 'home', 'footer', 'contact']);
+  assert.deepEqual(CINEMA_LINK_SOURCES.map(cinemaLinkMethod), ['home', 'footer', 'contact'], 'a link of the site counted apart');
+  assert.deepEqual([null, '', 'menu'].map(cinemaLinkMethod), ['link', 'link', 'link'], 'any other address = link');
+  assert.equal(cinemaOpenParams({ listing: 'gallery', results: 3, interval: 15, method: 'home' }).method, 'home');
   assert.deepEqual(cinemaOpenParams({ listing: 'year', results: 12, interval: 15, method: 'link' }), { listing: 'year', results: 12, interval: 15, method: 'link' });
   assert.throws(() => cinemaOpenParams({ listing: 'gallery', results: 1, interval: 15, method: 'tap' }), /unknown method of cinema_open: tap/);
   assert.ok(CINEMA_CLOSE_REASONS.includes('collection'));
@@ -95,4 +99,12 @@ test('image_view: the work, the picture, its kind and how it got into the viewer
   assert.equal(imageEventParams(work, 'mockup-obyvak-vecer', 'link').image_kind, 'mockup');
   for (const m of IMAGE_METHODS) assert.equal(imageEventParams(work, 'obraz', m).method, m);
   assert.throws(() => imageEventParams(work, 'obraz', 'click'), /unknown method/);
+});
+
+test('README: every custom dimension to register in GA fits its form (description at most 150 characters)', async () => {
+  const readme = await fs.readFile(new URL('../../README.md', import.meta.url), 'utf8');
+  const table = readme.split('| Název dimenze | Parametr |')[1].split(/\n\s*\n/)[0];
+  const rows = [...table.matchAll(/^\s*\| [^|]+ \| `([a-z_]+)` \| (.+) \|\s*$/gm)];
+  assert.ok(rows.length >= 10, 'the table of the dimensions is found');
+  for (const [, param, description] of rows) assert.ok(description.length <= 150, `${param}: ${description.length} characters`);
 });

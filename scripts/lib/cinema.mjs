@@ -11,7 +11,8 @@ import { summarize } from './seo.mjs';
 import { VIEWER_TEXT_MAX } from './work-viewer.mjs';
 import { AUTO, PALETTES } from './palettes.mjs';
 import { isOnSale } from './works.mjs';
-import { galleryFilterPath } from './gallery-filter.mjs';
+import { FEATURED_ON, galleryFilterPath } from './gallery-filter.mjs';
+import { CINEMA_LINK_SOURCES } from './analytics.mjs';
 
 /** The settings of the cinema when site.config.yaml leaves them out. */
 export const CINEMA_DEFAULTS = {
@@ -77,8 +78,20 @@ export const CINEMA_RANDOM = 'random';
 /** The work a show opened by `id` starts with (null = any). */
 export const cinemaFirst = (id) => (id === CINEMA_RANDOM ? null : id);
 
-/** The show of the works on sale (the footer "Obrazy na prodej"), without the site base (url() adds it). */
-export const saleShowPath = () => `${galleryFilterPath('status', 'unsold')}&cinema=${CINEMA_RANDOM}`;
+/** The parameter by which a link of the site names itself for cinema_open (CINEMA_LINK_SOURCES), never kept. */
+export const CINEMA_FROM = 'from';
+
+/** The show of the gallery filtered by one value of one filter, from the link `from` (CINEMA_LINK_SOURCES). */
+function showPath(key, value, from) {
+  if (!CINEMA_LINK_SOURCES.includes(from)) throw new Error(`unknown link of the show: ${from}`);
+  return `${galleryFilterPath(key, value)}&cinema=${CINEMA_RANDOM}&${CINEMA_FROM}=${from}`;
+}
+
+/** The show of the works on sale (the footer, the contact page), without the site base (url() adds it). */
+export const saleShowPath = (from) => showPath('status', 'unsold', from);
+
+/** The show of the author's selection (the second button of the home page, the footer, the contact page), without the site base. */
+export const featuredShowPath = (from) => showPath('featured', FEATURED_ON, from);
 
 /**
  * The hint on the first opening of the cinema in a tab (sessionStorage `CINEMA_HINT_KEY`, every new tab once more):

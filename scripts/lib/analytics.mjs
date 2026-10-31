@@ -59,8 +59,21 @@ export const EVENTS = {
   cinemaClose: 'cinema_close', // the cinema closed: listing, reason (CINEMA_CLOSE_REASONS), seconds, shown (works shown)
 };
 
-/** How the cinema opened (`method` of cinema_open): button = "▶ Promítat", link = the page opened with ?cinema=. */
-export const CINEMA_OPEN_METHODS = ['button', 'link'];
+/**
+ * Links of the site that open a show and name themselves by `?from=` (CINEMA_FROM, scripts/lib/cinema.mjs): home = the
+ * second button of the home page, footer = "Obrazy na prodej" / "Moje nejmilejší" in the footer, contact = "Promítnout"
+ * on the contact page (which show it was is in the address of the page). The gallery drops `from` from the address.
+ */
+export const CINEMA_LINK_SOURCES = ['home', 'footer', 'contact'];
+
+/**
+ * How the cinema opened (`method` of cinema_open): button = "▶ Promítat", link = the page opened with ?cinema=,
+ * or the link of the site it came from (CINEMA_LINK_SOURCES).
+ */
+export const CINEMA_OPEN_METHODS = ['button', 'link', ...CINEMA_LINK_SOURCES];
+
+/** `method` of a show opened by its address: the link of the site named by `from`, any other = link. */
+export const cinemaLinkMethod = (from) => (CINEMA_LINK_SOURCES.includes(from) ? from : 'link');
 
 /**
  * Why the cinema closed (`reason` of cinema_close): button = ×, esc = Esc (or leaving the whole screen), back = Back

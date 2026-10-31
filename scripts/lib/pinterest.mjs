@@ -15,6 +15,22 @@ import { captionFacts } from './works.mjs';
 export const pinterestProfileLink = (profile) => `${String(profile).replace(/\/+$/, '')}/_created/`;
 
 /**
+ * The user name of a Pinterest profile (site.pinterest), shown as "@<name>" like the Instagram account: the first part
+ * of the path of its address ("https://cz.pinterest.com/pavlakramolisova/_created/" → "pavlakramolisova"); '' when
+ * the address is not one of a Pinterest profile.
+ */
+export function pinterestHandle(profile) {
+  let address;
+  try {
+    address = new URL(String(profile ?? ''));
+  } catch {
+    return '';
+  }
+  if (!/(^|\.)pinterest\.[a-z.]+$/.test(address.hostname)) return '';
+  return address.pathname.split('/').find(Boolean) ?? '';
+}
+
+/**
  * The former name of the pin image in the folder of a work's page (public/tvorba/<year>/<slug>-<id>/); the pipeline
  * now writes pin-<hash>.jpg (named in info.json), this one only for folders made before.
  */

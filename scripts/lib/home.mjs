@@ -1,5 +1,5 @@
 // The home page: _index.yaml in the root of the content repository (HOME_SCHEMA in scripts/lib/schema.mjs): the text
-// next to the big picture (`text`, `description` for search engines), its heading, button, the texts while the site has
+// next to the big picture (`text`, `description` for search engines), its heading, buttons, the texts while the site has
 // no work yet, and its cover (scripts/lib/covers.mjs); its own cover photo is _cover.jpg next to it. A skeleton is written
 // when the file is missing (with the text the home page had before), and it is kept in line like every description.
 
@@ -51,6 +51,10 @@ export async function prepareHome(contentDir, { instagram = '' } = {}) {
   // the texts themselves (text, description, empty_closing) are checked with every description (textProblems)
   for (const [key, what] of Object.entries(REQUIRED)) {
     if (typeof data[key] !== 'string' || !data[key].trim()) problems.push(`${HOME_FILE}: ${key} (${what}) je prázdný nebo není text, napiš ho [prazdny-nadpis]`);
+  }
+  // the second button may be switched off by "" (the pipeline adds its default to a file without it)
+  if (data.button_show !== undefined && typeof data.button_show !== 'string') {
+    problems.push(`${HOME_FILE}: button_show (text tlačítka na promítání výběru autorky) není text, napiš ho, nebo "" bez tlačítka [prazdny-nadpis]`);
   }
   const photos = (await fs.readdir(contentDir)).filter((f) => {
     const { base, ext } = splitExt(f);

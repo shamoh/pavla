@@ -1402,7 +1402,7 @@ test('covers of years and the home page: own photo, cover, focus; share image on
   assert.ok(!(await exists(path.join(siteDir, 'public/og.jpg'))), 'never the former name');
   assert.ok(await exists(path.join(siteDir, 'public/tvorba/2025/_cover/info.json')));
   assert.deepEqual(YAML.parse(await fs.readFile(path.join(siteDir, 'content/_index.yaml'), 'utf8')), {
-    text: 'Ahoj.\n', cover: idRano, aspect: '1:1', focus: [30, 40], heading: 'Barvy, voda\na trochu náhody\n', button: 'Prohlédnout tvorbu',
+    text: 'Ahoj.\n', cover: idRano, aspect: '1:1', focus: [30, 40], heading: 'Barvy, voda\na trochu náhody\n', button: 'Prohlédnout tvorbu', button_show: '▶ Moje nejmilejší',
     empty_text: 'Obrazy tu brzy přibudou.', empty_closing: homeEmptyClosing(config.site.instagram),
   });
 

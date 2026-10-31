@@ -788,8 +788,10 @@ export const UNCOLLECTED_SCHEMA = {
 export const HOME_TEXT = 'Maluji pro radost, hlavně akvarelem – na plenérech, na procházkách i doma u stolu. Tady najdete,\n'
   + 'co mi právě uschlo na papíře, rychlé skici tužkou a brush penem i obrazy, které už visí jinde.\n';
 
-/** Default texts of the home page while the site has no work yet, and of its button. */
+/** Default texts of the home page while the site has no work yet, and of its buttons. */
 export const HOME_BUTTON = 'Prohlédnout tvorbu';
+/** The second button: the show of the author's selection (featuredShowPath), only while there is a featured work; "" = none. */
+export const HOME_SHOW_BUTTON = '▶ Moje nejmilejší';
 export const HOME_EMPTY_TEXT = 'Obrazy tu brzy přibudou.';
 /** The sentence under HOME_EMPTY_TEXT, with a link to the Instagram profile `instagram` (site.instagram), '' without one. */
 export const homeEmptyClosing = (instagram) => (instagram
@@ -820,6 +822,16 @@ export const HOME_SCHEMA = {
       doc: 'Text tlačítka pod textem úvodní stránky, které vede na celou tvorbu. Povinné.',
       value: HOME_BUTTON,
       missing: HOME_BUTTON,
+    },
+    {
+      key: 'button_show',
+      settled: true,
+      doc: [
+        'Text druhého tlačítka vedle něj, které promítne obrazy z výběru autorky (featured) přes celou obrazovku.',
+        'Ukáže se, jen když je ve výběru autorky aspoň jeden obraz. Prázdné "" = bez tlačítka.',
+      ],
+      value: HOME_SHOW_BUTTON,
+      missing: HOME_SHOW_BUTTON,
     },
     {
       key: 'empty_text',
