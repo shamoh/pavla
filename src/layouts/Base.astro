@@ -8,6 +8,7 @@ import { pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
 import { contactLink, pageContext } from '../../scripts/lib/messages.mjs';
 import { PALETTES, paletteCss, paletteScript } from '../../scripts/lib/palettes.mjs';
 import PalettePicker from '../components/PalettePicker.astro';
+import NameShades from '../components/NameShades.astro';
 
 /**
  * `type`: og:type ('article' for a work); `noindex`: a page search engines should leave out (404), without canonical;
@@ -98,7 +99,7 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
     <main><slot /></main>
     <footer class:list={['site-footer', { 'with-launcher': withMessages }]}>
       <span>
-        © {new Date().getFullYear()} {site.author}
+        © {new Date().getFullYear()} <NameShades text={site.author} />
         <!-- Build version: calendar versioning, the version is the build time (YY.MMDD.HHMM, Prague time). -->
         <span class="version">· <time datetime={version.iso} title={version.title}>{version.label}</time></span>
       </span>

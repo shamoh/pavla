@@ -12,6 +12,8 @@ test('handleParts: the given name, the surname (or its longest beginning) and th
   assert.equal(marked('@pavla.kramolisova'), '@[pavla].{kramolisova}');
   assert.equal(marked('@pavlakramolisova'), '@[pavla]{kramolisova}');
   assert.equal(marked('Kramolisova.Pavla@example.com'), '{Kramolisova}.[Pavla]@example.com', 'any order and case, as written');
+  assert.equal(marked('Pavla Kramolišová'), '[Pavla] {Kramolišová}', 'the name itself, with diacritics (the footer)');
+  assert.equal(marked('PAVLA KRAMOLIŠOVÁ'), '[PAVLA] {KRAMOLIŠOVÁ}');
   assert.deepEqual(handleParts('pavla@kramolis.cz', AUTHOR).map((p) => p.kind), ['given', 'rest', 'surname', 'rest']);
   for (const text of ['pavla@kramolis.cz', '@pavla.kramolisova', 'Fler', 'kramolis.cz']) {
     assert.equal(handleParts(text, AUTHOR).map((p) => p.text).join(''), text);

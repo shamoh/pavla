@@ -1636,11 +1636,12 @@ Kontakt ukazuje z `site.config.yaml` e-mail (`site.email`), Instagram (`site.ins
 (`site.pinterest`, jako `@uživatel` z adresy profilu `pinterestHandle`, nepoznaná adresa = „Pavla na Pinterestu“),
 obchůdek na Fleru (`site.fler`) a místo, kde autorka žije a maluje (`site.location`, „Žiji a maluji“); prázdná hodnota
 = položka chybí. Každý odkaz má bublinu, kam vede („Napsat mi e-mail“, „Můj profil na Instagramu“, „Moje obrazy
-na Pinterestu“, „Můj obchůdek na Fleru“), stejně položka „Promítnout“. Adresy jsou ve třech odstínech
-(`handleParts`, části v `<span>` uvnitř odkazu, takže se dál kliká i kopíruje jako jeden text): křestní jméno autorky
-(`site.author`, první slovo) `var(--accent)`, příjmení (poslední slovo) `var(--ink)`, ostatní (`@`, tečky, doména)
-nejslabší `var(--ink-soft)` s průhledností 0,7; jméno = nejdelší začátek bez diakritiky, aspoň 5 písmen (kratší jméno
-celé), např. pavla | @ | kramolis | .cz; text bez jména (Fler) beze změny.
+na Pinterestu“, „Můj obchůdek na Fleru“), stejně položka „Promítnout“. Adresy jsou ve třech odstínech,
+stejně jako jméno autorky v patičce („© 2026 Pavla Kramolišová“; komponenta `NameShades.astro`, `handleParts`, části
+v `<span>`, takže se odkaz dál kliká i kopíruje jako jeden text): křestní jméno autorky (`site.author`, první slovo)
+`var(--ink)`, příjmení (poslední slovo) `var(--accent)`, ostatní (`@`, tečky, doména, mezery) nejslabší
+`var(--ink-soft)` s průhledností 0,7; jméno = nejdelší začátek bez diakritiky a velikosti písmen, aspoň 5 písmen
+(kratší jméno celé), např. pavla | @ | kramolis | .cz; text bez jména (Fler) beze změny.
 
 Přípona může být i `.png` apod. (ne `.jpeg`, viz kontrola jmen). Další fotku lze na libovolnou stránku
 přidat komponentou `<Photo name="…" />`.

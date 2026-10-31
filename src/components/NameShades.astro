@@ -1,0 +1,17 @@
+---
+// A text with the author's name in it (her name in the footer, her addresses on the contact page) in three shades:
+// the given name in the ink, the surname in the accent (both strong, told apart by their hue in every palette), the rest
+// (@, dots, the domain, spaces) the quietest (scripts/lib/handle-parts.mjs). Only spans: a link around it clicks and
+// copies as before; a text without the name stays as it is.
+import { handleParts } from '../../scripts/lib/handle-parts.mjs';
+import { site } from '../lib/site';
+
+interface Props { text: string }
+const parts = handleParts(Astro.props.text, site.author);
+---
+{parts.map((part) => (part.kind ? <span class={part.kind}>{part.text}</span> : part.text))}
+<style>
+  .given { color: var(--ink); }
+  .surname { color: var(--accent); }
+  .rest { color: var(--ink-soft); opacity: 0.7; }
+</style>
