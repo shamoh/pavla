@@ -1,8 +1,59 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DRY_RUNS, MINUTE_LIMITS, SIZE_LIMITS, evaluateDeploy, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, parseExpiration,
+  DRY_RUNS, MINUTE_LIMITS, SIZE_LIMITS, evaluateCheckToken, evaluateDeploy, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure, parseExpiration, permissionsText,
 } from './health.mjs';
+
+test('httpFailure: the reason of GitHub when it gives one, otherwise only the status', () => {
+  assert.equal(httpFailure(403, '{"message":"Resource not accessible by personal access token"}'), 'HTTP 403: Resource not accessible by personal access token');
+  assert.equal(httpFailure(502, '<html>Bad gateway</html>'), 'HTTP 502');
+  assert.equal(httpFailure(404, '{}'), 'HTTP 404');
+  assert.equal(httpFailure(500), 'HTTP 500');
+});
+
+test('httpFailure: a refused token is told the permission it lacks; other failures not', () => {
+  const refused = '{"message":"Resource not accessible by personal access token"}';
+  assert.equal(httpFailure(403, refused, 'plan=read'), 'HTTP 403: Resource not accessible by personal access token (tokenu chybí oprávnění Plan: Read-only)');
+  assert.equal(httpFailure(403, refused, null), 'HTTP 403: Resource not accessible by personal access token');
+  assert.equal(httpFailure(403, '{"message":"API rate limit exceeded for user"}', 'plan=read'), 'HTTP 403: API rate limit exceeded for user');
+  assert.equal(httpFailure(500, '', 'plan=read'), 'HTTP 500');
+});
+
+test('permissionsText: as named on the page of a token; commas = all, semicolons = alternatives', () => {
+  assert.equal(permissionsText('plan=read'), 'Plan: Read-only');
+  assert.equal(permissionsText('repository_hooks=read'), 'Webhooks: Read-only');
+  assert.equal(permissionsText('actions_variables=read'), 'Variables: Read-only');
+  assert.equal(permissionsText('pull_requests=write,contents=read'), 'Pull requests: Read and write, Contents: Read-only');
+  assert.equal(permissionsText('pull_requests=read,contents=read; issues=read,contents=read'), 'Pull requests: Read-only, Contents: Read-only nebo Issues: Read-only, Contents: Read-only');
+  assert.equal(permissionsText('metadata=read,actions=read'), 'Actions: Read-only');
+  assert.equal(permissionsText('actions=read; actions=read'), 'Actions: Read-only');
+  for (const nothing of [null, undefined, '', 'metadata=read', 'nonsense']) assert.equal(permissionsText(nothing), '');
+});
+
+test('evaluateCheckToken: expiry like PAVLA_TOKEN, with its own codes; not set is fine', () => {
+  const at = new Date('2026-12-01T10:00:00Z');
+  const good = evaluateCheckToken({ status: 200, expiration: '2027-10-29 00:00:00 UTC', now: at });
+  assert.equal(good.ok, true);
+  assert.match(good.message, /^Token CHECK_TOKEN funguje, vyprší 2027-10-29 \(za \d+ dní\)\.$/);
+  const soon = evaluateCheckToken({ status: 200, expiration: '2026-12-10 00:00:00 UTC', now: at });
+  assert.equal(soon.ok, false);
+  assert.match(soon.message, /vyprší 2026-12-10 \(za 8 dní\).*Regenerate token.*\[kontrolni-token-vyprsi\]$/);
+  // the boundary is exclusive, as for PAVLA_TOKEN; --days moves it
+  const exactly14 = '2026-12-15 10:00:00 UTC';
+  assert.equal(evaluateCheckToken({ status: 200, expiration: exactly14, now: at }).ok, true);
+  assert.equal(evaluateCheckToken({ status: 200, expiration: exactly14, now: at, warnDays: 15 }).ok, false);
+  assert.match(evaluateCheckToken({ status: 200, expiration: '2026-11-01 00:00:00 UTC', now: at }).message, /za 0 dní/);
+  assert.deepEqual(evaluateCheckToken({ status: 0 }), { ok: true, message: 'Token CHECK_TOKEN není nastavený.' });
+  assert.equal(evaluateCheckToken({ status: 200, expiration: null }).ok, true);
+  assert.match(evaluateCheckToken({ status: 401 }).message, /\[kontrolni-token-neplatny\]$/);
+  assert.match(evaluateCheckToken({ status: 500 }).message, /HTTP 500.*\[kontrolni-token-nedostupny\]$/);
+});
+
+test('formatReport: a failing CHECK_TOKEN gives its code, not the renewal of PAVLA_TOKEN', () => {
+  const report = formatReport({ ok: true, message: 'a' }, evaluateCheckToken({ status: 401 }));
+  assert.deepEqual(report.codes, ['kontrolni-token-neplatny']);
+  assert.doesNotMatch(report.text, /Jak token obnovit/);
+});
 
 const now = new Date('2026-09-27T10:00:00Z');
 const run = (conclusion, created_at, status = 'completed') => ({ status, conclusion, created_at, html_url: `https://example.test/${created_at}` });

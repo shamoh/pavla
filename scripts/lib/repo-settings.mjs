@@ -10,6 +10,25 @@ export const GENERAL_FIELDS = [
   'delete_branch_on_merge', 'allow_update_branch', 'web_commit_signoff_required', 'archived',
 ];
 
+/**
+ * General settings the REST API leaves out for a read-only token, by their name in GraphQL, which tells them to anyone
+ * who can read the repository. Without them the check would lose the switch the automatic merge depends on.
+ */
+export const MERGE_FIELDS = {
+  allow_merge_commit: 'mergeCommitAllowed',
+  allow_squash_merge: 'squashMergeAllowed',
+  allow_rebase_merge: 'rebaseMergeAllowed',
+  allow_auto_merge: 'autoMergeAllowed',
+  delete_branch_on_merge: 'deleteBranchOnMerge',
+  allow_update_branch: 'allowUpdateBranch',
+};
+
+/** The GraphQL query for the merge settings of `repo` ("owner/name"). */
+export function mergeSettingsQuery(repo) {
+  const [owner, name] = repo.split('/');
+  return `query { repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { ${Object.values(MERGE_FIELDS).join(' ')} } }`;
+}
+
 /** What the API does not tell (or only with other tokens): checked by hand on every new repository. */
 export const BY_HAND = [
   'Fine-grained tokeny, které na repo míří (u každého *Repository access*: token je vázaný na ID repa, ne na jméno).',
@@ -21,9 +40,11 @@ export const BY_HAND = [
 
 /**
  * Everything the API tells about `repo` ("owner/name"). `api(path)` returns the parsed JSON of a GET, or null for 404
- * (not set up / not available); other failures are thrown. Each part that fails is recorded under `errors`.
+ * (not set up / not available); other failures are thrown. `graphql(query)` returns the `data` of a GraphQL query and
+ * throws on failure; asked only when REST left out a merge setting (MERGE_FIELDS). Each part that fails is recorded
+ * under `errors`, a merge setting nothing told as `general.<field>`.
  */
-export async function collectSettings(repo, api) {
+export async function collectSettings(repo, api, graphql) {
   const errors = {};
   const part = async (name, fn) => {
     try {
@@ -35,7 +56,24 @@ export async function collectSettings(repo, api) {
   };
   const info = await api(`/repos/${repo}`);
   if (!info) throw new Error(`${repo}: repository not found`);
-  const general = Object.fromEntries(GENERAL_FIELDS.filter((k) => k in info).map((k) => [k, info[k]]));
+  const left = Object.keys(MERGE_FIELDS).filter((k) => !(k in info));
+  const merge = {};
+  if (left.length) {
+    let answer = null;
+    let failure = 'API tuto hodnotu nevrátilo';
+    try {
+      answer = (await graphql(mergeSettingsQuery(repo)))?.repository;
+    } catch (e) {
+      failure = e.message;
+    }
+    for (const k of left) {
+      const v = answer?.[MERGE_FIELDS[k]];
+      if (v === undefined || v === null) errors[`general.${k}`] = failure;
+      else merge[k] = v;
+    }
+  }
+  const read = { ...info, ...merge };
+  const general = Object.fromEntries(GENERAL_FIELDS.filter((k) => k in read).map((k) => [k, read[k]]));
   const rulesets = await part('rulesets', async () => {
     const list = (await api(`/repos/${repo}/rulesets?includes_parents=false`)) ?? [];
     return Promise.all(list.map((r) => api(`/repos/${repo}/rulesets/${r.id}`)));
@@ -171,11 +209,12 @@ export function settingsSnapshot(s) {
 const MEMBER = ' ∋ ';
 
 /**
- * `data` as { "a.b[0].c": JSON value } for every leaf (an empty list or object is a leaf too); a list of plain values
- * as its members ({ "secrets ∋ \"X\"": "1" }), so an added name is one difference, not a shifted list.
+ * `data` as { "a.b[0].c": JSON value } for every leaf (an empty object is a leaf too, an empty list has no entries); a
+ * list of plain values as its members ({ "secrets ∋ \"X\"": "1" }), so an added name is one difference, not a shifted list.
  */
 function flatten(data, prefix = '', out = {}) {
-  const leaf = data === null || typeof data !== 'object' || (Array.isArray(data) ? !data.length : !Object.keys(data).length);
+  if (Array.isArray(data) && !data.length) return out;
+  const leaf = data === null || typeof data !== 'object' || (!Array.isArray(data) && !Object.keys(data).length);
   if (leaf) {
     out[prefix] = JSON.stringify(data ?? null);
     return out;
@@ -191,16 +230,17 @@ function flatten(data, prefix = '', out = {}) {
 
 /**
  * What differs between a stored snapshot and the current one: ["<path>: <stored> → <now>"], in path order. A part the
- * current reading could not read (`unreadable`) is compared only by that fact: its values are not known.
+ * current reading could not read (`unreadable`: a whole part or one path) is compared only by that fact: its values
+ * are not known. `reasons`: `errors` of collectSettings, why it could not be read.
  */
-export function compareSnapshots(saved, now) {
+export function compareSnapshots(saved, now, reasons = {}) {
   const unknown = new Set(now.unreadable ?? []);
   const a = flatten({ ...saved, unreadable: undefined });
   const b = flatten({ ...now, unreadable: undefined });
   const part = (p) => p.split(/[.[ ]/)[0];
   const diffs = [];
   for (const p of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) {
-    if (unknown.has(part(p)) || p === 'unreadable' || a[p] === b[p]) continue;
+    if (unknown.has(part(p)) || unknown.has(p) || p === 'unreadable' || a[p] === b[p]) continue;
     if (p.includes(MEMBER)) {
       const [list, member] = p.split(MEMBER);
       diffs.push(`${list}: ${b[p] ? 'přibylo' : 'ubylo'} ${member}`);
@@ -209,6 +249,6 @@ export function compareSnapshots(saved, now) {
     }
   }
   const before = new Set(saved.unreadable ?? []);
-  for (const u of unknown) if (!before.has(u)) diffs.push(`${u}: nejde přečíst (dřív šlo)`);
+  for (const u of unknown) if (!before.has(u)) diffs.push(`${u}: nejde přečíst (dřív šlo)${reasons[u] ? `: ${reasons[u]}` : ''}`);
   return diffs;
 }

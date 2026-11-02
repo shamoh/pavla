@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BY_HAND, collectSettings, compareSnapshots, ruleLines, settingsMarkdown, settingsSnapshot } from './repo-settings.mjs';
+import { BY_HAND, MERGE_FIELDS, collectSettings, compareSnapshots, ruleLines, settingsMarkdown, settingsSnapshot } from './repo-settings.mjs';
 
 /** A fake API: the answers by path (missing = 404 = null); a value Error = that call fails. */
 const fakeApi = (answers) => async (path) => {
@@ -13,6 +13,7 @@ const repo = 'shamoh/web';
 const answers = {
   [`/repos/${repo}`]: {
     visibility: 'public', default_branch: 'main', allow_auto_merge: true, delete_branch_on_merge: true, allow_squash_merge: false,
+    allow_merge_commit: true, allow_rebase_merge: true, allow_update_branch: false,
     topics: ['akvarel'], id: 1, security_and_analysis: { secret_scanning: { status: 'enabled' } },
   },
   [`/repos/${repo}/rulesets?includes_parents=false`]: [{ id: 7 }],
@@ -36,7 +37,10 @@ const answers = {
 
 test('collectSettings: general settings, rulesets in full, Pages, environments, Actions, names of secrets; a failing part is recorded', async () => {
   const s = await collectSettings(repo, fakeApi(answers));
-  assert.deepEqual(s.general, { visibility: 'public', default_branch: 'main', topics: ['akvarel'], allow_squash_merge: false, allow_auto_merge: true, delete_branch_on_merge: true });
+  assert.deepEqual(s.general, {
+    visibility: 'public', default_branch: 'main', topics: ['akvarel'], allow_merge_commit: true, allow_squash_merge: false,
+    allow_rebase_merge: true, allow_auto_merge: true, delete_branch_on_merge: true, allow_update_branch: false,
+  });
   assert.equal(s.rulesets[0].name, 'main');
   assert.equal(s.protection, null, 'no classic protection (404)');
   assert.equal(s.pages.cname, 'pavla.example');
@@ -103,4 +107,80 @@ test('compareSnapshots: every changed, added and removed setting; an unreadable 
   assert.deepEqual(diffs.filter((d) => d.startsWith('secrets')), ['secrets: přibylo "NOVY"']);
   assert.ok(diffs.includes('pages: nejde přečíst (dřív šlo)'), diffs.join('\n'));
   assert.ok(!diffs.some((d) => d.startsWith('pages.')), 'values of an unreadable part are unknown, not changed');
+});
+
+/** The answers as a read-only token gets them: REST without the merge settings. */
+const restWithoutMerge = () => {
+  const rest = { ...answers[`/repos/${repo}`] };
+  for (const k of Object.keys(MERGE_FIELDS)) delete rest[k];
+  return { ...answers, [`/repos/${repo}`]: rest };
+};
+const mergeAnswer = {
+  repository: {
+    mergeCommitAllowed: true, squashMergeAllowed: false, rebaseMergeAllowed: true, autoMergeAllowed: true, deleteBranchOnMerge: true, allowUpdateBranch: false,
+  },
+};
+
+test('collectSettings: merge settings REST leaves out come from GraphQL, the same snapshot in the same order of fields', async () => {
+  const queries = [];
+  const s = await collectSettings(repo, fakeApi(restWithoutMerge()), async (q) => {
+    queries.push(q);
+    return mergeAnswer;
+  });
+  assert.equal(queries.length, 1);
+  assert.match(queries[0], /repository\(owner: "shamoh", name: "web"\)/);
+  for (const name of Object.values(MERGE_FIELDS)) assert.ok(queries[0].includes(name), name);
+  const stored = settingsSnapshot(await collectSettings(repo, fakeApi(answers)));
+  assert.deepEqual(Object.keys(s.general), Object.keys(stored.general));
+  assert.deepEqual(compareSnapshots(JSON.parse(JSON.stringify(stored)), settingsSnapshot(s), s.errors), []);
+});
+
+test('collectSettings: GraphQL is not asked when REST tells the merge settings', async () => {
+  const s = await collectSettings(repo, fakeApi(answers), async () => assert.fail('GraphQL asked'));
+  assert.equal(s.general.allow_auto_merge, true);
+  assert.ok(!Object.keys(s.errors).some((k) => k.startsWith('general.')));
+});
+
+test('compareSnapshots: a real change seen through GraphQL is reported as a change', async () => {
+  const stored = JSON.parse(JSON.stringify(settingsSnapshot(await collectSettings(repo, fakeApi(answers)))));
+  const off = { repository: { ...mergeAnswer.repository, autoMergeAllowed: false } };
+  const s = await collectSettings(repo, fakeApi(restWithoutMerge()), async () => off);
+  assert.deepEqual(compareSnapshots(stored, settingsSnapshot(s), s.errors), ['general.allow_auto_merge: true → false']);
+});
+
+test('compareSnapshots: a merge setting nothing tells is unreadable with the reason, not "true → –"', async () => {
+  const stored = JSON.parse(JSON.stringify(settingsSnapshot(await collectSettings(repo, fakeApi(answers)))));
+  const failed = await collectSettings(repo, fakeApi(restWithoutMerge()), async () => { throw new Error('HTTP 403: Forbidden'); });
+  const diffs = compareSnapshots(stored, settingsSnapshot(failed), failed.errors);
+  assert.equal(diffs.length, Object.keys(MERGE_FIELDS).length);
+  assert.ok(diffs.includes('general.allow_auto_merge: nejde přečíst (dřív šlo): HTTP 403: Forbidden'), diffs.join('\n'));
+  assert.ok(!diffs.some((d) => d.includes('→')), diffs.join('\n'));
+
+  // one field missing in the answer: only that one, the others are compared
+  const { autoMergeAllowed, ...partial } = mergeAnswer.repository;
+  const one = await collectSettings(repo, fakeApi(restWithoutMerge()), async () => ({ repository: partial }));
+  assert.equal(one.general.allow_merge_commit, true);
+  assert.deepEqual(compareSnapshots(stored, settingsSnapshot(one), one.errors), ['general.allow_auto_merge: nejde přečíst (dřív šlo): API tuto hodnotu nevrátilo']);
+
+  // already unreadable in the stored export: not a new difference
+  assert.deepEqual(compareSnapshots(settingsSnapshot(one), settingsSnapshot(one), one.errors), []);
+});
+
+test('compareSnapshots: a list that was empty gains members in one line each, without a false "[] → –"', () => {
+  const base = { general: { topics: [] }, secrets: [], rulesets: [], unreadable: [] };
+  assert.deepEqual(compareSnapshots(base, { ...base, secrets: ['CHECK_TOKEN'], general: { topics: ['akvarel'] } }), [
+    'general.topics: přibylo "akvarel"',
+    'secrets: přibylo "CHECK_TOKEN"',
+  ]);
+  assert.deepEqual(compareSnapshots({ ...base, secrets: ['CHECK_TOKEN'] }, base), ['secrets: ubylo "CHECK_TOKEN"']);
+  assert.deepEqual(compareSnapshots(base, { ...base, rulesets: [{ name: 'main' }] }), ['rulesets[0].name: – → "main"']);
+  assert.deepEqual(compareSnapshots(base, { ...base }), []);
+});
+
+test('compareSnapshots: an unreadable part tells why, if known', () => {
+  const base = { environments: [], unreadable: [] };
+  assert.deepEqual(compareSnapshots(base, { environments: null, unreadable: ['environments'] }, { environments: 'HTTP 403: Resource not accessible' }), [
+    'environments: nejde přečíst (dřív šlo): HTTP 403: Resource not accessible',
+  ]);
+  assert.deepEqual(compareSnapshots(base, { environments: null, unreadable: ['environments'] }), ['environments: nejde přečíst (dřív šlo)']);
 });

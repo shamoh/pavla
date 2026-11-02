@@ -25,6 +25,26 @@ export function parseExpiration(header) {
 }
 
 /** `status`: HTTP status of an API call made with the token; `expiration`: its expiry header. */
+/**
+ * The token of the read-only checks (CHECK_TOKEN) from an authenticated answer of the API. `status`: 0 = not set, which
+ * is fine (the checks that need it say they were skipped); it is optional, so a failure names what stops working.
+ */
+export function evaluateCheckToken({ status, expiration, now = new Date(), warnDays = 14 }) {
+  const stops = 'Minuty Actions a nastavení rep se bez něj nezkontrolují.';
+  const renew = 'U tokenu zvol Regenerate token a přepiš secret CHECK_TOKEN v obsahovém repu.';
+  if (status === 0) return { ok: true, message: 'Token CHECK_TOKEN není nastavený.' };
+  if (status === 401) return { ok: false, message: `Token CHECK_TOKEN je neplatný nebo už vypršel. ${stops} ${renew} [kontrolni-token-neplatny]` };
+  if (status !== 200) return { ok: false, message: `Kontrola tokenu CHECK_TOKEN selhala (HTTP ${status}). Token možná nemá přístup k repu shamoh/pavla. [kontrolni-token-nedostupny]` };
+  const date = parseExpiration(expiration);
+  if (!date) return { ok: true, message: 'Token CHECK_TOKEN funguje a nemá nastavenou dobu platnosti.' };
+  const daysLeft = Math.floor((date.getTime() - now.getTime()) / DAY);
+  const when = date.toISOString().slice(0, 10);
+  if (daysLeft < warnDays) {
+    return { ok: false, daysLeft, message: `Token CHECK_TOKEN vyprší ${when} (za ${Math.max(0, daysLeft)} dní). ${stops} ${renew} [kontrolni-token-vyprsi]` };
+  }
+  return { ok: true, daysLeft, message: `Token CHECK_TOKEN funguje, vyprší ${when} (za ${daysLeft} dní).` };
+}
+
 export function evaluateToken({ status, expiration, now = new Date(), warnDays = 14 }) {
   if (status === 0) return { ok: false, message: 'Secret PAVLA_TOKEN není nastavený. [token-chybi]' };
   if (status === 401) {
@@ -206,6 +226,36 @@ export function evaluateSizes(sizes, limits = SIZE_LIMITS) {
  * (from day `paceFromDay`, earlier the pace says little). Without minutes left GitHub stops the runs until the next month.
  */
 export const MINUTE_LIMITS = { included: 2000, warnShare: 0.7, paceFromDay: 7 };
+
+/** Permissions whose name on the page of a token differs from "Name with spaces" of their name in the API. */
+const PERMISSION_LABELS = { repository_hooks: 'Webhooks', actions_variables: 'Variables' };
+const ACCESS_LABELS = { read: 'Read-only', write: 'Read and write', admin: 'Admin' };
+
+/**
+ * The value of the header X-Accepted-GitHub-Permissions as named on the page of a token: "Plan: Read-only"; commas =
+ * all of them, semicolons = alternatives ("nebo"). Metadata is on every token, so it is left out. '' = nothing to tell.
+ */
+export function permissionsText(header) {
+  const sets = String(header ?? '').split(';').map((set) => set.split(',').map((p) => p.trim().split('=')).filter(([name, access]) => name && access && name !== 'metadata')
+    .map(([name, access]) => `${PERMISSION_LABELS[name] ?? name[0].toUpperCase() + name.slice(1).replace(/_/g, ' ')}: ${ACCESS_LABELS[access] ?? access}`)
+    .join(', ')).filter(Boolean);
+  return [...new Set(sets)].join(' nebo ');
+}
+
+/**
+ * A failed answer of the GitHub API with its own reason, and on a refusal the permission the token needs (`permissions`:
+ * the header X-Accepted-GitHub-Permissions): "HTTP 403: Resource not … (tokenu chybí oprávnění Plan: Read-only)".
+ */
+export function httpFailure(status, body = '', permissions = null) {
+  let reason;
+  try {
+    reason = JSON.parse(body)?.message;
+  } catch {
+    reason = null;
+  }
+  const needed = status === 403 && !/rate limit/i.test(reason ?? '') ? permissionsText(permissions) : '';
+  return `HTTP ${status}${reason ? `: ${reason}` : ''}${needed ? ` (tokenu chybí oprávnění ${needed})` : ''}`;
+}
 
 /**
  * `items`: usageItems of the billing usage report of the month (GitHub API /users/<user>/settings/billing/usage),

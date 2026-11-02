@@ -297,7 +297,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   Týdenní kontrola (token, selhané běhy, zkušební běh, nasazení, čekající PR, neznámé atributy, chybějící obrázky
   nasazeného webu `scripts/lib/site-check.mjs`, texty a JSON-LD jeho stránek `evaluatePageTexts`, velikost obou rep
   a nasazeného webu proti limitům GitHubu `evaluateSizes` (od 70 % `blizi-se-limit`), minuty Actions soukromých rep
-  `evaluateMinutes` (`CHECK_TOKEN`, dřív `BILLING_TOKEN`; `dochazeji-minuty`, `placene-minuty`), první pondělí v měsíci
+  `evaluateMinutes` (`CHECK_TOKEN`; `dochazeji-minuty`, `placene-minuty`), první pondělí v měsíci
   nastavení obou rep proti uloženým exportům `evaluateSettings` (`compareSnapshots`, `nastaveni-se-zmenilo`); hlášky `pageProblems`
   jsou kódy s anglickým i českým textem `problemText`):
   `scripts/check-health.mjs` + `scripts/lib/health.mjs`, spouští ji obsahové repo.

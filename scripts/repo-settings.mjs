@@ -26,9 +26,19 @@ async function api(path) {
   }
 }
 
+/** A GraphQL query with `gh api graphql`: its `data`; failures throw. */
+async function graphql(query) {
+  try {
+    const { stdout } = await run('gh', ['api', 'graphql', '-f', `query=${query}`]);
+    return JSON.parse(stdout).data;
+  } catch (e) {
+    throw new Error(String(e.stderr || e.message).trim().split('\n')[0]);
+  }
+}
+
 try {
   if (!repo) throw new Error('usage: node scripts/repo-settings.mjs <owner/repo> [--out <file.md>]');
-  const settings = await collectSettings(repo, api);
+  const settings = await collectSettings(repo, api, graphql);
   const text = settingsMarkdown(settings);
   if (out) {
     await fs.writeFile(out, text);

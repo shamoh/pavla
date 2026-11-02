@@ -1987,7 +1987,7 @@ běhu, nebo nech pracovat automatiku.
 **Týdenní kontrola automatiky** běží v obsahovém repu, kód je tady: `scripts/check-health.mjs` (volání API,
 čtení popisů) a `scripts/lib/health.mjs` (vyhodnocení, české zprávy). Proměnné: `TOKEN` (token pro zápis do
 tohoto repa), `RUNS_TOKEN` a `REPO` (běhy workflow obsahového repa), `CONTENT_DIR` (checkout popisů,
-nepovinný), `CHECK_TOKEN` (spotřeba minut Actions a nastavení rep, nepovinný; dřívější `BILLING_TOKEN` se čte taky),
+nepovinný), `CHECK_TOKEN` (spotřeba minut Actions a nastavení rep, nepovinný),
 `SETTINGS_DIR` (uložené exporty nastavení `<jméno repa>.json`, nepovinný). Kontroluje:
 
 - že token funguje a nevyprší do 14 dní (`--days`),
@@ -2028,11 +2028,17 @@ nepovinný), `CHECK_TOKEN` (spotřeba minut Actions a nastavení rep, nepovinný
   je po repech a tempo na celý měsíc. Selže od 70 % (`warnShare`) nebo když by tempo od 7. dne (`paceFromDay`) vyčerpalo
   všechny (`dochazeji-minuty`), a při jakékoli částce k zaplacení (`netAmount`, `placene-minuty`).
 - první pondělí v měsíci (dny 1–7; `--settings` kdykoli), že nastavení obou rep odpovídá uloženému exportu
-  (`evaluateSettings`; `collectSettings` přes API s `CHECK_TOKEN` = oprávnění repa *Administration, Environments, Pages,
-  Secrets, Variables, Webhooks: read* pro obě repa, `settingsSnapshot` proti `SETTINGS_DIR/<jméno repa>.json`
-  z `scripts/repo-settings.mjs --out`, `compareSnapshots`: rozdíly po cestách, seznamy jmen jako „přibylo/ubylo“, část,
-  kterou nejde přečíst, jen tímto faktem). Rozdíl nebo chybějící export = `nastaveni-se-zmenilo`; bez tokenu nebo
-  exportů se kontrola přeskočí.
+  (`evaluateSettings`; `collectSettings` přes API s `CHECK_TOKEN` = oprávnění repa *Actions (seznam prostředí),
+  Administration, Environments, Pages, Secrets, Variables, Webhooks: read* pro obě repa, `settingsSnapshot` proti
+  `SETTINGS_DIR/<jméno repa>.json` z `scripts/repo-settings.mjs --out`, `compareSnapshots`: rozdíly po cestách, seznamy
+  jmen jako „přibylo/ubylo“, část nebo hodnota, kterou nejde přečíst, jen tímto faktem a s důvodem od GitHubu). Volby
+  sloučení (`MERGE_FIELDS`: `allow_auto_merge` …) REST tokenu jen pro čtení nevrací, čtou se pak přes GraphQL.
+  Rozdíl nebo chybějící export = `nastaveni-se-zmenilo`; bez tokenu nebo exportů se kontrola přeskočí.
+  Když se data načíst nepodaří (`nacteni-selhalo`), hláška uvede i důvod od GitHubu a při odmítnutí (403) i oprávnění,
+  které tokenu chybí, podle hlavičky `X-Accepted-GitHub-Permissions` jako na stránce tokenu: „tokenu chybí oprávnění
+  Plan: Read-only“ (`httpFailure`, `permissionsText`; alternativy spojené „nebo“).
+- že `CHECK_TOKEN` funguje a nevyprší do 14 dní (`evaluateCheckToken`, `--days`; kódy `kontrolni-token-neplatny`,
+  `kontrolni-token-nedostupny`, `kontrolni-token-vyprsi`). Token je nepovinný: bez něj je to jen informace, kontrola neselže.
 - že obě repa a nasazený web zůstávají daleko pod limity velikosti GitHubu (`evaluateSizes`, `SIZE_LIMITS`): repo
   ideálně do 1 GB (celá historie, každá verze každého obrázku), web na GitHub Pages nejvýš 1 GB. Velikost repa je
   `size` z API (`/repos/<repo>`, v KiB; obsahové repo s `RUNS_TOKEN`), velikost webu je poslední artefakt
@@ -2045,7 +2051,7 @@ skript skončí kódem 1. Kódy neúspěšných kontrol (i problémů, které vy
 a jako výstup kroku `codes` (`[token-vyprsi] [obrazky-chybi]`): workflow obsahového repa je dá na konec titulku issue,
 aby šly e-maily filtrovat podle kódu. Každá neúspěšná kontrola končí první řádek své hlášky kódem ze stejného registru jako hlášky
 pipeline (`scripts/lib/codes.mjs`, úroveň `health`): `token-chybi`, `token-neplatny`, `token-nedostupny`,
-`token-vyprsi`, `beh-selhal`, `zkusebni-beh-selhal`, `nasazeni-selhalo`, `nasazeni-chybi`, `aktualizace-ceka`,
+`token-vyprsi`, `kontrolni-token-neplatny`, `kontrolni-token-nedostupny`, `kontrolni-token-vyprsi`, `beh-selhal`, `zkusebni-beh-selhal`, `nasazeni-selhalo`, `nasazeni-chybi`, `aktualizace-ceka`,
 `neznamy-atribut`, `nova-technika`, `preklad-chybi`, `obrazky-chybi`, `stranky-nedostupne`, `blizi-se-limit`, `dochazeji-minuty`, `nastaveni-se-zmenilo`,
 `placene-minuty`, `nacteni-selhalo` (API nebo obsah se
 nepodařilo načíst). Problémy textů stránek mají kód každý (`titulek-chybi`, `stejny-titulek`, `popis-stranky-chybi`,

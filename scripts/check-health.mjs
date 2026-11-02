@@ -3,8 +3,8 @@
 // Env: TOKEN (the PAVLA_TOKEN secret), RUNS_TOKEN + REPO (token with actions:read on the content repository and its
 // name, e.g. github.token and github.repository), CONTENT_DIR (a checkout of the content repository, optional),
 // CHECK_TOKEN (optional: a read-only fine-grained token of the owner for both repositories, account permission
-// Plan and repository permissions Administration, Environments, Pages, Secrets, Variables, Webhooks: the minutes of
-// Actions and the monthly comparison of the settings; BILLING_TOKEN, its former name, is read too),
+// Plan and repository permissions Actions, Administration, Environments, Pages, Secrets, Variables, Webhooks: the minutes of
+// Actions and the monthly comparison of the settings),
 // SETTINGS_DIR (the stored exports of the settings, <repo name>.json), `--settings` compares them on any day.
 // The images and the page texts of the deployed site are checked at site.url of site.config.yaml (`--site-url <url>` overrides it,
 // e.g. a locally served build).
@@ -18,7 +18,7 @@ import { findUnknownAttributes, findUnknownTechniques, findUntranslatedTags } fr
 import { checkSiteImages, evaluateSiteImages } from './lib/site-check.mjs';
 import { evaluatePageTexts } from './lib/page-check.mjs';
 import {
-  DRY_RUNS, evaluateDeploy, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport,
+  DRY_RUNS, evaluateCheckToken, evaluateDeploy, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure,
 } from './lib/health.mjs';
 
 const SITE_REPO = 'shamoh/pavla';
@@ -28,10 +28,24 @@ const PR_BRANCH = 'obsah/aktualizace';
 const api = (path, token) => fetch(`https://api.github.com${path}`, {
   headers: { ...(token && { Authorization: `Bearer ${token}` }), Accept: 'application/vnd.github+json', 'User-Agent': 'pavla-health-check' },
 });
+/** The failure of an answer, with its reason and the permission a refused token lacks. */
+const failure = async (res) => new Error(httpFailure(res.status, await res.text(), res.headers.get('x-accepted-github-permissions')));
 const json = async (path, token) => {
   const res = await api(path, token);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw await failure(res);
   return res.json();
+};
+/** A GraphQL query: its `data`; a failure of the request or of the query throws. */
+const graphql = async (query, token) => {
+  const res = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'pavla-health-check' },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) throw await failure(res);
+  const body = await res.json();
+  if (body.errors?.length) throw new Error(`GraphQL: ${body.errors[0].message}`);
+  return body.data;
 };
 /** Runs a check; an API failure becomes a failed check with the given Czech label. */
 const guarded = async (label, fn) => {
@@ -114,7 +128,12 @@ const sizes = await guarded('velikosti rep a webu', async () => {
 
 // Minutes of GitHub Actions of this month (the billing usage report of the owner's account): only private repositories
 // use the free minutes; a repository its public page does not show is private.
-const checkToken = process.env.CHECK_TOKEN || process.env.BILLING_TOKEN;
+const checkToken = process.env.CHECK_TOKEN;
+let checkTokenState = evaluateCheckToken({ status: 0 });
+if (checkToken) {
+  const res = await api(`/repos/${SITE_REPO}`, checkToken);
+  checkTokenState = evaluateCheckToken({ status: res.status, expiration: res.headers.get('github-authentication-token-expiration'), warnDays: arg('--days', 14) });
+}
 const minutes = checkToken
   ? await guarded('minuty GitHub Actions', async () => {
     const owner = SITE_REPO.split('/')[0];
@@ -138,20 +157,20 @@ const settings = !monthly ? evaluateSettings(null, { reason: 'jen první ponděl
       const get = async (p) => {
         const res = await api(p, checkToken);
         if (res.status === 404) return null;
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw await failure(res);
         return res.status === 204 ? {} : res.json();
       };
       const results = [];
       for (const repo of [SITE_REPO, process.env.REPO].filter(Boolean)) {
         const file = path.join(process.env.SETTINGS_DIR, `${repo.split('/')[1]}.json`);
         const saved = await fs.readFile(file, 'utf8').then(JSON.parse, () => null);
-        const now = settingsSnapshot(await collectSettings(repo, get));
-        results.push(saved ? { repo, diffs: compareSnapshots(saved, now) } : { repo, noSnapshot: true });
+        const current = await collectSettings(repo, get, (query) => graphql(query, checkToken));
+        results.push(saved ? { repo, diffs: compareSnapshots(saved, settingsSnapshot(current), current.errors) } : { repo, noSnapshot: true });
       }
       return evaluateSettings(results);
     });
 
-const report = formatReport(token, runs, dryRun, deploy, pr, unknown, techniques, translations, siteImages, pageTexts, sizes, minutes, settings);
+const report = formatReport(token, checkTokenState, runs, dryRun, deploy, pr, unknown, techniques, translations, siteImages, pageTexts, sizes, minutes, settings);
 console.log(report.text);
 if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, report.text);
 // codes: "[token-vyprsi] [obrazky-chybi]" for the title of the issue (e-mails filtered by code)
