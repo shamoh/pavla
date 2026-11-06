@@ -1,0 +1,41 @@
+{
+  "width": 2881,
+  "height": 3827,
+  "widths": [
+    480,
+    960,
+    1600,
+    2400
+  ],
+  "dominant": "rgb(88,88,72)",
+  "transparent": true,
+  "mockups": [],
+  "details": [
+    {
+      "name": "zena-v-desti-skica",
+      "width": 1329,
+      "height": 1765,
+      "widths": [
+        480,
+        960,
+        1329
+      ],
+      "dominant": "rgb(232,232,232)"
+    }
+  ],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-dad8bc4b.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 343851,
+    "file": "pin-f1b063fa.jpg",
+    "feed": true,
+    "feedFile": "pin-f1b063fa.jpg",
+    "feedVersion": 1
+  },
+  "fingerprint": "b72ea61efba99c56"
+}

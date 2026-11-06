@@ -1,0 +1,66 @@
+{
+  "width": 3154,
+  "height": 2113,
+  "widths": [
+    480,
+    960,
+    1600,
+    2400
+  ],
+  "dominant": "rgb(200,200,200)",
+  "transparent": true,
+  "mockups": [
+    {
+      "scene": "komoda",
+      "label": "Komoda",
+      "width": 1565,
+      "height": 1043,
+      "widths": [
+        480,
+        960,
+        1565
+      ],
+      "dominant": "rgb(216,216,216)"
+    },
+    {
+      "scene": "police",
+      "label": "Polička",
+      "width": 1584,
+      "height": 1056,
+      "widths": [
+        480,
+        960,
+        1584
+      ],
+      "dominant": "rgb(216,216,216)"
+    },
+    {
+      "scene": "pracovna",
+      "label": "Pracovna",
+      "width": 1320,
+      "height": 880,
+      "widths": [
+        480,
+        960,
+        1320
+      ],
+      "dominant": "rgb(232,232,232)"
+    }
+  ],
+  "details": [],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-9bf0f7aa.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 187738,
+    "file": "pin-2038e3c9.jpg",
+    "feed": true,
+    "feedFile": "pin-02742136.jpg",
+    "feedVersion": 1
+  },
+  "fingerprint": "c29e4ff1d4dd1405"
+}

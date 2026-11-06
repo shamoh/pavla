@@ -1,0 +1,88 @@
+{
+  "width": 1865,
+  "height": 1179,
+  "widths": [
+    480,
+    960,
+    1600,
+    1865
+  ],
+  "dominant": "rgb(216,232,248)",
+  "transparent": true,
+  "mockups": [
+    {
+      "scene": "obyvak-svetly",
+      "label": "Světlý obývák",
+      "width": 2400,
+      "height": 1350,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(232,232,232)"
+    },
+    {
+      "scene": "komoda",
+      "label": "Komoda",
+      "width": 2400,
+      "height": 1600,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(200,200,200)"
+    },
+    {
+      "scene": "predsin",
+      "label": "Předsíň",
+      "width": 2400,
+      "height": 1578,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(216,216,200)"
+    }
+  ],
+  "details": [
+    {
+      "name": "briza",
+      "width": 4448,
+      "height": 6672,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(200,184,168)"
+    },
+    {
+      "name": "raseliniste",
+      "width": 8192,
+      "height": 4608,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(152,152,152)"
+    }
+  ],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-7784122d.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 121583,
+    "file": "pin-56522ea6.jpg"
+  },
+  "fingerprint": "9c593ba7fa92829a"
+}
