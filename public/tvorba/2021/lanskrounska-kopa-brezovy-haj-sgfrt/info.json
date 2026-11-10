@@ -1,0 +1,25 @@
+{
+  "width": 3255,
+  "height": 2448,
+  "widths": [
+    480,
+    960,
+    1600,
+    2400
+  ],
+  "dominant": "rgb(168,184,184)",
+  "mockups": [],
+  "details": [],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-5219fbe2.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 224868,
+    "file": "pin-f49c0a80.jpg"
+  },
+  "fingerprint": "f3deb845b285a161"
+}

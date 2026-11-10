@@ -1,0 +1,76 @@
+{
+  "width": 2385,
+  "height": 3296,
+  "widths": [
+    480,
+    960,
+    1600,
+    2385
+  ],
+  "dominant": "rgb(168,168,168)",
+  "transparent": true,
+  "mockups": [
+    {
+      "scene": "loznice",
+      "label": "Ložnice",
+      "width": 1392,
+      "height": 928,
+      "widths": [
+        480,
+        960,
+        1392
+      ],
+      "dominant": "rgb(56,40,8)"
+    },
+    {
+      "scene": "police",
+      "label": "Polička",
+      "width": 2218,
+      "height": 1479,
+      "widths": [
+        480,
+        960,
+        1600
+      ],
+      "dominant": "rgb(216,216,216)"
+    },
+    {
+      "scene": "pracovna",
+      "label": "Pracovna",
+      "width": 1450,
+      "height": 967,
+      "widths": [
+        480,
+        960,
+        1450
+      ],
+      "dominant": "rgb(232,232,232)"
+    }
+  ],
+  "details": [
+    {
+      "name": "jested-foto",
+      "width": 2604,
+      "height": 4624,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(88,152,200)"
+    }
+  ],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-0fe59c8c.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 211666,
+    "file": "pin-01bb5df5.jpg"
+  },
+  "fingerprint": "06b5da4ee4fe6e78"
+}
