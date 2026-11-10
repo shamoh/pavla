@@ -39,8 +39,14 @@ instagramPost:
   en:
     # techniky
     akvarel: watercolor
+    akvarel a brush pen: watercolorandbrushpen
+    akvarel a fix: watercolorandmarker
     akvarel a tuš: inkandwatercolor
+    akvarel a tužka: pencilandwatercolor
     brush pen: brushpen
+    brush pen a fix: brushpendrawing
+    brush pen a pero: brushpendrawing
+    kresba fixem: markerdrawing
     kresba perem: pendrawing
     kresba tužkou: pencildrawing
     kresba uhlem: charcoaldrawing
@@ -109,8 +115,14 @@ pinterestKeywords:
   en:
     # techniky
     akvarel: watercolor
+    akvarel a brush pen: watercolor and brush pen
+    akvarel a fix: watercolor and marker
     akvarel a tuš: ink and watercolor
+    akvarel a tužka: pencil and watercolor
     brush pen: brush pen
+    brush pen a fix: brush pen and marker drawing
+    brush pen a pero: brush pen and pen drawing
+    kresba fixem: marker drawing
     kresba perem: pen drawing
     kresba tužkou: pencil drawing
     kresba uhlem: charcoal drawing

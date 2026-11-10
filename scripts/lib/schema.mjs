@@ -912,7 +912,7 @@ export const NOT_FOUND_HEADING = 'Tento obraz ještě nebyl namalován';
 export const NOT_FOUND_DESCRIPTION = 'Tento obraz ještě nebyl namalován.';
 export const NOT_FOUND_TEXT = 'Na téhle adrese zatím zůstal jen čistý papír. Možná se obraz přestěhoval, možná na něj teprve\n'
   + 'čeká štětec, barvy a sklenice s vodou.\n';
-export const NOT_FOUND_CLOSING = 'Mezitím se podívejte na [výběr autorky](/tvorba/?featured=1),\n'
+export const NOT_FOUND_CLOSING = 'Mezitím se podívejte na [výběr autorky](/tvorba/?featured=1)\n'
   + 'nebo [na celou tvorbu](/tvorba/).\n';
 
 /** Former wording of the formatting of the texts of pages (in their `previous`). */
