@@ -1,0 +1,63 @@
+{
+  "width": 1781,
+  "height": 1240,
+  "widths": [
+    480,
+    960,
+    1600,
+    1781
+  ],
+  "dominant": "rgb(200,200,200)",
+  "transparent": true,
+  "mockups": [
+    {
+      "scene": "loznice",
+      "label": "Ložnice",
+      "width": 1320,
+      "height": 880,
+      "widths": [
+        480,
+        960,
+        1320
+      ],
+      "dominant": "rgb(56,40,8)"
+    },
+    {
+      "scene": "police",
+      "label": "Polička",
+      "width": 1320,
+      "height": 880,
+      "widths": [
+        480,
+        960,
+        1320
+      ],
+      "dominant": "rgb(216,216,216)"
+    },
+    {
+      "scene": "pracovna",
+      "label": "Pracovna",
+      "width": 1320,
+      "height": 880,
+      "widths": [
+        480,
+        960,
+        1320
+      ],
+      "dominant": "rgb(232,232,216)"
+    }
+  ],
+  "details": [],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-cc53c579.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 135342,
+    "file": "pin-95e04317.jpg"
+  },
+  "fingerprint": "15f20c993bf6a2c5"
+}

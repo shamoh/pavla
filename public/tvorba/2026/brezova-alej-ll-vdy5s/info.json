@@ -1,0 +1,75 @@
+{
+  "width": 2435,
+  "height": 3466,
+  "widths": [
+    480,
+    960,
+    1600,
+    2400
+  ],
+  "dominant": "rgb(152,152,152)",
+  "transparent": true,
+  "mockups": [],
+  "details": [
+    {
+      "name": "brezova-alej-foto1",
+      "width": 4080,
+      "height": 3060,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(8,8,8)"
+    },
+    {
+      "name": "brezova-alej-foto2",
+      "width": 3060,
+      "height": 4080,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(120,104,104)"
+    },
+    {
+      "name": "brezova-alej-foto3",
+      "width": 2843,
+      "height": 2089,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(40,40,24)"
+    },
+    {
+      "name": "brezova-alej-foto4",
+      "width": 3060,
+      "height": 4080,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(248,248,248)"
+    }
+  ],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-270a420c.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 292012,
+    "file": "pin-ce79dd0c.jpg"
+  },
+  "fingerprint": "82037a93bf25bdfa"
+}

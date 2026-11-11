@@ -1,0 +1,39 @@
+{
+  "width": 2549,
+  "height": 2766,
+  "widths": [
+    480,
+    960,
+    1600,
+    2400
+  ],
+  "dominant": "rgb(184,200,232)",
+  "transparent": true,
+  "mockups": [],
+  "details": [
+    {
+      "name": "kladno-lesik-ll-foto",
+      "width": 3060,
+      "height": 4080,
+      "widths": [
+        480,
+        960,
+        1600,
+        2400
+      ],
+      "dominant": "rgb(200,216,248)"
+    }
+  ],
+  "og": {
+    "width": 1200,
+    "height": 800,
+    "file": "og-bbf5faea.jpg"
+  },
+  "pin": {
+    "width": 1000,
+    "height": 1500,
+    "bytes": 199768,
+    "file": "pin-e374608b.jpg"
+  },
+  "fingerprint": "a4e244171d7d13bf"
+}
