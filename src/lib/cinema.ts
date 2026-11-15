@@ -15,6 +15,7 @@ import { CINEMA_STORAGE_KEYS, captionMode, cinemaPalette, cinemaSources, fitBox,
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, trackEvent } from '../../scripts/lib/analytics.mjs';
 import { paletteEventParams } from '../../scripts/lib/palettes.mjs';
 import { copiedText } from '../../scripts/lib/share.mjs';
+import { keepTogether } from '../../scripts/lib/typography.mjs';
 import { followSwipe } from './follow-swipe';
 
 /** A work of the show: its id and collection (slug, '' without) with the data-cinema of its card (cinemaCard). */
@@ -183,7 +184,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   applyPalette();
 
   function setCaption(w: CinemaWork) {
-    $('.cinema-title').textContent = w.title;
+    $('.cinema-title').textContent = keepTogether(w.title);
     $('.cinema-star').hidden = !w.featured;
     $('.cinema-meta').textContent = w.meta;
     $('.cinema-sale').textContent = w.sale;
@@ -194,7 +195,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     toCollection.hidden = !c;
     if (c) {
       toCollection.href = c.url;
-      $('.cinema-collection-title').textContent = c.title;
+      $('.cinema-collection-title').textContent = keepTogether(c.title);
     }
     captionShown();
   }

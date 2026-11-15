@@ -9,6 +9,7 @@ import { graphLd, personLd, websiteLd } from '../../scripts/lib/seo.mjs';
 import { hiddenInList } from '../../scripts/lib/random-pick.mjs';
 import { HOME_START, homeMost, homeRecent, homeScript, homeSetup } from '../../scripts/lib/home-view.mjs';
 import { columnsFor } from '../../scripts/lib/view-layout.mjs';
+import { keepTogether } from '../../scripts/lib/typography.mjs';
 
 const works = getWorks();
 // Text and cover from _index.yaml in the root of the content repository (content/_index.yaml): its own photo, `cover`, or one of the
@@ -34,7 +35,7 @@ const jsonLd = graphLd(websiteLd(site), personLd(site, { image: photoImageUrl('p
       <Cover cover={home.cover} sizes="(max-width: 900px) 100vw, 60vw" eager exclude="#recent" show={RECENT} />
       <div class="hero-text">
         <p class="eyebrow">{site.tagline}</p>
-        <h1>{home.heading.map((line, i) => <>{i > 0 && <br />}{line}</>)}</h1>
+        <h1>{home.heading.map((line, i) => <>{i > 0 && <br />}{keepTogether(line)}</>)}</h1>
         {home.paragraphs.map((p) => <p class="muted desc" set:html={p} />)}
         <p class="actions">
           <a class="btn" href={url('/tvorba')}>{home.button}</a>

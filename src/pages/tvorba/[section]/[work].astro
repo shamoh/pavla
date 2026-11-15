@@ -13,6 +13,7 @@ import { artworkLd, breadcrumbLd, graphLd, workPageDescription, workPageTitle } 
 import { defaultType, mailtoLink, workContext } from '../../../../scripts/lib/messages.mjs';
 import { MOCKUPS_NOTE, mockupCaption, mockupsHeading, viewId, workCaption } from '../../../../scripts/lib/work-viewer.mjs';
 import { cinemaSettings } from '../../../../scripts/lib/cinema.mjs';
+import { keepTogether } from '../../../../scripts/lib/typography.mjs';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -101,13 +102,13 @@ const story = textHtml(work.text);
     )}
     <div class="info">
       <div class="head">
-        <div class="title"><h1>{work.title}</h1><FeaturedStar featured={work.featured} /></div>
+        <div class="title"><h1>{keepTogether(work.title)}</h1><FeaturedStar featured={work.featured} /></div>
         <dl>
           <dt>Technika</dt><dd><a href={url(galleryFilterPath('technique', work.technique))} title={galleryLinkTitle('technique', work.technique)}>{work.technique}</a></dd>
           {work.support && <><dt>Podklad</dt><dd>{work.support}</dd></>}
           {work.size_cm && <><dt>Rozměr</dt><dd>{formatSize(work.size_cm)}</dd></>}
           <dt>Vzniklo</dt><dd>{date}</dd>
-          {collection && <><dt>Kolekce</dt><dd><a href={collectionUrl(collection.slug)} title={galleryLinkTitle('collection', collection.title)} data-return data-return-focus={work.id}>{collection.title}</a></dd></>}
+          {collection && <><dt>Kolekce</dt><dd><a href={collectionUrl(collection.slug)} title={galleryLinkTitle('collection', collection.title)} data-return data-return-focus={work.id}>{keepTogether(collection.title)}</a></dd></>}
           <dt>Kód</dt><dd class="code-row">
             <a class="code" href={url(workShortPath(work.id))} title={workCodeHint(work.id, site.url)}>{work.id}</a>
             <button type="button" class="copy" data-copy={work.id} data-copy-what="Kód" title="Zkopírovat kód" aria-label="Zkopírovat kód" hidden set:html={icon('copy', 15)} />
@@ -196,8 +197,8 @@ const story = textHtml(work.text);
     </div>
   </dialog>
   <nav class="pager" aria-label="Další díla">
-    {prev ? <a href={workUrl(prev)} data-page-arrow="prev" aria-keyshortcuts="ArrowLeft" title="Předchozí obraz (←)">← {prev.title}</a> : <span />}
-    {next && <a href={workUrl(next)} data-page-arrow="next" aria-keyshortcuts="ArrowRight" title="Další obraz (→)">{next.title} →</a>}
+    {prev ? <a href={workUrl(prev)} data-page-arrow="prev" aria-keyshortcuts="ArrowLeft" title="Předchozí obraz (←)">← {keepTogether(prev.title)}</a> : <span />}
+    {next && <a href={workUrl(next)} data-page-arrow="next" aria-keyshortcuts="ArrowRight" title="Další obraz (→)">{keepTogether(next.title)} →</a>}
   </nav>
 </Base>
 <script>

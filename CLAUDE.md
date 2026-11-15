@@ -160,6 +160,12 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   jen z `textHtml`. Popisky `details` díla taky (`richMap`; web `detailCaptionHtml` ve `figcaption` mimo odkaz na zvětšení,
   čistý `detailCaption`). Přehled `export/README.md` ukáže texty formátované (`richTextMarkdown`, odkazy na web s celou
   adresou `siteUrl`). Kontroly `textProblems`/`allTextProblems`.
+- Tvrdé mezery české typografie (`scripts/lib/typography.mjs`: jednopísmenná slova, číslo + jednotka `UNITS`, `×`,
+  zkratky `ABBREVIATIONS`, data, pořadová čísla, pomlčka ve větě, rozsah čísel s `\u2060`): formátované texty přes
+  `richTextHtml` (`keepTogetherHtml`), názvy a nadpisy na stránce přes `keepTogether` (nový zobrazený název či nadpis = taky),
+  text příspěvku pro Instagram (`instagramPost`, `gridPosts`, ne adresa a hashtagy) a popis pro Fler; nikdy v datech,
+  adresách, `<title>`, JSON-LD a bublinách.
+  Fotka v textu stránky `[fotka: <jméno>, vlevo|vpravo]` (`photoMarker`, `TextBlocks.astro`, jen `text` ve `stranky/`).
 - Texty stránek: `stranky/<stránka>.yaml` obsahového repa (jméno = adresa, `PAGES` v `scripts/lib/pages.mjs`, schémata
   `PAGE_SCHEMAS`): O mně (`ABOUT_SCHEMA`), Kontakt (`CONTACT_SCHEMA`, `location_label`), 404 (`NOT_FOUND_SCHEMA`, `title`,
   `heading`) mají kostru s dosavadními texty (`ABOUT_*`, `CONTACT_*`, `NOT_FOUND_*`, schválené = `settled`, bez `DOPLNIT`);

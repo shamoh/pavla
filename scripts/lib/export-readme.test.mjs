@@ -45,7 +45,7 @@ test('flerReadme: facts, status and price, description to copy, original and moc
     files: { original: ['original.jpg'], mockups: ['mockup-komoda.jpg'] },
   });
   assert.match(md, /^# Fler: Bobří hráz\n\nakvarel · 30 × 30 cm · 2026, papír Arches\.\n\nStav: \*\*na prodej\*\* · Cena: \*\*2\s500 Kč\*\*/);
-  assert.ok(md.includes('```text\nRáno u hráze.\n```'));
+  assert.ok(md.includes('```text\nRáno u\u00a0hráze.\n```'), 'the text to copy with the non-breaking spaces of the site');
   assert.ok(md.includes('<img src="original.jpg"') && md.includes('<img src="mockup-komoda.jpg"'));
   const plain = flerReadme({ work: { ...work, status: 'reserved', text: 'DOPLNIT' }, year: '2026', files: { original: ['original.jpg'], mockups: [] } });
   assert.ok(plain.includes('Stav: **rezervováno**') && !plain.includes('## Popis') && !plain.includes('## Mockupy'));

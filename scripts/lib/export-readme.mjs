@@ -8,6 +8,7 @@ import { captionFacts } from './instagram.mjs';
 import { textPreviewLines } from './overview.mjs';
 import { ownText } from './rich-text.mjs';
 import { withParams } from './pinterest.mjs';
+import { keepTogether } from './typography.mjs';
 
 /**
  * UTM parameters of the link in an Instagram story (the link sticker): Google Analytics files the visit under
@@ -130,7 +131,8 @@ export function flerReadme({ work, year, files, collection = '', pageUrl = '' })
   const info = [publishedLine(work, 'fler'), ...about({ collection, pageUrl, code: work.id })];
   const facts = [captionFacts(work, year), work.support].filter(Boolean).join(', ');
   const price = typeof work.price === 'number' ? `${work.price.toLocaleString('cs-CZ')} Kč` : '';
-  const description = ownText(work.text);
+  // the text to copy to Fler, with the non-breaking spaces of the site (scripts/lib/typography.mjs)
+  const description = keepTogether(ownText(work.text));
   const parts = [
     `# Fler: ${escMd(work.title)}`,
     '',

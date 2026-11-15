@@ -5,6 +5,7 @@ import Base from '../layouts/Base.astro';
 import TextBlocks from '../components/TextBlocks.astro';
 import { getGenericPages, site } from '../lib/site';
 import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
+import { keepTogether } from '../../scripts/lib/typography.mjs';
 
 export function getStaticPaths() {
   return getGenericPages().map(({ name, page }) => ({ params: { page: name }, props: { page } }));
@@ -20,7 +21,7 @@ const jsonLd = graphLd(
 ---
 <Base title={page.title} description={page.description} jsonLd={jsonLd}>
   <article class="text-page">
-    <h1>{page.title}</h1>
+    <h1>{keepTogether(page.title)}</h1>
     <TextBlocks blocks={page.blocks} closing={page.closing} />
   </article>
 </Base>

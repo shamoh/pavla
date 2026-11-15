@@ -357,6 +357,19 @@ Každý popis s textem na webu (dílo, kolekce, rok, úvod, „Mimo kolekce“, 
   začínající `/` (dostane základ webu přes `url`); vnější odkazy mají `rel="noopener"`. Jiná adresa (`www.fler.cz`,
   `tvorba/`, `//…`, `javascript:`) zůstane na stránce textem a v pipeline je chyba `[spatny-odkaz-v-textu]`
   (`linkProblems`). Web vkládá HTML jen z `textHtml` (`set:html`), nikdy jinak.
+- **Tvrdé mezery** (`scripts/lib/typography.mjs`): web místo obyčejné mezery dá tvrdou (`\u00a0`) tam, kde se podle
+  české typografie nesmí zalomit řádek: za jednopísmenným slovem (`k`, `s`, `v`, `z`, `o`, `u`, `a`, `i`, i velkými
+  písmeny), mezi číslem a jednotkou (`UNITS`: `5 cm`, `20 %`, `2 500 Kč`, i mezery tisíců), kolem `×` / `x` mezi čísly
+  (`30 × 40 cm`), za zkratkou (`ABBREVIATIONS`: `např.`, `tzv.`, `tj.`, `sv.`, `cca`, …), uvnitř data (`15. 11. 2026`),
+  za pořadovým číslem před slovem malým písmenem (`1. místo`, `15. listopadu`) a před pomlčkou ve větě (`chvíle – kdy`,
+  i `-` s mezerami). Rozsah čísel se nikdy nerozdělí: `2019–2024`, `2019 – 2024` i `2019 - 2024` se zobrazí jako
+  `2019–2024`, `2019-2024` si nechá spojovník; kolem pomlčky neviditelné `\u2060` (word joiner). Formátované texty
+  (`richTextHtml` → `keepTogetherHtml`, jen v textu, nikdy uvnitř značky, i přes ni: `a **s barvou**`) a názvy a nadpisy
+  (`keepTogether`): název díla na kartě, na stránce díla a v odkazech na předchozí / další, kolekce (nadpis, přehled,
+  odkaz na stránce díla), nadpis úvodu, 404 a obecné stránky, promítání; text příspěvku pro Instagram (`instagramPost`:
+  název, popis, fakta, kolekce, ne adresa a hashtagy; texty dílů mřížky `gridPosts`) a popis pro Fler (`flerReadme`).
+  Jinak jen pro zobrazení: data, adresy, `<title>`,
+  JSON-LD, bubliny a čisté texty (`plainText`, exporty) se nemění. Autorka píše obyčejné mezery.
 - **Náhled v přehledu** `export/README.md` obsahového repa: `text` a popisky detailů jako Markdown pro GitHub
   (`richTextMarkdown`): tučně, kurzíva a odkazy vypadají jako na webu, odkazy na web mají celou adresu (`siteUrl`
   z `site.url`, aby fungovaly i na GitHubu), všechno ostatní je escapované; `description` čistý jako „Google: …“.

@@ -7,6 +7,7 @@ import { isOnSale } from '../../scripts/lib/works.mjs';
 import { searchText } from '../../scripts/lib/search.mjs';
 import { CARD_IMAGE_SIZES } from '../../scripts/lib/gallery-filter.mjs';
 import { cinemaCard } from '../../scripts/lib/cinema.mjs';
+import { keepTogether } from '../../scripts/lib/typography.mjs';
 // `sizes`: of the picture, the big pictures by default (tiles are narrower, WorkGrid.astro); `marks`: the mark settings
 // of the place (tileMarksFor), none = no marks (cards outside a grid of works, e.g. on the 404 page, never show tiles).
 // `cinema`: the card carries what the cinema of its listing shows (data-cinema, cinemaCard; the gallery only).
@@ -40,7 +41,7 @@ const shownMarks = marks ? workMarks({ featured: Boolean(work.featured), onSale:
     ))}
   </span>
   <span class="meta">
-    <span class="title">{work.title}<FeaturedStar featured={work.featured} /></span>
+    <span class="title">{keepTogether(work.title)}<FeaturedStar featured={work.featured} /></span>
     <span class="sub">{work.technique}{work.size_cm && ` · ${formatSize(work.size_cm)}`}</span>
     {work.status !== 'not-for-sale' && <span class:list={['badge', { available: work.status === 'available' }]}>{statusLabel[work.status]}</span>}
   </span>

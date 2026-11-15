@@ -6,10 +6,13 @@
 //   **text**          bold
 //   *text*            italic
 // Everything else stays plain text (HTML is escaped). A link with any other address stays text on the page and is an
-// error of the pipeline (linkProblems).
+// error of the pipeline (linkProblems). The HTML gets the non-breaking spaces of Czech typography (one-letter words,
+// numbers and units, abbreviations: keepTogetherHtml in scripts/lib/typography.mjs).
 // Only in the `text` of a page in stranky/ (photoProblems), a paragraph of its own may be a photo of fotky/:
 //   [fotka: <name>, vlevo|vpravo]   the photo floats on that side (vlevo by default), the text under it flows around
 // It is no text: plainText and the search skip it, richBlocks gives it to the site as a photo (src/lib/site.ts getPage).
+
+import { keepTogetherHtml } from './typography.mjs';
 
 const LINK = /\[([^\]\n]+)\]\(([^)\s]+)\)/g;
 const BOLD = /\*\*(?=\S)(.+?)(?<=\S)\*\*/g;
@@ -66,13 +69,13 @@ export function richTextHtml(text, { url = (p) => p } = {}) {
     return `${SLOT}${links.length - 1}${SLOT}`;
   });
   const html = emphasis(escapeHtml(plain));
-  return html.replace(new RegExp(`${SLOT}(\\d+)${SLOT}`, 'g'), (_, i) => {
+  return keepTogetherHtml(html.replace(new RegExp(`${SLOT}(\\d+)${SLOT}`, 'g'), (_, i) => {
     const { whole, label, href } = links[Number(i)];
     if (!isAllowedHref(href)) return emphasis(escapeHtml(whole));
     const target = isInternalHref(href) ? url(href) : href;
     const rel = isInternalHref(href) ? '' : ' rel="noopener"';
     return `<a href="${escapeHtml(target)}"${rel}>${emphasis(escapeHtml(label))}</a>`;
-  });
+  }));
 }
 
 /** Markers of bold and italic put in while the rest of a text is escaped (control characters, never in a text). */

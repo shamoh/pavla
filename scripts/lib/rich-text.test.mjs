@@ -7,14 +7,14 @@ import {
 const base = { url: (p) => `/base${p}` };
 
 test('richTextHtml: bold, italic and links; addresses on the site get the base', () => {
-  assert.equal(richTextHtml('Maluji **akvarelem**, *v přírodě*.'), 'Maluji <strong>akvarelem</strong>, <em>v přírodě</em>.');
+  assert.equal(richTextHtml('Maluji **akvarelem**, *v přírodě*.'), 'Maluji <strong>akvarelem</strong>, <em>v\u00a0přírodě</em>.');
   assert.equal(richTextHtml('Viz [výběr autorky](/tvorba/?featured=1&page=2).', base), 'Viz <a href="/base/tvorba/?featured=1&amp;page=2">výběr autorky</a>.');
   assert.equal(richTextHtml('[Fler](https://www.fler.cz/x_y*z*)'), '<a href="https://www.fler.cz/x_y*z*" rel="noopener">Fler</a>', 'no emphasis inside an address');
   assert.equal(richTextHtml('[napište **mi**](mailto:pavla@example.cz)'), '<a href="mailto:pavla@example.cz" rel="noopener">napište <strong>mi</strong></a>');
 });
 
 test('richTextHtml: plain asterisks, unfinished marks and HTML stay text', () => {
-  assert.equal(richTextHtml('5 * 3 = 15 a 2*x'), '5 * 3 = 15 a 2*x');
+  assert.equal(richTextHtml('5 * 3 = 15 a 2*x'), '5 * 3 = 15 a\u00a02*x');
   assert.equal(richTextHtml('**nedokončené'), '**nedokončené');
   assert.equal(richTextHtml('<script>alert("x")</script> & co'), '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; co');
   assert.equal(richTextHtml('[zlé](javascript:alert)'), '[zlé](javascript:alert)', 'a forbidden address is no link');
@@ -86,4 +86,11 @@ test('photoProblems: only where photos may be, a known photo, a known side, a pa
   assert.deepEqual(codes('Bez fotky, [odkaz](/a/).', null), []);
   assert.match(photoProblems('f', 'text', '[fotka: x]', photos)[0], /je tam: kontakt, portret/, 'names the photos there are');
   assert.deepEqual(photoProblems('f', 'text', null, photos), []);
+});
+
+test('richTextHtml: a one-letter word never ends a line (a non-breaking space after it), never inside a tag', () => {
+  const nb = '\u00a0';
+  assert.equal(richTextHtml('Začalo to v roce 2019 a k tomu i s Kamilou.'), `Začalo to v${nb}roce 2019 a${nb}k${nb}tomu i${nb}s${nb}Kamilou.`);
+  assert.equal(richTextHtml('[v lese](/tvorba/) a **s barvou**'), `<a href="/tvorba/">v${nb}lese</a> a${nb}<strong>s${nb}barvou</strong>`);
+  assert.equal(richTextHtml('Obraz 30 × 40 cm, např. akvarel'), `Obraz 30${nb}×${nb}40${nb}cm, např.${nb}akvarel`, 'the rules of typography.mjs');
 });

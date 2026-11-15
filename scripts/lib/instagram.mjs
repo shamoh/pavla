@@ -20,6 +20,7 @@ import sharp from 'sharp';
 import YAML from 'yaml';
 import { ownText } from './rich-text.mjs';
 import { captionFacts } from './works.mjs';
+import { keepTogether } from './typography.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const INSTAGRAM_SCENES_DIR = path.join(siteRoot, 'mockups/instagram');
@@ -1106,19 +1107,21 @@ const tagLine = (words) => [...new Set(words.map(hashtag).filter(Boolean))].map(
  * then the hashtags in Czech (technique, tags, the collection as one word, e.g. #plenersumava2026, `always.cs` of the
  * settings) and in English (their translations from
  * `en`, `always.en`); a word without a translation has only the Czech one. `settings` = instagramPost of
- * site.config.yaml: { always: { cs: [], en: [] }, en: { <Czech word>: <English hashtag> } }.
+ * site.config.yaml: { always: { cs: [], en: [] }, en: { <Czech word>: <English hashtag> } }. The words get the
+ * non-breaking spaces of the site (keepTogether), the address and the hashtags not.
  */
 export function instagramPost({ work, year, host, onSale = false, collection = '', settings = {} }) {
   const description = ownText(work.text);
   const words = [work.technique, ...(Array.isArray(work.tags) ? work.tags : [])].filter((w) => typeof w === 'string' && w.trim());
   const en = settings.en ?? {};
   const translated = words.map((w) => en[w] ?? en[w.toLowerCase()]).filter(Boolean);
+  // the words of the post with the non-breaking spaces of the site (scripts/lib/typography.mjs), the hashtags without
   const lines = [
-    work.title ?? '',
-    ...(description ? ['', description] : []),
+    keepTogether(work.title ?? ''),
+    ...(description ? ['', keepTogether(description)] : []),
     '',
-    captionFacts(work, year),
-    ...(collection ? [`Kolekce: ${collection}`] : []),
+    keepTogether(captionFacts(work, year)),
+    ...(collection ? [keepTogether(`Kolekce: ${collection}`)] : []),
     ...(onSale ? ['Obraz je na prodej.'] : []),
     [host, work.id].filter(Boolean).join(' · '),
     '',
@@ -1250,6 +1253,6 @@ export function gridPosts({ work, grid, post, handle = '' }) {
     const k = i + 1;
     const file = `${gridTile(grid, tiles - k).slice(1)}.jpg`;
     if (k === tiles) return { file, text: `${String(post ?? '').trimEnd()}\n` };
-    return { file, text: `${work.title ?? ''} · díl ${k}/${tiles}\n\nCelý obraz se skládá z ${tiles} dílů ${where}.\n\n${tags.join('\n')}\n`.replace(/\n{3,}$/, '\n') };
+    return { file, text: `${keepTogether(`${work.title ?? ''} · díl ${k}/${tiles}`)}\n\n${keepTogether(`Celý obraz se skládá z ${tiles} dílů ${where}.`)}\n\n${tags.join('\n')}\n`.replace(/\n{3,}$/, '\n') };
   });
 }

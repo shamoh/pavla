@@ -9,6 +9,7 @@ import Cover from '../../../components/Cover.astro';
 import { collectionShareImage, getCollections, site, textHtml, url, type Collection } from '../../../lib/site';
 import { searchDescription } from '../../../../scripts/lib/rich-text.mjs';
 import { breadcrumbLd, collectionPageLd, graphLd } from '../../../../scripts/lib/seo.mjs';
+import { keepTogether } from '../../../../scripts/lib/typography.mjs';
 
 export function getStaticPaths() {
   return getCollections().map((collection) => ({ params: { collection: collection.slug }, props: { collection } }));
@@ -30,7 +31,7 @@ const jsonLd = graphLd(
   <header class="intro">
     <div>
       <p class="eyebrow">Kolekce</p>
-      <h1>{title}</h1>
+      <h1>{keepTogether(title)}</h1>
       {paragraphs.map((p) => <p class="desc" set:html={p} />)}
       <SearchField id="works-search" hint="Enter otevře obraz" label={`Hledat v názvech a popisech obrazů kolekce ${title}`} placeholder="Hledat v názvech a popisech…" />
     </div>

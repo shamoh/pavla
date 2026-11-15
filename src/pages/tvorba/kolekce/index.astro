@@ -6,6 +6,7 @@
 // (?page=, ?perPage=, page=all; the page size remembered apart from the gallery's).
 import Base from '../../../layouts/Base.astro';
 import Cover from '../../../components/Cover.astro';
+import { keepTogether } from '../../../../scripts/lib/typography.mjs';
 import Pager from '../../../components/Pager.astro';
 import SearchField from '../../../components/SearchField.astro';
 import { collectionShareImage, collectionUrl, config, getCollections, getUncollected, site, url } from '../../../lib/site';
@@ -49,7 +50,7 @@ const jsonLd = graphLd(
     {collections.map((c, i) => (
       <a class="item" href={collectionUrl(c.slug)} data-href={collectionUrl(c.slug)} data-slug={c.slug} data-search={searchText(c)} data-years={encodeYearCounts(counts[i])}>
         <Cover cover={c.cover} sizes="(max-width: 700px) 100vw, 50vw" eager={i < 2} link={false} class="collection-cover" />
-        <span class="title">{c.title}</span>
+        <span class="title">{keepTogether(c.title)}</span>
         <span class="muted" data-works={c.works.length}>{worksLabel(c.works.length, c.works.length)}</span>
         {/* plain text: the card is a link, a link inside it would not work */}
         {c.text && <span class="desc">{plainText(c.text)}</span>}
@@ -58,7 +59,7 @@ const jsonLd = graphLd(
     {uncollected && (
       <a class="item uncollected" href={uncollectedHref} data-href={uncollectedHref} data-uncollected data-years={encodeYearCounts(yearCounts(uncollected.works))}>
         <Cover cover={uncollected.cover} sizes="(max-width: 700px) 100vw, 50vw" link={false} class="collection-cover" />
-        <span class="title">{uncollected.title}</span>
+        <span class="title">{keepTogether(uncollected.title)}</span>
         <span class="muted" data-works={uncollected.works.length}>{worksLabel(uncollected.works.length, uncollected.works.length)}</span>
         <span class="desc">{uncollected.text}</span>
       </a>

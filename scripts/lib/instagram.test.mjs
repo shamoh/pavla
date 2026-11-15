@@ -643,8 +643,9 @@ test('instagramPost: title, description, facts, address, Czech and English hasht
     work: { title: 'Bobří hráz', text: 'Ráno u **bobří** hráze.\n', description: 'Jen pro Google.', technique: 'akvarel', size_cm: [30, 30], tags: ['krajina', 'plenér', 'voda'] },
     year: '2026', host: 'pavla.kramolis.cz', settings,
   });
+  // the words with the non-breaking spaces of the site (typography.mjs), the address and hashtags without
   assert.equal(text, [
-    'Bobří hráz', '', 'Ráno u bobří hráze.', '', 'akvarel · 30 × 30 cm · 2026', 'pavla.kramolis.cz', '',
+    'Bobří hráz', '', 'Ráno u\u00a0bobří hráze.', '', 'akvarel · 30\u00a0×\u00a030\u00a0cm · 2026', 'pavla.kramolis.cz', '',
     '#akvarel #krajina #plener #voda #umeni', '#watercolor #landscape #pleinair #art', '',
   ].join('\n'));
 });
@@ -804,7 +805,7 @@ test('gridSuffixes: the tiles in reading order and the preview', () => {
 test('gridPosts: published from the last tile to the first; the last one (top left) carries the whole text', () => {
   const posts = gridPosts({ work: { title: 'Tetřevská slať' }, grid: { cols: 3, rows: 1 }, post: 'Tetřevská slať\n\nPopis.\n\n#akvarel #krajina\n#watercolor\n', handle: 'pavla' });
   assert.deepEqual(posts.map((p) => p.file), ['grid-01-1_3.jpg', 'grid-02-1_2.jpg', 'grid-03-1_1.jpg']);
-  assert.equal(posts[0].text, 'Tetřevská slať · díl 1/3\n\nCelý obraz se skládá z 3 dílů na profilu @pavla.\n\n#akvarel #krajina\n#watercolor\n');
+  assert.equal(posts[0].text, 'Tetřevská slať · díl 1/3\n\nCelý obraz se skládá z\u00a03 dílů na profilu @pavla.\n\n#akvarel #krajina\n#watercolor\n');
   assert.equal(posts[2].text, 'Tetřevská slať\n\nPopis.\n\n#akvarel #krajina\n#watercolor\n');
   assert.ok(gridPosts({ work: { title: 'A' }, grid: { cols: 3, rows: 1 }, post: 'A\n' })[0].text.includes('na profilu.'), 'without a handle');
 });
