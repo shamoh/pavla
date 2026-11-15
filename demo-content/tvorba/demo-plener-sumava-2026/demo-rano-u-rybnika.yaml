@@ -61,6 +61,8 @@ date: 2026-06-14
 #   - **slovo** = tučně,
 #   - *slovo* = kurzívou,
 #   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](k3f9a) = odkaz na jiný obraz podle jeho kódu id, [](k3f9a) = s jeho názvem jako textem odkazu
+#     (rozpracovaný obraz zůstane bez odkazu),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
 details:
   2-rakos: Rákos na břehu, suchým štětcem
@@ -90,6 +92,10 @@ mockups: true
 # Kč, nepovinné; zobrazí se jen u available
 # NEPOVINNÉ. Cena v Kč, např. 2500. Povinná u available a reserved.
 price: 3200
+
+# NEPOVINNÉ. Související obrazy podle kódu id, např. [k3f9a, chqmf]: stránka obrazu je ukáže dole pod „Související obrazy“.
+# Platí oběma směry, u druhého obrazu ho psát nemusíš. Rozpracovaný obraz se ukáže, až bude zveřejněný.
+# related: [k3f9a, chqmf]
 
 # šířka × výška
 # Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu.
@@ -144,6 +150,8 @@ technique: akvarel
 #   - **slovo** = tučně,
 #   - *slovo* = kurzívou,
 #   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](k3f9a) = odkaz na jiný obraz podle jeho kódu id, [](k3f9a) = s jeho názvem jako textem odkazu
+#     (rozpracovaný obraz zůstane bez odkazu),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
 text: |
   Malováno na plenéru za úsvitu, kdy se mlha ještě držela nad hladinou.

@@ -166,6 +166,11 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   text příspěvku pro Instagram (`instagramPost`, `gridPosts`, ne adresa a hashtagy) a popis pro Fler; nikdy v datech,
   adresách, `<title>`, JSON-LD a bublinách.
   Fotka v textu stránky `[fotka: <jméno>, vlevo|vpravo]` (`photoMarker`, `TextBlocks.astro`, jen `text` ve `stranky/`).
+- Prolinky mezi obrazy podle `id` (`scripts/lib/work-links.mjs` `workLinkProblems`): odkaz v textu `[text](<id>)`
+  (`isWorkHref`, web přímo na stránku díla přes `workHref`, nezveřejněné dílo = text bez odkazu) a atribut `related`
+  (oboustranná sekce „Související obrazy“, `relatedWorks`; JSON-LD `ItemPage` s `relatedLink`, `workPageLd`). Prázdný text
+  `[](<id>)` = název obrazu, doplní ho pipeline jen do dat pro web a exporty (`fillDescriptionsWorkLinks`), nikdy do souboru.
+  Změna `FORMATTING_DOC` = staré znění do `FORMATTING_DOC_BEFORE`.
 - Texty stránek: `stranky/<stránka>.yaml` obsahového repa (jméno = adresa, `PAGES` v `scripts/lib/pages.mjs`, schémata
   `PAGE_SCHEMAS`): O mně (`ABOUT_SCHEMA`), Kontakt (`CONTACT_SCHEMA`, `location_label`), 404 (`NOT_FOUND_SCHEMA`, `title`,
   `heading`) mají kostru s dosavadními texty (`ABOUT_*`, `CONTACT_*`, `NOT_FOUND_*`, schválené = `settled`, bez `DOPLNIT`);

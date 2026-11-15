@@ -4,12 +4,13 @@ import Picture from '../../../components/Picture.astro';
 import Img from '../../../components/Img.astro';
 import FeaturedStar from '../../../components/FeaturedStar.astro';
 import { collectionUrl, config, detailCaption, detailCaptionHtml, getCollection, workPinImage, workShareImage, getWorks, messages, site, statusLabel, formatSize, formatPrice, textHtml, url, workUrl, workImagePath, workDetails, type Work } from '../../../lib/site';
-import { isOnSale, wantsMockups, workCodeHint, workShortPath } from '../../../../scripts/lib/works.mjs';
+import { isOnSale, relatedWorks, wantsMockups, workCodeHint, workShortPath } from '../../../../scripts/lib/works.mjs';
+import WorkCard from '../../../components/WorkCard.astro';
 import { EVENTS } from '../../../../scripts/lib/analytics.mjs';
 import { galleryFilterPath, galleryLinkTitle } from '../../../../scripts/lib/gallery-filter.mjs';
 import { pinDescription } from '../../../../scripts/lib/pinterest.mjs';
 import { shareLinks } from '../../../../scripts/lib/share.mjs';
-import { artworkLd, breadcrumbLd, graphLd, workPageDescription, workPageTitle } from '../../../../scripts/lib/seo.mjs';
+import { artworkLd, breadcrumbLd, graphLd, workPageDescription, workPageLd, workPageTitle } from '../../../../scripts/lib/seo.mjs';
 import { defaultType, mailtoLink, workContext } from '../../../../scripts/lib/messages.mjs';
 import { MOCKUPS_NOTE, mockupCaption, mockupsHeading, viewId, workCaption } from '../../../../scripts/lib/work-viewer.mjs';
 import { cinemaSettings } from '../../../../scripts/lib/cinema.mjs';
@@ -27,6 +28,8 @@ const collection = getCollection(work.collection);
 // Every shown work: another with the same title or description gets what tells them apart in <title> and the
 // meta description (workPageTitle, workPageDescription), so no two pages look the same in search results.
 const allWorks = getWorks();
+// "Související obrazy": its `related` and the works that name it there (both ways), published ones only
+const related = relatedWorks(work, allWorks);
 
 // Everything the viewer can step through: the work itself, its details, then its mockups.
 const base = workImagePath(work);
@@ -76,6 +79,8 @@ const ICONS: Record<string, string> = {
 const icon = (name: string, size = 20) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
 const jsonLd = graphLd(
   artworkLd(work, site, { path, image: new URL(share.src, site.url).href }),
+  // the page about the work, with the pages of its related works ("Související obrazy")
+  workPageLd(site, { path, name: workPageTitle(work, allWorks), relatedPaths: related.map((w) => `/tvorba/${w.year}/${w.key}/`) }),
   breadcrumbLd(site, [
     { name: 'Úvod', path: '/' },
     { name: 'Tvorba', path: '/tvorba/' },
@@ -172,6 +177,12 @@ const story = textHtml(work.text);
       )}
     </div>
   </article>
+  {related.length > 0 && (
+    <section class="related" aria-label="Související obrazy">
+      <p class="eyebrow">Související obrazy</p>
+      <div class="related-grid">{related.map((w) => <WorkCard work={w} />)}</div>
+    </section>
+  )}
   <dialog class="viewer" id="viewer" aria-label="Prohlížení obrázků" data-views={JSON.stringify(views)} data-work-id={work.id} data-work-title={work.title} data-swipe={JSON.stringify(cinemaSettings(config).swipe)}>
     {/* everything of the viewer: what goes to the whole screen (a dialog itself cannot) */}
     <div class="stage">
@@ -405,6 +416,8 @@ const story = textHtml(work.text);
 </script>
 <style>
   .back { margin: -12px 0 24px; font-size: 0.9rem; }
+  .related { margin-top: clamp(40px, 6vw, 72px); }
+  .related-grid { columns: 4 220px; column-gap: 28px; }
   .back a { text-decoration: none; color: var(--ink-soft); }
   /* The picture with its story (description, tags) under it on the left, everything else on the right; a narrow
      screen puts them one under another: picture, title and facts, story, price, sharing, details, mockups. */

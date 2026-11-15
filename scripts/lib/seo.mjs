@@ -193,6 +193,24 @@ export function artworkLd(work, site, { path, image }) {
 }
 
 /**
+ * The page of a work as an ItemPage about it (mainEntity = its VisualArtwork, artworkLd) with the addresses of the pages
+ * of its related works (`relatedPaths`, relatedWorks in scripts/lib/works.mjs) as relatedLink. schema.org has no
+ * "related" for a CreativeWork (isRelatedTo is for products and services only), relatedLink of a WebPage is the one.
+ */
+export function workPageLd(site, { path, name, relatedPaths = [] }) {
+  return {
+    '@type': 'ItemPage',
+    '@id': absolute(site, path),
+    url: absolute(site, path),
+    name,
+    inLanguage: 'cs',
+    isPartOf: { '@id': siteId(site) },
+    mainEntity: { '@id': `${absolute(site, path)}#dilo` },
+    ...(relatedPaths.length && { relatedLink: relatedPaths.map((p) => absolute(site, p)) }),
+  };
+}
+
+/**
  * A page listing works or collections (all works, a year, a collection, the collections): `items` in order as an
  * ItemList, each { title, tags }, its page from `itemPath(item)`; the tags of the works are its keywords.
  */

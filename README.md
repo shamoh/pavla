@@ -357,6 +357,18 @@ Každý popis s textem na webu (dílo, kolekce, rok, úvod, „Mimo kolekce“, 
   začínající `/` (dostane základ webu přes `url`); vnější odkazy mají `rel="noopener"`. Jiná adresa (`www.fler.cz`,
   `tvorba/`, `//…`, `javascript:`) zůstane na stránce textem a v pipeline je chyba `[spatny-odkaz-v-textu]`
   (`linkProblems`). Web vkládá HTML jen z `textHtml` (`set:html`), nikdy jinak.
+- **Odkaz na obraz podle kódu** `[text](<id>)` (např. `[PF 2025](chqmf)`, `isWorkHref`); s prázdným textem `[](<id>)`
+  doplní pipeline název obrazu (`fillDescriptionsWorkLinks` / `fillWorkLinkTitles` v `scripts/lib/work-links.mjs`) do dat,
+  která jdou na web a do exportů (veřejné kopie, Instagram, Fler, přehledy), nikdy do souboru autorky, takže přejmenování
+  obrazu přejmenuje i odkazy (i rozpracovaný obraz dostane název, na webu jen jako text). Web odkáže přímo na
+  stránku díla, ať leží kdekoli (`work` v `richTextHtml`, v `textHtml`/`getPage` `workHref` přes `getWorks`); dílo,
+  které na webu není (rozpracované), zůstane jen textem bez odkazu. Bez resolveru (a v `richTextMarkdown` přehledů)
+  vede na krátký odkaz `/tvorba/<id>/`. Platí ve všech formátovaných textech (i popiscích detailů, stránkách, kolekcích).
+  Kontroly v `workLinkProblems` (`scripts/lib/work-links.mjs`, `workLinkIds`): neznámý kód = chyba
+  `[neznamy-obraz-v-odkazu]`, odkaz ze zveřejněného popisu na rozpracovaný obraz = doporučení `[odkaz-na-rozpracovany]`.
+  Komentáře formátování (`FORMATTING_DOC`) mají řádek o odkazu na obraz; starší znění (`FORMATTING_DOC_BEFORE`) pipeline
+  pozná ve všech komentářích (`withOlderFormatting` v `metadata-yaml.mjs`) a nahradí. Vyzkoušení: text
+  `demo-content/tvorba/demo-zahrada-2025/demo-kytice-z-louky.yaml` (odkaz `[](rw4dh)` = „Máky“ a na rozpracovaný obraz).
 - **Tvrdé mezery** (`scripts/lib/typography.mjs`): web místo obyčejné mezery dá tvrdou (`\u00a0`) tam, kde se podle
   české typografie nesmí zalomit řádek: za jednopísmenným slovem (`k`, `s`, `v`, `z`, `o`, `u`, `a`, `i`, i velkými
   písmeny), mezi číslem a jednotkou (`UNITS`: `5 cm`, `20 %`, `2 500 Kč`, i mezery tisíců), kolem `×` / `x` mezi čísly
@@ -1022,6 +1034,7 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `fler` | odkaz na Fler, tlačítko „Koupit na Fleru“; v náhledu exportů `export/fler/` = „✓ na Fleru“ |
 | `instagram` | odkaz na příspěvek s obrazem na Instagramu (`https://www.instagram.com/…`, jiná hodnota = chyba, `isInstagramUrl`); stránka obrazu ukáže odkaz „Na Instagramu“, náhled exportů `export/instagram/` = „✓ na Instagramu“. Nezávislé na `meta_instagram` (ten řídí jen výrobu fotek) |
 | `mockups` | `true` = mockupy, nezávisle na prodeji (výchozí `false`) |
+| `related` | nepovinný seznam kódů `id` souvisejících obrazů, např. `[k3f9a, chqmf]` (sdílený, kopíruje se): stránka díla ukáže sekci „Související obrazy“ s kartami (`relatedWorks` v `scripts/lib/works.mjs`: nejdřív obrazy z vlastního `related` v jeho pořadí, pak obrazy, které ho mají ve svém `related`, od nejnovějšího; oboustranně, jen zveřejněné). Ve strukturovaných datech je stránka díla `ItemPage` (`workPageLd` v `scripts/lib/seo.mjs`, `mainEntity` = `VisualArtwork`) s adresami souvisejících obrazů v `relatedLink` (schema.org nemá „související“ pro `CreativeWork`; `isRelatedTo` je jen pro `Product`/`Service`). Kontroly `workLinkProblems` (`scripts/lib/work-links.mjs`): neznámý kód `[neznamy-obraz-v-odkazu]`, jiná hodnota než seznam kódů nebo vlastní kód `[spatne-souvisejici]` (chyby), rozpracovaný obraz ze zveřejněného popisu `[odkaz-na-rozpracovany]` (doporučení). Vyzkoušení: `demo-content/tvorba/demo-maky.yaml` (`related: [q6bn6, kaa3x]`), stránky Máky, Kytice z louky a Rybník v zimě |
 | `price` | Kč, povinná u `available` a `reserved` |
 | `size_cm` | `[šířka, výška]` v cm (desetinné číslo s tečkou, např. `[29.5, 40]`); drží měřítko mockupu na stěně. Na webu a v popisech pro vyhledávače s desetinnou čárkou („29,5 × 40 cm“, `formatSizeCm`), ve strukturovaných datech jako číslo |
 | `status` | `available` \| `reserved` \| `sold` \| `gifted` \| `not-for-sale` |

@@ -60,6 +60,8 @@ import { PUBLIC_COLLECTION_FIELDS, coverSource, prepareCollections, validateColl
 import { PUBLIC_YEAR_FIELDS, prepareYears } from './lib/years.mjs';
 import { PUBLIC_HOME_FIELDS, prepareHome } from './lib/home.mjs';
 import { PAGES_SUBDIR, preparePages, publicPageFields } from './lib/pages.mjs';
+import { COLLECTION_SCHEMA, HOME_SCHEMA, PAGE_SCHEMAS, UNCOLLECTED_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA } from './lib/schema.mjs';
+import { fillDescriptionsWorkLinks, workLinkProblems } from './lib/work-links.mjs';
 import { PUBLIC_UNCOLLECTED_FIELDS, prepareUncollected } from './lib/uncollected.mjs';
 import { NO_COLLECTION_TITLE } from './lib/gallery-filter.mjs';
 import {
@@ -544,7 +546,19 @@ export async function run({
   updated.forEach((p) => log(`~ metadata brought in line with the schema: ${p}`));
   pending.forEach((p) => log(`! published, still marked DOPLNIT: ${p}`));
   const tags = tagStats(works);
-  const advice = [...workAdvice(works, { siteTitle: config.site?.title ?? '' }), ...techniqueAdvice(works), ...tagAdvice(works), ...hashtagAdvice(works, config.instagramPost), ...pinterestAdvice(works, config.pinterestKeywords?.en), ...pageAdvice({
+  // links between works by id: `related` of works and [text](<id>) in every formatted text
+  const linkDescriptions = [
+    ...works.map((w) => ({ yamlPath: w.yamlPath, data: w.data, schema: WORK_SCHEMA, draft: Boolean(w.data?.meta_draft) })),
+    ...collections.collections.map((c) => ({ yamlPath: c.yamlPath, data: c.data, schema: COLLECTION_SCHEMA })),
+    ...years.years.map((y) => ({ yamlPath: y.yamlPath, data: y.data, schema: YEAR_SCHEMA })),
+    ...(home.home ? [{ yamlPath: home.home.yamlPath, data: home.home.data, schema: HOME_SCHEMA }] : []),
+    ...(uncollected.uncollected ? [{ yamlPath: uncollected.uncollected.yamlPath, data: uncollected.uncollected.data, schema: UNCOLLECTED_SCHEMA }] : []),
+    ...pages.pages.map((p) => ({ yamlPath: p.yamlPath, data: p.data, schema: PAGE_SCHEMAS[p.name] })),
+  ];
+  const workLinks = workLinkProblems({ works, descriptions: linkDescriptions });
+  // "[](<id>)" gets the title of the work in the data the site and the exports get (the author's files stay)
+  fillDescriptionsWorkLinks(linkDescriptions, works);
+  const advice = [...workAdvice(works, { siteTitle: config.site?.title ?? '' }), ...techniqueAdvice(works), ...tagAdvice(works), ...hashtagAdvice(works, config.instagramPost), ...pinterestAdvice(works, config.pinterestKeywords?.en), ...workLinks.advice, ...pageAdvice({
     collections: collections.collections, years: years.years, home: home.home, uncollected: uncollected.uncollected, photos: photos.photos,
   }), ...await careOfSite({ works, years: years.years, collections: collections.collections, home: home.home, uncollected: uncollected.uncollected, contentDir, today })];
   advice.forEach((p) => log(`? advice: ${p}`));
@@ -572,6 +586,7 @@ export async function run({
     ...allTextProblems({
       works, collections: collections.collections, years: years.years, home: home.home, uncollected: uncollected.uncollected,
     }),
+    ...workLinks.problems,
     ...demoProblems({ works, collections: collections.collections, marked: await exists(path.join(contentDir, DEMO_MARKER)) }, dataset),
   ];
   const detected = corners.detected;

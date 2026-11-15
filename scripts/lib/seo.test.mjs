@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  artform, artworkLd, authorId, imageObjectLd, breadcrumbLd, collectionPageLd, graphLd, jsonLdText, personLd, robotsTxt, summarize,
+  artform, artworkLd, workPageLd, authorId, imageObjectLd, breadcrumbLd, collectionPageLd, graphLd, jsonLdText, personLd, robotsTxt, summarize,
   tagKeywords, verificationMeta, websiteLd, workDescription, workPageDescription, workPageTitle,
 } from './seo.mjs';
 
@@ -167,4 +167,12 @@ test('artworkLd: the picture is an ImageObject with the author as creator, credi
   assert.ok(!('license' in ld.image) && !('acquireLicensePage' in ld.image), 'the author sells originals, never licences');
   assert.equal(imageObjectLd('https://web.test/a.jpg', { date: '2025-03-01' }, site).copyrightNotice, '© 2025 Pavla Kramolišová');
   assert.equal('image' in artworkLd(work, site, { path: '/x/' }), false);
+});
+
+test('workPageLd: an ItemPage about the work, relatedLink only with related works', () => {
+  const ld = workPageLd(site, { path: '/tvorba/2026/ovce-v39nd/', name: 'Ovce', relatedPaths: ['/tvorba/2025/pf2025-chqmf/'] });
+  assert.equal(ld['@type'], 'ItemPage');
+  assert.equal(ld.mainEntity['@id'], `${ld.url}#dilo`);
+  assert.deepEqual(ld.relatedLink, [`${ld.url.replace('/tvorba/2026/ovce-v39nd/', '')}/tvorba/2025/pf2025-chqmf/`]);
+  assert.equal('relatedLink' in workPageLd(site, { path: '/tvorba/2026/ovce-v39nd/', name: 'Ovce' }), false);
 });

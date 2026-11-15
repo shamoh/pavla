@@ -27,7 +27,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import YAML from 'yaml';
 import { normalizeText, paragraphs } from './rich-text.mjs';
-import { LEGACY_COMMENTS, TODO, UNKNOWN_DOC, attributeGroup, compareKeys, docLines } from './schema.mjs';
+import { FORMATTING_DOC, FORMATTING_DOC_BEFORE, LEGACY_COMMENTS, TODO, UNKNOWN_DOC, attributeGroup, compareKeys, docLines } from './schema.mjs';
 
 const STRINGIFY = { lineWidth: 0, nullStr: '', flowCollectionPadding: false };
 
@@ -168,8 +168,17 @@ function withoutTechnical(lines, docs) {
   return { lines: tidy, removed };
 }
 
+/** A wording with the current formatting (FORMATTING_DOC) also with each older one of it (FORMATTING_DOC_BEFORE). */
+const withOlderFormatting = (doc) => {
+  const at = doc.findIndex((l, i) => FORMATTING_DOC.every((f, k) => doc[i + k] === f));
+  if (at === -1) return [doc];
+  return [doc, ...FORMATTING_DOC_BEFORE.map((older) => [...doc.slice(0, at), ...older, ...doc.slice(at + FORMATTING_DOC.length)])];
+};
+
 /** Current and older wordings of a field's technical comment, as lines. */
-const docVariants = (field) => [
+const docVariants = (field) => currentAndOlderDocs(field).flatMap(withOlderFormatting);
+
+const currentAndOlderDocs = (field) => [
   docLines(field),
   // a commented-out attribute's comment from before it was one (without the OPTIONAL mark)
   ...(field.commented ? [Array.isArray(field.doc) ? field.doc : [field.doc]] : []),

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  isAllowedHref, linkProblems, photoMarker, photoProblems, plainText, richBlocks, richTextHtml, richTextMarkdown, richTextPlain, searchDescription, textPhotos,
+  isAllowedHref, isWorkHref, linkProblems, workLinkIds, photoMarker, photoProblems, plainText, richBlocks, richTextHtml, richTextMarkdown, richTextPlain, searchDescription, textPhotos,
 } from './rich-text.mjs';
 
 const base = { url: (p) => `/base${p}` };
@@ -93,4 +93,17 @@ test('richTextHtml: a one-letter word never ends a line (a non-breaking space af
   assert.equal(richTextHtml('Začalo to v roce 2019 a k tomu i s Kamilou.'), `Začalo to v${nb}roce 2019 a${nb}k${nb}tomu i${nb}s${nb}Kamilou.`);
   assert.equal(richTextHtml('[v lese](/tvorba/) a **s barvou**'), `<a href="/tvorba/">v${nb}lese</a> a${nb}<strong>s${nb}barvou</strong>`);
   assert.equal(richTextHtml('Obraz 30 × 40 cm, např. akvarel'), `Obraz 30${nb}×${nb}40${nb}cm, např.${nb}akvarel`, 'the rules of typography.mjs');
+});
+
+test('richTextHtml: a link to a work by its id, to its page or plain text while it is not on the site', () => {
+  const work = (id) => (id === 'chqmf' ? '/base/tvorba/2025/pf2025-chqmf/' : null);
+  assert.equal(richTextHtml('Viz [PF 2025](chqmf).', { ...base, work }), 'Viz <a href="/base/tvorba/2025/pf2025-chqmf/">PF 2025</a>.');
+  assert.equal(richTextHtml('Viz [**obraz**](xua65).', { ...base, work }), 'Viz <strong>obraz</strong>.', 'not on the site: the label only');
+  assert.equal(richTextHtml('[PF](chqmf)', base), '<a href="/base/tvorba/chqmf/">PF</a>', 'by default its short link');
+  assert.ok(isWorkHref('chqmf') && !isWorkHref('/tvorba/') && !isWorkHref('PF2025') && !isWorkHref('2abcd'));
+  assert.equal(richTextMarkdown('[PF](chqmf)', { url: (p) => `https://pavla.example${p}` }), '[PF](https://pavla.example/tvorba/chqmf/)');
+  assert.equal(plainText('Viz [PF 2025](chqmf).'), 'Viz PF 2025.');
+  assert.deepEqual(linkProblems('f', 'text', '[PF](chqmf)'), [], 'an id is an allowed address');
+  assert.deepEqual(workLinkIds('[a](chqmf) [b](/x/) [c](xua65) [d](chqmf)'), ['chqmf', 'xua65']);
+  assert.deepEqual(workLinkIds(null), []);
 });

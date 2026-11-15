@@ -4,7 +4,7 @@ import YAML from 'yaml';
 import { TEXT_WIDTH, blockText, commentedOutKeys, normalizeMetadata, schemaKeysIn, skeleton, todoKeys, unindentedText, yamlProblem } from './metadata-yaml.mjs';
 import { normalizeText } from './rich-text.mjs';
 import { todoTexts } from './works.mjs';
-import { COLLECTION_SKELETON_TEXT, COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, UNCOLLECTED_SCHEMA, UNKNOWN_DOC, WORK_SCHEMA, YEAR_SCHEMA, fieldKeys } from './schema.mjs';
+import { FORMATTING_DOC, FORMATTING_DOC_BEFORE, COLLECTION_SKELETON_TEXT, COLLECTION_SCHEMA, HOME_SCHEMA, PHOTO_SCHEMA, TODO, UNCOLLECTED_SCHEMA, UNKNOWN_DOC, WORK_SCHEMA, YEAR_SCHEMA, fieldKeys } from './schema.mjs';
 
 // A small schema keeps the expected texts readable.
 const schema = {
@@ -486,4 +486,13 @@ test('skeletons: text ready as a block, a work with DOPLNIT, a collection with a
   const fixed = normalizeMetadata(old, WORK_SCHEMA).text;
   assert.ok(!fixed.includes('Stačí v uvozovkách'));
   assert.match(fixed, /# NEPOVINNÉ\. Popis pro vyhledávače[^\n]*\n[^\n]*\ndescription: \|\n {2}Ráno\.\n/);
+});
+
+test('normalizeMetadata: a technical comment with an older wording of the formatting gets the current one', () => {
+  const fresh = skeleton(YEAR_SCHEMA, { text: 'Rok.\n' });
+  const old = fresh.replace(FORMATTING_DOC.map((l) => `# ${l}`).join('\n'), FORMATTING_DOC_BEFORE[0].map((l) => `# ${l}`).join('\n'));
+  assert.notEqual(old, fresh, 'the skeleton has the formatting');
+  const r = normalizeMetadata(old, YEAR_SCHEMA);
+  assert.equal(r.text, fresh);
+  assert.equal(normalizeMetadata(fresh, YEAR_SCHEMA).changed, false);
 });

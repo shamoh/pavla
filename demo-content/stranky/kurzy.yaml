@@ -10,6 +10,8 @@
 #   - **slovo** = tučně,
 #   - *slovo* = kurzívou,
 #   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](k3f9a) = odkaz na jiný obraz podle jeho kódu id, [](k3f9a) = s jeho názvem jako textem odkazu
+#     (rozpracovaný obraz zůstane bez odkazu),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
 closing: |
   Tlumený závěr obecné stránky.
@@ -28,6 +30,8 @@ description: |
 #   - **slovo** = tučně,
 #   - *slovo* = kurzívou,
 #   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](k3f9a) = odkaz na jiný obraz podle jeho kódu id, [](k3f9a) = s jeho názvem jako textem odkazu
+#     (rozpracovaný obraz zůstane bez odkazu),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
 # Fotka ze složky fotky/ mezi odstavci:
 #   - samostatný odstavec [fotka: portret, vlevo] = fotka fotky/portret.jpg vlevo (vpravo = vpravo, bez strany = vlevo),

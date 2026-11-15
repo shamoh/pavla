@@ -84,6 +84,8 @@ export interface Work {
   featured?: boolean;
   /** Mockups (the work in a frame on a wall) shown on the page, independent of the status. */
   mockups?: boolean;
+  /** Ids of related works (`related`): its page shows them and they show it (relatedWorks, both ways). */
+  related?: string[];
   /** Captions of detail photos: "<detail photo name>: <caption>" (keys match via detailKey). */
   details?: Record<string, string>;
   /** Slug of the collection (the folder of content/tvorba/<slug>/), if the work belongs to one. */
@@ -347,7 +349,13 @@ export function getHome(): {
  * A formatted text (`text`, `closing` of any description; scripts/lib/rich-text.mjs) as HTML paragraphs, addresses on
  * the site with the base of the site. The only HTML the site takes from the content (set:html): never anything else.
  */
-export const textHtml = (text: unknown): string[] => richParagraphs(text, { url });
+export const textHtml = (text: unknown): string[] => richParagraphs(text, { url, work: workHref });
+
+/** The address of the page of a published work by its id, null while it is not on the site (a link to it stays text). */
+const workHref = (id: string): string | null => {
+  const work = getWorks().find((w) => w.id === id);
+  return work ? workUrl(work) : null;
+};
 
 /** A block of the text of a page: a paragraph as HTML, or a photo of fotky/ floating to a side (richBlocks). */
 export type TextBlock = { html: string } | { photo: string; side: 'left' | 'right' };
@@ -371,7 +379,7 @@ export function getPage(name: keyof typeof PAGES): PageText | null {
   const line = (value: unknown) => String(value ?? '').trim();
   return {
     description: searchDescription(data), title: line(data.title), heading: line(data.heading), locationLabel: line(data.location_label),
-    blocks: richBlocks(data.text, { url }) as TextBlock[], closing: textHtml(data.closing),
+    blocks: richBlocks(data.text, { url, work: workHref }) as TextBlock[], closing: textHtml(data.closing),
   };
 }
 

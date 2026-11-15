@@ -194,8 +194,28 @@ export const FORMATTING_DOC = [
   '  - **slovo** = tučně,',
   '  - *slovo* = kurzívou,',
   '  - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),',
+  '  - [text](k3f9a) = odkaz na jiný obraz podle jeho kódu id, [](k3f9a) = s jeho názvem jako textem odkazu',
+  '    (rozpracovaný obraz zůstane bez odkazu),',
   '  - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.',
 ];
+/**
+ * Older wordings of FORMATTING_DOC: every technical comment that has it is also recognised with these instead
+ * (scripts/lib/metadata-yaml.mjs docVariants), so a change of it needs no `previous` in every formatted attribute.
+ */
+export const FORMATTING_DOC_BEFORE = [[
+  'Formátování:',
+  '  - **slovo** = tučně,',
+  '  - *slovo* = kurzívou,',
+  '  - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),',
+  '  - [text](k3f9a) = odkaz na jiný obraz podle jeho kódu id (rozpracovaný obraz zůstane bez odkazu),',
+  '  - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.',
+], [
+  'Formátování:',
+  '  - **slovo** = tučně,',
+  '  - *slovo* = kurzívou,',
+  '  - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),',
+  '  - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.',
+]];
 const textRules = (empty) => [...writingRules(empty), ...FORMATTING_DOC];
 /**
  * A photo of fotky/ between the paragraphs (scripts/lib/rich-text.mjs photoMarker): in the technical comment of the
@@ -452,6 +472,16 @@ export const WORK_SCHEMA = {
       example: 'https://www.fler.cz/zbozi/…',
       doc: 'Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.',
       value: '',
+    },
+    {
+      key: 'related',
+      commented: true,
+      example: '[k3f9a, chqmf]',
+      doc: [
+        'Související obrazy podle kódu id, např. [k3f9a, chqmf]: stránka obrazu je ukáže dole pod „Související obrazy“.',
+        'Platí oběma směry, u druhého obrazu ho psát nemusíš. Rozpracovaný obraz se ukáže, až bude zveřejněný.',
+      ],
+      value: [],
     },
     {
       key: 'instagram',

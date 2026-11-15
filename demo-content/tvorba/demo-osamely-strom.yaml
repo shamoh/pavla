@@ -60,6 +60,8 @@ date: 2005-09-14
 #   - **slovo** = tučně,
 #   - *slovo* = kurzívou,
 #   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](k3f9a) = odkaz na jiný obraz podle jeho kódu id, [](k3f9a) = s jeho názvem jako textem odkazu
+#     (rozpracovaný obraz zůstane bez odkazu),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
 # details: { 1-mlha: Ranní mlha nad vodou }
 
@@ -82,6 +84,10 @@ mockups: false
 
 # NEPOVINNÉ. Cena v Kč, např. 2500. Povinná u available a reserved.
 # price: 2500
+
+# NEPOVINNÉ. Související obrazy podle kódu id, např. [k3f9a, chqmf]: stránka obrazu je ukáže dole pod „Související obrazy“.
+# Platí oběma směry, u druhého obrazu ho psát nemusíš. Rozpracovaný obraz se ukáže, až bude zveřejněný.
+# related: [k3f9a, chqmf]
 
 # Šířka × výška v cm, např. [30, 40]. Povinné u zveřejněného obrazu.
 # Podle rozměrů se dělají mockupy ve skutečné velikosti. Nejčastější možnosti jsou:
@@ -129,6 +135,8 @@ technique: akvarel
 #   - **slovo** = tučně,
 #   - *slovo* = kurzívou,
 #   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](k3f9a) = odkaz na jiný obraz podle jeho kódu id, [](k3f9a) = s jeho názvem jako textem odkazu
+#     (rozpracovaný obraz zůstane bez odkazu),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
 text: |
   Lípa uprostřed pole v září.

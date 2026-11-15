@@ -208,6 +208,20 @@ export const validSize = (s) => Array.isArray(s) && s.length === 2 && s.every((n
 export const formatSizeCm = (s) => (validSize(s) ? `${s.map((n) => String(n).replace('.', ',')).join(' × ')} cm` : '');
 
 /** "akvarel · 30 × 30 cm · 2026": the facts under the title of a caption or pin (missing ones are left out). */
+/**
+ * The works related to `work` (its `related` and every work whose `related` names it: a link works both ways), out of
+ * `works` (the published ones): first those it lists in its order, then the others newest first; never itself.
+ */
+export function relatedWorks(work, works) {
+  const listed = Array.isArray(work?.related) ? work.related : [];
+  const byId = new Map(works.map((w) => [w.id, w]));
+  const own = [...new Set(listed)].map((id) => byId.get(id)).filter(Boolean);
+  const back = works
+    .filter((w) => Array.isArray(w.related) && w.related.includes(work.id) && !listed.includes(w.id))
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+  return [...own, ...back].filter((w) => w.id !== work.id);
+}
+
 /** The short permanent address of a work by its id (the page redirects to the work, whatever its title is now). */
 export const workShortPath = (id) => `/tvorba/${id}/`;
 

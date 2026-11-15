@@ -30,13 +30,13 @@ test('every schema is in file order and has only meta_, shared and private_ attr
   }
   assert.deepEqual(fieldKeys(WORK_SCHEMA), [
     'meta_corners', 'meta_draft', 'meta_edge', 'meta_fler', 'meta_instagram', 'meta_instagram_grid', 'meta_pinterest', 'meta_pinterest_version', 'id', 'date', 'description', 'details', 'featured', 'fler', 'instagram', 'mockups', 'price',
-    'size_cm', 'status', 'support', 'tags', 'technique', 'text', 'title', 'private_note',
+    'related', 'size_cm', 'status', 'support', 'tags', 'technique', 'text', 'title', 'private_note',
   ]);
 });
 
 test('publicKeys: the shared attributes, never meta_ or private_ ones', () => {
   assert.deepEqual(publicKeys(WORK_SCHEMA), [
-    'id', 'date', 'description', 'details', 'featured', 'fler', 'instagram', 'mockups', 'price', 'size_cm', 'status', 'support',
+    'id', 'date', 'description', 'details', 'featured', 'fler', 'instagram', 'mockups', 'price', 'related', 'size_cm', 'status', 'support',
     'tags', 'technique', 'text', 'title',
   ]);
   assert.deepEqual(publicKeys(COLLECTION_SCHEMA), ['aspect', 'cover', 'description', 'focus', 'text', 'title']);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsFler, makesFlerExports, makesInstagramExports, wantsMockups, wantsPinterest, workCodeHint, workKey, workShortPath, instagramGrid, orderDetails, parseGrid } from './works.mjs';
+import { coverCandidates, expectedExports, exportPattern, FEATURED_PICK, EXPORT_FILES, exportFileName, exportFolder, planFolderPrune, formatSizeCm, generateId, ID_LENGTH, idFromPath, isOnSale, isValidId, parseWorkKey, planPrune, PUBLIC_WORK_FIELDS, publicFields, slugify, splitExt, titleFromName, todoTexts, validateWorks, validSize, wantsFler, makesFlerExports, makesInstagramExports, wantsMockups, wantsPinterest, workCodeHint, workKey, workShortPath, instagramGrid, orderDetails, parseGrid, relatedWorks } from './works.mjs';
 
 /** Deterministic "random" returning the given values in a loop. */
 const sequence = (...values) => {
@@ -371,4 +371,19 @@ test('workShortPath and workCodeHint: the short permanent address of a work and 
   assert.equal(workCodeHint('mpugj', 'https://pavla.kramolis.cz'),
     'Trvalý kód obrazu: platí i po přejmenování. Krátký odkaz: pavla.kramolis.cz/tvorba/mpugj/');
   assert.ok(workCodeHint('mpugj', 'https://example.org/').endsWith('example.org/tvorba/mpugj/'));
+});
+
+test('relatedWorks: its own list in order, then the works naming it newest first, never itself or unknown ones', () => {
+  const w = (id, date, related) => ({ id, date: new Date(date), related });
+  const a = w('aaaaa', '2026-01-01', ['ccccc', 'zzzzz', 'bbbbb', 'aaaaa']);
+  const b = w('bbbbb', '2026-02-01');
+  const c = w('ccccc', '2026-03-01');
+  const d = w('ddddd', '2025-01-01', ['aaaaa']);
+  const f = w('fffff', '2026-05-01', ['aaaaa', 'bbbbb']);
+  const works = [a, b, c, d, f];
+  assert.deepEqual(relatedWorks(a, works).map((x) => x.id), ['ccccc', 'bbbbb', 'fffff', 'ddddd']);
+  assert.deepEqual(relatedWorks(b, works).map((x) => x.id), ['fffff', 'aaaaa'], 'both ways, without a list of its own');
+  assert.deepEqual(relatedWorks(c, works).map((x) => x.id), ['aaaaa']);
+  assert.deepEqual(relatedWorks(w('eeeee', '2026-01-01'), works), []);
+  assert.deepEqual(relatedWorks(w('ggggg', '2026-01-01', 'aaaaa'), works), [], 'no list: nothing');
 });

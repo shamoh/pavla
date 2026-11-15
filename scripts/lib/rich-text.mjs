@@ -3,6 +3,9 @@
 // style the YAML uses (normalizeText), so the pipeline may rewrap them freely (scripts/lib/metadata-yaml.mjs).
 // Formatting (`text`, `closing`) is a small subset of Markdown the author can write without learning anything, never HTML:
 //   [text](address)   a link: https://…, http://…, mailto:… or an address on the site starting with "/"
+//   [text](<id>)      a link to a work by its id (e.g. [PF 2025](chqmf)): the site links its page wherever it lies
+//                     now (`work` of richTextHtml), plain text while the work is not on the site (a draft);
+//   [](<id>)          the same with the title of the work (filled in by the pipeline, fillWorkLinkTitles)
 //   **text**          bold
 //   *text*            italic
 // Everything else stays plain text (HTML is escaped). A link with any other address stays text on the page and is an
@@ -13,6 +16,7 @@
 // It is no text: plainText and the search skip it, richBlocks gives it to the site as a photo (src/lib/site.ts getPage).
 
 import { keepTogetherHtml } from './typography.mjs';
+import { isValidId, workShortPath } from './works.mjs';
 
 const LINK = /\[([^\]\n]+)\]\(([^)\s]+)\)/g;
 const BOLD = /\*\*(?=\S)(.+?)(?<=\S)\*\*/g;
@@ -51,8 +55,14 @@ export const normalizeText = (text) => paragraphs(text).join('\n\n');
 
 const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/** A link address that may stay a link: external (https, http, mailto) or on the site ("/…", not "//…"). */
-export const isAllowedHref = (href) => /^(https?:\/\/[^\s/]+|mailto:\S+@\S+)/i.test(href) || /^\/(?!\/)/.test(href);
+/** A link to a work: its id as the address ("chqmf"). */
+export const isWorkHref = (href) => isValidId(href);
+
+/**
+ * A link address that may stay a link: external (https, http, mailto), on the site ("/…", not "//…") or the id of a
+ * work.
+ */
+export const isAllowedHref = (href) => /^(https?:\/\/[^\s/]+|mailto:\S+@\S+)/i.test(href) || /^\/(?!\/)/.test(href) || isWorkHref(href);
 /** An address on the site (relative to its base). */
 export const isInternalHref = (href) => /^\/(?!\/)/.test(href);
 
@@ -60,9 +70,11 @@ const emphasis = (html) => html.replace(BOLD, '<strong>$1</strong>').replace(ITA
 
 /**
  * HTML of one paragraph of a formatted text. `url`: maps an address on the site to its final address (the base of
- * the site, src/lib/site.ts `url`). External links open in the same tab, with rel="noopener".
+ * the site, src/lib/site.ts `url`). `work`: maps the id of a work to the final address of its page, null while it is
+ * not on the site (its label then stays plain text); by default its short link (workShortPath, through `url`).
+ * External links open in the same tab, with rel="noopener".
  */
-export function richTextHtml(text, { url = (p) => p } = {}) {
+export function richTextHtml(text, { url = (p) => p, work = (id) => url(workShortPath(id)) } = {}) {
   const links = [];
   const plain = String(text ?? '').replace(LINK, (whole, label, href) => {
     links.push({ whole, label, href });
@@ -72,6 +84,10 @@ export function richTextHtml(text, { url = (p) => p } = {}) {
   return keepTogetherHtml(html.replace(new RegExp(`${SLOT}(\\d+)${SLOT}`, 'g'), (_, i) => {
     const { whole, label, href } = links[Number(i)];
     if (!isAllowedHref(href)) return emphasis(escapeHtml(whole));
+    if (isWorkHref(href)) {
+      const page = work(href);
+      return page ? `<a href="${escapeHtml(page)}">${emphasis(escapeHtml(label))}</a>` : emphasis(escapeHtml(label));
+    }
     const target = isInternalHref(href) ? url(href) : href;
     const rel = isInternalHref(href) ? '' : ' rel="noopener"';
     return `<a href="${escapeHtml(target)}"${rel}>${emphasis(escapeHtml(label))}</a>`;
@@ -90,7 +106,7 @@ const markdownEmphasis = (s) => escapeMarkdown(s.replace(BOLD, `${BOLD_MARK}$1${
 
 /**
  * Markdown (GitHub) of one paragraph of a formatted text, looking the same as on the site: bold, italic and links
- * kept, everything else escaped. `url`: maps an address on the site to a full one (a link must work outside the site,
+ * kept, everything else escaped (a link to a work by its id leads to its short link). `url`: maps an address on the site to a full one (a link must work outside the site,
  * e.g. in a README of the content repository). A link with an address that cannot stay a link stays text.
  */
 export function richTextMarkdown(text, { url = (p) => p } = {}) {
@@ -102,6 +118,7 @@ export function richTextMarkdown(text, { url = (p) => p } = {}) {
   return markdownEmphasis(plain).replace(new RegExp(`${SLOT}(\\d+)${SLOT}`, 'g'), (_, i) => {
     const { whole, label, href } = links[Number(i)];
     if (!isAllowedHref(href)) return escapeMarkdown(whole);
+    if (isWorkHref(href)) return `[${markdownEmphasis(label)}](${url(workShortPath(href))})`;
     return `[${markdownEmphasis(label)}](${isInternalHref(href) ? url(href) : href})`;
   });
 }
@@ -172,10 +189,18 @@ export function photoProblems(where, key, text, photos = null) {
   return problems;
 }
 
+/** A link with any label, an empty one too ("[](chqmf)": the pipeline fills in the title, work-links.mjs). */
+const ANY_LINK = /\[([^\]\n]*)\]\(([^)\s]+)\)/g;
+
+/** The ids of the works a formatted text links to ([text](<id>), also [](<id>)), in order, each once. */
+export const workLinkIds = (text) => (typeof text === 'string'
+  ? [...new Set([...text.matchAll(ANY_LINK)].map(([, , href]) => href).filter(isWorkHref))]
+  : []);
+
 /** Problems of the links of a formatted text (Czech, for the run summary): addresses that cannot stay links. */
 export function linkProblems(where, key, text) {
   if (typeof text !== 'string') return [];
   return [...text.matchAll(LINK)]
     .filter(([, , href]) => !isAllowedHref(href))
-    .map(([whole, , href]) => `${where}: odkaz „${whole}“ v ${key} má adresu „${href}“, která nejde použít; napiš celou adresu začínající https:// (jiný web), mailto: (e-mail) nebo / (stránka tohoto webu, např. /tvorba/) [spatny-odkaz-v-textu]`);
+    .map(([whole, , href]) => `${where}: odkaz „${whole}“ v ${key} má adresu „${href}“, která nejde použít; napiš celou adresu začínající https:// (jiný web), mailto: (e-mail), / (stránka tohoto webu, např. /tvorba/) nebo kód id obrazu (např. k3f9a) [spatny-odkaz-v-textu]`);
 }
