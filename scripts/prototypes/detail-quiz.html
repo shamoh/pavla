@@ -106,7 +106,7 @@ const pictureWidth = (work) => [...work.widths].sort((a, b) => a - b).find((w) =
 function waveFilter(scale) {
   const id = `wave-${scale}`;
   if (!document.getElementById(id)) {
-    $('filters').insertAdjacentHTML('beforeend', `<filter id="${id}" x="0" y="0" width="100%" height="100%"><feTurbulence type="turbulence" baseFrequency="0.012 0.02" numOctaves="2" seed="4" /><feDisplacementMap in="SourceGraphic" scale="${scale}" xChannelSelector="R" yChannelSelector="G" /></filter>`);
+    $('filters').insertAdjacentHTML('beforeend', `<filter id="${id}" x="0" y="0" width="100%" height="100%"><feTurbulence type="turbulence" baseFrequency="${waveRipple(360)}" numOctaves="2" seed="4" /><feDisplacementMap in="SourceGraphic" scale="${scale}" xChannelSelector="R" yChannelSelector="G" /></filter>`);
   }
   return `#${id}`;
 }

@@ -7,24 +7,25 @@
 /**
  * The palettes, in the order of the switcher. `scheme`: light or dark (form controls, scrollbars of the browser).
  * Tokens: paper = background, paper2 = surfaces (chips, hover), ink = text, inkSoft = quiet text, line = rules and
- * borders, accent = links and highlights, ok = "for sale", error = form errors.
+ * borders, accent = links and highlights, ok = "for sale", error = form errors, todo = a surface waiting for the visitor (a level
+ * of the game not played yet), a pale yellow.
  * `picture`: how pictures lift off the page: `shadow` = strength of their (black) shadow, 1 = as on light paper;
  * `edge` = a hairline around them (CSS colour) where a shadow alone would not show the edge (dark paper), or null.
  */
 export const PALETTES = [
   {
     id: 'papir', label: 'Papír', scheme: 'light',
-    colors: { paper: '#f7f4ee', paper2: '#efeae0', ink: '#2b2724', inkSoft: '#6d655c', line: '#ddd5c7', accent: '#487282', ok: '#4b7556', error: '#a4513c' },
+    colors: { paper: '#f7f4ee', paper2: '#efeae0', ink: '#2b2724', inkSoft: '#6d655c', line: '#ddd5c7', accent: '#487282', ok: '#4b7556', error: '#a4513c', todo: '#f4e7b8' },
     picture: { shadow: 1, edge: null },
   },
   {
     id: 'pergamen', label: 'Pergamen', scheme: 'light',
-    colors: { paper: '#ece2cc', paper2: '#e2d6bb', ink: '#2e2720', inkSoft: '#62574a', line: '#cfbf9e', accent: '#3a6573', ok: '#41683a', error: '#99442f' },
+    colors: { paper: '#ece2cc', paper2: '#e2d6bb', ink: '#2e2720', inkSoft: '#62574a', line: '#cfbf9e', accent: '#3a6573', ok: '#41683a', error: '#99442f', todo: '#ecd895' },
     picture: { shadow: 1.2, edge: null },
   },
   {
     id: 'noc', label: 'Noc', scheme: 'dark',
-    colors: { paper: '#1c1a18', paper2: '#252220', ink: '#ece6dc', inkSoft: '#a89f93', line: '#3a3531', accent: '#8fb7c4', ok: '#93bf9c', error: '#e0937d' },
+    colors: { paper: '#1c1a18', paper2: '#252220', ink: '#ece6dc', inkSoft: '#a89f93', line: '#3a3531', accent: '#8fb7c4', ok: '#93bf9c', error: '#e0937d', todo: '#3b331c' },
     picture: { shadow: 2.2, edge: 'rgb(255 255 255 / 0.08)' },
   },
 ];

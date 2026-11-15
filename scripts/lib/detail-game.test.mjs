@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  analyzePixels, applyGuess, archiveDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, unplayedDay, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
+  analyzePixels, applyGuess, archiveDays, gameDiagnostics, diagnosticsText, monthGroups, unplayedDays, daysWord, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
   lookalikeDistance, newProgress, newRound, paletteDistance, rankLookalikes, regionDetail, regionEdges, regionPalette, rgbToLab, winTitle,
 } from './detail-game.mjs';
 
@@ -306,12 +306,27 @@ test('effectStrength: full at the first guess, nothing at the last one', () => {
 test('effectStyle: each effect and colour by the settings, nothing without strength', () => {
   const settings = effectSettings();
   assert.deepEqual(effectStyle(null, null, 1), { filter: '', mask: '', wave: 0, pixels: 0 });
-  assert.deepEqual(effectStyle('mist', 'gray', 1), { filter: `grayscale(1) blur(${settings.mist}px)`, mask: '', wave: 0, pixels: 0 });
-  assert.equal(effectStyle('mist', null, 0.5, { ...settings, mist: 4 }).filter, 'blur(2px)');
-  assert.deepEqual(effectStyle('wave', 'hue', 0.5, { ...settings, wave: 20, hue: 100 }), { filter: 'hue-rotate(50deg) url(#game-wave)', mask: '', wave: 10, pixels: 0 });
+  assert.deepEqual(effectStyle('mist', 'gray', 1, settings, 500), { filter: `grayscale(1) blur(${settings.mist * 5}px)`, mask: '', wave: 0, pixels: 0 });
+  assert.equal(effectStyle('mist', null, 0.5, { ...settings, mist: 2 }, 200).filter, 'blur(2px)');
+  assert.deepEqual(effectStyle('wave', 'hue', 0.5, { ...settings, wave: 4, hue: 100 }, 500), { filter: 'hue-rotate(50deg) url(#game-wave)', mask: '', wave: 10, pixels: 0 });
   assert.equal(effectStyle(null, 'sepia', 1).filter, 'sepia(1)');
   assert.deepEqual(effectStyle('raster', 'gray', 0), { filter: '', mask: '', wave: 0, pixels: 0 });
   assert.deepEqual(effectStyle('wave', null, 0.5, { ...settings, wave: 0, pixels: 0 }), { filter: '', mask: '', wave: 0, pixels: 0 }, 'no wave, no filter');
+});
+
+test('effectStyle: the blur and the wave are shares of the window, the same look in a small and a big one', () => {
+  const settings = { ...effectSettings(), mist: 1, wave: 4 };
+  assert.equal(effectStyle('mist', null, 1, settings, 250).filter, 'blur(2.5px)');
+  assert.equal(effectStyle('mist', null, 1, settings, 500).filter, 'blur(5px)');
+  assert.equal(effectStyle('mist', null, 1, settings).filter, 'blur(3.6px)', 'a window of a prototype: 360 px');
+  assert.equal(effectStyle('wave', null, 1, settings, 250).wave, 10);
+  assert.equal(effectStyle('wave', null, 1, settings, 500).wave, 20);
+});
+
+test('waveRipple: about 6 ripples across and 10 down in a window of any size', () => {
+  assert.equal(waveRipple(500), '0.012 0.02');
+  assert.equal(waveRipple(250), '0.024 0.04');
+  assert.equal(waveRipple(0), '6 10', 'no window: no division by zero');
 });
 
 test('effectStyle: the raster has the step of the settings and its dots grow as it weakens', () => {
@@ -551,17 +566,68 @@ test('archiveDays: every day before today, the newest first; none on the first d
   assert.deepEqual(archiveDays(-2), []);
 });
 
-test('dayMarks / unplayedDay: how a day went, the newest day of the archive not finished yet', () => {
+test('dayMarks: how a day went in each level', () => {
   const levels = gameLevels();
   const played = { '5:lehka': { solved: true }, '5:stredni': { solved: false }, '5:tezka': { solved: true }, '4:lehka': { solved: true } };
   assert.deepEqual(dayMarks(played, 5, levels), ['solved', 'lost', 'solved']);
   assert.deepEqual(dayMarks(played, 4, levels), ['solved', null, null]);
   assert.deepEqual(dayMarks({}, 1, levels), [null, null, null]);
-  assert.equal(unplayedDay({ played, levels, before: 6 }), 4);
-  assert.equal(unplayedDay({ played, levels, before: 5 }), 4);
-  const done = Object.fromEntries([0, 1].flatMap((d) => levels.map((l) => [`${d}:${l.id}`, { solved: true }])));
-  assert.equal(unplayedDay({ played: done, levels, before: 2 }), null);
-  assert.equal(unplayedDay({ played: {}, levels, before: 0 }), null);
+});
+
+test('unplayedDays / daysWord: the days of the archive still waiting, the newest first, and their count in words', () => {
+  const levels = gameLevels();
+  const played = { '2:lehka': { solved: true }, ...Object.fromEntries(levels.map((l) => [`1:${l.id}`, { solved: false }])) };
+  assert.deepEqual(unplayedDays({ played, levels, before: 4 }), [3, 2, 0]);
+  assert.deepEqual(unplayedDays({ played, levels, before: 0 }), []);
+  assert.deepEqual([0, 1, 2, 4, 5, 11].map(daysWord), ['dní', 'den', 'dny', 'dny', 'dní', 'dní']);
+});
+
+test('diagnosticsText: the address, then a row a line', () => {
+  assert.equal(diagnosticsText([['Den', '#4'], ['Stav', 'pokus 1 z 4']], 'https://x/detail-dne/?den=4'), 'https://x/detail-dne/?den=4\nDen: #4\nStav: pokus 1 z 4');
+  assert.equal(diagnosticsText([['Den', '#1']]), 'Den: #1');
+});
+
+test('monthGroups: the days by month, the newest first, with how many days still wait; one month = one group', () => {
+  assert.deepEqual(monthGroups([14, 13, 0], '2026-11-01'), [{ month: '2026-11', days: [14, 13, 0], waiting: 0 }]);
+  const levels = gameLevels();
+  const played = { ...Object.fromEntries(levels.map((l) => [`30:${l.id}`, { solved: true }])), '0:lehka': { solved: false } };
+  assert.deepEqual(monthGroups([32, 30, 29, 0], '2026-11-01', played, levels), [
+    { month: '2026-12', days: [32, 30], waiting: 1 },
+    { month: '2026-11', days: [29, 0], waiting: 2 },
+  ]);
+  assert.deepEqual(monthGroups([], '2026-11-01'), []);
+});
+
+test('gameDiagnostics: the day, the level, the work, the view of this try and the CSS of the look, as rows', () => {
+  const level = gameLevels()[1];
+  const puzzle = { targetId: 'a', crop: { x: 0.4, y: 0.3, size: 0.16, colours: ['#112233'] }, optionIds: ['b', 'a', 'c'], look: 'dusk' };
+  const work = { id: 'a', title: 'Les', technique: 'akvarel', year: 2026, ratio: 0.75 };
+  const titleOf = (id) => ({ a: 'Les', b: 'Louka', c: 'Řeka' })[id];
+  const rows = (round, kept) => Object.fromEntries(gameDiagnostics({ day: 3, today: 5, date: '2026-11-04', level, puzzle, round, work, kept, titleOf }));
+  const first = rows(newRound(), false);
+  assert.equal(first['Den'], '#4 · 2026-11-04 · archiv');
+  assert.match(first['Úroveň'], /^Střední \(stredni\) · 9 náhledů · 4 pokusy · nápovědy ne · kapky ×2$/);
+  assert.match(first['Hádanka'], /^spočítaná pro den/);
+  assert.equal(first['Stav'], 'pokus 1 z 4');
+  assert.match(first['Vzhled'], /^Za šera \(dusk\) · efekt mist · barvy gray · síla teď 100 %$/);
+  assert.equal(first['CSS teď'], `filter: ${effectStyle('mist', 'gray', 1).filter}`);
+  assert.equal(first['Pohled teď'], 'střed 40 % × 30 % · velikost 16 %');
+  assert.equal(first['Náhledy'], 'Louka (b) · ✓ Les (a) · Řeka (c)');
+  assert.equal(first['Tipy'], '–');
+  const missed = rows({ ...newRound(), guesses: ['b'], ruledOut: ['b', 'c'] }, true);
+  assert.match(missed['Hádanka'], /^uložená v kole hráče/);
+  assert.equal(missed['Stav'], 'pokus 2 z 4');
+  assert.match(missed['Vzhled'], /síla teď 67 %$/);
+  assert.equal(missed['Tipy'], 'Louka (b)');
+  assert.equal(missed['Vyřazené nápovědou'], 'Řeka (c)');
+  const won = rows({ ...newRound(), guesses: ['b', 'a'], solved: true, over: true }, true);
+  assert.equal(won['Stav'], 'uhodnuto po 1 omylech');
+  assert.equal(won['Pohled teď'], 'celý obraz');
+  assert.equal(won['CSS teď'], 'nic');
+  assert.equal(won['Vyřazené nápovědou'], '–');
+  assert.equal(rows({ ...newRound(), guesses: ['b', 'c', 'x', 'y'], over: true }, true)['Stav'], 'neuhodnuto');
+  assert.equal(rows(newRound(), false)['Den'].endsWith('archiv'), true);
+  assert.equal(Object.fromEntries(gameDiagnostics({ day: 5, today: 5, date: 'd', level, puzzle, round: newRound(), work }))['Den'], '#6 · d · dnes');
 });
 
 test('finishRound: a day of the archive gives half the drops, keeps the series and the last day', () => {

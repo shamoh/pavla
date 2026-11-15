@@ -8,7 +8,7 @@
 // of the end comes under the thumbnails. On a phone the stage is as big as it can be with all thumbnails still on the screen.
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, gameEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
 import {
-  applyGuess, archiveDays, dailyPuzzles, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, unplayedDay, drawPixels, dropsFor, dropsWord, effectStrength, effectStyle, finishRound, gameDay, gameFrame,
+  applyGuess, archiveDays, dailyPuzzles, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
   gameLevels, gameLooks, gameRank, gameShareText, newProgress, newRound, winTitle,
 } from '../../scripts/lib/detail-game.mjs';
 
@@ -34,7 +34,7 @@ const localDate = () => {
 const TWO_COLUMNS = '(min-width: 800px), (orientation: landscape) and (min-width: 560px)';
 /** How many days the archive shows before "Starší dny". */
 const ARCHIVE_SHOWN = 14;
-const MARKS: Record<string, string> = { solved: '✓', lost: '✗' };
+const MARK_WORDS: Record<string, string> = { solved: 'uhodnuto', lost: 'neuhodnuto', open: 'čeká' };
 
 /** A picture of a work: the largest for the stage (the close-up is zoomed in), the smallest for a thumbnail. */
 const picture = (work: GameWork, largest: boolean) => `${BASE}/${work.folder}/${largest ? Math.max(...work.widths) : Math.min(...work.widths)}.webp`;
@@ -64,6 +64,8 @@ export async function startGame(root: HTMLElement) {
   const puzzleOf = (levelId: string) => keptPuzzle({ computed: dailyOf(day)[levelId] ?? null, round: store.rounds[roundKey(levelId)], hasWork: (id: string) => byId.has(id), day, level: levelId });
   const archive = () => day !== today;
   let allDays = false;
+  /** Months of the archive the player opened or closed by hand (YYYY-MM → open), kept while the page is open. */
+  const monthsOpen = new Map<string, boolean>();
 
   const load = () => {
     try { return JSON.parse(localStorage.getItem(GAME_STORE) ?? 'null') ?? {}; } catch { return {}; }
@@ -103,8 +105,10 @@ export async function startGame(root: HTMLElement) {
     if (!view || !puzzle) return;
     const level = levelOf(store.level);
     const { effect, colour } = lookNow();
-    const look = effectStyle(effect, colour, effectStrength(round.guesses.length, level.guesses, round.over));
     const clip = view.parentElement as HTMLElement;
+    // the blur and the wave are shares of the window: as hard on a phone as on a computer
+    const size = clip.clientWidth;
+    const look = effectStyle(effect, colour, effectStrength(round.guesses.length, level.guesses, round.over), effectSettings(), size);
     view.style.filter = look.filter;
     clip.style.mask = look.mask;
     clip.style.setProperty('-webkit-mask', look.mask);
@@ -118,6 +122,7 @@ export async function startGame(root: HTMLElement) {
       else img.addEventListener('load', () => drawPixels(canvas, img, frame, look.pixels), { once: true });
     }
     root.querySelector('[data-wave-map]')?.setAttribute('scale', String(look.wave));
+    root.querySelector('[data-wave-ripple]')?.setAttribute('baseFrequency', waveRipple(size));
   }
 
   /**
@@ -156,6 +161,8 @@ export async function startGame(root: HTMLElement) {
     }
     const fit = fitted.get(key)!;
     stage.style.width = `${fit.stage}px`;
+    // the picture reaches beyond the window by a share of it, more than the wave and the blur take (effectSettings: 4 % + 1 %)
+    stage.style.setProperty('--bleed', `${Math.max(16, Math.ceil(fit.stage * 0.08))}px`);
     options.style.maxWidth = fit.options ? `${fit.options}px` : '';
   }
 
@@ -197,7 +204,9 @@ export async function startGame(root: HTMLElement) {
     $('levels').innerHTML = LEVELS.map((level) => {
       const played = store.progress.played[roundKey(level.id)];
       const state = played ? (played.solved ? '✓' : '✗') : `×${level.drops} 💧`;
-      return `<button class="level" type="button" data-level="${level.id}" aria-pressed="${level.id === store.level}">${level.label} <small>${state}</small></button>`;
+      // a level not played yet is pale yellow: the player sees what still waits today
+      const todo = !played && puzzleOf(level.id) ? ' todo' : '';
+      return `<button class="level${todo}" type="button" data-level="${level.id}" aria-pressed="${level.id === store.level}">${level.label} <small>${state}</small></button>`;
     }).join('');
   }
 
@@ -254,10 +263,13 @@ export async function startGame(root: HTMLElement) {
     const collection = work.collection
       ? `<a class="action quiet" href="${BASE}/tvorba/kolekce/${work.collection}/" title="Kolekce ${escapeHtml(work.collectionTitle)}">Kolekce</a>` : '';
     const dayDone = LEVELS.every((l) => !puzzleOf(l.id) || store.progress.played[roundKey(l.id)]);
-    const older = dayDone ? unplayedDay({ played: store.progress.played, levels: LEVELS, before: day }) : null;
-    const done = !dayDone ? ''
-      : archive() ? `Den #${day + 1} máš za sebou. Další dny najdeš v archivu pod hrou.`
-        : `Všechny dnešní detaily máš za sebou. Zítra přijdou nové.${older !== null ? ' Mezitím můžeš hrát starší dny v archivu pod hrou, za poloviční kapky.' : ''}`;
+    // the whole day done: what else waits, with a way down to the archive
+    const waiting = dayDone ? unplayedDays({ played: store.progress.played, levels: LEVELS, before: today + 1 }).filter((d) => d !== day) : [];
+    const finished = archive() ? `Den #${day + 1} máš za sebou.` : 'Všechny dnešní detaily máš za sebou. Zítra přijdou nové.';
+    const more = waiting.length
+      ? ` <a class="to-archive" href="#archiv" data-to-archive>V archivu na tebe čeká ještě ${waiting.length} ${daysWord(waiting.length)} ↓</a>${archive() ? '' : ' <span class="half">za poloviční kapky</span>'}`
+      : archive() ? ' Archiv máš celý dohraný.' : '';
+    const done = dayDone ? `${finished}${more}` : '';
     return `<div class="result ${round.solved ? 'won' : 'lost'}">
       ${verdict}
       ${rankUp}
@@ -269,7 +281,7 @@ export async function startGame(root: HTMLElement) {
         ${collection}
         <button class="action quiet" type="button" data-share>Sdílet</button>
       </div>
-      ${done ? `<p class="sub done">${done}</p>` : ''}
+      ${done ? `<p class="done">${done}</p>` : ''}
     </div>`;
   }
 
@@ -288,14 +300,62 @@ export async function startGame(root: HTMLElement) {
       <button class="today" type="button" data-day="${today}">Dnes</button>`;
   }
 
-  /** Today and the days before, the newest first, with how each level went. */
+  /** The day of the week of a day of the game, short: "pá". */
+  const weekday = (d: number) => new Date(`${gameDate(d, data.epoch)}T12:00:00Z`).toLocaleDateString('cs-CZ', { weekday: 'short', timeZone: 'UTC' });
+
+  /**
+   * Today and the days before, the newest first: a tile with the date (today "Dnes"), the day of the week and a dot for each level
+   * (green solved, red not, pale yellow still waiting). The number of the day is in the bubble.
+   */
   function renderArchive() {
     const days = [today, ...archiveDays(today)];
-    const shown = allDays ? days : days.slice(0, ARCHIVE_SHOWN + 1);
-    $('archive').innerHTML = `<div class="days">${shown.map((d) => {
-      const marks = dayMarks(store.progress.played, d, LEVELS).map((m, i) => `<span class="mark ${m ?? 'open'}" title="${LEVELS[i].label}">${m ? MARKS[m] : '·'}</span>`).join('');
-      return `<button class="day" type="button" data-day="${d}" aria-pressed="${d === day}"><span class="when">${d === today ? 'Dnes' : `#${d + 1} · ${dateWords(d, true)}`}</span><span class="marks">${marks}</span></button>`;
-    }).join('')}</div>${shown.length < days.length ? `<button class="action quiet" type="button" data-all-days>Starší dny (${days.length - shown.length})</button>` : ''}`;
+    const tile = (d: number) => {
+      const marks = dayMarks(store.progress.played, d, LEVELS).map((m) => m ?? 'open');
+      const dots = marks.map((m) => `<span class="dot ${m}"></span>`).join('');
+      const told = `Detail dne #${d + 1} · ${dateWords(d)} · ${marks.map((m, i) => `${LEVELS[i].label} ${MARK_WORDS[m]}`).join(', ')}`;
+      const waits = marks.includes('open') ? ' waits' : '';
+      return `<button class="day${waits}" type="button" data-day="${d}" aria-pressed="${d === day}" title="${told}" aria-label="${told}">`
+        + `<b>${d === today ? 'Dnes' : dateWords(d, true)}</b><small>${d === today ? dateWords(d, true) : weekday(d)}</small><span class="dots">${dots}</span></button>`;
+    };
+    // all in one month: the newest days and "Starší dny"; more months: every month folds (its name and how many days wait), the
+    // newest one and the one of the shown day open, the others closed until the player opens them
+    const groups = monthGroups(days, data.epoch, store.progress.played, LEVELS);
+    if (groups.length < 2) {
+      const shown = allDays ? days : days.slice(0, ARCHIVE_SHOWN + 1);
+      $('archive').innerHTML = `<div class="days">${shown.map(tile).join('')}</div>${shown.length < days.length ? `<button class="action quiet" type="button" data-all-days>Starší dny (${days.length - shown.length})</button>` : ''}`;
+      return;
+    }
+    const month = (key: string) => new Date(`${key}-15T12:00:00Z`).toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    $('archive').innerHTML = groups.map((g, i) => {
+      const open = monthsOpen.get(g.month) ?? (i === 0 || g.days.includes(day));
+      const waits = g.waiting ? `<span class="waiting">čeká ${g.waiting} ${daysWord(g.waiting)}</span>` : '<span class="all-done">vše dohráno</span>';
+      return `<details class="month" data-month="${g.month}"${open ? ' open' : ''}><summary><span class="name">${month(g.month)}</span>${waits}</summary><div class="days">${g.days.map(tile).join('')}</div></details>`;
+    }).join('');
+  }
+
+  /** The diagnostics under the game (only while the family tests it): what is on the screen now, so a remark can name it. */
+  let diagnostics: [string, string][] = [];
+  function renderDiagnostics() {
+    const box = $('diagnostics');
+    if (!box) return;
+    if (!puzzle) {
+      diagnostics = [['Den', `#${day + 1} · ${gameDate(day, data.epoch)}`], ['Úroveň', `${store.level} bez hádanky`]];
+      box.innerHTML = '<p class="empty">Žádná hádanka.</p>';
+      return;
+    }
+    const level = levelOf(store.level);
+    const round = currentRound();
+    const stage = root.querySelector('.stage') as HTMLElement | null;
+    const rows = gameDiagnostics({
+      day, today, date: gameDate(day, data.epoch), level, puzzle, round, work: byId.get(puzzle.targetId)!,
+      kept: !!store.rounds[roundKey(store.level)]?.puzzle, titleOf: (id: string) => byId.get(id)?.title ?? id, size: stage?.clientWidth ?? 360,
+    });
+    rows.push(
+      ['Obrazovka', `${innerWidth} × ${innerHeight} px · ${matchMedia(TWO_COLUMNS).matches ? 'dva sloupce' : 'jeden sloupec'} · okno ${stage?.clientWidth ?? 0} px · ${devicePixelRatio}× hustota`],
+      ['Data', `začátek ${data.epoch} · ${data.works.length} děl · odpovědi ${LEVELS.map((l) => `${l.id} ${Object.keys(data.prepared[l.id] ?? {}).length}`).join(', ')}`],
+    );
+    diagnostics = rows as [string, string][];
+    box.innerHTML = rows.map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`).join('');
   }
 
   function render(outcome?: any) {
@@ -308,6 +368,7 @@ export async function startGame(root: HTMLElement) {
     renderCollection();
     if (!puzzle) {
       content.innerHTML = '<p class="empty">Pro tuhle úroveň je zatím málo obrazů.</p>';
+      renderDiagnostics();
       return;
     }
     optionWorks = puzzle.optionIds.map((id: string) => byId.get(id));
@@ -334,6 +395,7 @@ export async function startGame(root: HTMLElement) {
       </div>
     </div>`;
     fitStage();
+    renderDiagnostics();
     const img = content.querySelector('.stage img') as HTMLImageElement;
     const view = content.querySelector('.view') as HTMLElement;
     img.style.transition = 'none';
@@ -416,6 +478,17 @@ export async function startGame(root: HTMLElement) {
     }
   }
 
+  /** The diagnostics to the clipboard, with the address of the day, to paste into a message. */
+  async function copyDiagnostics(button: HTMLElement) {
+    try {
+      await navigator.clipboard.writeText(diagnosticsText(diagnostics, location.href));
+      button.textContent = 'Zkopírováno';
+    } catch {
+      button.textContent = 'Kopírování se nepovedlo';
+    }
+    setTimeout(() => { button.textContent = 'Zkopírovat diagnostiku'; }, 2500);
+  }
+
   /** Another day: its address (?den= only for the archive), the game from its top. */
   function openDay(next: number) {
     if (!Number.isInteger(next) || next < 0 || next > today) return;
@@ -435,6 +508,11 @@ export async function startGame(root: HTMLElement) {
     render();
   }
 
+  // a month of the archive opened or closed by hand stays so after the archive is drawn again
+  root.addEventListener('toggle', (event) => {
+    const month = event.target as HTMLDetailsElement;
+    if (month.matches?.('details[data-month]')) monthsOpen.set(month.dataset.month as string, month.open);
+  }, true);
   root.addEventListener('click', (event) => {
     const target = event.target as HTMLElement;
     const option = target.closest('.option') as HTMLButtonElement | null;
@@ -445,6 +523,12 @@ export async function startGame(root: HTMLElement) {
     if (shareButton) share(shareButton);
     const dayButton = target.closest('[data-day]') as HTMLButtonElement | null;
     if (dayButton && !dayButton.disabled) openDay(Number(dayButton.dataset.day));
+    if (target.closest('[data-to-archive]')) {
+      event.preventDefault();
+      $('archive').closest('section')?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+    const copy = target.closest('[data-copy-diagnostics]') as HTMLElement | null;
+    if (copy) copyDiagnostics(copy);
     if (target.closest('[data-all-days]')) {
       allDays = true;
       renderArchive();
@@ -460,6 +544,7 @@ export async function startGame(root: HTMLElement) {
   addEventListener('resize', () => {
     fitStage();
     placePicture(currentRound());
+    renderDiagnostics();
   });
   // a phone turned during a round: the game in its new layout at the top again, as after loading (after the browser has laid it out)
   matchMedia('(orientation: landscape)').addEventListener('change', () => requestAnimationFrame(() => {

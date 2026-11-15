@@ -97,7 +97,7 @@
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="game-wave" x="0" y="0" width="100%" height="100%"><feTurbulence type="turbulence" baseFrequency="0.012 0.02" numOctaves="2" seed="4" /><feDisplacementMap id="game-wave-map" in="SourceGraphic" scale="0" xChannelSelector="R" yChannelSelector="G" /></filter></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="game-wave" x="0" y="0" width="100%" height="100%"><feTurbulence id="game-wave-ripple" type="turbulence" baseFrequency="0.012 0.02" numOctaves="2" seed="4" /><feDisplacementMap id="game-wave-map" in="SourceGraphic" scale="0" xChannelSelector="R" yChannelSelector="G" /></filter></svg>
 <main>
   <header>
     <h1>Detail dne <span id="number"></span></h1>
@@ -185,9 +185,11 @@ function showCover(round) {
   if (!view || !puzzle) return;
   const level = levelOf(store.level);
   const { effect, colour } = lookNow();
-  const look = effectStyle(effect, colour, effectStrength(round.guesses.length, level.guesses, round.over));
-  // the raster on the window itself (its dots are a share of it), the filter on the picture reaching beyond it
+  // the raster on the window itself (its dots are a share of it), the filter on the picture reaching beyond it; the blur and the wave
+  // are shares of the window, as on the site
   const clip = view.parentElement;
+  const size = clip.clientWidth;
+  const look = effectStyle(effect, colour, effectStrength(round.guesses.length, level.guesses, round.over), effectSettings(), size);
   view.style.filter = look.filter;
   clip.style.mask = look.mask;
   clip.style.webkitMask = look.mask;
@@ -201,6 +203,7 @@ function showCover(round) {
     else img.addEventListener('load', () => drawPixels(canvas, img, frame, look.pixels), { once: true });
   }
   document.getElementById('game-wave-map').setAttribute('scale', look.wave);
+  document.getElementById('game-wave-ripple').setAttribute('baseFrequency', waveRipple(size));
 }
 
 /**
@@ -240,6 +243,8 @@ function fitStage() {
   }
   const fit = fitted.get(key);
   stage.style.width = `${fit.stage}px`;
+  // the picture reaches beyond the window by a share of it, more than the wave and the blur take
+  stage.style.setProperty('--bleed', `${Math.max(16, Math.ceil(fit.stage * 0.08))}px`);
   options.style.maxWidth = fit.options ? `${fit.options}px` : '';
 }
 

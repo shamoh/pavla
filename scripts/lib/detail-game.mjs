@@ -389,20 +389,31 @@ export function effectStrength(misses, guesses, over = false) {
 }
 
 /**
- * How strong each effect is at full strength. mist = blur in px; rasterStep = the distance of the dots as a share of the window (%);
+ * How strong each effect is at full strength, as a share of the window, so a look is as hard on a phone as on a computer.
+ * mist = blur (% of the window: 1 = 5 px of a window of 500 px); rasterStep = the distance of the dots as a share of the window (%);
  * rasterDot = their radius as a share of half of it (%: 100 = dots touch, 141 = nothing left between them); pixelStep = a block of the
- * mosaic as a share of the window (%); wave = the ripple in px; hue = the shift of colours in degrees.
+ * mosaic as a share of the window (%); wave = how far the ripple moves the picture (% of the window); hue = the shift of colours in degrees.
  */
 export function effectSettings() {
-  return { mist: 7, rasterStep: 9, rasterDot: 100, pixelStep: 3, wave: 20, hue: 150 };
+  return { mist: 1, rasterStep: 9, rasterDot: 100, pixelStep: 2, wave: 4, hue: 150 };
+}
+
+/**
+ * The `baseFrequency` of the turbulence of the wave filter for a window of `size` px: always about 6 ripples across and 10 down, so the
+ * waves look the same in a window of any size (the frequency of SVG is per px).
+ */
+export function waveRipple(size) {
+  const per = (count) => Math.round((count / Math.max(1, size)) * 10000) / 10000;
+  return `${per(6)} ${per(10)}`;
 }
 
 /**
  * The look of a close-up at `strength`: `filter` and `mask` for CSS, `wave` = the scale of the SVG filter #game-wave, `pixels` = blocks of
  * the mosaic across the window (0 = no mosaic, drawPixels). mist = out of focus, raster = seen through dots (they grow until nothing is left
- * between them), pixel = a mosaic (its blocks get finer), wave = rippling; gray, sepia, hue = other colours.
+ * between them), pixel = a mosaic (its blocks get finer), wave = rippling; gray, sepia, hue = other colours. `size` = the window in px
+ * (the blur and the wave are in px of it; the windows of the prototypes are 360 px, windowHtml).
  */
-export function effectStyle(effect, colour, strength, settings = effectSettings()) {
+export function effectStyle(effect, colour, strength, settings = effectSettings(), size = 360) {
   const filters = [];
   let mask = '';
   let wave = 0;
@@ -411,8 +422,8 @@ export function effectStyle(effect, colour, strength, settings = effectSettings(
     if (colour === 'gray') filters.push(`grayscale(${strength})`);
     if (colour === 'sepia') filters.push(`sepia(${strength})`);
     if (colour === 'hue') filters.push(`hue-rotate(${Math.round(settings.hue * strength)}deg)`);
-    if (effect === 'mist' && settings.mist) filters.push(`blur(${Math.round(settings.mist * strength * 10) / 10}px)`);
-    wave = effect === 'wave' ? Math.round(settings.wave * strength) : 0;
+    if (effect === 'mist' && settings.mist) filters.push(`blur(${Math.round((settings.mist / 100) * size * strength * 10) / 10}px)`);
+    wave = effect === 'wave' ? Math.round((settings.wave / 100) * size * strength) : 0;
     if (wave) filters.push('url(#game-wave)');
     if (effect === 'pixel' && settings.pixelStep) pixels = Math.round(100 / (settings.pixelStep * strength));
     if (effect === 'raster') {
@@ -592,12 +603,70 @@ export function dayMarks(played, day, levels) {
   });
 }
 
-/** The newest day of the archive before `before` with a level the player has not played, or null when all are done. */
-export function unplayedDay({ played, levels, before }) {
-  for (let day = before - 1; day >= 0; day--) {
-    if (dayMarks(played, day, levels).includes(null)) return day;
+/** The days of the archive before `before` with a level the player has not played, the newest first. */
+export function unplayedDays({ played, levels, before }) {
+  return archiveDays(before).filter((day) => dayMarks(played, day, levels).includes(null));
+}
+
+/** A count of days in words, as Czech says it: 1 den, 2–4 dny, 0 and 5 and more dní. */
+export function daysWord(count) {
+  const n = Math.abs(count);
+  return n === 1 ? 'den' : n >= 2 && n <= 4 ? 'dny' : 'dní';
+}
+
+/**
+ * What is on the screen now, for the diagnostics under the game (only while the family tests it): the day, the level and its settings,
+ * the work and its close-up, the view of this try, the look with the CSS it makes now, the thumbnails and the round, as rows
+ * `[label, value]`. `kept` = the puzzle comes from the player's round (roundPuzzle), not from today's computation; `titleOf` = id → title.
+ */
+export function gameDiagnostics({ day, today, date, level, puzzle, round, work, kept = false, titleOf = (id) => id, size = 360 }) {
+  const share = (v) => `${Math.round(v * 1000) / 10} %`;
+  const named = (ids) => (ids.length ? ids.map((id) => `${titleOf(id)} (${id})`).join(' · ') : '–');
+  const look = gameLooks().find((l) => l.id === puzzle.look) ?? { id: puzzle.look, label: '?', effect: puzzle.effect ?? null, colour: puzzle.colour ?? null };
+  const tries = round.guesses.length;
+  const strength = effectStrength(tries, level.guesses, round.over);
+  const style = effectStyle(look.effect, look.colour, strength, effectSettings(), size);
+  const view = round.over ? null : gameFrame(puzzle.crop, tries, level.guesses - 1, work.ratio, level.lastView);
+  const misses = tries - (round.solved ? 1 : 0);
+  const state = round.over ? (round.solved ? `uhodnuto po ${misses} omylech` : 'neuhodnuto') : `pokus ${tries + 1} z ${level.guesses}`;
+  return [
+    ['Den', `#${day + 1} · ${date} · ${day === today ? 'dnes' : 'archiv'}`],
+    ['Úroveň', `${level.label} (${level.id}) · ${level.options} náhledů · ${level.guesses} pokusy · nápovědy ${level.hints ? 'ano' : 'ne'} · kapky ×${level.drops}`],
+    ['Výběr výřezu', `velikost ${share(level.size)} · místo ${level.zone} · ${level.pick}${level.maxConfusion ? ` (max. ${level.maxConfusion})` : ''} · podobnost náhledů ${level.reach} · poslední pohled ${share(level.lastView)}`],
+    ['Hádanka', `${kept ? 'uložená v kole hráče' : 'spočítaná pro den'} · vzhledy úrovně ${level.looks.join(', ')}`],
+    ['Obraz', `${work.title} (${work.id}) · ${work.technique} · ${work.year} · výška/šířka ${Math.round(work.ratio * 100) / 100}`],
+    ['Výřez', `střed ${share(puzzle.crop.x)} × ${share(puzzle.crop.y)} · velikost ${share(puzzle.crop.size)} · barvy ${(puzzle.crop.colours ?? []).join(' ')}`],
+    ['Stav', state],
+    ['Pohled teď', view ? `střed ${share(view.x)} × ${share(view.y)} · velikost ${share(view.size)}` : 'celý obraz'],
+    ['Vzhled', `${look.label} (${look.id}) · efekt ${look.effect ?? 'žádný'} · barvy ${look.colour ?? 'beze změny'} · síla teď ${Math.round(strength * 100)} %`],
+    ['CSS teď', [style.filter && `filter: ${style.filter}`, style.mask && `mask: ${style.mask}`, style.wave && `vlnění ${style.wave} px (vlny ${waveRipple(size)})`, style.pixels && `mozaika ${style.pixels} kostek na šířku`].filter(Boolean).join(' · ') || 'nic'],
+    ['Nastavení efektů', Object.entries(effectSettings()).map(([key, value]) => `${key} ${value}${key === 'hue' ? '°' : key === 'rasterDot' ? ' % půlrozteče' : ' % okna'}`).join(' · ')],
+    ['Náhledy', puzzle.optionIds.map((id) => `${id === puzzle.targetId ? '✓ ' : ''}${titleOf(id)} (${id})`).join(' · ')],
+    ['Tipy', named(round.guesses)],
+    ['Vyřazené nápovědou', named(round.ruledOut.filter((id) => !round.guesses.includes(id)))],
+  ];
+}
+
+/** The diagnostics as plain text to paste into a message: the address first, then a row a line ("label: value"). */
+export function diagnosticsText(rows, address = '') {
+  return [...(address ? [address] : []), ...rows.map(([label, value]) => `${label}: ${value}`)].join('\n');
+}
+
+/**
+ * The days of the archive (newest first) in groups by month (`month` = YYYY-MM, `epoch` = the first day of the game), the newest
+ * month first; one group = no headings needed. `waiting` = how many of its days have a level the player has not played (`played`
+ * of the progress; without it 0).
+ */
+export function monthGroups(days, epoch, played = null, levels = []) {
+  const groups = [];
+  for (const day of days) {
+    const month = gameDate(day, epoch).slice(0, 7);
+    if (groups.at(-1)?.month !== month) groups.push({ month, days: [], waiting: 0 });
+    const group = groups.at(-1);
+    group.days.push(day);
+    if (played && dayMarks(played, day, levels).includes(null)) group.waiting++;
   }
-  return null;
+  return groups;
 }
 
 /** The state of a puzzle before the first guess. */

@@ -21,7 +21,7 @@ import { summarize } from './seo.mjs';
 import { PALETTES, paletteCss } from './palettes.mjs';
 import { SAMPLE_PICKS, SAMPLE_SIZE, prepareGame } from './detail-game-data.mjs';
 import {
-  GAME_EPOCH, applyGuess, chooseDecoys, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, finishRound, frameSource, gameDay, gameFrame, gameHash, gameHint, gameLevels, gameLooks, dropsWord, lookForDay, lookKey, windowHtml,
+  GAME_EPOCH, applyGuess, chooseDecoys, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, frameSource, gameDay, gameFrame, gameHash, gameHint, gameLevels, gameLooks, dropsWord, lookForDay, lookKey, windowHtml,
   gameRandom, gameRank, gameShareText, gameShuffle, newProgress, newRound, puzzleForLevel, winTitle,
 } from './detail-game.mjs';
 
@@ -49,7 +49,7 @@ export const PROTOTYPE_FUNCTIONS = [
   // the cinema (autoHide always gets its `ms`: its default is a constant of its module)
   cinemaFromParams, cinemaToParams, captionMode, intervalLabel, shuffledOrder, wrapIndex, dragStep, fitBox, imageWidth, autoHide,
   // the game "Detail dne"
-  gameLevels, gameLooks, lookForDay, windowHtml, dropsWord, gameHash, gameRandom, gameShuffle, gameDay, chooseDecoys, puzzleForLevel, dailyPuzzles, effectStrength, effectSettings, effectStyle, lookKey, frameSource, drawPixels, gameFrame, gameHint, newRound, applyGuess,
+  gameLevels, gameLooks, lookForDay, windowHtml, dropsWord, gameHash, gameRandom, gameShuffle, gameDay, chooseDecoys, puzzleForLevel, dailyPuzzles, effectStrength, effectSettings, effectStyle, waveRipple, lookKey, frameSource, drawPixels, gameFrame, gameHint, newRound, applyGuess,
   dropsFor, winTitle, gameRank, newProgress, finishRound, gameShareText,
 ];
 

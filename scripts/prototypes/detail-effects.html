@@ -68,7 +68,7 @@
 const DATA = /*DATA*/{};
 /*FUNCTIONS*/
 
-const STORE = 'pavla.prototype.detailEffects.v2';
+const STORE = 'pavla.prototype.detailEffects.v3';
 const { works, public: PUBLIC, config: CONFIG, game: GAME } = DATA;
 const LEVELS = gameLevels();
 const LOOKS = gameLooks();
@@ -81,11 +81,11 @@ const VIEW_NOTES = {
 const WORKS_SHOWN = 6;
 const SIZES = [0.06, 0.08, 0.11, 0.14, 0.16, 0.2, 0.24, 0.3];
 const SLIDERS = [
-  ['mist', 'Mlha', 0, 8, 0.5, 'px'],
+  ['mist', 'Mlha', 0, 3, 0.1, ' %'],
   ['rasterStep', 'Rastr, rozteč', 2, 14, 0.5, ' %'],
   ['rasterDot', 'Rastr, tečka', 70, 135, 5, ' %'],
   ['pixelStep', 'Mozaika, blok', 1, 12, 0.5, ' %'],
-  ['wave', 'Vlny', 0, 40, 1, ''],
+  ['wave', 'Vlny', 0, 8, 0.25, ' %'],
   ['hue', 'Posun barev', 0, 180, 10, '°'],
 ];
 const byId = new Map(works.map((w) => [w.id, w]));
@@ -109,7 +109,7 @@ const escapeHtml = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&am
 function waveFilter(scale) {
   const id = `wave-${scale}`;
   if (!document.getElementById(id)) {
-    $('filters').insertAdjacentHTML('beforeend', `<filter id="${id}" x="0" y="0" width="100%" height="100%"><feTurbulence type="turbulence" baseFrequency="0.012 0.02" numOctaves="2" seed="4" /><feDisplacementMap in="SourceGraphic" scale="${scale}" xChannelSelector="R" yChannelSelector="G" /></filter>`);
+    $('filters').insertAdjacentHTML('beforeend', `<filter id="${id}" x="0" y="0" width="100%" height="100%"><feTurbulence type="turbulence" baseFrequency="${waveRipple(360)}" numOctaves="2" seed="4" /><feDisplacementMap in="SourceGraphic" scale="${scale}" xChannelSelector="R" yChannelSelector="G" /></filter>`);
   }
   return `#${id}`;
 }
