@@ -23,6 +23,8 @@ test('seeded and blobSvg are deterministic: the same seed gives the same picture
   assert.deepEqual([a(), a(), a()], [b(), b(), b()]);
   assert.equal(blobSvg([100, 50], ['#000'], 5), blobSvg([100, 50], ['#000'], 5));
   assert.notEqual(blobSvg([100, 50], ['#000'], 5), blobSvg([100, 50], ['#000'], 6));
+  assert.equal((blobSvg([100, 50], ['#000'], 5).match(/<path /g) ?? []).length, 12, 'crisp strokes over the blobs');
+  assert.equal((blobSvg([100, 50], ['#000'], 5, 14, 0).match(/<path /g) ?? []).length, 0);
 });
 
 test('renderDemoImages paints images and crops details, byte for byte the same on every run', async () => {

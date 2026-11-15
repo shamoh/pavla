@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { PROTOTYPES, PROTOTYPE_FUNCTIONS, fillTemplate, prototypeConfig, prototypeScenes, prototypeWorks, publicPath, writePrototypes } from './prototypes.mjs';
+import { PROTOTYPES, PROTOTYPE_FUNCTIONS, fillTemplate, prepareGame, prototypeConfig, prototypeScenes, prototypeWorks, publicPath, writePrototypes } from './prototypes.mjs';
 import { COLUMN_DEFAULTS } from './view-layout.mjs';
 import { HOME_RECENT } from './home-view.mjs';
 import { TILE_MARK_DEFAULTS } from './tile-marks.mjs';
@@ -89,6 +89,18 @@ test('writePrototypes: both pages from the templates, valid scripts over the dat
   // the cinema page: the controls, the tuning panel and the address in the hash
   const cinema = fs.readFileSync(path.join(outDir, 'promitani.html'), 'utf8');
   for (const text of ['▶ Promítat', 'id="cinema"', 'id="tuning"', 'Popisky', 'Kolekce:', 'requestFullscreen', 'wakeLock', 'location.replace', 'Odkaz zkopírován', 'Popisky: na chvíli', 'togglePause']) assert.ok(cinema.includes(text), text);
+  // the game: its panels, the sharing and its data
+  const game = fs.readFileSync(path.join(outDir, 'detail-dne.html'), 'utf8');
+  for (const text of ['Ze kterého obrazu je tento detail?', 'Moje sbírka', 'Sdílet výsledek', 'Prohlédnout obraz', 'prefers-reduced-motion', 'navigator.vibrate', '"epoch":"2026-11-01"', 'game-wave', 'Další úroveň', 'class="pixels"', 'id="look"', 'Ranní mlha', 'fitStage', '--bleed', 'class="status"', 'Po omylu může přijít nápověda.', 'class="clip"']) assert.ok(game.includes(text), text);
+  // the effects of the game side by side: all of them, by the guess, on more works and by the size
+  const effects = fs.readFileSync(path.join(outDir, 'detail-efekty.html'), 'utf8');
+  for (const text of ['Průběh hádání', 'Velikost výřezu', 'rasterStep', 'Výchozí hodnoty', 'Na více obrazech', 'Kombinace', 'lookKey', 'pixelStep', 'mozaika', 'drawPixels']) assert.ok(effects.includes(text), text);
+  // the base of the quiz editor: a work, a place, a look of the level and what the player sees
+  const quiz = fs.readFileSync(path.join(outDir, 'detail-kviz.html'), 'utf8');
+  for (const text of ['Můj kvíz', 'Vybrat místo za mě', 'Co uvidí hráč', 'gameLooks', 'Zatopená pohlednice', 'id="mark"', 'drawPixels']) assert.ok(quiz.includes(text), text);
+  // the fixed sample: every look of a level on the same works, step by step
+  const sample = fs.readFileSync(path.join(outDir, 'detail-vzorek.html'), 'utf8');
+  for (const text of ['Vzorek obrazů', 'všech pět, první pokus', 'windowHtml', '"sample":', 'žádné místo nenašla', 'Vyměnit obraz', 'Obnovit automatický výběr', 'Vzorek: ']) assert.ok(sample.includes(text), text);
   // every scene of the camera page: the guides on / off and back to the recommended setup
   const camera = fs.readFileSync(path.join(outDir, 'kamera-scen.html'), 'utf8');
   for (const text of ['Pomocné čáry: zapnuto', 'Pomocné čáry: vypnuto', 'Obnovit doporučené', 'jen díla, která se nevejdou', 'id="misfits-only"', "class: 'pointer'", 'mimo fotku', "class: 'zoom'", "'paint-order': 'stroke'", 'zkopírováno', 'Cmd + kolečko', 'press.shift', 'pointLabel(p, [0, -1]', 'pointLabel(scene.center', 'data-layer="obstacles"', 'před obrazem (front)']) assert.ok(camera.includes(text), text);
@@ -166,4 +178,29 @@ test('PROTOTYPE_FUNCTIONS: self-contained, they work copied as text', () => {
   assert.ok(r.fit < 0.1);
   assert.ok(r.lying.fits && r.standing.fits && r.window.width > 0, 'planPlacement and sceneWindow work copied as text');
   assert.deepEqual(r.cinema, { params: 'tag=voda&cinema=ab&interval=5', first: 'c', last: 2, step: 1, box: 100, width: 960, shown: [true, false] });
+});
+
+test('prepareGame: the levels from the pictures; one that cannot be read is left out', async () => {
+  const { default: sharp } = await import('sharp');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'prototypes-'));
+  const works = [];
+  for (const id of ['a', 'b', 'c']) {
+    const folder = path.join(root, 'public', 'tvorba', '2026', `les-${id}`);
+    fs.mkdirSync(folder, { recursive: true });
+    const raw = Buffer.alloc(200 * 200 * 3);
+    for (let i = 0; i < raw.length; i += 3) {
+      const [x, y] = [(i / 3) % 200, Math.floor(i / 3 / 200)];
+      raw.fill((x >> 3) % 2 === (y >> 3) % 2 ? 30 : 230, i, i + 3);
+    }
+    await sharp(raw, { raw: { width: 200, height: 200, channels: 3 } }).jpeg().toFile(path.join(folder, '480.jpg'));
+    works.push({ id, folder: `tvorba/2026/les-${id}`, widths: [480, 960], technique: 'akvarel', tags: [] });
+  }
+  const level = { id: 'zkouska', size: 0.2, zone: 'any', pick: 'clear', options: 3 };
+  const game = await prepareGame([...works, { id: 'x', folder: 'tvorba/2026/nic', widths: [480] }], root, [level]);
+  assert.deepEqual(Object.keys(game.prepared.zkouska).sort(), ['a', 'b', 'c']);
+  assert.deepEqual([...game.prepared.zkouska.a[0].ranked].sort(), ['b', 'c'], 'the unread one is not even a false thumbnail');
+  assert.ok(game.prepared.zkouska.a[0].crop.colours.length >= 1);
+  assert.deepEqual([...game.sample].sort(), ['a', 'b', 'c'], 'the sample: answers only');
+  const picked = await prepareGame(works, root, [level], ['c']);
+  assert.equal(picked.sample[0], 'c', 'a work picked by hand first');
 });

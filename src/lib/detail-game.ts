@@ -1,0 +1,473 @@
+// Browser side of the game Detail dne (/detail-dne/, markup and look src/pages/detail-dne/index.astro, rules
+// scripts/lib/detail-game.mjs): three puzzles a day, the same for everyone; the data comes ready from the build
+// (/detail-dne/data.json, scripts/lib/detail-game-data.mjs). The progress (drops, series, rank, the collection) stays in this
+// browser only (localStorage, GAME_STORE), the page works without it too, it only forgets. The days before today are the archive
+// (?den=<number>, half the drops, the series stays): every round keeps its puzzle (roundPuzzle), so a played day stays the same when
+// new works change the order of the days. Events of Google Analytics: game_start, game_end and share (source game).
+// The layout never moves while a round goes on: the stage, the status and the thumbnails keep their place and size, the card
+// of the end comes under the thumbnails. On a phone the stage is as big as it can be with all thumbnails still on the screen.
+import { EVENTS, SHARE_COPY, SHARE_NATIVE, gameEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
+import {
+  applyGuess, archiveDays, dailyPuzzles, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, unplayedDay, drawPixels, dropsFor, dropsWord, effectStrength, effectStyle, finishRound, gameDay, gameFrame,
+  gameLevels, gameLooks, gameRank, gameShareText, newProgress, newRound, winTitle,
+} from '../../scripts/lib/detail-game.mjs';
+
+/** Where the progress of a player is kept; a new format of it = a new key. */
+export const GAME_STORE = 'pavla.detailDne.v1';
+
+type GameWork = {
+  id: string; title: string; sub: string; year: number; technique: string; collection: string; collectionTitle: string;
+  text: string; url: string; folder: string; widths: number[]; ratio: number;
+};
+type GameData = { epoch: string; site: string; works: GameWork[]; prepared: Record<string, Record<string, unknown[]>> };
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const LEVELS = gameLevels();
+const LOOKS = gameLooks();
+
+const escapeHtml = (text: unknown) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
+const localDate = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
+/** When the stage and the thumbnails stand side by side: a big screen, or one on its side (a phone); the same query as in the page's CSS. */
+const TWO_COLUMNS = '(min-width: 800px), (orientation: landscape) and (min-width: 560px)';
+/** How many days the archive shows before "Starší dny". */
+const ARCHIVE_SHOWN = 14;
+const MARKS: Record<string, string> = { solved: '✓', lost: '✗' };
+
+/** A picture of a work: the largest for the stage (the close-up is zoomed in), the smallest for a thumbnail. */
+const picture = (work: GameWork, largest: boolean) => `${BASE}/${work.folder}/${largest ? Math.max(...work.widths) : Math.min(...work.widths)}.webp`;
+
+export async function startGame(root: HTMLElement) {
+  const $ = <T extends HTMLElement = HTMLElement>(name: string) => root.querySelector(`[data-${name}]`) as T;
+  const content = $('content');
+  let data: GameData;
+  try {
+    const response = await fetch(root.dataset.src as string);
+    if (!response.ok) throw new Error(String(response.status));
+    data = await response.json();
+  } catch {
+    content.innerHTML = '<p class="empty">Dnešní detail se nepodařilo načíst. Zkuste stránku obnovit.</p>';
+    return;
+  }
+  const byId = new Map(data.works.map((w) => [w.id, w]));
+  const today = gameDay(localDate(), data.epoch);
+  /** The day on the screen: today, or a day of the archive. */
+  let day = dayFromParam(new URLSearchParams(location.search).get('den'), today);
+  const daily = new Map<number, Record<string, any>>();
+  const dailyOf = (d: number) => {
+    if (!daily.has(d)) daily.set(d, dailyPuzzles({ day: d, levels: LEVELS, prepared: data.prepared }));
+    return daily.get(d)!;
+  };
+  /** The puzzle of a level on the shown day: the one the player's round kept, otherwise the one of the day. */
+  const puzzleOf = (levelId: string) => keptPuzzle({ computed: dailyOf(day)[levelId] ?? null, round: store.rounds[roundKey(levelId)], hasWork: (id: string) => byId.has(id), day, level: levelId });
+  const archive = () => day !== today;
+  let allDays = false;
+
+  const load = () => {
+    try { return JSON.parse(localStorage.getItem(GAME_STORE) ?? 'null') ?? {}; } catch { return {}; }
+  };
+  const store = { progress: newProgress(), rounds: {} as Record<string, any>, level: LEVELS[0].id, ...load() };
+  const save = () => {
+    try { localStorage.setItem(GAME_STORE, JSON.stringify(store)); } catch { /* the game goes on without memory */ }
+  };
+
+  let puzzle: any = null;
+  let optionWorks: GameWork[] = [];
+  const levelOf = (id: string) => LEVELS.find((l) => l.id === id) ?? LEVELS[0];
+  const roundKey = (levelId: string) => `${day}:${levelId}`;
+  const currentRound = () => store.rounds[roundKey(store.level)] ?? newRound();
+  const missesOf = (round: any) => round.guesses.length - (round.solved ? 1 : 0);
+  const lookNow = () => LOOKS.find((l) => l.id === puzzle.look) ?? LOOKS[0];
+
+  /** Puts the part of the work around `frame` into the window (in shares of the window, so it survives a resize). */
+  function showFrame(img: HTMLImageElement, work: GameWork, frame: { x: number; y: number; size: number }) {
+    const stage = img.clientWidth;
+    const scale = 1 / (frame.size * Math.min(1, work.ratio));
+    const x = stage / 2 - frame.x * stage * scale;
+    const y = stage / 2 - frame.y * work.ratio * stage * scale;
+    img.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+  }
+
+  /** The whole work in the window. */
+  function showWhole(img: HTMLImageElement, work: GameWork) {
+    const stage = img.clientWidth;
+    const scale = 1 / Math.max(1, work.ratio);
+    img.style.transform = `translate(${(stage - stage * scale) / 2}px, ${(stage - stage * work.ratio * scale) / 2}px) scale(${scale})`;
+  }
+
+  /** What covers the close-up now: the raster on the window itself, the filter on the picture reaching beyond it. */
+  function showCover(round: any) {
+    const view = root.querySelector('.view') as HTMLElement | null;
+    if (!view || !puzzle) return;
+    const level = levelOf(store.level);
+    const { effect, colour } = lookNow();
+    const look = effectStyle(effect, colour, effectStrength(round.guesses.length, level.guesses, round.over));
+    const clip = view.parentElement as HTMLElement;
+    view.style.filter = look.filter;
+    clip.style.mask = look.mask;
+    clip.style.setProperty('-webkit-mask', look.mask);
+    const canvas = view.querySelector('.pixels') as HTMLCanvasElement;
+    const img = view.querySelector('img') as HTMLImageElement;
+    canvas.hidden = !look.pixels;
+    if (look.pixels) {
+      const work = byId.get(puzzle.targetId)!;
+      const frame = gameFrame(puzzle.crop, round.guesses.length, level.guesses - 1, work.ratio, level.lastView);
+      if (img.complete) drawPixels(canvas, img, frame, look.pixels);
+      else img.addEventListener('load', () => drawPixels(canvas, img, frame, look.pixels), { once: true });
+    }
+    root.querySelector('[data-wave-map]')?.setAttribute('scale', String(look.wave));
+  }
+
+  /**
+   * The stage and the thumbnails always fit on the screen under the game's top, measured once for each level and width (the toolbar
+   * of a mobile browser comes and goes while playing, and nothing may change with it):
+   * - one column (a phone upright): the stage as big as it can be with the status and all thumbnails under it (MIN_STAGE only on an absurdly small screen);
+   * - two columns (TWO_COLUMNS: a computer, a phone on its side): the stage takes its half but no more than the height of the screen,
+   *   and the thumbnails get narrower until the status and all of them fit by the stage too (a phone on its side is low).
+   */
+  const fitted = new Map<string, { stage: number; options: number | null }>();
+  const SCREEN_GAP = 12;
+  /** The smallest the stage gets: everything fits on the screen first, only on an absurdly small one it gives up. */
+  const MIN_STAGE = 120;
+  function fitStage() {
+    const stage = root.querySelector('.stage') as HTMLElement | null;
+    if (!stage) return;
+    const options = root.querySelector('.options') as HTMLElement;
+    const status = root.querySelector('.status') as HTMLElement;
+    const wide = matchMedia(TWO_COLUMNS).matches;
+    const key = `${innerWidth}:${store.level}:${archive()}`;
+    if (!fitted.has(key)) {
+      stage.style.width = '';
+      options.style.maxWidth = '';
+      const full = stage.clientWidth;
+      const top = stage.getBoundingClientRect().top - root.getBoundingClientRect().top;
+      if (wide) {
+        const free = innerHeight - top - SCREEN_GAP;
+        // three rows of 4 : 3 thumbnails, three in a row, gaps of 6 px: height = 3 × (width - 12) / 3 × 3 / 4 + 12 = (width - 12) × 3 / 4 + 12
+        const forOptions = innerHeight - top - status.offsetHeight - 10 - SCREEN_GAP;
+        const widest = Math.round(((forOptions - 12) * 4) / 3 + 12);
+        fitted.set(key, { stage: Math.round(Math.max(MIN_STAGE, Math.min(full, free))), options: widest < options.clientWidth ? Math.max(160, widest) : null });
+      } else {
+        const below = status.offsetHeight + options.offsetHeight + 12 + 10 + SCREEN_GAP;
+        fitted.set(key, { stage: Math.round(Math.max(MIN_STAGE, Math.min(full, innerHeight - top - below))), options: null });
+      }
+    }
+    const fit = fitted.get(key)!;
+    stage.style.width = `${fit.stage}px`;
+    options.style.maxWidth = fit.options ? `${fit.options}px` : '';
+  }
+
+  function placePicture(round: any) {
+    const img = root.querySelector('.stage img') as HTMLImageElement | null;
+    if (!img || !puzzle) return;
+    const work = byId.get(puzzle.targetId)!;
+    const level = levelOf(store.level);
+    if (round.over) showWhole(img, work);
+    else showFrame(img, work, gameFrame(puzzle.crop, round.guesses.length, level.guesses - 1, work.ratio, level.lastView));
+    showCover(round);
+  }
+
+  /** The drops of the win fall in the colours of the close-up. */
+  function rain(colours: string[]) {
+    const stage = root.querySelector('.stage') as HTMLElement;
+    const height = stage.clientHeight + 40;
+    for (let i = 0; i < 36; i++) {
+      const drop = document.createElement('span');
+      drop.className = 'drop';
+      drop.style.left = `${Math.random() * 100}%`;
+      drop.style.background = colours[i % colours.length];
+      drop.style.setProperty('--t', `${1 + Math.random() * 1.2}s`);
+      drop.style.setProperty('--d', `${Math.random() * 0.9}s`);
+      drop.style.setProperty('--h', `${height}px`);
+      stage.append(drop);
+    }
+    setTimeout(() => stage.querySelectorAll('.drop').forEach((d) => d.remove()), 3500);
+  }
+
+  function renderStats() {
+    const { progress } = store;
+    const rank = gameRank(progress.drops);
+    const toNext = rank.next === null ? '' : ` · do další hodnosti ${rank.next - progress.drops} 💧`;
+    $('stats').innerHTML = `<span>💧 <b>${progress.drops}</b> ${dropsWord(progress.drops)}</span><span>Série <b>${progress.streak}</b></span><span class="rank"><b>${rank.title}</b>${toNext}</span>`;
+  }
+
+  function renderLevels() {
+    $('levels').innerHTML = LEVELS.map((level) => {
+      const played = store.progress.played[roundKey(level.id)];
+      const state = played ? (played.solved ? '✓' : '✗') : `×${level.drops} 💧`;
+      return `<button class="level" type="button" data-level="${level.id}" aria-pressed="${level.id === store.level}">${level.label} <small>${state}</small></button>`;
+    }).join('');
+  }
+
+  function renderCollection() {
+    const { collected, pigments } = store.progress;
+    const works = collected.map((id: string) => byId.get(id)).filter(Boolean) as GameWork[];
+    $('collection').innerHTML = works.length
+      ? `<div class="collected">${works.map((w) => `<a href="${w.url}" title="${escapeHtml(w.title)}"><img src="${picture(w, false)}" alt="${escapeHtml(w.title)}" loading="lazy" /></a>`).join('')}</div>
+         <div class="pigments" aria-label="Moje paleta">${pigments.map((hex: string) => `<span class="pigment" style="background:${escapeHtml(hex)}"></span>`).join('')}</div>`
+      : '<p class="empty">Každý uhádnutý obraz sem přibude i s barvami z výřezu.</p>';
+  }
+
+  /**
+   * The status over the thumbnails, always the same lines: the question (the verdict at the end), the look with the guess and the drops
+   * (what was won), and in a level with hints the last hint (a line waiting for it before the first miss, the title at the end).
+   */
+  function statusHtml(round: any, level: any, outcome?: any) {
+    const played = store.progress.played[roundKey(store.level)];
+    const drops = outcome?.gained ?? played?.drops ?? 0;
+    const ask = round.over ? (round.solved ? winTitle(missesOf(round)) : 'Tenhle byl záludný') : 'Ze kterého obrazu je tento detail?';
+    // one pip for each try: the misses, the try now (or the hit at the end), the ones left
+    const pips = Array.from({ length: level.guesses }, (_, i) => {
+      const kind = i < missesOf(round) ? 'miss' : i === missesOf(round) && round.solved ? 'hit' : i === round.guesses.length && !round.over ? 'now' : 'left';
+      return `<span class="pip ${kind}"></span>`;
+    }).join('');
+    const tried = `<span class="pips" aria-hidden="true">${pips}</span>`;
+    const tries = round.over
+      ? `${tried}${round.solved ? `+${drops} 💧 a obraz do tvé sbírky` : archive() ? 'Zkus jiný den z archivu.' : 'Zítra je tu nový detail.'}`
+      : `${tried}<b>Pokus ${round.guesses.length + 1} z ${level.guesses}</b> · za ${dropsFor(round.guesses.length, 1, archive(), level.drops)} 💧 · ${escapeHtml(lookNow().label)}`;
+    const lastHint = round.hints[round.hints.length - 1];
+    const hint = !level.hints ? ''
+      : round.over ? `<p class="hint"><b>${escapeHtml(byId.get(puzzle.targetId)!.title)}</b></p>`
+        : lastHint ? `<p class="hint"><b>Nápověda:</b> ${escapeHtml(lastHint)}</p>`
+          : '<p class="hint waiting">Po omylu může přijít nápověda.</p>';
+    return `<div class="status${round.over ? (round.solved ? ' won' : ' lost') : ''}" aria-live="polite"><p class="ask">${ask}</p><p class="tries">${tries}</p>${hint}</div>`;
+  }
+
+  /**
+   * The card of the end, under the thumbnails: the verdict first and clearly (won / not this time), then the work, and one line of
+   * quiet links (the work, its collection, sharing). No way on to another level or day here: the levels are over the stage, the
+   * archive under the game; the whole work on the stage is a link to its page too.
+   */
+  function resultHtml(outcome?: any) {
+    const work = byId.get(puzzle.targetId)!;
+    const round = currentRound();
+    const played = store.progress.played[roundKey(store.level)];
+    const drops = outcome?.gained ?? played?.drops ?? 0;
+    const rank = gameRank(store.progress.drops);
+    const rankUp = outcome?.rankUp ? `<p class="rankup">Nová hodnost: ${escapeHtml(rank.title)}!</p>` : '';
+    const verdict = round.solved
+      ? `<p class="verdict"><span class="sign" aria-hidden="true">✓</span> ${winTitle(missesOf(round))} <span class="gain">+${drops} 💧</span></p>`
+      : `<p class="verdict"><span class="sign" aria-hidden="true">✗</span> Tentokrát ne <span class="gain">byl to tenhle obraz</span></p>`;
+    const text = work.text ? `<p class="text">${escapeHtml(work.text)}</p>` : '';
+    const collection = work.collection
+      ? `<a class="action quiet" href="${BASE}/tvorba/kolekce/${work.collection}/" title="Kolekce ${escapeHtml(work.collectionTitle)}">Kolekce</a>` : '';
+    const dayDone = LEVELS.every((l) => !puzzleOf(l.id) || store.progress.played[roundKey(l.id)]);
+    const older = dayDone ? unplayedDay({ played: store.progress.played, levels: LEVELS, before: day }) : null;
+    const done = !dayDone ? ''
+      : archive() ? `Den #${day + 1} máš za sebou. Další dny najdeš v archivu pod hrou.`
+        : `Všechny dnešní detaily máš za sebou. Zítra přijdou nové.${older !== null ? ' Mezitím můžeš hrát starší dny v archivu pod hrou, za poloviční kapky.' : ''}`;
+    return `<div class="result ${round.solved ? 'won' : 'lost'}">
+      ${verdict}
+      ${rankUp}
+      <h2>${escapeHtml(work.title)}</h2>
+      <p class="sub">${escapeHtml(work.sub)}${work.year ? ` · ${work.year}` : ''}</p>
+      ${text}
+      <div class="actions">
+        <a class="action quiet" href="${work.url}" title="Prohlédnout obraz">Obraz</a>
+        ${collection}
+        <button class="action quiet" type="button" data-share>Sdílet</button>
+      </div>
+      ${done ? `<p class="sub done">${done}</p>` : ''}
+    </div>`;
+  }
+
+  /** A date of the game in words: "14. listopadu", short "14. 11.". */
+  const dateWords = (d: number, short = false) => new Date(`${gameDate(d, data.epoch)}T12:00:00Z`)
+    .toLocaleDateString('cs-CZ', short ? { day: 'numeric', month: 'numeric', timeZone: 'UTC' } : { day: 'numeric', month: 'long', timeZone: 'UTC' });
+
+  /** Over the levels on a day of the archive only (a move to another day, never during a round): which day, the way back. */
+  function renderArchiveBar() {
+    const bar = $('archive-bar');
+    bar.hidden = !archive();
+    if (!archive()) return;
+    bar.innerHTML = `<button class="step" type="button" data-day="${day - 1}" aria-label="Starší den"${day > 0 ? '' : ' disabled'}>‹</button>
+      <span class="which">Archiv · ${dateWords(day)} · <span class="half">poloviční kapky</span></span>
+      <button class="step" type="button" data-day="${day + 1}" aria-label="Novější den">›</button>
+      <button class="today" type="button" data-day="${today}">Dnes</button>`;
+  }
+
+  /** Today and the days before, the newest first, with how each level went. */
+  function renderArchive() {
+    const days = [today, ...archiveDays(today)];
+    const shown = allDays ? days : days.slice(0, ARCHIVE_SHOWN + 1);
+    $('archive').innerHTML = `<div class="days">${shown.map((d) => {
+      const marks = dayMarks(store.progress.played, d, LEVELS).map((m, i) => `<span class="mark ${m ?? 'open'}" title="${LEVELS[i].label}">${m ? MARKS[m] : '·'}</span>`).join('');
+      return `<button class="day" type="button" data-day="${d}" aria-pressed="${d === day}"><span class="when">${d === today ? 'Dnes' : `#${d + 1} · ${dateWords(d, true)}`}</span><span class="marks">${marks}</span></button>`;
+    }).join('')}</div>${shown.length < days.length ? `<button class="action quiet" type="button" data-all-days>Starší dny (${days.length - shown.length})</button>` : ''}`;
+  }
+
+  function render(outcome?: any) {
+    puzzle = puzzleOf(store.level);
+    $('number').textContent = `#${day + 1}`;
+    renderStats();
+    renderLevels();
+    renderArchiveBar();
+    renderArchive();
+    renderCollection();
+    if (!puzzle) {
+      content.innerHTML = '<p class="empty">Pro tuhle úroveň je zatím málo obrazů.</p>';
+      return;
+    }
+    optionWorks = puzzle.optionIds.map((id: string) => byId.get(id));
+    const round = currentRound();
+    const level = levelOf(store.level);
+    const work = byId.get(puzzle.targetId)!;
+    content.innerHTML = `<div class="game">
+      <div class="stage${round.over ? ' reveal' : ''}"><div class="clip"><div class="view"><img src="${picture(work, true)}" alt="${round.over ? escapeHtml(work.title) : 'Výřez z obrazu'}" /><canvas class="pixels" hidden></canvas></div></div>${round.over ? `<a class="whole-link" href="${work.url}" aria-label="Prohlédnout obraz ${escapeHtml(work.title)}" title="Prohlédnout obraz"></a>` : ''}</div>
+      <div class="side">
+        ${statusHtml(round, level, outcome)}
+        <div class="options">
+          ${optionWorks.map((w) => {
+            const classes = ['option'];
+            if (round.over && w.id === puzzle.targetId) classes.push('right');
+            else if (round.guesses.includes(w.id)) classes.push('wrong', 'out');
+            else if (round.ruledOut.includes(w.id) || round.over) classes.push('out');
+            const named = round.over ? escapeHtml(w.title) : round.reasons[w.id] ? `Vyřazeno: ${escapeHtml(round.reasons[w.id])}` : 'Obraz';
+            const disabled = round.over || classes.includes('out') ? 'disabled' : '';
+            const because = !round.over && round.reasons[w.id] ? `<span class="because">${escapeHtml(round.reasons[w.id])}</span>` : '';
+            return `<button class="${classes.join(' ')}" type="button" data-id="${w.id}" aria-label="${named}" ${disabled}><img src="${picture(w, false)}" alt="" />${because}</button>`;
+          }).join('')}
+        </div>
+        ${round.over ? resultHtml(outcome) : ''}
+      </div>
+    </div>`;
+    fitStage();
+    const img = content.querySelector('.stage img') as HTMLImageElement;
+    const view = content.querySelector('.view') as HTMLElement;
+    img.style.transition = 'none';
+    view.style.transition = 'none';
+    // a finished round opened again shows the whole work; only the moment of the end moves
+    if (outcome) {
+      showFrame(img, work, gameFrame(puzzle.crop, round.guesses.length - 1, level.guesses - 1, work.ratio, level.lastView));
+      showCover({ ...round, over: false, guesses: round.guesses.slice(0, -1) });
+    } else placePicture(round);
+    img.getBoundingClientRect();
+    img.style.transition = '';
+    view.style.transition = '';
+    if (outcome) {
+      requestAnimationFrame(() => placePicture(round));
+      if (round.solved) {
+        rain(puzzle.crop.colours);
+        navigator.vibrate?.([30, 40, 60]);
+      }
+      // the card of the end may be under the screen: there after the picture has come out, a scroll, not a jump
+      setTimeout(() => content.querySelector('.result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 1600);
+    }
+  }
+
+  function guess(id: string) {
+    const before = currentRound();
+    const level = levelOf(store.level);
+    const round = applyGuess(before, puzzle, optionWorks, id, level.guesses, level.hints);
+    if (round === before) return;
+    // the round keeps its puzzle from the first guess on
+    store.rounds[roundKey(store.level)] = { ...round, puzzle: before.puzzle ?? roundPuzzle(puzzle) };
+    const event = { level: level.id, day, today, look: puzzle.look };
+    if (!before.guesses.length) trackEvent(EVENTS.gameStart, gameEventParams(event));
+    let outcome;
+    if (round.over) {
+      outcome = finishRound(store.progress, { day, today, level: level.id, multiplier: level.drops, solved: round.solved, misses: missesOf(round), workId: puzzle.targetId, pigments: puzzle.crop.colours });
+      store.progress = outcome.progress;
+      trackEvent(EVENTS.gameEnd, gameEventParams(event, { solved: round.solved, misses: missesOf(round), drops: outcome.gained, streak: outcome.progress.streak, work: byId.get(puzzle.targetId)! }));
+    }
+    save();
+    if (outcome) {
+      render(outcome);
+      return;
+    }
+    // a miss: the picture zooms out in place instead of a new page
+    const old = root.querySelector('.stage img') as HTMLImageElement;
+    const oldView = root.querySelector('.view') as HTMLElement;
+    const [transform, filter, mask] = [old.style.transform, oldView.style.filter, (oldView.parentElement as HTMLElement).style.mask];
+    render();
+    const fresh = root.querySelector('.stage img') as HTMLImageElement;
+    const view = root.querySelector('.view') as HTMLElement;
+    const clip = view.parentElement as HTMLElement;
+    fresh.style.transition = 'none';
+    view.style.transition = 'none';
+    fresh.style.transform = transform;
+    view.style.filter = filter;
+    clip.style.mask = mask;
+    clip.style.setProperty('-webkit-mask', mask);
+    fresh.getBoundingClientRect();
+    fresh.style.transition = '';
+    view.style.transition = '';
+    requestAnimationFrame(() => placePicture(round));
+  }
+
+  async function share(button: HTMLElement) {
+    const round = currentRound();
+    const url = `${data.site.replace(/\/$/, '')}/detail-dne/${archive() ? `?den=${day + 1}` : ''}`;
+    const text = gameShareText({ day, level: levelOf(store.level).label, misses: missesOf(round), solved: round.solved, url });
+    const params = { source: 'game', ...gameEventParams({ level: store.level, day, today, look: puzzle.look }) };
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+        trackEvent(EVENTS.share, { method: SHARE_NATIVE, ...params });
+      } else {
+        await navigator.clipboard.writeText(text);
+        button.textContent = 'Zkopírováno';
+        trackEvent(EVENTS.share, { method: SHARE_COPY, ...params });
+      }
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') button.textContent = 'Sdílení se nepovedlo';
+    }
+  }
+
+  /** Another day: its address (?den= only for the archive), the game from its top. */
+  function openDay(next: number) {
+    if (!Number.isInteger(next) || next < 0 || next > today) return;
+    day = next;
+    const params = new URLSearchParams(location.search);
+    if (archive()) params.set('den', String(day + 1));
+    else params.delete('den');
+    const query = params.toString();
+    history.replaceState(history.state, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`);
+    render();
+    root.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+
+  function openLevel(id: string) {
+    store.level = levelOf(id).id;
+    save();
+    render();
+  }
+
+  root.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    const option = target.closest('.option') as HTMLButtonElement | null;
+    if (option && !option.disabled) guess(option.dataset.id as string);
+    const level = target.closest('[data-level]') as HTMLElement | null;
+    if (level) openLevel(level.dataset.level as string);
+    const shareButton = target.closest('[data-share]') as HTMLElement | null;
+    if (shareButton) share(shareButton);
+    const dayButton = target.closest('[data-day]') as HTMLButtonElement | null;
+    if (dayButton && !dayButton.disabled) openDay(Number(dayButton.dataset.day));
+    if (target.closest('[data-all-days]')) {
+      allDays = true;
+      renderArchive();
+    }
+  });
+  /**
+   * The game is the screen of a phone: its top at the top, so the stage and all thumbnails fit (fitStage measures from there). On a
+   * phone upright and on any low screen (a phone on its side).
+   */
+  const snapToGame = () => {
+    if (!matchMedia(TWO_COLUMNS).matches || innerHeight < 700) root.scrollIntoView({ block: 'start' });
+  };
+  addEventListener('resize', () => {
+    fitStage();
+    placePicture(currentRound());
+  });
+  // a phone turned during a round: the game in its new layout at the top again, as after loading (after the browser has laid it out)
+  matchMedia('(orientation: landscape)').addEventListener('change', () => requestAnimationFrame(() => {
+    fitStage();
+    placePicture(currentRound());
+    snapToGame();
+  }));
+  render();
+  // only once it is drawn: before that the page is too short to scroll
+  snapToGame();
+}

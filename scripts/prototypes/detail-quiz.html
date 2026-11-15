@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="cs" data-palette="papir">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Můj kvíz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<style id="palettes"></style>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Work Sans', system-ui, sans-serif; font-size: .92rem; }
+  button, select { font: inherit; color: inherit; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; font-size: 1.9rem; margin: 0 0 4px; }
+  h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 400; font-size: 1.4rem; margin: 18px 0 6px; }
+  .note { color: var(--ink-soft); margin: 0 0 12px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin-bottom: 14px; }
+  .controls label { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+  .controls select { max-width: 60vw; }
+  .controls input[type='range'] { width: 110px; accent-color: var(--accent); }
+  .controls button { background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; cursor: pointer; }
+  .controls output { color: var(--ink); min-width: 2.6em; }
+  .editor { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  @media (min-width: 820px) { .editor { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+
+  /* The whole work: a tap moves the close-up there. */
+  .picture { position: relative; overflow: hidden; cursor: crosshair; line-height: 0; background: var(--paper-2); }
+  .picture img { width: 100%; height: auto; display: block; }
+  .mark { position: absolute; border: 2px solid var(--paper); outline: 2px solid var(--ink); box-shadow: 0 0 0 9999px color-mix(in srgb, var(--ink) 35%, transparent); pointer-events: none; }
+
+  .looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .look { padding: 0; background: transparent; border: 2px solid transparent; cursor: pointer; text-align: left; }
+  .look[aria-pressed='true'] { border-color: var(--accent); }
+  .look span { display: block; padding: 4px 2px 2px; font-size: .86rem; }
+  .look[aria-pressed='true'] span { font-weight: 500; }
+  .steps { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cell small { display: block; color: var(--ink-soft); font-size: .78rem; margin-bottom: 2px; white-space: nowrap; }
+
+  /* A tile is the window of the game at its real size, scaled as a whole: every effect looks the same as in the game. */
+  .tile { width: calc(360px * var(--zoom)); height: calc(360px * var(--zoom)); overflow: hidden; background: var(--paper-2); }
+  .look .tile { width: 100%; height: auto; aspect-ratio: 1; }
+  .window { position: relative; width: 360px; height: 360px; transform: scale(var(--zoom)); transform-origin: 0 0; overflow: hidden; }
+  /* The picture reaches 30 px beyond the window like on the stage of the game: a wave or a mist never tears its edge. */
+  .clip { position: absolute; inset: 0; overflow: hidden; }
+  .view { position: absolute; inset: -30px; overflow: hidden; }
+  .view canvas { position: absolute; left: 30px; top: 30px; width: 360px; height: 360px; image-rendering: pixelated; }
+  .view img { position: absolute; left: 30px; top: 30px; width: 360px; height: auto; max-width: none; transform-origin: 0 0; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" id="filters"></svg>
+<main>
+  <h1>Můj kvíz</h1>
+  <p class="note">Základ budoucího editoru: vyber obraz, ťukni na místo, které má hráč poznat, a zvol vzhled. Náhledy na výběr a odkaz pro sdílení přibudou později.</p>
+  <div class="controls">
+    <label>Obraz <select id="work"></select></label>
+    <button id="previous" type="button">←</button><button id="next" type="button">→</button>
+    <label>Obtížnost <select id="level"></select></label>
+    <label>Výřez <input id="size" type="range" min="6" max="30" step="1" /><output id="size-label"></output></label>
+    <button id="pick" type="button">Vybrat místo za mě</button>
+  </div>
+  <div class="editor">
+    <div class="picture" id="picture"><img id="whole" alt="" /><div class="mark" id="mark"></div></div>
+    <div>
+      <h2>Vzhled</h2>
+      <p class="note" id="look-note"></p>
+      <div class="looks" id="looks"></div>
+    </div>
+  </div>
+  <h2>Co uvidí hráč</h2>
+  <p class="note">Každý pokus je slabší: čím dřív hráč uhodne, tím víc kapek. V posledním pokusu už nic nezakrývá výřez.</p>
+  <div class="steps" id="steps"></div>
+</main>
+<script>
+const DATA = /*DATA*/{};
+/*FUNCTIONS*/
+
+const STORE = 'pavla.prototype.detailQuiz';
+const { works, public: PUBLIC, config: CONFIG, game: GAME } = DATA;
+const LEVELS = gameLevels();
+const LOOKS = gameLooks();
+const byId = new Map(works.map((w) => [w.id, w]));
+const ids = works.map((w) => w.id).sort((a, b) => byId.get(a).title.localeCompare(byId.get(b).title, 'cs'));
+document.getElementById('palettes').textContent = CONFIG.paletteCss;
+const $ = (id) => document.getElementById(id);
+const escapeHtml = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE)) ?? {}; } catch { return {}; }
+}
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { /* the page goes on without memory */ }
+}
+const state = { work: ids[0] ?? '', level: LEVELS[0].id, size: LEVELS[0].size, x: 0.5, y: 0.5, look: LEVELS[0].looks[0], pick: 0, auto: false, ...load() };
+if (!byId.has(state.work)) state.work = ids[0] ?? '';
+const levelNow = () => LEVELS.find((l) => l.id === state.level) ?? LEVELS[0];
+const lookNow = () => LOOKS.find((l) => l.id === state.look);
+/** A place picked by the game keeps away from the edges in every view like in the game, one picked by hand only stays inside. */
+const safeNow = () => (state.auto ? undefined : { margin: 0, bottom: 0 });
+/** The close-up as the game shows it at the first guess. */
+const cropNow = (work) => gameFrame({ x: state.x, y: state.y, size: state.size }, 0, levelNow().guesses - 1, work.ratio, levelNow().lastView, safeNow());
+const pictureWidth = (work) => [...work.widths].sort((a, b) => a - b).find((w) => w >= 800) ?? Math.max(...work.widths);
+
+/** The SVG filter of a wave scale, one for each scale in use. */
+function waveFilter(scale) {
+  const id = `wave-${scale}`;
+  if (!document.getElementById(id)) {
+    $('filters').insertAdjacentHTML('beforeend', `<filter id="${id}" x="0" y="0" width="100%" height="100%"><feTurbulence type="turbulence" baseFrequency="0.012 0.02" numOctaves="2" seed="4" /><feDisplacementMap in="SourceGraphic" scale="${scale}" xChannelSelector="R" yChannelSelector="G" /></filter>`);
+  }
+  return `#${id}`;
+}
+
+/** A window of the game on `frame` under a look of a strength, scaled to `zoom`. */
+function tile(work, frame, look, strength, zoom) {
+  const style = effectStyle(look.effect, look.colour, strength);
+  const src = `${PUBLIC}/${work.folder}/${Math.max(...work.widths)}.jpg`;
+  return windowHtml({ src, ratio: work.ratio, frame, style, zoom, waveId: style.wave ? waveFilter(style.wave).slice(1) : '' });
+}
+
+/** Draws the mosaics of the windows of `root` as soon as their picture is there. */
+function drawMosaics(root) {
+  for (const canvas of root.querySelectorAll('canvas')) {
+    const img = canvas.previousElementSibling;
+    const draw = () => drawPixels(canvas, img, JSON.parse(canvas.dataset.frame), Number(canvas.dataset.blocks));
+    if (img.complete) draw();
+    else img.addEventListener('load', draw, { once: true });
+  }
+}
+
+/** The square of the close-up over the whole work, in shares of the picture. */
+function showMark(work, crop) {
+  const width = crop.size * Math.min(1, work.ratio) * 100;
+  const height = width / work.ratio;
+  Object.assign($('mark').style, { left: `${crop.x * 100 - width / 2}%`, top: `${crop.y * 100 - height / 2}%`, width: `${width}%`, height: `${height}%` });
+}
+
+/** The looks of the level as cards; their window grows with the card, so the zoom follows its width. */
+function renderLooks(work, crop, level) {
+  const own = LOOKS.filter((l) => l.level === level.id);
+  $('look-note').textContent = `Pro obtížnost ${level.label}: ${own.length} vzhledů. Náhled ukazuje první pokus, kdy je vzhled nejsilnější.`;
+  $('looks').innerHTML = own.map((look) => `<button class="look" type="button" data-look="${look.id}" aria-pressed="${look.id === state.look}">${tile(work, crop, look, 1, 1)}<span>${escapeHtml(look.label)}</span></button>`).join('');
+  for (const card of $('looks').querySelectorAll('.tile')) card.style.setProperty('--zoom', card.clientWidth / 360);
+  drawMosaics($('looks'));
+}
+
+function renderSteps(work, crop, level) {
+  $('steps').innerHTML = Array.from({ length: level.guesses }, (_, misses) => {
+    const frame = gameFrame(crop, misses, level.guesses - 1, work.ratio, level.lastView, safeNow());
+    return `<div class="cell"><small>${misses + 1}. pokus · ${dropsFor(misses, 1, false, level.drops)} 💧</small>${tile(work, frame, lookNow(), effectStrength(misses, level.guesses), 0.6)}</div>`;
+  }).join('');
+  drawMosaics($('steps'));
+}
+
+function render() {
+  const level = levelNow();
+  if (lookNow()?.level !== level.id) state.look = level.looks[0];
+  save();
+  $('work').value = state.work;
+  $('level').value = level.id;
+  $('size').value = Math.round(state.size * 100);
+  $('size-label').textContent = `${Math.round(state.size * 100)} %`;
+  const work = byId.get(state.work);
+  if (!work) return;
+  const prepared = GAME.prepared[level.id]?.[work.id] ?? [];
+  $('pick').disabled = !prepared.length;
+  $('pick').title = prepared.length ? 'Místo, které by pro tuto obtížnost vybrala hra' : 'Pro tuto obtížnost hra v tomto obraze žádné místo nenašla';
+  const src = `${PUBLIC}/${work.folder}/${pictureWidth(work)}.jpg`;
+  if (!$('whole').src.endsWith(src)) $('whole').src = src;
+  $('whole').alt = work.title;
+  const crop = cropNow(work);
+  showMark(work, crop);
+  renderLooks(work, crop, level);
+  renderSteps(work, crop, level);
+}
+
+$('work').innerHTML = ids.map((id) => `<option value="${id}">${escapeHtml(byId.get(id).title)}</option>`).join('');
+$('level').innerHTML = LEVELS.map((l) => `<option value="${l.id}">${l.label}</option>`).join('');
+$('work').addEventListener('change', () => { state.work = $('work').value; state.pick = 0; state.auto = false; render(); });
+$('level').addEventListener('change', () => { state.level = $('level').value; state.size = levelNow().size; state.pick = 0; render(); });
+$('size').addEventListener('input', () => { state.size = Number($('size').value) / 100; render(); });
+$('picture').addEventListener('click', (event) => {
+  const box = $('whole').getBoundingClientRect();
+  state.x = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
+  state.y = Math.min(1, Math.max(0, (event.clientY - box.top) / box.height));
+  state.auto = false;
+  // a tap at the edge keeps the close-up inside the picture, where the mark shows it
+  Object.assign(state, (({ x, y }) => ({ x, y }))(cropNow(byId.get(state.work))));
+  render();
+});
+$('pick').addEventListener('click', () => {
+  const prepared = GAME.prepared[levelNow().id]?.[state.work] ?? [];
+  if (!prepared.length) return;
+  const { x, y, size } = prepared[state.pick % prepared.length].crop;
+  Object.assign(state, { x, y, size, pick: state.pick + 1, auto: true });
+  render();
+});
+$('looks').addEventListener('click', (event) => {
+  const card = event.target.closest('[data-look]');
+  if (!card) return;
+  state.look = card.dataset.look;
+  render();
+});
+function step(by) {
+  state.work = ids[(ids.indexOf(state.work) + by + ids.length) % ids.length];
+  state.pick = 0;
+  state.auto = false;
+  render();
+}
+$('previous').addEventListener('click', () => step(-1));
+$('next').addEventListener('click', () => step(1));
+addEventListener('resize', () => render());
+
+render();
+</script>
+</body>
+</html>

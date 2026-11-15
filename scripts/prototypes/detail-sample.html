@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="cs" data-palette="papir">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vzorek obrazů</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<style id="palettes"></style>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Work Sans', system-ui, sans-serif; font-size: .9rem; }
+  select { font: inherit; color: inherit; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+  h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; font-size: 1.5rem; margin: 0; }
+  header label { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+  main { padding: 8px 16px 60px; }
+  .note { color: var(--ink-soft); margin: 6px 0 14px; max-width: 70em; }
+  .work { display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .about { width: 150px; }
+  .about b { display: block; font-weight: 500; }
+  .about small { display: block; color: var(--ink-soft); margin-bottom: 6px; }
+  /* The whole work with the place of the close-up. */
+  .whole { position: relative; overflow: hidden; line-height: 0; }
+  .whole img { width: 100%; height: auto; display: block; }
+  .mark { position: absolute; border: 1px solid var(--paper); outline: 2px solid var(--ink); }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cell small { display: block; color: var(--ink-soft); font-size: .76rem; margin-bottom: 2px; white-space: nowrap; }
+  .none { color: var(--ink-soft); align-self: center; }
+  .about select { width: 100%; margin-top: 6px; font-size: .8rem; }
+  #picks { font-size: .8rem; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+  #picks button { font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; cursor: pointer; }
+
+  /* A tile is the window of the game at its real size, scaled as a whole: every effect looks the same as in the game. */
+  .tile { width: calc(360px * var(--zoom)); height: calc(360px * var(--zoom)); overflow: hidden; background: var(--paper-2); }
+  .window { position: relative; width: 360px; height: 360px; transform: scale(var(--zoom)); transform-origin: 0 0; overflow: hidden; }
+  /* The picture reaches 30 px beyond the window like on the stage of the game: a wave or a mist never tears its edge. */
+  .clip { position: absolute; inset: 0; overflow: hidden; }
+  .view { position: absolute; inset: -30px; overflow: hidden; }
+  .view canvas { position: absolute; left: 30px; top: 30px; width: 360px; height: 360px; image-rendering: pixelated; }
+  .view img { position: absolute; left: 30px; top: 30px; width: 360px; height: auto; max-width: none; transform-origin: 0 0; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" id="filters"></svg>
+<header>
+  <h1>Vzorek obrazů</h1>
+  <label>Úroveň <select id="level"></select></label>
+  <label>Vzhled <select id="look"></select></label>
+  <label>Náhled <select id="zoom"><option value="0.3">malý</option><option value="0.42">střední</option><option value="0.6">velký</option></select></label>
+</header>
+<main>
+  <p class="note" id="note"></p>
+  <p id="picks"></p>
+  <div id="works"></div>
+</main>
+<script>
+const DATA = /*DATA*/{};
+/*FUNCTIONS*/
+
+const STORE = 'pavla.prototype.detailSample';
+const ALL = 'all';
+const { works, public: PUBLIC, config: CONFIG, game: GAME } = DATA;
+const LEVELS = gameLevels();
+const LOOKS = gameLooks();
+const byId = new Map(works.map((w) => [w.id, w]));
+document.getElementById('palettes').textContent = CONFIG.paletteCss;
+const $ = (id) => document.getElementById(id);
+const escapeHtml = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE)) ?? {}; } catch { return {}; }
+}
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { /* the page goes on without memory */ }
+}
+const state = { level: LEVELS[1]?.id ?? LEVELS[0].id, look: ALL, zoom: '0.42', swaps: {}, ...load() };
+/** The sample with the works swapped by hand (automatic id → picked id). */
+const sampleNow = () => (GAME.sample ?? []).map((id) => state.swaps[id] ?? id).filter((id) => byId.has(id));
+/** What may replace a work of the sample: the answers of every level, by title. */
+const answerSets = Object.values(GAME.prepared ?? {}).map((answers) => Object.keys(answers));
+const eligible = (answerSets[0] ?? []).filter((id) => answerSets.every((ids) => ids.includes(id)) && byId.has(id))
+  .sort((a, b) => byId.get(a).title.localeCompare(byId.get(b).title, 'cs'));
+const levelNow = () => LEVELS.find((l) => l.id === state.level) ?? LEVELS[0];
+
+/** The SVG filter of a wave scale, one for each scale in use. */
+function waveFilter(scale) {
+  const id = `wave-${scale}`;
+  if (!document.getElementById(id)) {
+    $('filters').insertAdjacentHTML('beforeend', `<filter id="${id}" x="0" y="0" width="100%" height="100%"><feTurbulence type="turbulence" baseFrequency="0.012 0.02" numOctaves="2" seed="4" /><feDisplacementMap in="SourceGraphic" scale="${scale}" xChannelSelector="R" yChannelSelector="G" /></filter>`);
+  }
+  return id;
+}
+
+/** A window of the game on `frame` under a look of a strength. */
+function tile(work, frame, look, strength) {
+  const style = effectStyle(look.effect, look.colour, strength);
+  return windowHtml({ src: `${PUBLIC}/${work.folder}/${Math.max(...work.widths)}.jpg`, ratio: work.ratio, frame, style, zoom: state.zoom, waveId: style.wave ? waveFilter(style.wave) : '' });
+}
+
+/** Draws the mosaics of the windows of `root` as soon as their picture is there. */
+function drawMosaics(root) {
+  for (const canvas of root.querySelectorAll('canvas')) {
+    const img = canvas.previousElementSibling;
+    const draw = () => drawPixels(canvas, img, JSON.parse(canvas.dataset.frame), Number(canvas.dataset.blocks));
+    if (img.complete) draw();
+    else img.addEventListener('load', draw, { once: true });
+  }
+}
+
+/** The work, small, with the square of its close-up. */
+function about(work, frame, slot) {
+  const mark = frame ? (() => {
+    const width = frame.size * Math.min(1, work.ratio) * 100;
+    const height = width / work.ratio;
+    return `<div class="mark" style="left:${frame.x * 100 - width / 2}%;top:${frame.y * 100 - height / 2}%;width:${width}%;height:${height}%"></div>`;
+  })() : '';
+  const taken = sampleNow();
+  const options = eligible.filter((id) => id === work.id || !taken.includes(id))
+    .map((id) => `<option value="${id}"${id === work.id ? ' selected' : ''}>${escapeHtml(byId.get(id).title)}</option>`).join('');
+  return `<div class="about"><b>${escapeHtml(work.title)}</b><small>${escapeHtml(work.technique ?? '')}</small><div class="whole"><img src="${PUBLIC}/${work.folder}/${Math.min(...work.widths)}.jpg" alt="" />${mark}</div><label><select data-slot="${slot}" aria-label="Vyměnit obraz">${options}</select></label></div>`;
+}
+
+function render() {
+  const level = levelNow();
+  const own = LOOKS.filter((l) => l.level === level.id);
+  if (state.look !== ALL && !own.some((l) => l.id === state.look)) state.look = ALL;
+  save();
+  $('level').value = level.id;
+  $('look').innerHTML = `<option value="${ALL}">všech pět, první pokus</option>${own.map((l) => `<option value="${l.id}">${escapeHtml(l.label)}, všechny pokusy</option>`).join('')}`;
+  $('look').value = state.look;
+  $('zoom').value = state.zoom;
+  const sample = sampleNow().map((id) => byId.get(id));
+  const swapped = Object.keys(state.swaps).length;
+  $('picks').innerHTML = `<span>Vzorek: ${sampleNow().join(', ')}</span>${swapped ? `<span>(ručně vyměněno: ${swapped})</span><button type="button" id="reset">Obnovit automatický výběr</button>` : ''}`;
+  $('note').textContent = `${sample.length} obrazů vybraných tak, aby se co nejvíc lišily barvami, množstvím kresby a technikou. Výřez je ten, který by hra v úrovni ${level.label} vybrala, a žádný pohled nesahá na okraj papíru ani k podpisu. Vzhled musí fungovat na všech.`;
+  $('works').innerHTML = sample.map((work) => {
+    const crop = GAME.prepared[level.id]?.[work.id]?.[0]?.crop;
+    const slot = (GAME.sample ?? []).find((id) => (state.swaps[id] ?? id) === work.id);
+    if (!crop) return `<div class="work">${about(work, null, slot)}<p class="none">V úrovni ${level.label} hra v tomto obraze žádné místo nenašla, takže ho tam nikdy nedá.</p></div>`;
+    const first = gameFrame(crop, 0, level.guesses - 1, work.ratio, level.lastView);
+    const cells = state.look === ALL
+      ? own.map((look) => `<div class="cell"><small>${escapeHtml(look.label)}</small>${tile(work, first, look, 1)}</div>`)
+      : Array.from({ length: level.guesses }, (_, misses) => {
+        const frame = gameFrame(crop, misses, level.guesses - 1, work.ratio, level.lastView);
+        const look = LOOKS.find((l) => l.id === state.look);
+        return `<div class="cell"><small>${misses + 1}. pokus · ${dropsFor(misses, 1, false, level.drops)} 💧</small>${tile(work, frame, look, effectStrength(misses, level.guesses))}</div>`;
+      });
+    return `<div class="work">${about(work, first, slot)}<div class="row">${cells.join('')}</div></div>`;
+  }).join('') || '<p class="none">Vzorek je prázdný: hra zatím nemá žádné odpovědi.</p>';
+  drawMosaics($('works'));
+}
+
+$('level').innerHTML = LEVELS.map((l) => `<option value="${l.id}">${l.label}</option>`).join('');
+$('level').addEventListener('change', () => { state.level = $('level').value; render(); });
+$('look').addEventListener('change', () => { state.look = $('look').value; render(); });
+$('zoom').addEventListener('change', () => { state.zoom = $('zoom').value; render(); });
+$('works').addEventListener('change', (event) => {
+  const slot = event.target.dataset.slot;
+  if (!slot) return;
+  const swaps = { ...state.swaps, [slot]: event.target.value };
+  if (swaps[slot] === slot) delete swaps[slot];
+  state.swaps = swaps;
+  render();
+});
+$('picks').addEventListener('click', (event) => {
+  if (event.target.id !== 'reset') return;
+  state.swaps = {};
+  render();
+});
+
+render();
+</script>
+</body>
+</html>

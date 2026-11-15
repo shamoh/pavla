@@ -57,7 +57,20 @@ export const EVENTS = {
   image: 'image_view', // a picture shown in the viewer of a work: work_id, work_title, image, image_kind, method
   cinema: 'cinema_open', // the cinema of a listing opened: listing (gallery, year, collection), results, interval, method (button, link)
   cinemaClose: 'cinema_close', // the cinema closed: listing, reason (CINEMA_CLOSE_REASONS), seconds, shown (works shown)
+  gameStart: 'game_start', // the first guess of a round of Detail dne: level, day, archive, look (gameEventParams)
+  gameEnd: 'game_end', // a round of Detail dne over: level, day, archive, look, solved, misses, drops, streak, work_id, work_title
 };
+
+/**
+ * Parameters of game_start and game_end (and of `share` from the game, with `source: game`): the level, the number of the day as the
+ * page shows it (#1 = day 0), `archive` yes / no (a day before today), the look. game_end adds the outcome: `solved` yes / no,
+ * `misses`, `drops` won, `streak` after it and the work.
+ */
+export function gameEventParams({ level, day, today, look }, end = null) {
+  const params = { level, day: day + 1, archive: day === today ? 'no' : 'yes', look };
+  if (!end) return params;
+  return { ...params, solved: end.solved ? 'yes' : 'no', misses: end.misses, drops: end.drops, streak: end.streak, work_id: end.work.id, work_title: end.work.title };
+}
 
 /**
  * Links of the site that open a show and name themselves by `?from=` (CINEMA_FROM, scripts/lib/cinema.mjs): home = the

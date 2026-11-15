@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="cs" data-palette="papir">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Detail dne</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<style id="palettes"></style>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Work Sans', system-ui, sans-serif; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  a { color: var(--accent); }
+  main { max-width: 1040px; margin: 0 auto; padding: 16px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px; margin-bottom: 10px; }
+  h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; font-size: 1.9rem; margin: 0 auto 0 0; white-space: nowrap; }
+  /* Numbers of the same width, so the line keeps its length while the drops grow. */
+  .stats { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: .88rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .stats b { color: var(--ink); font-weight: 500; }
+  .stats span { white-space: nowrap; }
+  /* On a phone one line: the title, the drops and the series; the rank waits in the collection. */
+  @media (max-width: 799px) {
+    main { padding: 8px 16px; }
+    header { flex-wrap: nowrap; align-items: center; margin-bottom: 8px; }
+    h1 { font-size: 1.5rem; }
+    .stats { font-size: .8rem; flex-wrap: nowrap; }
+    .stats .rank { display: none; }
+    .levels { margin-bottom: 10px; }
+    .level { padding: 5px 6px; }
+  }
+  .game { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  /* Side by side on a big screen and on a phone on its side (TWO_COLUMNS). */
+  @media (min-width: 800px), (orientation: landscape) and (min-width: 560px) { .game { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; } }
+
+  /* The stage: a window on the work, moved by a transform so that zooming out is one smooth movement. Its size never changes
+     during a round: on a phone fitStage makes it as big as it can be with the status and all thumbnails still on the screen.
+     The picture reaches `--bleed` beyond the window, so a wave or a mist has something to take from and the edge never tears. */
+  .stage { --bleed: 32px; position: relative; width: 100%; margin: 0 auto; aspect-ratio: 1; overflow: hidden; background: var(--paper-2); border: 1px solid var(--line); touch-action: manipulation; }
+  .clip { position: absolute; inset: 0; overflow: hidden; }
+  .view { position: absolute; inset: calc(-1 * var(--bleed)); overflow: hidden; transition: filter .7s ease; }
+  .pixels { position: absolute; left: var(--bleed); top: var(--bleed); width: calc(100% - 2 * var(--bleed)); height: calc(100% - 2 * var(--bleed)); image-rendering: pixelated; }
+  .stage img { position: absolute; left: var(--bleed); top: var(--bleed); width: calc(100% - 2 * var(--bleed)); height: auto; transform-origin: 0 0; transition: transform .7s ease; max-width: none; }
+  .stage.reveal img { transition-duration: 1.8s; transition-timing-function: cubic-bezier(.2, .7, .2, 1); }
+  .drop { position: absolute; top: -24px; width: 14px; height: 18px; border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%; animation: fall var(--t) ease-in var(--d) forwards; opacity: 0; }
+  @keyframes fall { 0% { opacity: 0; transform: translateY(0); } 10% { opacity: .9; } 100% { opacity: 0; transform: translateY(var(--h)); } }
+  @media (prefers-reduced-motion: reduce) { .stage img, .stage.reveal img { transition: none; } .drop { display: none; } }
+
+  .levels { display: flex; gap: 6px; margin-bottom: 12px; }
+  .level { flex: 1; background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 7px 8px; font-size: .9rem; white-space: nowrap; }
+  .level small { color: var(--ink-soft); font-size: .78rem; }
+  .level[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .level[aria-pressed='true'] small { color: inherit; }
+  /* The status keeps its height in every state of the round (playing, a hint, the end), so the thumbnails never move. */
+  .status { margin-bottom: 10px; }
+  .status p { margin: 0; }
+  .ask { font-size: 1rem; font-weight: 500; line-height: 1.3; }
+  .tries { font-size: .84rem; line-height: 1.25; color: var(--ink-soft); min-height: 1.25em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hint { font-size: .86rem; line-height: 1.25; min-height: 2.5em; color: var(--ink-soft); }
+  .hint b { color: var(--ink); font-weight: 500; }
+  .hint.waiting { opacity: .65; }
+  .options { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 6px; }
+  /* Lower than square: most works are wider than high, and on a phone all thumbnails and the stage fit on the screen. */
+  .option { padding: 0; aspect-ratio: 4 / 3; background: var(--paper-2); border: 2px solid transparent; display: block; position: relative; transition: opacity .3s ease; }
+  .option img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .option:hover:not(:disabled), .option:focus-visible { border-color: var(--accent); outline: none; }
+  .option:disabled { cursor: default; }
+  .option.out img { opacity: .22; }
+  /* Why a thumbnail is out: over the picture, so nothing moves. */
+  .because { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 4px; background: var(--paper); color: var(--ink); border-top: 1px solid var(--line); font-size: .74rem; line-height: 1.2; text-align: center; animation: because .6s ease; }
+  @keyframes because { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .because { animation: none; } }
+  .option.right { border-color: var(--ok); opacity: 1; }
+  .option.wrong { border-color: var(--error); }
+
+  /* The card of the end comes under the thumbnails: nothing the player looks at moves. */
+  .result { margin-top: 14px; padding: 14px 16px; background: var(--paper-2); border: 1px solid var(--line); scroll-margin-bottom: 16px; }
+  .result h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; font-size: 1.35rem; margin: 0; }
+  .result .sub { font-size: .88rem; color: var(--ink-soft); margin: 2px 0 8px; }
+  .result .text { font-size: .94rem; margin: 0 0 12px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .action { border: 1px solid var(--ink); background: var(--ink); color: var(--paper); padding: 8px 14px; border-radius: 99px; font-size: .9rem; text-decoration: none; }
+  .action.quiet { background: transparent; color: var(--ink); }
+  .rankup { color: var(--accent); font-weight: 500; }
+
+  .shelf { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .shelf h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 400; font-size: 1.4rem; margin: 0 0 8px; }
+  .collected { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .collected img { height: 64px; width: auto; display: block; background: var(--paper-2); }
+  .pigments { display: flex; flex-wrap: wrap; gap: 4px; }
+  .pigment { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); }
+  .empty { font-size: .9rem; color: var(--ink-soft); margin: 0 0 10px; }
+
+  #tuning { margin-top: 24px; border: 1px dashed var(--line); padding: 10px 14px; font-size: .86rem; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+  #tuning button { background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; font-size: .84rem; }
+  #tuning select, #tuning input { accent-color: var(--accent); font: inherit; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="game-wave" x="0" y="0" width="100%" height="100%"><feTurbulence type="turbulence" baseFrequency="0.012 0.02" numOctaves="2" seed="4" /><feDisplacementMap id="game-wave-map" in="SourceGraphic" scale="0" xChannelSelector="R" yChannelSelector="G" /></filter></svg>
+<main>
+  <header>
+    <h1>Detail dne <span id="number"></span></h1>
+    <div class="stats" id="stats"></div>
+  </header>
+  <div class="levels" id="levels"></div>
+  <div id="content"></div>
+  <section class="shelf">
+    <h2>Moje sbírka</h2>
+    <div id="collection"></div>
+  </section>
+  <section id="tuning" aria-label="Ladění prototypu">
+    <span>Ladění prototypu</span>
+    <span><button id="previous" type="button">← den</button> <output id="day-label"></output> <button id="next" type="button">den →</button></span>
+    <label>Vzhled <select id="look"></select></label>
+    <label>Paleta <select id="palette"></select></label>
+    <button id="reset" type="button">Smazat postup</button>
+    <span id="pool"></span>
+  </section>
+</main>
+<script>
+const DATA = /*DATA*/{};
+/*FUNCTIONS*/
+
+const STORE = 'pavla.prototype.detailGame.v4';
+const { works: allWorks, public: PUBLIC, config: CONFIG, game: GAME } = DATA;
+const LEVELS = gameLevels();
+const LOOKS = gameLooks();
+const byId = new Map(allWorks.map((w) => [w.id, w]));
+document.getElementById('palettes').textContent = CONFIG.paletteCss;
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE)) ?? {}; } catch { return {}; }
+}
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify(store)); } catch { /* the game goes on without memory */ }
+}
+const store = { progress: newProgress(), rounds: {}, level: LEVELS[0].id, look: 'auto', palette: 'papir', ...load() };
+document.documentElement.dataset.palette = store.palette;
+
+const localDate = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
+const today = gameDay(localDate(), GAME.epoch);
+let day = today;
+let puzzles = dailyPuzzles({ day, levels: LEVELS, prepared: GAME.prepared });
+let puzzle = null;
+let optionWorks = [];
+
+const levelOf = (id) => LEVELS.find((l) => l.id === id);
+const roundKey = (levelId) => `${day}:${levelId}`;
+const currentRound = () => store.rounds[roundKey(store.level)] ?? newRound();
+const missesOf = (round) => round.guesses.length - (round.solved ? 1 : 0);
+const imageUrl = (work, width) => `${PUBLIC}/${work.folder}/${width}.jpg`;
+const largest = (work) => Math.max(...work.widths);
+const smallest = (work) => Math.min(...work.widths);
+const escapeHtml = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+/** Puts the part of the work around `frame` into the window (in shares of the window, so it survives a resize). */
+function showFrame(img, work, frame) {
+  const stage = img.clientWidth;
+  const short = Math.min(1, work.ratio);
+  const scale = 1 / (frame.size * short);
+  const x = stage / 2 - frame.x * stage * scale;
+  const y = stage / 2 - frame.y * work.ratio * stage * scale;
+  img.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+}
+
+/** The whole work in the window. */
+function showWhole(img, work) {
+  const stage = img.clientWidth;
+  const scale = 1 / Math.max(1, work.ratio);
+  const x = (stage - stage * scale) / 2;
+  const y = (stage - stage * work.ratio * scale) / 2;
+  img.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+}
+
+/** The look of the close-up: the choice of the tuning, or the one of the day. */
+const lookNow = () => LOOKS.find((l) => l.id === (store.look === 'auto' ? puzzle.look : store.look));
+
+/** What covers the close-up now: the choice of the tuning, or the one of the day. */
+function showCover(round) {
+  const view = document.querySelector('.view');
+  if (!view || !puzzle) return;
+  const level = levelOf(store.level);
+  const { effect, colour } = lookNow();
+  const look = effectStyle(effect, colour, effectStrength(round.guesses.length, level.guesses, round.over));
+  // the raster on the window itself (its dots are a share of it), the filter on the picture reaching beyond it
+  const clip = view.parentElement;
+  view.style.filter = look.filter;
+  clip.style.mask = look.mask;
+  clip.style.webkitMask = look.mask;
+  const canvas = view.querySelector('.pixels');
+  const img = view.querySelector('img');
+  canvas.hidden = !look.pixels;
+  if (look.pixels) {
+    const work = byId.get(puzzle.targetId);
+    const frame = gameFrame(puzzle.crop, round.guesses.length, level.guesses - 1, work.ratio, level.lastView);
+    if (img.complete) drawPixels(canvas, img, frame, look.pixels);
+    else img.addEventListener('load', () => drawPixels(canvas, img, frame, look.pixels), { once: true });
+  }
+  document.getElementById('game-wave-map').setAttribute('scale', look.wave);
+}
+
+/**
+ * The stage and the thumbnails always fit on the screen under the top of the page, as on the site (src/lib/detail-game.ts), measured
+ * once for each level and width (the toolbar of a mobile browser comes and goes while playing, and nothing may change with it):
+ * - one column (a phone upright): the stage as big as it can be with the status and all thumbnails under it (MIN_STAGE only on an absurdly small screen);
+ * - two columns (TWO_COLUMNS: a computer, a phone on its side): the stage takes its half but no more than the height of the screen,
+ *   and the thumbnails get narrower until the status and all of them fit by the stage too.
+ */
+const TWO_COLUMNS = '(min-width: 800px), (orientation: landscape) and (min-width: 560px)';
+const SCREEN_GAP = 12;
+/** The smallest the stage gets: everything fits on the screen first, only on an absurdly small one it gives up. */
+const MIN_STAGE = 120;
+const fitted = new Map();
+function fitStage() {
+  const stage = document.querySelector('.stage');
+  if (!stage) return;
+  const options = document.querySelector('.options');
+  const status = document.querySelector('.status');
+  const wide = matchMedia(TWO_COLUMNS).matches;
+  const key = `${innerWidth}:${store.level}`;
+  if (!fitted.has(key)) {
+    stage.style.width = '';
+    options.style.maxWidth = '';
+    const full = stage.clientWidth;
+    const top = stage.getBoundingClientRect().top + scrollY;
+    if (wide) {
+      const free = innerHeight - top - SCREEN_GAP;
+      // three rows of 4 : 3 thumbnails, three in a row, gaps of 6 px: height = (width - 12) × 3 / 4 + 12
+      const forOptions = innerHeight - top - status.offsetHeight - 10 - SCREEN_GAP;
+      const widest = Math.round(((forOptions - 12) * 4) / 3 + 12);
+      fitted.set(key, { stage: Math.round(Math.max(MIN_STAGE, Math.min(full, free))), options: widest < options.clientWidth ? Math.max(160, widest) : null });
+    } else {
+      const below = status.offsetHeight + options.offsetHeight + 12 + 10 + SCREEN_GAP;
+      fitted.set(key, { stage: Math.round(Math.max(MIN_STAGE, Math.min(full, innerHeight - top - below))), options: null });
+    }
+  }
+  const fit = fitted.get(key);
+  stage.style.width = `${fit.stage}px`;
+  options.style.maxWidth = fit.options ? `${fit.options}px` : '';
+}
+
+function placePicture(round) {
+  const img = document.querySelector('.stage img');
+  if (!img || !puzzle) return;
+  const work = byId.get(puzzle.targetId);
+  const level = levelOf(store.level);
+  if (round.over) showWhole(img, work);
+  else showFrame(img, work, gameFrame(puzzle.crop, round.guesses.length, level.guesses - 1, work.ratio, level.lastView));
+  showCover(round);
+}
+
+/** The drops of the win fall in the colours of the close-up. */
+function rain(colours) {
+  const stage = document.querySelector('.stage');
+  const height = stage.clientHeight + 40;
+  for (let i = 0; i < 36; i++) {
+    const drop = document.createElement('span');
+    drop.className = 'drop';
+    drop.style.left = `${Math.random() * 100}%`;
+    drop.style.background = colours[i % colours.length];
+    drop.style.setProperty('--t', `${1 + Math.random() * 1.2}s`);
+    drop.style.setProperty('--d', `${Math.random() * 0.9}s`);
+    drop.style.setProperty('--h', `${height}px`);
+    stage.append(drop);
+  }
+  setTimeout(() => stage.querySelectorAll('.drop').forEach((d) => d.remove()), 3500);
+}
+
+function renderStats() {
+  const { progress } = store;
+  const rank = gameRank(progress.drops);
+  const toNext = rank.next === null ? '' : ` · do další hodnosti ${rank.next - progress.drops} 💧`;
+  document.getElementById('stats').innerHTML = `<span>💧 <b>${progress.drops}</b> ${dropsWord(progress.drops)}</span><span>Série <b>${progress.streak}</b></span><span class="rank"><b>${rank.title}</b>${toNext}</span>`;
+}
+
+function renderLevels() {
+  document.getElementById('levels').innerHTML = LEVELS.map((level) => {
+    const played = store.progress.played[roundKey(level.id)];
+    const state = played ? (played.solved ? '✓' : '✗') : `×${level.drops} 💧`;
+    return `<button class="level" type="button" data-level="${level.id}" aria-pressed="${level.id === store.level}">${level.label} <small>${state}</small></button>`;
+  }).join('');
+}
+
+function renderCollection() {
+  const { collected, pigments } = store.progress;
+  const works = collected.map((id) => byId.get(id)).filter(Boolean);
+  document.getElementById('collection').innerHTML = works.length
+    ? `<div class="collected">${works.map((w) => `<img src="${imageUrl(w, smallest(w))}" alt="${escapeHtml(w.title)}" title="${escapeHtml(w.title)}" />`).join('')}</div>
+       <div class="pigments" aria-label="Moje paleta">${pigments.map((hex) => `<span class="pigment" style="background:${hex}"></span>`).join('')}</div>`
+    : '<p class="empty">Každý uhádnutý obraz sem přibude i s barvami z výřezu.</p>';
+}
+
+/**
+ * The status over the thumbnails, always the same lines: the question (the verdict at the end), the look with the guesses and drops
+ * left (what was won), and in a level with hints the last hint (a line waiting for it before the first miss, the title at the end).
+ */
+function statusHtml(round, level, outcome) {
+  const played = store.progress.played[roundKey(store.level)];
+  const drops = outcome?.gained ?? played?.drops ?? 0;
+  const ask = round.over ? (round.solved ? winTitle(missesOf(round)) : 'Tenhle byl záludný') : 'Ze kterého obrazu je tento detail?';
+  const tries = round.over
+    ? (round.solved ? `+${drops} 💧 a obraz do tvé sbírky` : 'Zítra je tu nový detail.')
+    : `${escapeHtml(lookNow().label)} · pokus ${round.guesses.length + 1} z ${level.guesses} · za ${dropsFor(round.guesses.length, 1, day !== today, level.drops)} 💧`;
+  const lastHint = round.hints[round.hints.length - 1];
+  const hint = !level.hints ? ''
+    : round.over ? `<p class="hint"><b>${escapeHtml(byId.get(puzzle.targetId).title)}</b></p>`
+      : lastHint ? `<p class="hint"><b>Nápověda:</b> ${escapeHtml(lastHint)}</p>`
+        : '<p class="hint waiting">Po omylu může přijít nápověda.</p>';
+  return `<div class="status" aria-live="polite"><p class="ask">${ask}</p><p class="tries">${tries}</p>${hint}</div>`;
+}
+
+function resultHtml(round, outcome) {
+  const work = byId.get(puzzle.targetId);
+  const rank = gameRank(store.progress.drops);
+  const heading = outcome?.rankUp ? `<p class="rankup">Nová hodnost: ${rank.title}!</p>` : '';
+  const text = work.text ? `<p class="text">${escapeHtml(work.text)}</p>` : '';
+  const collection = work.collection ? `<a class="action quiet" href="${GAME.site}/tvorba/kolekce/${work.collection}/">Kolekce ${escapeHtml(work.collectionTitle)}</a>` : '';
+  const nextLevel = LEVELS.find((l) => puzzles[l.id] && !store.progress.played[roundKey(l.id)]);
+  return `<div class="result">
+    ${heading}
+    <h3>${escapeHtml(work.title)}</h3>
+    <p class="sub">${escapeHtml(work.sub)}${work.year ? ` · ${work.year}` : ''}</p>
+    ${text}
+    <div class="actions">
+      ${nextLevel ? `<button class="action" type="button" data-level="${nextLevel.id}">Další úroveň: ${nextLevel.label} →</button>` : ''}
+      <a class="action${nextLevel ? ' quiet' : ''}" href="${GAME.site}/${work.folder}/">Prohlédnout obraz</a>
+      ${collection}
+      <button class="action quiet" id="share" type="button">Sdílet výsledek</button>
+    </div>
+  </div>`;
+}
+
+function render(outcome) {
+  const content = document.getElementById('content');
+  puzzle = puzzles[store.level];
+  document.getElementById('number').textContent = `#${day + 1}`;
+  document.getElementById('day-label').textContent = day === today ? 'dnes' : `#${day + 1}`;
+  document.getElementById('pool').textContent = `Odpovědí z ${allWorks.length} děl: ${LEVELS.map((l) => `${l.label} ${Object.keys(GAME.prepared[l.id] ?? {}).length}`).join(', ')}`;
+  renderStats();
+  renderLevels();
+  renderCollection();
+  if (!puzzle) {
+    content.innerHTML = '<p class="empty">Pro tuhle úroveň je zatím málo obrazů.</p>';
+    return;
+  }
+  optionWorks = puzzle.optionIds.map((id) => byId.get(id));
+  const round = currentRound();
+  const level = levelOf(store.level);
+  const work = byId.get(puzzle.targetId);
+  content.innerHTML = `<div class="game">
+    <div class="stage${round.over ? ' reveal' : ''}"><div class="clip"><div class="view"><img src="${imageUrl(work, largest(work))}" alt="${round.over ? escapeHtml(work.title) : 'Výřez z obrazu'}" /><canvas class="pixels" hidden></canvas></div></div></div>
+    <div class="side">
+      ${statusHtml(round, level, outcome)}
+      <div class="options">
+        ${optionWorks.map((w) => {
+          const classes = ['option'];
+          if (round.over && w.id === puzzle.targetId) classes.push('right');
+          else if (round.guesses.includes(w.id)) classes.push('wrong', 'out');
+          else if (round.ruledOut.includes(w.id) || round.over) classes.push('out');
+          const named = round.over ? escapeHtml(w.title) : round.reasons[w.id] ? `Vyřazeno: ${escapeHtml(round.reasons[w.id])}` : 'Obraz';
+          return `<button class="${classes.join(' ')}" type="button" data-id="${w.id}" aria-label="${named}" ${round.over || classes.includes('out') ? 'disabled' : ''}><img src="${imageUrl(w, smallest(w))}" alt="" loading="lazy" />${!round.over && round.reasons[w.id] ? `<span class="because">${escapeHtml(round.reasons[w.id])}</span>` : ''}</button>`;
+        }).join('')}
+      </div>
+      ${round.over ? resultHtml(round, outcome) : ''}
+    </div>
+  </div>`;
+  fitStage();
+  const img = content.querySelector('.stage img');
+  const view = content.querySelector('.view');
+  img.style.transition = 'none';
+  view.style.transition = 'none';
+  // a finished round opened again shows the whole work; only the moment of the end moves
+  if (outcome) {
+    showFrame(img, work, gameFrame(puzzle.crop, round.guesses.length - 1, level.guesses - 1, work.ratio, level.lastView));
+    showCover({ ...round, over: false, guesses: round.guesses.slice(0, -1) });
+  } else placePicture(round);
+  img.getBoundingClientRect();
+  img.style.transition = '';
+  view.style.transition = '';
+  if (outcome) {
+    requestAnimationFrame(() => placePicture(round));
+    if (round.solved) {
+      rain(puzzle.crop.colours);
+      navigator.vibrate?.([30, 40, 60]);
+    }
+    // the card of the end may be under the screen: there after the picture has come out, a scroll, not a jump
+    setTimeout(() => content.querySelector('.result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 1600);
+  }
+}
+
+function guess(id) {
+  const before = currentRound();
+  const level = levelOf(store.level);
+  const round = applyGuess(before, puzzle, optionWorks, id, level.guesses, level.hints);
+  if (round === before) return;
+  store.rounds[roundKey(store.level)] = round;
+  let outcome;
+  if (round.over) {
+    outcome = finishRound(store.progress, { day, today, level: level.id, multiplier: level.drops, solved: round.solved, misses: missesOf(round), workId: puzzle.targetId, pigments: puzzle.crop.colours });
+    store.progress = outcome.progress;
+  }
+  save();
+  if (outcome) {
+    render(outcome);
+  } else {
+    // a miss: the picture zooms out in place instead of a new page
+    const old = document.querySelector('.stage img');
+    const oldView = document.querySelector('.view');
+    const [transform, filter, mask] = [old.style.transform, oldView.style.filter, oldView.parentElement.style.mask];
+    render();
+    const fresh = document.querySelector('.stage img');
+    const view = document.querySelector('.view');
+    fresh.style.transition = 'none';
+    view.style.transition = 'none';
+    fresh.style.transform = transform;
+    view.style.filter = filter;
+    view.parentElement.style.mask = mask;
+    view.parentElement.style.webkitMask = mask;
+    fresh.getBoundingClientRect();
+    fresh.style.transition = '';
+    view.style.transition = '';
+    requestAnimationFrame(() => placePicture(round));
+  }
+}
+
+async function share() {
+  const round = currentRound();
+  const text = gameShareText({ day, level: levelOf(store.level).label, misses: missesOf(round), solved: round.solved, url: GAME.site });
+  const button = document.getElementById('share');
+  try {
+    if (navigator.share) await navigator.share({ text });
+    else {
+      await navigator.clipboard.writeText(text);
+      button.textContent = 'Zkopírováno';
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') button.textContent = 'Sdílení se nepovedlo';
+  }
+}
+
+function openLevel(id) {
+  store.level = id;
+  save();
+  render();
+}
+
+function openDay(next) {
+  day = next;
+  puzzles = dailyPuzzles({ day, levels: LEVELS, prepared: GAME.prepared });
+  render();
+}
+
+document.getElementById('levels').addEventListener('click', (event) => {
+  const level = event.target.closest('[data-level]');
+  if (level) openLevel(level.dataset.level);
+});
+document.getElementById('content').addEventListener('click', (event) => {
+  const option = event.target.closest('.option');
+  if (option && !option.disabled) guess(option.dataset.id);
+  const level = event.target.closest('[data-level]');
+  if (level) openLevel(level.dataset.level);
+  if (event.target.closest('#share')) share();
+});
+addEventListener('resize', () => {
+  fitStage();
+  placePicture(currentRound());
+});
+// a phone turned during a round: the game in its new layout from the top of the page again (the size is measured from there)
+matchMedia('(orientation: landscape)').addEventListener('change', () => requestAnimationFrame(() => {
+  fitStage();
+  placePicture(currentRound());
+  scrollTo(0, 0);
+}));
+
+// The tuning of the prototype
+const lookChoice = document.getElementById('look');
+const palette = document.getElementById('palette');
+lookChoice.innerHTML = `<option value="auto">podle dne</option>${LEVELS.map((level) => `<optgroup label="${level.label}">${LOOKS.filter((l) => l.level === level.id).map((l) => `<option value="${l.id}">${l.label}</option>`).join('')}</optgroup>`).join('')}`;
+lookChoice.value = LOOKS.some((l) => l.id === store.look) ? store.look : 'auto';
+palette.innerHTML = CONFIG.palettes.map((p) => `<option value="${p.id}">${p.label}</option>`).join('');
+palette.value = store.palette;
+lookChoice.addEventListener('change', () => { store.look = lookChoice.value; save(); render(); });
+palette.addEventListener('change', () => { store.palette = palette.value; document.documentElement.dataset.palette = palette.value; save(); });
+document.getElementById('previous').addEventListener('click', () => openDay(day - 1));
+document.getElementById('next').addEventListener('click', () => openDay(day + 1));
+document.getElementById('reset').addEventListener('click', () => { store.progress = newProgress(); store.rounds = {}; save(); render(); });
+
+render();
+</script>
+</body>
+</html>

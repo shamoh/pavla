@@ -19,6 +19,14 @@ import { VIEWER_TEXT_MAX, autoHide } from './work-viewer.mjs';
 import { ownText } from './rich-text.mjs';
 import { summarize } from './seo.mjs';
 import { PALETTES, paletteCss } from './palettes.mjs';
+import { SAMPLE_PICKS, SAMPLE_SIZE, prepareGame } from './detail-game-data.mjs';
+import {
+  GAME_EPOCH, applyGuess, chooseDecoys, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, finishRound, frameSource, gameDay, gameFrame, gameHash, gameHint, gameLevels, gameLooks, dropsWord, lookForDay, lookKey, windowHtml,
+  gameRandom, gameRank, gameShareText, gameShuffle, newProgress, newRound, puzzleForLevel, winTitle,
+} from './detail-game.mjs';
+
+
+export { SAMPLE_PICKS, SAMPLE_SIZE, prepareGame };
 
 /** The prototypes: published file name → template in scripts/prototypes/. */
 export const PROTOTYPES = {
@@ -26,6 +34,10 @@ export const PROTOTYPES = {
   'znacky-dlazdic.html': 'marks.html',
   'kamera-scen.html': 'scene-camera.html',
   'promitani.html': 'cinema.html',
+  'detail-dne.html': 'detail-game.html',
+  'detail-efekty.html': 'detail-effects.html',
+  'detail-kviz.html': 'detail-quiz.html',
+  'detail-vzorek.html': 'detail-sample.html',
 };
 
 /** The functions of the site a prototype calculates with, copied into it by their source text (self-contained ones). */
@@ -36,6 +48,9 @@ export const PROTOTYPE_FUNCTIONS = [
   unit, tiltDeg, facingDeg, insidePolygon, segmentDistance, polygonDistance, quadFits, workQuad, planPlacement, sceneWindow,
   // the cinema (autoHide always gets its `ms`: its default is a constant of its module)
   cinemaFromParams, cinemaToParams, captionMode, intervalLabel, shuffledOrder, wrapIndex, dragStep, fitBox, imageWidth, autoHide,
+  // the game "Detail dne"
+  gameLevels, gameLooks, lookForDay, windowHtml, dropsWord, gameHash, gameRandom, gameShuffle, gameDay, chooseDecoys, puzzleForLevel, dailyPuzzles, effectStrength, effectSettings, effectStyle, lookKey, frameSource, drawPixels, gameFrame, gameHint, newRound, applyGuess,
+  dropsFor, winTitle, gameRank, newProgress, finishRound, gameShareText,
 ];
 
 /**
@@ -163,9 +178,13 @@ export function prototypeScenes(scenes, outDir) {
   });
 }
 
+
 /** Writes every prototype into `outDir` from the templates in `templatesDir`; returns the written files. */
-export function writePrototypes({ dataRoot, outDir, templatesDir, config, scenes = [] }) {
-  const data = { works: prototypeWorks(dataRoot), public: publicPath(outDir, dataRoot), config: prototypeConfig(config), scenes: prototypeScenes(scenes, outDir) };
+export function writePrototypes({ dataRoot, outDir, templatesDir, config, scenes = [], game = { prepared: {}, sample: [] } }) {
+  const data = {
+    works: prototypeWorks(dataRoot), public: publicPath(outDir, dataRoot), config: prototypeConfig(config), scenes: prototypeScenes(scenes, outDir),
+    game: { prepared: game.prepared, sample: game.sample, epoch: GAME_EPOCH, site: config?.site?.url ?? '' },
+  };
   fs.mkdirSync(outDir, { recursive: true });
   return Object.entries(PROTOTYPES).map(([name, template]) => {
     const file = path.join(outDir, name);

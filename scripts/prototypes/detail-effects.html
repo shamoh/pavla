@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="cs" data-palette="papir">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Efekty výřezu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<style id="palettes"></style>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Work Sans', system-ui, sans-serif; font-size: .9rem; }
+  button, select { font: inherit; color: inherit; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+  h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; font-size: 1.5rem; margin: 0; }
+  header label { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+  header input[type='range'] { width: 90px; accent-color: var(--accent); }
+  header output { color: var(--ink); min-width: 2.6em; }
+  header button { background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; cursor: pointer; }
+  header img { height: 44px; width: auto; display: block; background: var(--paper-2); }
+  #values, #looks { width: 100%; font-size: .8rem; color: var(--ink-soft); }
+  main { padding: 8px 16px 60px; }
+  h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 400; font-size: 1.5rem; margin: 22px 0 2px; }
+  .note { color: var(--ink-soft); margin: 0 0 12px; }
+  .blocks { display: flex; flex-wrap: wrap; gap: 18px 28px; }
+  .block h3 { font-weight: 500; font-size: .9rem; margin: 0 0 4px; }
+  .block h3 label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .block h3 input { accent-color: var(--accent); }
+  .block h3 small { font-weight: 400; color: var(--accent); }
+  .row { display: flex; gap: 6px; }
+  .cell small { display: block; color: var(--ink-soft); font-size: .76rem; margin-bottom: 2px; white-space: nowrap; }
+  .cell.mine small { color: var(--accent); font-weight: 500; }
+  /* A tile is the window of the game at its real size, scaled as a whole: every effect looks the same as in the game. */
+  .tile { width: calc(360px * var(--zoom)); height: calc(360px * var(--zoom)); overflow: hidden; background: var(--paper-2); }
+  .window { position: relative; width: 360px; height: 360px; transform: scale(var(--zoom)); transform-origin: 0 0; overflow: hidden; }
+  /* The picture reaches 30 px beyond the window like on the stage of the game: a wave or a mist never tears its edge. */
+  .clip { position: absolute; inset: 0; overflow: hidden; }
+  .view { position: absolute; inset: -30px; overflow: hidden; }
+  .view canvas { position: absolute; left: 30px; top: 30px; width: 360px; height: 360px; image-rendering: pixelated; }
+  .view img { position: absolute; left: 30px; top: 30px; width: 360px; height: auto; max-width: none; transform-origin: 0 0; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" id="filters"></svg>
+<header>
+  <h1>Efekty výřezu</h1>
+  <label>Úroveň <select id="level"></select></label>
+  <label>Obraz <select id="work"></select></label>
+  <button id="previous" type="button">←</button><button id="next" type="button">→</button>
+  <label>Výřez <select id="crop"></select></label>
+  <label>Náhled <select id="zoom"><option value="0.33">malý</option><option value="0.45">střední</option><option value="0.7">velký</option><option value="1">jako v telefonu</option></select></label>
+  <img id="whole" alt="" />
+  <span id="sliders"></span>
+  <button id="defaults" type="button">Výchozí hodnoty</button>
+  <div id="values"></div>
+  <div id="looks"></div>
+</header>
+<main>
+  <h2><select id="view"><option value="steps">Průběh hádání</option><option value="works">Na více obrazech</option></select></h2>
+  <p class="note" id="view-note"></p>
+  <div class="blocks" id="steps"></div>
+  <h2>Velikost výřezu</h2>
+  <p class="note">První pokus s plnou silou. Barevně zvýrazněná je velikost této úrovně.
+    <label>Barvy <select id="size-colour"></select></label></p>
+  <div class="blocks" id="sizes"></div>
+</main>
+<script>
+const DATA = /*DATA*/{};
+/*FUNCTIONS*/
+
+const STORE = 'pavla.prototype.detailEffects.v2';
+const { works, public: PUBLIC, config: CONFIG, game: GAME } = DATA;
+const LEVELS = gameLevels();
+const LOOKS = gameLooks();
+const EFFECTS = [[null, 'bez deformace'], ['mist', 'mlha'], ['raster', 'rastr'], ['pixel', 'mozaika'], ['wave', 'vlny']];
+const COLOURS = [[null, 'barvy beze změny'], ['gray', 'černobílé'], ['sepia', 'sépie'], ['hue', 'posunuté barvy']];
+const VIEW_NOTES = {
+  steps: 'Každý sloupec je jeden pokus: čím dřív uhodneš, tím víc kapek. V posledním pokusu už nic nezakrývá výřez. Zaškrtni kombinace, které se mají v této úrovni losovat.',
+  works: 'První pokus s plnou silou na šesti obrazech úrovně, šipky posouvají na další. Kombinace musí fungovat na všech, ne jen na jednom. Zaškrtni ty, které se mají v této úrovni losovat.',
+};
+const WORKS_SHOWN = 6;
+const SIZES = [0.06, 0.08, 0.11, 0.14, 0.16, 0.2, 0.24, 0.3];
+const SLIDERS = [
+  ['mist', 'Mlha', 0, 8, 0.5, 'px'],
+  ['rasterStep', 'Rastr, rozteč', 2, 14, 0.5, ' %'],
+  ['rasterDot', 'Rastr, tečka', 70, 135, 5, ' %'],
+  ['pixelStep', 'Mozaika, blok', 1, 12, 0.5, ' %'],
+  ['wave', 'Vlny', 0, 40, 1, ''],
+  ['hue', 'Posun barev', 0, 180, 10, '°'],
+];
+const byId = new Map(works.map((w) => [w.id, w]));
+document.getElementById('palettes').textContent = CONFIG.paletteCss;
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE)) ?? {}; } catch { return {}; }
+}
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { /* the page goes on without memory */ }
+}
+const saved = load();
+const defaultLooks = () => Object.fromEntries(LEVELS.map((l) => [l.id, LOOKS.filter((look) => l.looks.includes(look.id)).map((look) => lookKey([look.effect, look.colour]))]));
+const state = { level: 'stredni', work: '', crop: 0, zoom: '0.45', sizeColour: '', view: 'steps', ...saved, settings: { ...effectSettings(), ...saved.settings }, looks: { ...defaultLooks(), ...saved.looks } };
+const $ = (id) => document.getElementById(id);
+const levelNow = () => LEVELS.find((l) => l.id === state.level);
+const answersNow = () => GAME.prepared[state.level] ?? {};
+const escapeHtml = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+/** The SVG filter of a wave scale, one for each scale in use. */
+function waveFilter(scale) {
+  const id = `wave-${scale}`;
+  if (!document.getElementById(id)) {
+    $('filters').insertAdjacentHTML('beforeend', `<filter id="${id}" x="0" y="0" width="100%" height="100%"><feTurbulence type="turbulence" baseFrequency="0.012 0.02" numOctaves="2" seed="4" /><feDisplacementMap in="SourceGraphic" scale="${scale}" xChannelSelector="R" yChannelSelector="G" /></filter>`);
+  }
+  return `#${id}`;
+}
+
+/** A window of the game on `frame` under an effect and colours of a strength. */
+function tile(work, frame, effect, colour, strength) {
+  const style = effectStyle(effect, colour, strength, state.settings);
+  const src = `${PUBLIC}/${work.folder}/${Math.max(...work.widths)}.jpg`;
+  return windowHtml({ src, ratio: work.ratio, frame, style, zoom: state.zoom, waveId: style.wave ? waveFilter(style.wave).slice(1) : '' });
+}
+
+/** Draws the mosaics of the windows of `root` as soon as their picture is there. */
+function drawMosaics(root) {
+  for (const canvas of root.querySelectorAll('canvas')) {
+    const img = canvas.previousElementSibling;
+    const draw = () => drawPixels(canvas, img, JSON.parse(canvas.dataset.frame), Number(canvas.dataset.blocks));
+    if (img.complete) draw();
+    else img.addEventListener('load', draw, { once: true });
+  }
+}
+
+/** The heading of a pair, its box says whether the day may draw it in this level. */
+function lookHeading(level, effect, effectLabel, colour, colourLabel) {
+  const key = lookKey([effect, colour]);
+  const named = LOOKS.find((look) => lookKey([look.effect, look.colour]) === key);
+  const name = named ? ` <small>· ${named.label} (${LEVELS.find((l) => l.id === named.level).label})</small>` : '';
+  return `<h3><label><input type="checkbox" data-look="${key}"${state.looks[level.id].includes(key) ? ' checked' : ''} /> ${effectLabel}, ${colourLabel}${name}</label></h3>`;
+}
+
+function renderSteps(work, crop, level) {
+  const blocks = [];
+  for (const [effect, effectLabel] of EFFECTS) {
+    for (const [colour, colourLabel] of COLOURS) {
+      const cells = Array.from({ length: level.guesses }, (_, misses) => {
+        const frame = gameFrame(crop, misses, level.guesses - 1, work.ratio, level.lastView);
+        const strength = effectStrength(misses, level.guesses);
+        return `<div class="cell"><small>${misses + 1}. pokus · ${dropsFor(misses, 1, false, level.drops)} 💧 · síla ${Math.round(strength * 100)} %</small>${tile(work, frame, effect, colour, strength)}</div>`;
+      }).join('');
+      blocks.push(`<div class="block">${lookHeading(level, effect, effectLabel, colour, colourLabel)}<div class="row">${cells}</div></div>`);
+    }
+  }
+  $('steps').innerHTML = blocks.join('');
+  drawMosaics($('steps'));
+}
+
+/** Every pair at the first guess on the works next to the chosen one: what suits one picture may ruin another. */
+function renderWorks(ids, level) {
+  const start = ids.indexOf(state.work);
+  const shown = Array.from({ length: Math.min(WORKS_SHOWN, ids.length) }, (_, i) => ids[(start + i) % ids.length]);
+  const blocks = [];
+  for (const [effect, effectLabel] of EFFECTS) {
+    for (const [colour, colourLabel] of COLOURS) {
+      const cells = shown.map((id) => {
+        const work = byId.get(id);
+        const frame = gameFrame(GAME.prepared[level.id][id][0].crop, 0, level.guesses - 1, work.ratio, level.lastView);
+        return `<div class="cell">${tile(work, frame, effect, colour, 1)}</div>`;
+      }).join('');
+      blocks.push(`<div class="block">${lookHeading(level, effect, effectLabel, colour, colourLabel)}<div class="row">${cells}</div></div>`);
+    }
+  }
+  $('steps').innerHTML = blocks.join('');
+  drawMosaics($('steps'));
+}
+
+function renderSizes(work, crop, level) {
+  $('sizes').innerHTML = EFFECTS.map(([effect, label]) => {
+    const cells = SIZES.map((size) => {
+      const frame = gameFrame({ ...crop, size }, 0, level.guesses - 1, work.ratio, Math.max(size, level.lastView));
+      return `<div class="cell${size === level.size ? ' mine' : ''}"><small>${Math.round(size * 100)} %</small>${tile(work, frame, effect, state.sizeColour || null, 1)}</div>`;
+    }).join('');
+    return `<div class="block"><h3>${label}</h3><div class="row">${cells}</div></div>`;
+  }).join('');
+  drawMosaics($('sizes'));
+}
+
+function render() {
+  const answers = answersNow();
+  const ids = Object.keys(answers).sort((a, b) => byId.get(a).title.localeCompare(byId.get(b).title, 'cs'));
+  if (!ids.includes(state.work)) state.work = ids[0] ?? '';
+  $('level').value = state.level;
+  $('work').innerHTML = ids.map((id) => `<option value="${id}">${escapeHtml(byId.get(id).title)}</option>`).join('');
+  $('work').value = state.work;
+  document.documentElement.style.setProperty('--zoom', state.zoom);
+  $('zoom').value = state.zoom;
+  $('values').textContent = `Hodnoty: ${Object.entries(state.settings).map(([k, v]) => `${k}: ${v}`).join(', ')}`;
+  $('looks').textContent = `Kombinace: ${LEVELS.map((l) => `${l.id}: ${state.looks[l.id].join(', ') || '(žádná)'}`).join('; ')}`;
+  $('view').value = state.view;
+  $('view-note').textContent = VIEW_NOTES[state.view];
+  save();
+  if (!state.work) {
+    $('steps').innerHTML = '<p class="note">V téhle úrovni zatím není žádný obraz.</p>';
+    $('sizes').innerHTML = '';
+    return;
+  }
+  const work = byId.get(state.work);
+  const choices = answers[state.work];
+  if (state.crop >= choices.length) state.crop = 0;
+  $('crop').innerHTML = choices.map((_, i) => `<option value="${i}">${i + 1}. z ${choices.length}</option>`).join('');
+  $('crop').value = String(state.crop);
+  $('whole').src = `${PUBLIC}/${work.folder}/${Math.min(...work.widths)}.jpg`;
+  const level = levelNow();
+  const crop = choices[state.crop].crop;
+  if (state.view === 'works') renderWorks(ids, level);
+  else renderSteps(work, crop, level);
+  renderSizes(work, crop, level);
+}
+
+$('level').innerHTML = LEVELS.map((l) => `<option value="${l.id}">${l.label}</option>`).join('');
+$('size-colour').innerHTML = COLOURS.map(([value, label]) => `<option value="${value ?? ''}">${label}</option>`).join('');
+$('size-colour').value = state.sizeColour;
+$('sliders').style.display = 'contents';
+$('sliders').innerHTML = SLIDERS.map(([key, label, min, max, step]) => `<label>${label} <input type="range" data-key="${key}" min="${min}" max="${max}" step="${step}" value="${state.settings[key]}" /><output data-for="${key}"></output></label>`).join('');
+function showSliders() {
+  for (const [key, , , , , unit] of SLIDERS) {
+    document.querySelector(`[data-key="${key}"]`).value = state.settings[key];
+    document.querySelector(`[data-for="${key}"]`).textContent = `${state.settings[key]}${unit}`;
+  }
+}
+showSliders();
+$('sliders').addEventListener('input', (event) => {
+  const key = event.target.dataset.key;
+  if (!key) return;
+  state.settings = { ...state.settings, [key]: Number(event.target.value) };
+  showSliders();
+  render();
+});
+$('defaults').addEventListener('click', () => { state.settings = effectSettings(); showSliders(); render(); });
+$('view').addEventListener('change', () => { state.view = $('view').value; render(); });
+$('steps').addEventListener('change', (event) => {
+  const key = event.target.dataset.look;
+  if (!key) return;
+  // only the line and the memory change, so the page does not reload its pictures for a tick
+  const looks = state.looks[state.level].filter((k) => k !== key);
+  state.looks = { ...state.looks, [state.level]: event.target.checked ? [...looks, key] : looks };
+  $('looks').textContent = `Kombinace: ${LEVELS.map((l) => `${l.id}: ${state.looks[l.id].join(', ') || '(žádná)'}`).join('; ')}`;
+  save();
+});
+$('level').addEventListener('change', () => { state.level = $('level').value; state.crop = 0; render(); });
+$('work').addEventListener('change', () => { state.work = $('work').value; state.crop = 0; render(); });
+$('crop').addEventListener('change', () => { state.crop = Number($('crop').value); render(); });
+$('zoom').addEventListener('change', () => { state.zoom = $('zoom').value; render(); });
+$('size-colour').addEventListener('change', () => { state.sizeColour = $('size-colour').value; render(); });
+function step(by) {
+  const options = [...$('work').options].map((o) => o.value);
+  state.work = options[(options.indexOf(state.work) + by + options.length) % options.length];
+  state.crop = 0;
+  render();
+}
+$('previous').addEventListener('click', () => step(-1));
+$('next').addEventListener('click', () => step(1));
+
+render();
+</script>
+</body>
+</html>

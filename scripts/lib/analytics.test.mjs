@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {
-  CINEMA_CLOSE_REASONS, CINEMA_LINK_SOURCES, CINEMA_OPEN_METHODS, EVENTS, IMAGE_METHODS, cinemaCloseParams, cinemaLinkMethod, cinemaOpenParams, imageEventParams, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
+  CINEMA_CLOSE_REASONS, CINEMA_LINK_SOURCES, CINEMA_OPEN_METHODS, EVENTS, IMAGE_METHODS, cinemaCloseParams, cinemaLinkMethod, gameEventParams, cinemaOpenParams, imageEventParams, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
 } from './analytics.mjs';
 
 const analytics = { googleMeasurementId: 'G-HPZNHYZ2MQ' };
@@ -99,6 +99,16 @@ test('image_view: the work, the picture, its kind and how it got into the viewer
   assert.equal(imageEventParams(work, 'mockup-obyvak-vecer', 'link').image_kind, 'mockup');
   for (const m of IMAGE_METHODS) assert.equal(imageEventParams(work, 'obraz', m).method, m);
   assert.throws(() => imageEventParams(work, 'obraz', 'click'), /unknown method/);
+});
+
+test('game_start / game_end: the level, the day as the page counts it, archive, the look; the end with its outcome', () => {
+  assert.equal(EVENTS.gameStart, 'game_start');
+  assert.equal(EVENTS.gameEnd, 'game_end');
+  assert.deepEqual(gameEventParams({ level: 'lehka', day: 14, today: 14, look: 'mosaic' }), { level: 'lehka', day: 15, archive: 'no', look: 'mosaic' });
+  assert.equal(gameEventParams({ level: 'lehka', day: 3, today: 14, look: 'mosaic' }).archive, 'yes');
+  const end = gameEventParams({ level: 'tezka', day: 3, today: 14, look: 'dream' }, { solved: true, misses: 1, drops: 9, streak: 2, work: { id: 'g4psg', title: 'Orangutan' } });
+  assert.deepEqual(end, { level: 'tezka', day: 4, archive: 'yes', look: 'dream', solved: 'yes', misses: 1, drops: 9, streak: 2, work_id: 'g4psg', work_title: 'Orangutan' });
+  assert.equal(gameEventParams({ level: 'tezka', day: 3, today: 3, look: 'dream' }, { solved: false, misses: 3, drops: 0, streak: 1, work: { id: 'a', title: 'A' } }).solved, 'no');
 });
 
 test('README: every custom dimension to register in GA fits its form (description at most 150 characters)', async () => {

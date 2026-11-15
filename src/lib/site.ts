@@ -22,6 +22,8 @@ import { execSync } from 'node:child_process';
 const root = process.cwd();
 // Generated data (content/ and public/): this repo for the real site, .demo/site for the test data (npm run demo).
 const dataRoot = process.env.SITE_DATA_DIR ? path.resolve(root, process.env.SITE_DATA_DIR) : root;
+/** Where the site data lies (content/ and public/), for pages that read its files themselves (the game Detail dne). */
+export const siteDataRoot = dataRoot;
 
 export const config = YAML.parse(fs.readFileSync(path.join(root, 'site.config.yaml'), 'utf8'));
 export const site = config.site as {

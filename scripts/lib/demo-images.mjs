@@ -11,8 +11,12 @@ export function seeded(seed) {
   return () => (s = (s * 16807) % 2147483647) / 2147483647;
 }
 
-/** SVG of `count` soft blobs from `palette` on paper, fully determined by the seed. */
-export function blobSvg([w, h], palette, seed, count = 14) {
+/**
+ * SVG of `count` soft blobs from `palette` on paper and `strokes` crisp brush strokes over them, fully determined by the seed.
+ * The strokes stay inside the middle of the sheet (away from its edges, where the corners are found), so the game Detail dne
+ * has something to recognise in its close-ups (a smooth wash is no close-up).
+ */
+export function blobSvg([w, h], palette, seed, count = 14, strokes = 12) {
   const rnd = seeded(seed);
   const blobs = [];
   for (let i = 0; i < count; i++) {
@@ -21,7 +25,16 @@ export function blobSvg([w, h], palette, seed, count = 14) {
     const rot = rnd() * 60 - 30, op = 0.25 + rnd() * 0.35;
     blobs.push(`<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" transform="rotate(${rot.toFixed(2)} ${cx.toFixed(1)} ${cy.toFixed(1)})" fill="${c}" fill-opacity="${op.toFixed(3)}" filter="url(#b)"/>`);
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><filter id="b"><feGaussianBlur stdDeviation="${(w / 250).toFixed(2)}"/></filter></defs><rect width="100%" height="100%" fill="#f6f2ea"/>${blobs.join('')}</svg>`;
+  const lines = [];
+  for (let i = 0; i < strokes; i++) {
+    const c = palette[Math.floor(rnd() * palette.length)];
+    const x = w * (0.15 + rnd() * 0.7), y = h * (0.15 + rnd() * 0.6);
+    const dx = w * (rnd() * 0.24 - 0.12), dy = h * (rnd() * 0.24 - 0.12);
+    const bend = w * (rnd() * 0.1 - 0.05);
+    const width = w / (90 + rnd() * 120);
+    lines.push(`<path d="M${x.toFixed(1)} ${y.toFixed(1)} q${(dx / 2 + bend).toFixed(1)} ${(dy / 2 - bend).toFixed(1)} ${dx.toFixed(1)} ${dy.toFixed(1)}" stroke="${c}" stroke-width="${width.toFixed(1)}" stroke-linecap="round" fill="none" opacity="0.85"/>`);
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><filter id="b"><feGaussianBlur stdDeviation="${(w / 250).toFixed(2)}"/></filter></defs><rect width="100%" height="100%" fill="#f6f2ea"/>${blobs.join('')}${lines.join('')}</svg>`;
 }
 
 /** Colour of the wooden floor the test photos of works "lie" on (r.floor in the recipe). */

@@ -97,6 +97,8 @@ pavla/                                      (toto repo, veřejné)
 | `/kurzy/` | obecná textová stránka, jen když obsahové repo má `stranky/kurzy.yaml` |
 | `/sitemap.xml` | mapa webu: kanonická adresa každé stránky (bez krátkých odkazů a 404) |
 | `/pinterest.xml` | kanál RSS pro Pinterest: díla s `meta_pinterest: true` (viz *Pinterest*) |
+| `/detail-dne/` | hra Detail dne (zatím zkušebně: žádný odkaz na ni nevede, `noindex`, mimo mapu webu; viz *Hra Detail dne*) |
+| `/detail-dne/data.json` | data hry připravená při sestavení webu |
 
 **Stránka díla** (`src/pages/tvorba/[section]/[work].astro`): vlevo obraz a pod ním popis a štítky, vpravo název
 (hvězdička výběru autorky na pravém okraji v úrovni prvního řádku názvu, i u dlouhého zalomeného),
@@ -501,6 +503,60 @@ klíče `grid` = velké obrazy, `s` / `m` / `l` = dlaždice; chybějící = výc
 - Přepnutí zobrazení pošle do Google Analytics událost `view_change` (viz *Návštěvnost*).
 - Vyzkoušení: `npm run demo`, `/tvorba/2026/` (text z `demo-content/roky/2026.yaml`) a `/tvorba/2025/` (bez textu).
 
+### Hra Detail dne (`/detail-dne/`)
+
+Denní hádanka „ze kterého obrazu je tento detail?“ ve třech úrovních (Lehká, Střední, Těžká), pro všechny stejná, každý den nová
+(podle data od `GAME_EPOCH`). Pravidla a výpočty jsou v `scripts/lib/detail-game.mjs` (podrobně v *Prototypy*, `detail-dne.html`),
+stránka je `src/pages/detail-dne/index.astro`, hra v prohlížeči `src/lib/detail-game.ts`.
+
+- **Zkušební provoz:** na stránku nevede žádný odkaz, vyhledávače ji vynechají (`noindex`, ne v mapě webu, `check:images` ji proto
+  nehlásí), nemá panel „Napište mi“. Repo je veřejné: adresa je „bez odkazu“, ne tajná.
+- **Data při sestavení webu:** `/detail-dne/data.json` (`src/pages/detail-dne/data.json.ts`) rozebere nejmenší JPEG každého díla
+  (`prepareGame`, `scripts/lib/detail-game-data.mjs`, sharp) a uloží odpovědi všech úrovní s falešnými náhledy a jen ta díla, na která
+  něco odkazuje (`gameData`: název, technika · rozměr, rok, kolekce, zkrácený text, adresa, složka obrázků, šířky, poměr stran).
+  Build tím trvá asi o 12 s déle, soubor má kolem 200 kB (zabalený kolem 45 kB). Dnešní hádanky si stránka spočítá sama
+  (`dailyPuzzles`), takže hra jede dál i bez nového sestavení webu; nové dílo se do ní dostane s dalším sestavením.
+- **Obrázky:** výřez z největšího WebP díla, náhledy a sbírka z nejmenšího. Efekty kreslí prohlížeč (CSS filtr, maska, SVG vlny,
+  canvas mozaiky), nic se nevypaluje.
+- **Rozložení:** stejné jako prototyp (výřez, stavový blok a náhledy se během kola nehnou, karta výsledku pod náhledy, na telefonu
+  výřez tak velký, aby se vešly všechny náhledy, a stránka se po načtení posune na začátek hry). Každá úroveň má 9 náhledů ve 3 × 3
+  (`options` v `gameLevels`), takže je rozložení všude stejné. Vedle sebe (výřez vlevo, stav a náhledy vpravo) od šířky 800 px
+  i na telefonu na šířku (na ležato od 560 px; `TWO_COLUMNS`, stejný dotaz v CSS stránky): výřez nejvýš do výšky obrazovky a náhledy
+  se zúží, aby se stav i všechny vešly vedle něj; na nízké obrazovce (pod 700 px) se stránka po načtení posune na začátek hry
+  (`fitStage`). Otočení telefonu během kola: rozložení se přepočítá a stránka se znovu posune na začátek hry (kolo pokračuje).
+  Výřez nemá pevnou spodní mez: zmenší se, kolik je potřeba, aby se vše vešlo (`MIN_STAGE` 120 px jen pro nesmyslně malou
+  obrazovku), náhledy vedle výřezu nejméně 160 px. Telefon na šířku (`orientation: landscape` a výška do 500 px): nadpis s kapkami
+  a sérií a přepínač úrovní v jednom řádku, řádek archivu pod nimi. Řádek pokusů je vždy jednořádkový (na úzkém telefonu se konec
+  zkrátí „…“), aby stavový blok držel výšku. Prototyp `detail-dne.html` rozkládá stejně (vlastní kopie `fitStage`, `TWO_COLUMNS`,
+  `MIN_STAGE`, po otočení nahoru stránky), jen záhlaví na šířku má své (s laděním). Změřeno skriptem v Chromu, vše na obrazovce:
+  na výšku 320 × 568 výřez 160–194 px, 360 × 640 202–236 px, 390 × 664 203–237 px, 412 × 780 304–338 px (menší je Lehká, má řádek
+  nápovědy; den archivu o 32 px méně); na šířku 568 × 320 249 px, 667 × 375 295 px, 844 × 390 327 px, 932 × 430 367 px.
+- **Pokusy:** řádek pod otázkou začíná puntíkem za každý pokus (červený = omyl, zakroužkovaný = teď, zelený = uhádnuto, prázdný = zbývá),
+  pak tučně „Pokus 2 z 4“, kolik kapek dá a jméno vzhledu dne; na konci kola puntíky zůstanou a k nim výsledek.
+- **Konec kola:** verdikt ve stavovém bloku dostane barvu (zelená uhádnuto, červená ne; velikost stejná, nic se neposune) a celý
+  odhalený obraz ve výřezu je odkazem na stránku díla. Karta výsledku pod náhledy: nahoře velký verdikt v barvě a s pruhem
+  („✓ Trefa! +3 💧“ / „✗ Tentokrát ne, byl to tenhle obraz“), případně nová hodnost, pak název, technika · rozměr · rok a text díla
+  a jeden řádek tichých tlačítek „Obraz“, „Kolekce“ (celý název v bublině), „Sdílet“ (nikdy se nezalomí). Další úroveň ani den karta
+  nenabízí (úrovně jsou nad výřezem, archiv pod hrou); po posledním kole dne jen věta, že je den hotový a že starší dny jsou v archivu.
+- **Pořadí dnů:** žádný plán ani server. Den = počet dní od `GAME_EPOCH` podle data v telefonu hráče (`gameDay`); obrazy každé úrovně
+  se střídají v pořadí zamíchaném podle pevného semínka (`puzzleForLevel`), výřez, falešné náhledy a vzhled losuje generátor
+  se semínkem dne (`gameRandom`, `lookForDay`). Stejná data + stejný den = stejná hádanka u všech. Nové nebo odebrané dílo (nové
+  `data.json` po sestavení webu) ale pořadí přeskládá: od nasazení mají jiné hádanky i dnešek a dny archivu. Kola, která hráč už
+  rozehrál, se nezmění (viz *Postup hráče*).
+- **Archiv:** dny před dneškem (`archiveDays`) v sekci „Archiv“ pod hrou (dnes a 14 dní, „Starší dny (N)“ ukáže všechny; u dne
+  výsledek každé úrovně ✓ / ✗ / · `dayMarks`). Den archivu má adresu `?den=<číslo>` (číslo jako `#3` v nadpisu, `dayFromParam`; budoucí
+  nebo nesmyslné číslo = dnešek), nad úrovněmi řádek „‹ Archiv · 3. listopadu · poloviční kapky › Dnes“ (jen v archivu, přepnutí dne
+  je navigace, během kola se nic nehne). Za den archivu poloviční kapky bez bonusu série a série ani poslední den se nemění
+  (`finishRound`, `dropsFor`). Po posledním kole dneška karta připomene archiv, jen když v něm zbývá nedohraný den (`unplayedDay`). Sdílení z archivu posílá adresu s `?den=`.
+- **Postup hráče** jen v tomto prohlížeči: `localStorage` klíč `pavla.detailDne.v1` (`GAME_STORE`; kapky, série, hodnost, odehraná kola,
+  sbírka a pigmenty, kola všech dnů). Každé kolo si od prvního tipu pamatuje svou hádanku (`roundPuzzle`: obraz, výřez, náhledy,
+  vzhled), takže rozehraný a odehraný den vypadá stejně i po přeskládání pořadí; dokud jsou všechna jeho díla na webu (`keptPuzzle`),
+  jinak se ukáže hádanka dne podle nových dat (kapky za odehraný den zůstanou, znovu se nepřičtou). Bez úložiště hra jde, jen si nic
+  nepamatuje. Nový formát = nový klíč.
+- **Sdílení výsledku** bez názvu obrazu (`gameShareText`) s adresou hry; telefon nabídne sdílení, jinak se text zkopíruje.
+- **Google Analytics** (viz *Návštěvnost*): `game_start` při prvním tipu kola, `game_end` na jeho konci (`gameEventParams`), `share`
+  se `source: game` po sdílení výsledku.
+
 ### Prototypy
 
 Samostatné stránky pro hledání nastavení zobrazení děl, nad daty webu (`npm run prototypes`, `scripts/prototypes.mjs`,
@@ -510,12 +566,36 @@ nich. Data jsou skutečná díla (`content/`, `public/` tohoto repa) nebo testov
 `npm run demo:prepare`), vždy po `npm run images` aktuální. Výpočty jsou funkce webu vložené jako text
 (`PROTOTYPE_FUNCTIONS`: `columnCount`, `balanceColumns`, `columnPlan`, `orderColumns` a kamera scén `project`,
 `unproject`, `lineY`, `ledgeDepth`, `circleRatio`, `aimRotation`, `cameraFromAngles`, `cameraAngles`, `lineMisfit`,
-`fitCameraToLines`; musí být
+`fitCameraToLines` a hra Detail dne; musí být
 samostatné, bez pomocných funkcí modulu), ikony a výchozí hodnoty ze `site.config.yaml` (`prototypeConfig`), scény
 pro Instagram z `mockups/instagram/` (`prototypeScenes`), takže prototyp ukazuje přesně to, co web a pipeline.
 - `zarovnani-sloupcu.html`: úvodní stránka „Nejnovější“ na počítači / tabletu / telefonu, zobrazení, varianty konce
   sloupců (dnes, rozprostřít, vycentrovat, C = web) s posuvníky `maxGap`, `maxTop`, výběrem `order` a nastavením úvodní
   stránky nebo galerie; vodítka a výšky sloupců.
+- `detail-dne.html`: prototyp denní hry Detail dne (`scripts/lib/detail-game.mjs`, šablona `detail-game.html`), na webu zatím
+  není. Každý den tři různé obrazy ve třech obtížnostech (`gameLevels`, `dailyPuzzles`), pro všechny stejné (podle data od `GAME_EPOCH`,
+  obrazy se v každé úrovni střídají v zamíchaném pořadí, `puzzleForLevel`). Úroveň určuje velikost výřezu `size`, část obrazu `zone`, výběr
+  výřezu `pick`, počet náhledů `options`, jejich podobnost `reach`, oddálení `lastView`, pokusy `guesses`, nápovědy `hints`, násobek kapek `drops`,
+  vzhledy `looks` (pět id z katalogu `gameLooks`: pojmenovaná dvojice deformace — mlha, rastr, mozaika `drawPixels`, vlny — a barev — černobílé, sépie, posunuté; každý vzhled patří jen jedné úrovni; vzhledy úrovně se střídají v zamíchaných blocích, takže každý přijde stejně často a nikdy dva dny po sobě, `lookForDay`; hra ukáže jeho jméno, síla `effectSettings`, `effectStyle`; v prvním
+  pokusu nejsilnější, s každým omylem slábnou, v posledním nejsou žádné, `effectStrength`, stejně klesají kapky `dropsFor`). Žádný pohled hádanky
+  (ani oddálený) nesahá na okraj papíru ani k názvu a podpisu dole: `gameFrame` ho drží v bezpečné části obrazu (stejné okraje jako `analyzePixels`),
+  pohled větší než ona se zmenší. Rozložení: výřez, stavový blok (otázka, vzhled s pokusem a kapkami, v lehké úrovni řádek nápovědy; na konci
+  verdikt) a náhledy (4 : 3, vždy 3 × 3: každá úroveň má 9 náhledů) mají po celé kolo stejnou polohu i velikost; karta výsledku přibude pod náhledy
+  a stránka se k ní plynule posune. Na telefonu je výřez tak velký, aby se pod něj vešlo vše ostatní (`fitStage`, jednou pro úroveň a šířku,
+  nejméně 200 px); obraz přesahuje okno o `--bleed`, takže vlny a mlha netrhají okraj, rastr je maska okna (`.clip`). Kapky česky `dropsWord`. `prepareGame` při `npm run prototypes` čte nejmenší JPEG díla (`analyzePixels`, vše mimo okraje, dole širší
+  kvůli názvu a podpisu): kandidáti na výřez `crops` (ne prázdný papír `minDetail` ani hladká plocha `minEdges`, `regionEdges`) a mřížka míst
+  `places`. Podobnost výřezu a díla určuje jeho nejpodobnější místo (`lookalikeDistance`: barvy oběma směry a množství kresby), jiná technika
+  a dílo bez společného štítku se počítá jako vzdálenější (`rankLookalikes`; jiná technika téže rodiny `techniqueFamily` — barevná malba / kresba — jen o málo,
+  takže těžká úroveň dává i kresby a oleje, které se něčemu podobají). `prepareLevel` předem vybere odpovědi úrovně a jejich falešné náhledy:
+  `clear` = výřez s nejvíc kresbou, `confusing` = výřez, kterému se podobá nejvíc jiných děl (`confusingCrops`, jen do `maxConfusion`); ostatní díla
+  zůstávají falešnými náhledy. Nápověda (`gameHint`: rok, technika nebo kolekce, jen lehká úroveň) přijde, jen když vyřadí nejvýš 2 náhledy; řekne, co vyřazuje, a na každém vyřazeném náhledu je jeho důvod (např. „z roku 2023“).
+  Výhra: obraz se odhalí celý, padají kapky v barvách výřezu, telefon zavibruje, odkaz na další úroveň, dílo a kolekci, sdílení výsledku bez
+  prozrazení (`gameShareText`). Postup v `localStorage` (`pavla.prototype.detailGame.v4`, `finishRound`): kapky a hodnosti (`dropsFor`, `gameRank`),
+  série dnů (více her za den = jeden den), Moje sbírka s pigmenty. Dole „Ladění prototypu“: den (den mimo dnešek = archiv s polovinou kapek a bez
+  vlivu na sérii), vynucený vzhled z katalogu, paleta, smazání postupu.
+- `detail-efekty.html`: pro zvolenou úroveň, obraz a výřez všechny kombinace deformací a barev vedle sebe po pokusech (s kapkami a silou) nebo „Na více obrazech“ (první pokus na šesti obrazech úrovně, šipky posouvají dál) a v různých velikostech výřezu; u kombinace z katalogu `gameLooks` jméno vzhledu a jeho úroveň; zaškrtávátko u každé kombinace říká, zda se v úrovni losuje (výchozí z katalogu, řádek „Kombinace“ k přepsání do katalogu, samotná hra ho nečte); posuvníky mlhy, rozteče a teček rastru, bloku mozaiky, vln a posunu barev (paměť `pavla.prototype.detailEffects.v2`, výpis hodnot pro `effectSettings`).
+- `detail-kviz.html` (šablona `detail-quiz.html`): základ budoucího editoru kvízu pro návštěvníky. Obraz (šipky), obtížnost, velikost výřezu (6–30 %, výchozí podle úrovně), ťuknutí do obrazu přesune výřez (vždy uvnitř obrazu, `gameFrame`), „Vybrat místo za mě“ střídá místa, která by pro úroveň vybrala hra (`prepareGame`; bez nich zašedlé); pět vzhledů úrovně jako náhledy prvního pokusu a „Co uvidí hráč“ = všechny pokusy vybraného vzhledu s kapkami. Místo vybrané hrou se drží dál od okrajů jako ve hře, ručně vybrané jen uvnitř obrazu. Paměť `pavla.prototype.detailQuiz`. Falešné náhledy a odkaz pro sdílení zatím nemá.
+- `detail-vzorek.html` (šablona `detail-sample.html`): pevný vzorek 12 obrazů (`SAMPLE_SIZE`, `representativeSample` v `prepareGame`: nejvíc odlišné barvami, množstvím kresby a technikou, z děl, která jsou odpovědí ve všech úrovních), u každého malý celý obraz s rámečkem výřezu, který by hra v úrovni vybrala; „všech pět, první pokus“ = vzhledy úrovně vedle sebe, nebo jeden vzhled ve všech pokusech s kapkami. U každého obrazu výběr „Vyměnit obraz“ (díla, která jsou odpovědí ve všech úrovních), řádek „Vzorek: …“ s id k zapsání do `SAMPLE_PICKS` v `scripts/lib/prototypes.mjs` (ty jdou do vzorku první, zbytek se dopočítá), „Obnovit automatický výběr“. Paměť `pavla.prototype.detailSample`. Okna kreslí všechny tři pomocné stránky stejně (`windowHtml`).
 - `znacky-dlazdic.html`: všechna díla v dlaždicích S, M a L, paleta, styl značky (web = silueta s lemem), ikona na
   prodej, roh a velikosti dlaždic každé značky, velikost, minimum, maximum, krytí; nastavení úvodní stránky nebo galerie.
 - `kamera-scen.html`: tři scény ateliéru pro Instagram pod sebou s vybraným dílem (díla s `size_cm`) ve skutečné
@@ -815,7 +895,7 @@ zatím prázdná.
 
 **Jak `npm run demo` funguje** (`scripts/demo.mjs`): zkopíruje yaml z `demo-content/`
 (včetně značky `demo-content.yaml`) do `.demo/content/`, vykreslí obrázky podle receptu (`scripts/lib/demo-images.mjs`:
-abstraktní skvrny z pevného seedu, detailní fotky jako výřezy), přidá statické
+abstraktní skvrny z pevného seedu a přes ně ostré tahy štětcem uprostřed listu, aby hra Detail dne měla co poznávat; detailní fotky jako výřezy), přidá statické
 soubory webu (favicon; ne `CNAME`) a spustí **stejnou pipeline** jako pro skutečná
 data, jen s výstupem do `.demo/site/`. Web pak běží s `SITE_DATA_DIR=.demo/site`
 (`src/lib/site.ts` a `astro.config.mjs` čtou data odtud). Kódy (`id`) a kostry,
@@ -1781,7 +1861,8 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | doba běhu pipeline | `npm run demo:prepare`: pod každým přegenerovaným dílem řádek `  ⏱ … · total N s`, na konci `⏱ run: checks … · drafts … · works … · … · total …` (fáze pod 0,05 s chybí); druhé spuštění bez změn díla nepřegeneruje a nenakreslí znovu ani náhledy draftů (celý běh ~10 s, `.demo/site/.previews/` je prázdná). |
 | velikosti v kontrole automatiky | `node scripts/check-health.mjs` (bez tokenů; za proxy `NODE_USE_ENV_PROXY=1`): řádek „Velikost: repo webu … MB (… % z 1000 MB) · obsahové repo nezjištěno · nasazený web (GitHub Pages) … MB …“ a „Minuty GitHub Actions nebyly zkontrolovány (chybí secret CHECK_TOKEN …)“; s `CHECK_TOKEN=<token> ` před příkazem (a `--settings`, `REPO=<obsahové repo>`, `SETTINGS_DIR=<obsahové repo>/docs/github-nastaveni` = i porovnání nastavení) řádek „Minuty Actions soukromých rep za tento měsíc: N z 2000 …“. |
 | promítání | `npm run demo`, `/tvorba/?tag=voda` → „▶ Promítat“: celá obrazovka, adresa `?tag=voda&cinema=<id>`, díla se po 15 s prolnou; pohyb myši ukáže ovládání („Kolekce: …“, 5 s … 3 min, pauza, Popisky, Odkaz, ×), za 3 s zmizí. „45 s“ → `&interval=45` a pamatuje se (nové promítání začne na 45 s), „15 s“ ho z adresy smaže. ← →, mezerník (hláška „Pozastaveno“), tah myší (dílo jde s myší, sousední vedle), ↓ stránka díla a Zpět vrátí promítání na stejné dílo, Esc zavře a Zpět po „▶ Promítat“ také. Popisky: „na chvíli“ zmizí po 4 s, „stále“, „skryté“ (s nimi i ★ a „K PRODEJI“: Máky mají obojí, díla v soukromé sbírce nic); pohyb myši ukáže popisek i ve „skryté“. Čas „5 s“, po 4 s pohnout myší: dílo zůstane ještě 5 s. Pravé tlačítko na „▶ Promítat“ → kopírovat odkaz (`…&cinema=random`). S dlaždicemi (`?view=tiles`) adresa promítání `view` nemá, po zavření ho galerie zase ukáže. Patička „Obrazy na prodej“ (i Kontakt: „Promítnout: Obrazy na prodej“) → promítání `?status=unsold` od náhodného díla, v nové kartě s nápovědou „← → listovat · ↓ obraz · ↑ kolekce · klik nebo F = celá obrazovka“ (podruhé v téže kartě jen „klik nebo F = celá obrazovka“; F přepne do celé obrazovky a zase zpět do okna; klávesa ? i „?“ v ovládání ukáže nápovědu znovu). Promítání je v barvách Noc, i když web je Papír; „Barvy: …“ je přepíná (Papír, Pergamen, Noc, podle systému), patička webu zůstane beze změny a nové promítání začne v posledních zvolených. Na telefonu (DevTools, zařízení s dotykem) tah prstem nahoru otevře kolekci díla, dolů stránku díla. Odkaz `/tvorba/?cinema=<id>&interval=5` otevře promítání rovnou (celá obrazovka až po prvním kliknutí, v ovládání „Celá obrazovka“, v DevTools → Network se načítají `….avif`). Prohlížeč fotek díla (Ráno u rybníka): tah myší posouvá obrázek a vedle něj detail; F celá obrazovka s popiskem přes spodek, → další detail, F zpět do okna; barvy prohlížeče podle palety v patičce. Na stránce díla (zavřený prohlížeč) ← / → otevře předchozí / další dílo z odkazů dole, v poli zprávy na Kontaktu šipky jen posouvají kurzor. V konzoli (Verbose) `[analytics] cinema_open` / `cinema_close`. |
-| prototypy | `npm run prototypes` a `open .prototypes/zarovnani-sloupcu.html`, `open .prototypes/znacky-dlazdic.html`: posuvníky začínají na hodnotách ze `site.config.yaml`, „Nastavení“ přepne na úvodní stránku / galerii. `open .prototypes/kamera-scen.html`: hrany stolů a stojanu protažené až za fotku, kroužek (průsečík hran) a křížek (úběžník kamery) leží u sebe a čárkované hrany díla do nich míří; „Z rohů listu“ je od sebe vzdálí, „Z hran“ je vrátí; u stojanu úhel spodní hrany díla proti liště skoro 0°; „Vyrovnat natočení“ ho změní, zaškrtni „ohnisko drží velikost listu“ a posuň ohnisko: list zůstane stejně velký, změní se perspektiva mřížky; „Pomocné čáry“ je schovají a ukážou dílo čistě, „Obnovit doporučené“ po rozladění posuvníků vrátí kameru ze `scenes.yaml`; „jen díla, která se nevejdou“ nechá v seznamu jen díla hlášená „Ke kontrole“ (na skutečných datech tři velká díla na stolech); zkopírovaný řádek `camera` vlož do `mockups/instagram/scenes.yaml` a `npm run demo:prepare` vyrobí scény s ní. `promitani.html`: „▶ Promítat“, pohyb myši ukáže ovládání, ← → ↑ ↓ Esc, tažení myší, `L` ladění; adresa se mění v `#`. Testovací data: `npm run demo:prepare`, `SITE_DATA_DIR=.demo/site npm run prototypes -- .demo/prototypes`. |
+| hra Detail dne | `npm run demo`, `/detail-dne/`: tři úrovně (v testovacích datech má Lehká jen 3 obrazy, opakují se), ťukni na špatný náhled (výřez se oddálí, efekt zeslábne, nic se neposune), pak na správný (obraz se odhalí, kapky, verdikt zezelená, karta výsledku pod náhledy se zeleným „✓ …“ a jedním řádkem „Obraz · Kolekce · Sdílet“, klik na odhalený obraz otevře stránku díla; prohra = červené „✗ Tentokrát ne“); po obnovení stránky stav zůstane; dole v „Archiv“ klikni na `#3`: adresa `?den=3`, nad úrovněmi „Archiv · 3. listopadu · poloviční kapky“, za první tip polovina kapek (Lehká 5), série se nezmění, u dne v archivu přibude ✓ / ✗; po všech třech úrovních karta napíše „Den #3 máš za sebou“, „Dnes“ vrátí dnešek a adresu bez `?den`; `?den=999` = dnešek; v konzoli (Verbose) `[analytics] game_start` / `game_end`; v nástrojích pro vývojáře v režimu telefonu (390 × 664) jsou výřez i všechny náhledy na obrazovce; zdrojový kód stránky má `noindex`. Skutečná data: `npm run build && npx astro preview`, `/detail-dne/`. |
+| prototypy | `npm run prototypes` a `open .prototypes/zarovnani-sloupcu.html`, `open .prototypes/znacky-dlazdic.html`: posuvníky začínají na hodnotách ze `site.config.yaml`, „Nastavení“ přepne na úvodní stránku / galerii. `open .prototypes/detail-vzorek.html`: přepni úroveň, každý obraz vzorku ukáže pět vzhledů; vyber jeden vzhled, uvidíš jeho pokusy; rámeček ani žádný pohled nesahá na okraj ani k podpisu; vyměň obraz výběrem pod ním, řádek „Vzorek“ se změní, „Obnovit automatický výběr“ ho vrátí. `detail-dne.html` v telefonu (nástroje pro vývojáře, 390 × 664): výřez i všechny náhledy jsou na obrazovce, po omylu ani po výhře se nic neposune, karta výsledku přijde pod náhledy. `open .prototypes/detail-kviz.html`: ťukni do obrazu, rámeček a všechny náhledy se přesunou; změň obtížnost, nabídne se jiných pět vzhledů a výřez její velikosti; klikni na vzhled, „Co uvidí hráč“ ukáže jeho pokusy. V `detail-dne.html` je nad pokusy jméno vzhledu dne. `open .prototypes/detail-efekty.html`: změň úroveň, obraz a posuvníky, všechna okna se změní najednou; v posledním pokusu každé kombinace je výřez bez efektu; přepni na „Na více obrazech“ a zaškrtni kombinaci, řádek „Kombinace“ se hned změní a po obnovení stránky zůstane. `open .prototypes/detail-dne.html`: přepínej úrovně Lehká, Střední, Těžká; ťukni na špatný náhled (výřez se oddálí, deformace zeslábne, náhled zešedne, v lehké úrovni někdy nápověda vyřadí další a na nich je napsané proč), pak na správný (obraz se odhalí, padají kapky, přibudou kapky a obraz ve sbírce, nabídne se další úroveň), „Sdílet výsledek“ (bez názvu obrazu), po obnovení stránky zůstane stav; „← den“ a „den →“ v ladění otevře jiný den. `open .prototypes/kamera-scen.html`: hrany stolů a stojanu protažené až za fotku, kroužek (průsečík hran) a křížek (úběžník kamery) leží u sebe a čárkované hrany díla do nich míří; „Z rohů listu“ je od sebe vzdálí, „Z hran“ je vrátí; u stojanu úhel spodní hrany díla proti liště skoro 0°; „Vyrovnat natočení“ ho změní, zaškrtni „ohnisko drží velikost listu“ a posuň ohnisko: list zůstane stejně velký, změní se perspektiva mřížky; „Pomocné čáry“ je schovají a ukážou dílo čistě, „Obnovit doporučené“ po rozladění posuvníků vrátí kameru ze `scenes.yaml`; „jen díla, která se nevejdou“ nechá v seznamu jen díla hlášená „Ke kontrole“ (na skutečných datech tři velká díla na stolech); zkopírovaný řádek `camera` vlož do `mockups/instagram/scenes.yaml` a `npm run demo:prepare` vyrobí scény s ní. `promitani.html`: „▶ Promítat“, pohyb myši ukáže ovládání, ← → ↑ ↓ Esc, tažení myší, `L` ladění; adresa se mění v `#`. Testovací data: `npm run demo:prepare`, `SITE_DATA_DIR=.demo/site npm run prototypes -- .demo/prototypes`. |
 | značky na dlaždicích | `/tvorba/?view=tiles`: obrazy z výběru autorky mají vlevo nahoře hvězdičku, obrazy na prodej vpravo dole košík; `−` na malé dlaždice: košíky zmizí, hvězdičky zůstanou; `+` na velké: značky větší (nejvýš 22 px). Přepni paletu Noc: značky světlé s tmavým lemem. Velké obrazy: žádné značky, hvězdička u názvu a štítek „K prodeji“. Totéž na úvodní stránce. Zkus `tileMarks.sale.icon: tag` nebo `sale.corner: tl` v `site.config.yaml` (košík vedle hvězdičky). |
 | dlaždice | `/tvorba/`: vpravo dole ikona „Dlaždice“: malé obrazy bez textů, 36 na stránku, „Na stránku“ nabízí 36 / 72 / 144, v URL `?view=tiles`; z 4. stránky velkých obrazů skočí na 2. stránku dlaždic (stejné první dílo). Zvol 72, přepni na velké obrazy a zpět: každé zobrazení si pamatuje svůj počet. Změň filtr, dlaždice zůstanou. Otevři `/tvorba/` znovu bez parametrů → dlaždice a `?view=tiles` (paměť); `/tvorba/?view=grid` → velké obrazy (odkaz má přednost); „Velké obrazy“ paměť smaže (DevTools → Local Storage → `pavla.gallery.view`). Na šířce telefonu 3 sloupce. |
 | štítky v bublině | `/tvorba/`: najeď myší na obraz se štítky, bublina má řádek `#štítek …` česky podle abecedy. |
@@ -2189,17 +2270,19 @@ analytics:
   | `gallery_filter` | návštěvník v galerii změní filtr (štítek, technika, rok, kolekce, stav, hledání) nebo na přehledu kolekcí rok či hledání; ne stránkování ani počet na stránku | aktivní filtry `tag` (víc štítků jako jedna hodnota spojená čárkou v abecedním pořadí, např. `krajina,voda`), `technique`, `year`, `collection`, `status`, `featured`, `q` (hledání, i na přehledu kolekcí; prázdné se neposílají) a `results` (kolik děl, na přehledu kolekcí kolik kolekcí odpovídá) |
   | `fler_click` | klik na „Koupit na Fleru“ u díla | `work_id`, `work_title` |
   | `instagram_click` | klik na „Na Instagramu“ u díla (atribut `instagram`) | `work_id`, `work_title` |
-  | `share` | klik na ikonu v řádku „Sdílet“ u díla (doporučená událost GA); i „Odkaz“ v promítání | `method` (`pinterest`, `facebook`, `whatsapp`, `native` = nabídka sdílení telefonu, `copy` = zkopírování odkazu), `work_id`, `work_title`; z promítání `source: cinema` a `work_id` právě promítaného díla |
+  | `share` | klik na ikonu v řádku „Sdílet“ u díla (doporučená událost GA); i „Odkaz“ v promítání | `method` (`pinterest`, `facebook`, `whatsapp`, `native` = nabídka sdílení telefonu, `copy` = zkopírování odkazu), `work_id`, `work_title`; z promítání `source: cinema` a `work_id` právě promítaného díla; ze hry Detail dne „Sdílet výsledek“ jen `native` / `copy`, `source: game` a parametry `game_start` (bez díla, sdílený text ho neprozradí) |
   | `email_click` | jen odkazy `mailto:`: klik na e-mailovou adresu na Kontaktu (kdo píše rovnou z pošty místo formuláře); bez formuláře zpráv i klik na „Napsat autorce“ u díla. Předmět e-mailu má stejný tvar jako odeslaná zpráva (`[pavla-web] Pozdrav nebo vzkaz`, u díla `[pavla-web] Dotaz na obraz: <název> (<id>)` / `Zájem o koupi: …`) | u díla `work_id`, `work_title`, na Kontaktu žádné |
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
   | `palette_change` | návštěvník v patičce přepne barvy webu (jen skutečná změna, ne opakovaný klik na tutéž); i „Barvy: …“ v promítání | `palette` (`papir`, `pergamen`, `noc`, `auto`); z promítání `source: cinema` |
   | `view_change` | návštěvník přepne zobrazení děl (velké obrazy / dlaždice) nebo velikost dlaždic, na úvodní stránce i v galerii (`viewEventParams`) | `listing` (`home`, `gallery`), `view` (`grid`, `tiles-s`, `tiles-m`, `tiles-l`) |
   | `cinema_open` | promítání výpisu otevřené (`cinemaOpenParams`) | `listing` (`gallery`, `year`, `collection`), `results` (kolik děl promítá), `interval` (s), `method` (`CINEMA_OPEN_METHODS`: `button` „▶ Promítat“, `link` adresa s `cinema`, `home` tlačítko „▶ Moje nejmilejší“ na úvodní stránce, `footer` „Obrazy na prodej“ / „Moje nejmilejší“ v patičce, `contact` „Promítnout“ na Kontaktu) |
   | `cinema_close` | promítání zavřené nebo opuštěné na stránku díla či kolekce (`cinemaCloseParams`) | `listing`, `reason` (`CINEMA_CLOSE_REASONS`: `button` ×, `esc` Esc nebo konec celé obrazovky, `back` Zpět, `work` stránka díla, `collection` kolekce), `seconds`, `shown` (kolik děl ukázalo) |
+  | `game_start` | první tip v kole hry Detail dne (otevření stránky měří zobrazení stránky; `gameEventParams`) | `level` (`lehka`, `stredni`, `tezka`), `day` (číslo dne jako `#15` v nadpisu), `archive` (`yes` = den z archivu, `no` = dnešek), `look` (vzhled dne z `gameLooks`, např. `mosaic`) |
+  | `game_end` | kolo hry Detail dne skončilo (uhádnuté nebo po posledním pokusu) | jako `game_start` a `solved` (`yes` / `no`), `misses` (omyly), `drops` (získané kapky), `streak` (série dnů po kole), `work_id`, `work_title` (hádaný obraz) |
   | `image_view` | každý obrázek ukázaný v prohlížeči fotek na stránce díla (`imageEventParams`): otevření i každé listování; Zpět/Vpřed jen při jiném obrázku | `work_id`, `work_title`, `image` (kotva obrázku: `obraz`, `detail-<jméno>`, `mockup-<scéna>`), `image_kind` (`main`, `detail`, `mockup`), `method` (`IMAGE_METHODS`: `open` klik na stránce, `arrow` šipka prohlížeče, `swipe` tah, `key` klávesa ←/→, `link` stránka otevřená s kotvou, `history` Zpět/Vpřed) |
 
   Tlačítka nesou `data-track="<událost>"`, `data-work-id` a `data-work-title`; posluchač kliků je v `Base.astro`,
-  filtr v `WorkGallery.astro`, `image_view` ve skriptu prohlížeče v `src/pages/tvorba/[section]/[work].astro`. Nové tlačítko se sleduje přidáním stejných atributů a názvu do `EVENTS`.
+  filtr v `WorkGallery.astro`, události hry v `src/lib/detail-game.ts`, `image_view` ve skriptu prohlížeče v `src/pages/tvorba/[section]/[work].astro`. Nové tlačítko se sleduje přidáním stejných atributů a názvu do `EVENTS`.
 - **Jednorázově v GA** (bez toho se parametry v přehledech neukážou, jen počty událostí):
   *Administrátor → Vlastní definice → Vytvořit vlastní dimenzi*, rozsah **Událost**, pro každý parametr zvlášť
   (název, popis do 150 znaků, parametr události). Existující dimenzi upravíš přes ⋮ → *Upravit* (parametr ani rozsah
@@ -2224,13 +2307,20 @@ analytics:
   | Obrázek | `image` | Obrázek v prohlížeči fotek díla (image_view): obraz, detail-<jméno>, mockup-<scéna>; stejně jako kotva v adrese. |
   | Doba obrazu | `interval` | Promítání (cinema_open): kolik sekund zůstane každé dílo. |
   | Důvod zavření | `reason` | Promítání (cinema_close): button, esc, back, work = na stránku díla, collection = na kolekci. |
-  | Odkud | `source` | cinema = z promítání: share (tlačítko Odkaz), palette_change (Barvy promítání); prázdné = jinde na webu. |
+  | Odkud | `source` | share a palette_change: cinema = z promítání, game = výsledek hry Detail dne; prázdné = jinde na webu. |
+  | Úroveň hry | `level` | Detail dne (game_start, game_end, share): lehka, stredni, tezka. |
+  | Den hry | `day` | Detail dne: číslo dne hry jako #15 v nadpisu (1 = první den hry). |
+  | Archiv | `archive` | Detail dne: yes = den z archivu (poloviční kapky), no = dnešní hádanka. |
+  | Vzhled | `look` | Detail dne: vzhled výřezu dne (gameLooks), např. clear, mosaic, dream. |
+  | Uhádnuto | `solved` | Detail dne (game_end): yes = obraz uhádnutý, no = došly pokusy. |
   | Druh obrázku | `image_kind` | Druh obrázku v prohlížeči fotek (image_view): main = celý obraz, detail = detailní fotka, mockup = vizualizace v interiéru. |
 
   A *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru, jednotka Standardní, popis: „Kolik děl (na přehledu
   kolekcí kolik kolekcí) odpovídá filtru po jeho změně (gallery_filter); u cinema_open kolik děl promítá.“),
-  `seconds` (Doba promítání, jednotka Sekundy, „Jak dlouho běželo promítání (cinema_close).“) a `shown` (Promítnutá díla,
-  Standardní, „Kolik děl promítání ukázalo (cinema_close).“). Data se v nich ukazují až od chvíle
+  `seconds` (Doba promítání, jednotka Sekundy, „Jak dlouho běželo promítání (cinema_close).“), `shown` (Promítnutá díla,
+  Standardní, „Kolik děl promítání ukázalo (cinema_close).“), `misses` (Omyly ve hře, Standardní, „Kolik špatných tipů měl hráč
+  v kole Detailu dne (game_end).“), `drops` (Kapky, Standardní, „Kolik kapek kolo Detailu dne přineslo (game_end).“) a `streak`
+  (Série dnů, Standardní, „Kolik dní v řadě hráč hraje Detail dne, po kole (game_end).“). Data se v nich ukazují až od chvíle
   registrace, zpětně ne. Nový parametr události = nový řádek v této tabulce.
   Přehledy: *Přehledy → Zapojení → Události* (počty a proklik na parametry) nebo *Průzkum* (tabulka např.
   Událost × Technika).
@@ -2240,7 +2330,8 @@ analytics:
   na detailu Ráno u rybníka klik na „Na Instagramu“ → `[analytics] instagram_click`, na ikonu v řádku „Sdílet“ →
   `[analytics] share` s `method` (např. `pinterest`, `copy`); klik na obraz, detail nebo mockup a listování v prohlížeči
   fotek → `[analytics] image_view` s `image`, `image_kind` a `method`; „▶ Promítat“ → `[analytics] cinema_open`,
-  Esc → `[analytics] cinema_close` se `seconds` a `shown`.
+  Esc → `[analytics] cinema_close` se `seconds` a `shown`; v `/detail-dne/` první tip → `[analytics] game_start`, konec kola →
+  `[analytics] game_end`, „Sdílet výsledek“ → `[analytics] share` se `source: game`.
   Na nasazeném webu: GA → *Administrátor → DebugView* s Tag Assistantem, nebo *V reálném čase → Počet událostí*.
 - Kód: `scripts/lib/analytics.mjs` (kdy měřit, obsah značky, kontrola ID), `analyticsId` v `src/lib/site.ts`.
 - Vyzkoušení: `npm run build`, pak `grep -c googletagmanager dist/index.html` (1 = značka je tam);

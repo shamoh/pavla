@@ -196,6 +196,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (s/m/l), košík `isOnSale` vpravo dole (m/l), silueta barvy písma s lemem barvy papíru, nastavení `site.config.yaml`
   `home.tileMarks` (jen hvězdička) a `gallery.tileMarks`, každé zvlášť (`tileMarksFor`). Prototypy zobrazení: `npm run prototypes`
   (`scripts/lib/prototypes.mjs`, šablony `scripts/prototypes/`, výstup `.prototypes/` mimo git, funkce webu vložené jako text).
+  Hra Detail dne: zkušební stránka `/detail-dne/` (bez odkazů, `noindex`, `src/pages/detail-dne/`, hra `src/lib/detail-game.ts`, data při buildu `data.json.ts` → `prepareGame`/`gameData` v `scripts/lib/detail-game-data.mjs`, postup v `localStorage` `GAME_STORE`, kolo si pamatuje svou hádanku `roundPuzzle`/`keptPuzzle` (nová díla přeskládají pořadí dnů), archiv `?den=<číslo>` za poloviční kapky, události `game_start`/`game_end`/`share` se `source: game`; testovací obrázky mají ostré tahy, jinak hra nemá odpovědi) a prototyp `detail-dne.html` (`scripts/lib/detail-game.mjs`, úrovně `gameLevels`, vzhledy jen z katalogu `gameLooks` (5 na úroveň, každý v jediné, nikdy dva dny po sobě `lookForDay`), žádný pohled na okraj ani k podpisu (`gameFrame`), během kola nic neskáče (stavový blok pevné výšky, výsledek pod náhledy, `fitStage`), výpočty předem `prepareGame`, editor kvízu `detail-kviz.html`, vzorek `detail-vzorek.html`; funkce pro stránku samostatné, přes `PROTOTYPE_FUNCTIONS`, bez konstant modulu).
   Promítání („▶ Promítat“ za počtem děl a „▶“ v liště filtrů, každý výpis s filtry): `src/components/Cinema.astro`,
   `src/lib/cinema.ts`, logika `scripts/lib/cinema.mjs`, všechny časy a swipe v `site.config.yaml` `cinema` (`cinemaSettings`),
   data karet `data-cinema` (`cinemaCard`; v popisku ★ výběru autorky a „K prodeji“ / „Rezervováno“ jen u díla na prodej), obrázky `<picture>` AVIF/WebP/JPEG (`cinemaSources`); adresa `?…&cinema=<id>&interval=<s>` (výchozí se nepíše, `cinemaToParams`; jen filtry `filtersToParams`, nikdy `view`/`tile`/`perPage`/`page`),
@@ -320,7 +321,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   + do `STATIC_PAGES` (mapa webu). `robots.txt` a 404 (`noindex`) generuje web; ověřovací kódy `site.verification`.
 - Návštěvnost: Google Analytics 4 (`analytics.googleMeasurementId` v `site.config.yaml`, `scripts/lib/analytics.mjs`,
   značka v `Base.astro`), jen produkční build skutečného webu, nikdy dev ani testovací data; URL i s parametry filtrů.
-  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `share`, `email_click`, `message_sent`, `palette_change`, `view_change`, `image_view`, `cinema_open`, `cinema_close`); nový parametr události = zapsat do README
+  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `share`, `email_click`, `message_sent`, `palette_change`, `view_change`, `image_view`, `cinema_open`, `cinema_close`, `game_start`, `game_end`); nový parametr události = zapsat do README
   (tabulka událostí + seznam vlastních dimenzí k registraci v GA).
 - Zprávy od návštěvníků: Web3Forms (`messages.accessKey` v `site.config.yaml`, jedna adresa, předmět `[pavla-web] <typ>: …`),
   formulář na Kontaktu a panel „Napište mi“ na ostatních stránkách (`scripts/lib/messages.mjs`, `message-draft.mjs`,
