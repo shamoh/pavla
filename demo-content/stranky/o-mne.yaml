@@ -29,12 +29,29 @@ description: |
 #   - *slovo* = kurzívou,
 #   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+# Fotka ze složky fotky/ mezi odstavci:
+#   - samostatný odstavec [fotka: portret, vlevo] = fotka fotky/portret.jpg vlevo (vpravo = vpravo, bez strany = vlevo),
+#   - text nad ní je přes celou šířku, text pod ní ji obtéká z druhé strany (na mobilu je fotka mezi odstavci).
 text: |
   Maluji v kroužku a na plenérech, nejraději **krajinu** a *vodu*. Tento odstavec je zalomený
   na dva řádky, na stránce je z něj jeden.
 
   Druhý odstavec testovacího textu s odkazy: [výběr autorky](/tvorba/?featured=1)
   a [Fler](https://www.fler.cz/).
+
+  [fotka: portret, vlevo]
+
+  Pod značkou fotky: tento odstavec a další obtékají portrét zprava. Testovací text je schválně
+  dlouhý, aby bylo vidět, kde obtékání končí a text zase pokračuje přes celou šířku stránky.
+
+  Další odstavec vedle fotky. Akvarel se nedá úplně ovládat, voda si dělá, co chce, a papír ji
+  pije po svém. Proto je každý obraz trochu překvapení i pro mě.
+
+  Třetí odstavec pod fotkou, už nejspíš přes celou šířku. Kreslím na procházkách, krajinu i zvířata,
+  nejraději v pohybu, a cvičím si ruku slepou kresbou, kdykoli mám volnou chvilku.
+
+  Čtvrtý odstavec, aby bylo jisté, že text pod koncem fotky běží přes celou šířku stránky
+  a závěrečný odstavec za ním ji už neobtéká.
 
 # NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
 # private_note: co jsem na stránce změnila a proč

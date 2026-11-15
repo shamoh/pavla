@@ -197,6 +197,15 @@ export const FORMATTING_DOC = [
   '  - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.',
 ];
 const textRules = (empty) => [...writingRules(empty), ...FORMATTING_DOC];
+/**
+ * A photo of fotky/ between the paragraphs (scripts/lib/rich-text.mjs photoMarker): in the technical comment of the
+ * `text` of every page, the only attribute that may have one.
+ */
+export const PHOTO_DOC = [
+  'Fotka ze složky fotky/ mezi odstavci:',
+  '  - samostatný odstavec [fotka: portret, vlevo] = fotka fotky/portret.jpg vlevo (vpravo = vpravo, bez strany = vlevo),',
+  '  - text nad ní je přes celou šířku, text pod ní ji obtéká z druhé strany (na mobilu je fotka mezi odstavci).',
+];
 
 /**
  * The text shown on the page (`where`: what and where, Czech), formatted: a block "|" with the rules above; `empty`:
@@ -939,18 +948,22 @@ const pageFields = (where, { closing = false, title = null } = {}) => [
     `Popis stránky pro vyhledávače a náhled odkazu (Google, Facebook, WhatsApp), nejvýš ${PAGE_DESCRIPTION_CHARS} znaků; na stránce`,
     'samotné se neukáže. Povinné.',
   ]]),
-  // an existing file without it stays without text
+  // an existing file without it stays without text; it may place photos of fotky/ (scripts/lib/rich-text.mjs photoMarker)
   textField(`Text stránky ${where}`, {
     settled: true,
     missing: '',
-    previous: [[
-      `Text stránky ${where}. Piš pod „text: |“, každý řádek odsazený dvěma mezerami; prázdný řádek`,
-      'mezi řádky = nový odstavec. Prázdné "" = bez textu.',
-      FORMATTING,
-    ], [
-      `Text stránky ${where}. Piš pod „text: |“, každý řádek odsazený dvěma mezerami; prázdný řádek`,
-      'mezi řádky = nový odstavec. Prázdné "" = bez textu.',
-    ]],
+    doc: [`Text stránky ${where}.`, 'Piš ho pod „text: |“, každý řádek odsazený dvěma mezerami:', ...textRules('bez textu'), ...PHOTO_DOC],
+    previous: [
+      [`Text stránky ${where}.`, 'Piš ho pod „text: |“, každý řádek odsazený dvěma mezerami:', ...textRules('bez textu')],
+      [
+        `Text stránky ${where}. Piš pod „text: |“, každý řádek odsazený dvěma mezerami; prázdný řádek`,
+        'mezi řádky = nový odstavec. Prázdné "" = bez textu.',
+        FORMATTING,
+      ], [
+        `Text stránky ${where}. Piš pod „text: |“, každý řádek odsazený dvěma mezerami; prázdný řádek`,
+        'mezi řádky = nový odstavec. Prázdné "" = bez textu.',
+      ],
+    ],
   }),
   ...(closing ? [closingField([
     ['Závěrečný odstavec pod textem, menším tlumeným písmem (např. pozvání, ať mi lidé napíšou).', FORMATTING],

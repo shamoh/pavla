@@ -29,10 +29,21 @@ description: |
 #   - *slovo* = kurzívou,
 #   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+# Fotka ze složky fotky/ mezi odstavci:
+#   - samostatný odstavec [fotka: portret, vlevo] = fotka fotky/portret.jpg vlevo (vpravo = vpravo, bez strany = vlevo),
+#   - text nad ní je přes celou šířku, text pod ní ji obtéká z druhé strany (na mobilu je fotka mezi odstavci).
 text: |
   Obecná textová stránka: existuje jen díky souboru **demo-content/stranky/kurzy.yaml**.
 
   Druhý odstavec s [odkazem na kontakt](/kontakt/).
+
+  [fotka: kontakt, vpravo]
+
+  Odstavec pod fotkou vpravo: obtéká ji zleva. Testovací text obecné stránky je delší, aby bylo
+  vidět, jak text běží vedle fotky a pod ní zase přes celou šířku. Kurz akvarelu pro začátečníky,
+  pro pokročilé, plenéry v přírodě, víkendové i týdenní, s barvami, papírem a štětci.
+
+  Další odstavec vedle fotky. Voda, pigment a papír; mokré do mokrého, lazury, solné efekty.
 
 # Nadpis stránky, zároveň titulek v záložce prohlížeče, např. „Kurzy“. Povinné.
 title: Kurzy

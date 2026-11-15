@@ -2,6 +2,7 @@
 // A generic text page /<name>/ (e.g. /kurzy/): stranky/<name>.yaml of the content repository (TEXT_PAGE_SCHEMA), built
 // only while that file exists (getGenericPages). Its name must be in PAGES (scripts/lib/pages.mjs).
 import Base from '../layouts/Base.astro';
+import TextBlocks from '../components/TextBlocks.astro';
 import { getGenericPages, site } from '../lib/site';
 import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
 
@@ -20,8 +21,7 @@ const jsonLd = graphLd(
 <Base title={page.title} description={page.description} jsonLd={jsonLd}>
   <article class="text-page">
     <h1>{page.title}</h1>
-    {page.paragraphs.map((p) => <p set:html={p} />)}
-    {page.closing.map((p) => <p class="muted" set:html={p} />)}
+    <TextBlocks blocks={page.blocks} closing={page.closing} />
   </article>
 </Base>
 <style>

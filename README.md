@@ -435,6 +435,20 @@ Texty stránek jsou v obsahovém repu ve složce `stranky/`, jeden soubor na str
 
 Texty (`text`, `closing`, `description`) se píšou a formátují jako všude, viz *Texty popisů*.
 
+**Fotka v textu stránky** (jen `text` stránek ve `stranky/`, `photoMarker` / `richBlocks` / `photoProblems`
+v `scripts/lib/rich-text.mjs`, komentář `PHOTO_DOC` ve schématu): samostatný odstavec `[fotka: <jméno>, vlevo]`
+(nebo `vpravo`; bez strany = `vlevo`, slovo `fotka` i strana bez ohledu na velikost písmen) vloží fotku
+`fotky/<jméno>.jpg` (s jejím `alt` a `caption`) na to místo textu. Text nad ní je přes celou šířku, odstavce pod ní
+ji obtékají z druhé strany (`float`, šířka `min(42 %, 300px)`) a po jejím konci zase běží přes celou šířku; `closing`
+je ve stejném bloku (`display: flow-root`, nic za ním do fotky nevteče). Do 640 px je fotka mezi odstavci bez obtékání.
+Vykresluje `src/components/TextBlocks.astro` (`getPage` vrací `blocks`: `{ html }` | `{ photo, side }`), na všech
+stránkách ze `stranky/`. O mně: s fotkou v textu zmizí sloupec s portrétem vpravo a text jde přes celou šířku stránky jako úvodní fotka, zarovnaný do bloku s dělením slov (`placed`, `hyphens: auto`);
+bez ní zůstává portrét vedle textu jako dřív. Značka není text: `plainText` (popis pro vyhledávače, hledání) ji
+vynechá, `export/stranky/README.md` ji ukáže jako „_(fotka <jméno>, <strana>)_“. Chyby (zastaví běh): fotka, která
+není ve `fotky/` (`[neznama-fotka-v-textu]`, hláška vyjmenuje existující), jiná strana (`[spatna-strana-fotky]`),
+značka uvnitř odstavce s dalším textem (`[fotka-v-textu-sama]`), značka kdekoli jinde (`closing`, `description`,
+texty děl, kolekcí, roků, úvodu, popisky detailů: `[fotka-v-textu-nejde]`).
+
 - **Pevné stránky** (O mně, Kontakt, 404): chybí-li soubor, pipeline založí kostru s textem, který stránka měla v kódu
   (`ABOUT_*`, `CONTACT_*`, `NOT_FOUND_*` v `schema.mjs`; schválené texty, proto bez `DOPLNIT`: `settled`). Bez veřejné
   kopie ukáže web tytéž výchozí texty.
@@ -447,11 +461,12 @@ Texty (`text`, `closing`, `description`) se píšou a formátují jako všude, v
   (`[popis-stranky-dlouhy]`), prázdný `title` / `heading` /
   `location_label` (`[prazdny-text-stranky]`), špatný odkaz (`[spatny-odkaz-v-textu]`), hodnota, která není text
   (`[popisek-neni-text]`), veřejný text začínající `DOPLNIT` (`[doplnit-verejny]`), jiný soubor nebo složka ve `stranky/`
-  (`[cizi-soubor]`).
+  (`[cizi-soubor]`), špatná fotka v textu (`[neznama-fotka-v-textu]`, `[spatna-strana-fotky]`, `[fotka-v-textu-sama]`,
+  `[fotka-v-textu-nejde]`, viz výše).
 - Veřejná kopie (všechny atributy kromě `private_note`) jde do `content/stranky/<stránka>.yaml` (jen plný běh); web ji
   načte přes `getPage` (`src/lib/site.ts`). Menu, kontakty, formulář, štítek „Chyba 404“ a fotky (`fotky/`) zůstávají ve webu.
-- Vyzkoušení: `demo-content/stranky/` (`npm run demo`): `/o-mne/` (dva odstavce, první zalomený, tučně, kurzíva, odkazy,
-  odkaz v `closing`), `/kontakt/` (vlastní `location_label`), libovolná neexistující adresa (texty 404 s odkazy), `/kurzy/`.
+- Vyzkoušení: `demo-content/stranky/` (`npm run demo`): `/o-mne/` (odstavce, první zalomený, tučně, kurzíva, odkazy,
+  odkaz v `closing`, portrét v textu vlevo `[fotka: portret, vlevo]`), `/kurzy/` (fotka `kontakt` vpravo), `/kontakt/` (vlastní `location_label`), libovolná neexistující adresa (texty 404 s odkazy), `/kurzy/`.
 
 **Nejnovější a jejich zobrazení:** pod úvodem jsou nejnovější díla (bez díla z úvodního obrazu) se stejným přepínačem
 zobrazení jako galerie (`ViewSwitch.astro` v záhlaví „Nejnovější“: „Velké obrazy“ / „Dlaždice“ a u dlaždic `−` / `+`),
@@ -1178,6 +1193,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | stránka 404 s výběrem autorky | libovolná neexistující adresa, např. `/tvorba/nic/` (v `npm run demo`) nebo `.demo/site/dist/404.html` |
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
 | texty stránek (`description`, odstavce `text`, tlumený `closing`, formátování a odkazy, `location_label`, texty 404) | `demo-content/stranky/o-mne.yaml`, `kontakt.yaml`, `404.yaml`; `/o-mne/`, `/kontakt/`, neexistující adresa |
+| fotka v textu stránky vlevo (bez sloupce s portrétem) a vpravo, obtékání a konec obtékání | `demo-content/stranky/o-mne.yaml` (`[fotka: portret, vlevo]`), `kurzy.yaml` (`[fotka: kontakt, vpravo]`); `/o-mne/`, `/kurzy/`, `.demo/content/export/stranky/README.md` |
 | obecná textová stránka jen se souborem (`optional`), v mapě webu | `demo-content/stranky/kurzy.yaml`; `/kurzy/`, `/sitemap.xml` |
 | nadpis úvodní stránky na dva řádky (`heading`) | `demo-content/_index.yaml`; `/` |
 | tlačítko „▶ Moje nejmilejší“ (`button_show`), „Moje nejmilejší“ v patičce a „Promítnout“ na Kontaktu = promítání výběru autorky (`method` `home` / `footer` / `contact`) | `demo-content/_index.yaml`, díla s `featured: true`; `/`; `button_show: ""` jen unit testy |
@@ -1463,7 +1479,7 @@ Vedle přehledu děl píše každý běh bez `--only` (i ve větvi, i s chybami 
 404; pořadí pevné, `###`) a `## Roky` od nejnovějšího (`###`; prázdná část chybí), u každé odkaz na její yaml a na stránku
 na webu (404 bez odkazu: ukáže se na každé neexistující adrese), jednořádkové texty jako „Nadpis: …“, „Titulek: …“,
 „Tlačítko: …“, „Popisek místa: …“, „Prázdný web: …“, text a `closing` („Závěr: …“) formátované jako na webu
-(`richTextMarkdown`, odkazy na web s celou adresou), „Google: …“; bez textu „(bez textu)“. Úklid exportů složku
+(`richTextMarkdown`, odkazy na web s celou adresou), fotka v textu jako „_(fotka <jméno>, <strana>)_“, „Google: …“; bez textu „(bez textu)“. Úklid exportů složku
 nemaže (pracuje jen v `draft/`, `instagram/`, `fler/`). Vyzkoušení: `npm run demo`, `.demo/content/export/stranky/README.md`.
 
 ### Přehled všech děl (`export/README.md`)

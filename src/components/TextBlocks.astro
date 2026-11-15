@@ -1,0 +1,29 @@
+---
+// The text of a page (getPage in src/lib/site.ts): its paragraphs and the photos of fotky/ the author placed between
+// them ("[fotka: <name>, vlevo|vpravo]", scripts/lib/rich-text.mjs). The text above a photo runs across the whole width,
+// the text under it flows around it on the other side and runs across the whole width again once the photo ends.
+// On a phone the photo stands between the paragraphs. The muted `closing` paragraphs follow inside the same block,
+// so they flow around a photo still beside them too and nothing after the block runs into it.
+import Photo from './Photo.astro';
+import type { TextBlock } from '../lib/site';
+
+interface Props { blocks: TextBlock[]; closing?: string[]; class?: string }
+const { blocks, closing = [], class: cls } = Astro.props;
+---
+<div class:list={['text-blocks', cls]}>
+  {blocks.map((b) => ('photo' in b
+    ? <Photo name={b.photo} sizes="(max-width: 640px) 100vw, 300px" class={`text-photo ${b.side}`} />
+    : <p set:html={b.html} />))}
+  {closing.map((p) => <p class="muted" set:html={p} />)}
+</div>
+<style>
+  /* flow-root: the block ends under its last floating photo, whatever follows it */
+  .text-blocks { display: flow-root; }
+  .text-blocks :global(.text-photo) { width: min(42%, 300px); margin-top: 0.35em; margin-bottom: 1em; }
+  .text-blocks :global(.text-photo.left) { float: left; margin-right: clamp(20px, 4vw, 40px); }
+  .text-blocks :global(.text-photo.right) { float: right; margin-left: clamp(20px, 4vw, 40px); }
+  @media (max-width: 640px) {
+    .text-blocks :global(.text-photo.left),
+    .text-blocks :global(.text-photo.right) { float: none; width: auto; max-width: 360px; margin: 1.4em 0; }
+  }
+</style>

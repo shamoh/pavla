@@ -16,7 +16,7 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { photoDate } from './exif.mjs';
 import { commentedOutKeys, normalizeMetadata, skeleton, todoKeys, yamlProblem } from './metadata-yaml.mjs';
-import { linkProblems, plainText } from './rich-text.mjs';
+import { linkProblems, photoProblems, plainText } from './rich-text.mjs';
 import { artform } from './seo.mjs';
 import {
   COLLECTION_SCHEMA, HOME_SCHEMA, PAGE_DESCRIPTION_CHARS, PAGE_SCHEMAS, PHOTO_SCHEMA, TODO, UNCOLLECTED_SCHEMA, WORK_SCHEMA, YEAR_SCHEMA, publicKeys,
@@ -147,14 +147,18 @@ export function placeholderProblems({ collections = [], years = [], home = null,
 /**
  * Problems of the texts of one description (Czech, for the run summary): a text attribute (`block` in the schema)
  * that is no text, a link of a formatted one (`rich`, or each text of a map `richMap`: captions of details) that cannot
- * stay a link, a description for search engines longer than PAGE_DESCRIPTION_CHARS.
+ * stay a link, a description for search engines longer than PAGE_DESCRIPTION_CHARS, a photo marker that is not right
+ * (photoProblems in scripts/lib/rich-text.mjs; `photos`: the names of the photos in fotky/ when its `text` may have
+ * photos, the text of a page, otherwise null: a marker anywhere is a mistake).
  */
-export function textProblems(yamlPath, data, schema) {
+export function textProblems(yamlPath, data, schema, { photos = null } = {}) {
   const problems = [];
   for (const field of schema.fields.filter((f) => f.richMap)) {
     const map = data?.[field.key];
     if (!map || typeof map !== 'object' || Array.isArray(map)) continue;
-    for (const [name, value] of Object.entries(map)) problems.push(...linkProblems(yamlPath, `${field.key} ${name}`, value));
+    for (const [name, value] of Object.entries(map)) {
+      problems.push(...linkProblems(yamlPath, `${field.key} ${name}`, value), ...photoProblems(yamlPath, `${field.key} ${name}`, value));
+    }
   }
   for (const field of schema.fields.filter((f) => f.block)) {
     const value = data?.[field.key];
@@ -164,6 +168,8 @@ export function textProblems(yamlPath, data, schema) {
       continue;
     }
     if (field.rich) problems.push(...linkProblems(yamlPath, field.key, value));
+    // photos of fotky/ only in the text of a page (`photos` given), anywhere else a marker is a mistake
+    problems.push(...photoProblems(yamlPath, field.key, value, field.key === 'text' ? photos : null));
     const length = plainText(value).length;
     if (field.key === 'description' && length > PAGE_DESCRIPTION_CHARS) {
       problems.push(`${yamlPath}: description má ${length} znaků, zkrať ho nejvýš na ${PAGE_DESCRIPTION_CHARS} (delší vyhledávače uříznou) [popis-stranky-dlouhy]`);

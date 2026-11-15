@@ -8,7 +8,7 @@
 import { CODES, LEVELS, LEVEL_LABELS, coded, codesOf, withoutCodes } from './codes.mjs';
 import { groupProblems } from './summary.mjs';
 import { NO_COLLECTION_TITLE } from './gallery-filter.mjs';
-import { paragraphs, richTextMarkdown } from './rich-text.mjs';
+import { DEFAULT_PHOTO_SIDE, paragraphs, photoMarker, richTextMarkdown } from './rich-text.mjs';
 
 /** Levels of the messages of a pipeline run (the weekly health check has its own report). */
 const RUN_LEVELS = LEVELS.filter((l) => l !== 'health');
@@ -98,11 +98,16 @@ const detailLines = (details, url) => (details && typeof details === 'object' &&
 /**
  * The text of a description as it looks on the site: each paragraph a line, formatted (richTextMarkdown: GitHub shows
  * bold, italic and links; `url` makes an address on the site a full one), then its description for search engines
- * (plain) as "Google: …" when it has its own; nothing for empty ones.
+ * (plain) as "Google: …" when it has its own; nothing for empty ones. A photo marker of a page is a line of its own
+ * "_(fotka <name>, <side>)_" where the photo is (photoMarker).
  */
 function textLines(d, url) {
   const description = typeof d?.description === 'string' && d.description.trim() ? escText(d.description) : '';
-  return [...paragraphs(d?.text).map((p) => richTextMarkdown(p, { url })), description && `Google: ${description}`].filter(Boolean);
+  const line = (p) => {
+    const photo = photoMarker(p);
+    return photo ? `_(fotka ${escText(photo.name)}, ${escText(photo.side || DEFAULT_PHOTO_SIDE)})_` : richTextMarkdown(p, { url });
+  };
+  return [...paragraphs(d?.text).map(line), description && `Google: ${description}`].filter(Boolean);
 }
 
 /** A full address of a page of the site `siteUrl` (without a trailing slash; '' = as written). */

@@ -157,14 +157,14 @@ test('pagesReadme: the home page, the pages and the years, links to the descript
     home: { yamlPath: '_index.yaml', data: { heading: 'Barvy\na voda\n', text: 'Ahoj **světe**.\n', button: 'Tvorba', empty_text: 'Brzy.', empty_closing: 'Viz [IG](https://ig.example/).\n' } },
     pages: [
       { name: '404', yamlPath: 'stranky/404.yaml', data: { title: 'T', heading: 'H', text: 'Nic.\n', closing: 'Zkuste [tvorbu](/tvorba/).\n', description: 'Pro Google.' } },
-      { name: 'o-mne', yamlPath: 'stranky/o-mne.yaml', data: { text: 'První.\n\nDruhý *odstavec*.\n' } },
+      { name: 'o-mne', yamlPath: 'stranky/o-mne.yaml', data: { text: 'První.\n\n[fotka: portret]\n\nDruhý *odstavec*.\n' } },
     ],
     years: [{ year: '2025', yamlPath: 'roky/2025.yaml', data: { text: '' } }, { year: '2026', yamlPath: 'roky/2026.yaml', data: { text: 'Rok.\n' } }],
   });
   assert.deepEqual(text.match(/^(##+ .*|---)$/gm), ['## Úvodní stránka', '---', '## Stránky', '### O mně', '### Stránka nenalezena (404)', '---', '## Roky', '### Rok 2026', '### Rok 2025']);
   assert.doesNotMatch(pagesReadme({ home: { yamlPath: '_index.yaml', data: {} } }), /---|## Stránky|## Roky/, 'no empty parts');
   assert.match(text, /## Úvodní stránka\n\n\[\\_index\.yaml\]\(\.\.\/\.\.\/_index\.yaml\) · \[web\]\(https:\/\/pavla\.example\/\)\n\nNadpis: Barvy \/ a voda\n\nAhoj \*\*světe\*\*\.\n\nTlačítko: Tvorba\n\nPrázdný web: Brzy\.\n\nPrázdný web, pod ní: Viz \[IG\]\(https:\/\/ig\.example\/\)\.\n/);
-  assert.match(text, /### O mně\n\n\[o-mne\.yaml\]\(\.\.\/\.\.\/stranky\/o-mne\.yaml\) · \[web\]\(https:\/\/pavla\.example\/o-mne\/\)\n\nPrvní\.\n\nDruhý \*odstavec\*\.\n/);
+  assert.match(text, /### O mně\n\n\[o-mne\.yaml\]\(\.\.\/\.\.\/stranky\/o-mne\.yaml\) · \[web\]\(https:\/\/pavla\.example\/o-mne\/\)\n\nPrvní\.\n\n_\(fotka portret, vlevo\)_\n\nDruhý \*odstavec\*\.\n/, 'a photo where it is in the text');
   assert.match(text, /### Stránka nenalezena \(404\)\n\n\[404\.yaml\]\(\.\.\/\.\.\/stranky\/404\.yaml\)\n\nUkáže se na každé adrese.*\n\nTitulek: T\n\nNadpis: H\n\nNic\.\n\nZávěr: Zkuste \[tvorbu\]\(https:\/\/pavla\.example\/tvorba\/\)\.\n\nGoogle: Pro Google\.\n/, 'no web link: any address');
   assert.match(text, /### Rok 2025\n\n.*\n\n_\(bez textu\)_\n$/);
 });

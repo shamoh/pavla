@@ -2,6 +2,7 @@
 // Page not found: a light joke on an unpainted picture and a few works of the author's selection instead.
 // Search engines leave it out (noindex, no canonical).
 import Base from '../layouts/Base.astro';
+import TextBlocks from '../components/TextBlocks.astro';
 import WorkCard from '../components/WorkCard.astro';
 import { getPage, getWorks } from '../lib/site';
 import { coverCandidates } from '../../scripts/lib/works.mjs';
@@ -15,8 +16,7 @@ const page = getPage('404')!;
   <section class="unpainted">
     <p class="eyebrow">Chyba 404</p>
     <h1>{page.heading}</h1>
-    {page.paragraphs.map((p) => <p set:html={p} />)}
-    {page.closing.map((p) => <p class="muted" set:html={p} />)}
+    <TextBlocks blocks={page.blocks} closing={page.closing} />
   </section>
   {picks.length > 0 && <div class="grid">{picks.map((w) => <WorkCard work={w} />)}</div>}
 </Base>

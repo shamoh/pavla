@@ -531,8 +531,8 @@ export async function run({
   const home = await prepareHome(contentDir, { instagram: config.site?.instagram ?? '' });
   created.push(...home.created);
   updated.push(...home.updated);
-  // stranky/<page>.yaml: the texts of the pages O mně and Kontakt.
-  const pages = await preparePages(contentDir);
+  // stranky/<page>.yaml: the texts of the pages (O mně, Kontakt, 404, generic ones), their photos from fotky/.
+  const pages = await preparePages(contentDir, { photos: photos.photos.map((p) => p.name) });
   created.push(...pages.created);
   updated.push(...pages.updated);
   // tvorba/_index.yaml: the cover of "Mimo kolekce" (the works without a collection) on the collections overview.

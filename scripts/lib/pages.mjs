@@ -5,7 +5,8 @@
 // what the page needs besides (the title of 404 and of a generic page, the label of the place on Kontakt).
 // A fixed page (O mně, Kontakt, 404) gets a skeleton with the texts it had in the code when its file is missing; an
 // optional page (a generic text page, `optional`) exists only while its file does. Every file is brought in line with
-// its schema like the other descriptions. Photos of the pages stay in fotky/.
+// its schema like the other descriptions. Photos of the pages stay in fotky/; the `text` of a page may place one of them
+// between its paragraphs ("[fotka: <name>, vlevo|vpravo]", scripts/lib/rich-text.mjs photoMarker).
 // A new page with a text = an entry in PAGES (and PAGE_SCHEMAS); a generic one is built by src/pages/[page].astro.
 
 import fs from 'node:fs/promises';
@@ -61,8 +62,10 @@ export function pageProblems(yamlPath, data, name = 'o-mne') {
 /**
  * Reads stranky/*.yaml, writes skeletons for the fixed pages that have none, brings every file in line with its schema
  * and returns { pages: [{ name, data, yamlPath }], created, updated, problems }. Any other file in stranky/ is a problem.
+ * `photos`: the names of the photos in fotky/ (preparePhotos), the only ones a text may place.
  */
-export async function preparePages(contentDir) {
+export async function preparePages(contentDir, { photos = [] } = {}) {
+  const photoNames = new Set(photos);
   const root = path.join(contentDir, PAGES_SUBDIR);
   const pages = [];
   const created = [];
@@ -94,7 +97,7 @@ export async function preparePages(contentDir) {
     } catch {
       continue; // reported by keepInLine
     }
-    const own = [...pageProblems(yamlPath, data, name), ...textProblems(yamlPath, data, schema)];
+    const own = [...pageProblems(yamlPath, data, name), ...textProblems(yamlPath, data, schema, { photos: photoNames })];
     problems.push(...own);
     if (!own.length) pages.push({ name, data, yamlPath });
   }

@@ -5,7 +5,7 @@ import { PIN_FILE } from '../../scripts/lib/pinterest.mjs';
 import { coverCandidates, dateYear, detailKey, formatSizeCm, isOnSale, isValidId, orderDetails, workKey } from '../../scripts/lib/works.mjs';
 import { photoFocus } from '../../scripts/lib/photos.mjs';
 import { GENERIC_PAGES, PAGES } from '../../scripts/lib/pages.mjs';
-import { plainText, richParagraphs, searchDescription } from '../../scripts/lib/rich-text.mjs';
+import { plainText, richBlocks, richParagraphs, searchDescription } from '../../scripts/lib/rich-text.mjs';
 import { readCopies } from '../../scripts/lib/site-content.mjs';
 import { HOME_PAGE_DIR, LEGACY_OG_FILE, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, pageShareFile, photoDir, workImageDir, yearPageDir } from '../../scripts/lib/site-images.mjs';
 import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
@@ -349,11 +349,16 @@ export function getHome(): {
  */
 export const textHtml = (text: unknown): string[] => richParagraphs(text, { url });
 
+/** A block of the text of a page: a paragraph as HTML, or a photo of fotky/ floating to a side (richBlocks). */
+export type TextBlock = { html: string } | { photo: string; side: 'left' | 'right' };
+
 /** The text of a page as the site shows it (getPage). */
 export type PageText = {
   description: string; title: string; heading: string; locationLabel: string;
-  /** Paragraphs as HTML (simple formatting of scripts/lib/rich-text.mjs); `closing`: the muted last ones. */
-  paragraphs: string[]; closing: string[];
+  /** Paragraphs as HTML (simple formatting of scripts/lib/rich-text.mjs) and the photos placed between them. */
+  blocks: TextBlock[];
+  /** The muted last paragraphs as HTML. */
+  closing: string[];
 };
 
 /**
@@ -366,7 +371,7 @@ export function getPage(name: keyof typeof PAGES): PageText | null {
   const line = (value: unknown) => String(value ?? '').trim();
   return {
     description: searchDescription(data), title: line(data.title), heading: line(data.heading), locationLabel: line(data.location_label),
-    paragraphs: textHtml(data.text), closing: textHtml(data.closing),
+    blocks: richBlocks(data.text, { url }) as TextBlock[], closing: textHtml(data.closing),
   };
 }
 

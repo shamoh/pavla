@@ -1,11 +1,14 @@
 ---
 import Base from '../layouts/Base.astro';
 import Photo from '../components/Photo.astro';
+import TextBlocks from '../components/TextBlocks.astro';
 import { getPage, photoImageUrl, site } from '../lib/site';
 import { breadcrumbLd, graphLd, personLd } from '../../scripts/lib/seo.mjs';
 
 // The texts are in stranky/o-mne.yaml of the content repository.
-const { description, paragraphs, closing } = getPage('o-mne')!;
+const { description, blocks, closing } = getPage('o-mne')!;
+// A text that places its photos itself ("[fotka: portret, vlevo]") runs across the width, without the portrait column.
+const placed = blocks.some((b) => 'photo' in b);
 // For search engines: a profile page about the author.
 const jsonLd = graphLd(
   { '@type': 'ProfilePage', '@id': new URL('/o-mne/', site.url).href, url: new URL('/o-mne/', site.url).href, name: `O mně – ${site.author}`, inLanguage: 'cs', mainEntity: { '@id': new URL('/#autorka', site.url).href } },
@@ -19,14 +22,12 @@ const jsonLd = graphLd(
       <p class="eyebrow">O mně</p>
       <h1>{site.author}</h1>
     </header>
-    <!-- Wide photo on top (fotky/o-mne-uvod.jpg of the content repository), portrait next to the text (portret.jpg). -->
+    <!-- Wide photo on top (fotky/o-mne-uvod.jpg of the content repository), portrait next to the text (portret.jpg)
+         unless the text places its photos itself. -->
     <Photo name="o-mne-uvod" sizes="(max-width: 1100px) 100vw, 1100px" eager class="lead" aspect="2 / 1" />
     <div class="body">
-      <div class="text">
-        {paragraphs.map((p) => <p set:html={p} />)}
-        {closing.map((p) => <p class="muted" set:html={p} />)}
-      </div>
-      <Photo name="portret" sizes="(max-width: 800px) 100vw, 300px" class="portrait" />
+      <TextBlocks blocks={blocks} closing={closing} class:list={['text', { placed }]} />
+      {!placed && <Photo name="portret" sizes="(max-width: 800px) 100vw, 300px" class="portrait" />}
     </div>
   </div>
 </Base>
@@ -35,11 +36,16 @@ const jsonLd = graphLd(
   .about header { margin-bottom: 32px; }
   .about h1 { margin: 0.1em 0 0; }
   /* Page selectors (.about …) outrank the scoped `.photo { margin: 0 }` of the Photo component. */
-  .about :global(.lead) { margin: 0 0 clamp(40px, 6vw, 72px); }
+  .about :global(.lead) { margin: 0 0 clamp(24px, 3vw, 36px); }
   .body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: clamp(24px, 6vw, 80px); align-items: start; }
   .body:not(:has(:global(.portrait))) { grid-template-columns: minmax(0, 1fr); }
-  .text { font-size: 1.08rem; max-width: 62ch; }
-  .text p:first-child { margin-top: 0; }
+  .about :global(.text) { font-size: 1.08rem; max-width: 62ch; }
+  /* with its photos inside, the text runs across the whole page, as wide as the photo on top */
+  .about :global(.text.placed),
+  .about :global(.text.placed p) { max-width: none; }
+  /* justified like a printed page; Czech hyphenation (lang="cs") keeps the gaps between words small */
+  .about :global(.text.placed p) { text-align: justify; hyphens: auto; }
+  .about :global(.text > p:first-child) { margin-top: 0; }
   @media (max-width: 800px) {
     .body { grid-template-columns: 1fr; }
     .about :global(.portrait) { max-width: 360px; }

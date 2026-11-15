@@ -32,6 +32,9 @@ heading: Testovací nadpis stránky 404
 #   - *slovo* = kurzívou,
 #   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+# Fotka ze složky fotky/ mezi odstavci:
+#   - samostatný odstavec [fotka: portret, vlevo] = fotka fotky/portret.jpg vlevo (vpravo = vpravo, bez strany = vlevo),
+#   - text nad ní je přes celou šířku, text pod ní ji obtéká z druhé strany (na mobilu je fotka mezi odstavci).
 text: |
   Na téhle adrese nic není (testovací text z demo-content/stranky/404.yaml).
 

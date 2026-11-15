@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isAllowedHref, linkProblems, richTextHtml, richTextMarkdown, richTextPlain } from './rich-text.mjs';
+import {
+  isAllowedHref, linkProblems, photoMarker, photoProblems, plainText, richBlocks, richTextHtml, richTextMarkdown, richTextPlain, searchDescription, textPhotos,
+} from './rich-text.mjs';
 
 const base = { url: (p) => `/base${p}` };
 
@@ -40,4 +42,48 @@ test('richTextMarkdown: the same formatting for GitHub, full addresses of the si
   assert.equal(richTextMarkdown('5 * 3 # <b>x</b> & a_b'), '5 \\* 3 \\# \\<b\\>x\\</b\\> &amp; a_b', 'nothing GitHub would format by itself');
   assert.equal(richTextMarkdown('[zlé](www.fler.cz)'), '\\[zlé\\](www.fler.cz)', 'a forbidden address stays text');
   assert.equal(richTextMarkdown('řádek\n  dva'), 'řádek dva');
+});
+
+test('photoMarker: a paragraph "[fotka: name, side]", side optional, spaces and case of the word free', () => {
+  assert.deepEqual(photoMarker('[fotka: portret, vlevo]'), { name: 'portret', side: 'vlevo' });
+  assert.deepEqual(photoMarker('[ Fotka:portret ,VPRAVO ]'), { name: 'portret', side: 'vpravo' });
+  assert.deepEqual(photoMarker('[fotka: portret]'), { name: 'portret', side: '' });
+  assert.equal(photoMarker('Text [fotka: portret] a dál'), null, 'only a paragraph of its own');
+  assert.equal(photoMarker('[fotka portret]'), null);
+  assert.equal(photoMarker('[odkaz](/tvorba/)'), null);
+});
+
+const TEXT = 'Nahoře přes celou šířku.\n\n[fotka: portret, vlevo]\n\nVedle fotky.\n\n[fotka: ateliér]\n\n[fotka: kontakt, vpravo]';
+
+test('richBlocks: paragraphs as HTML and photos with their side (left by default)', () => {
+  assert.deepEqual(richBlocks(TEXT), [
+    { html: 'Nahoře přes celou šířku.' },
+    { photo: 'portret', side: 'left' },
+    { html: 'Vedle fotky.' },
+    { photo: 'ateliér', side: 'left' },
+    { photo: 'kontakt', side: 'right' },
+  ]);
+  assert.deepEqual(richBlocks('[fotka: portret, nahoře]'), [{ html: '[fotka: portret, nahoře]' }], 'an unknown side stays a paragraph');
+  assert.deepEqual(richBlocks('[x](/a/)', base), [{ html: '<a href="/base/a/">x</a>' }], 'links get the base like richTextHtml');
+  assert.deepEqual(textPhotos(TEXT).map((p) => p.name), ['portret', 'ateliér', 'kontakt']);
+  assert.deepEqual(richBlocks(undefined), []);
+});
+
+test('plainText and searchDescription skip photo markers', () => {
+  assert.equal(plainText(TEXT), 'Nahoře přes celou šířku. Vedle fotky.');
+  assert.equal(searchDescription({ text: '[fotka: portret]\n\nMaluji.' }), 'Maluji.');
+});
+
+test('photoProblems: only where photos may be, a known photo, a known side, a paragraph of its own', () => {
+  const photos = new Set(['portret', 'kontakt']);
+  assert.deepEqual(photoProblems('stranky/o-mne.yaml', 'text', '[fotka: portret]\n\n[fotka: kontakt, vpravo]\n\nText.', photos), []);
+  const codes = (text, known) => photoProblems('f', 'text', text, known).map((p) => p.match(/\[([a-z-]+)\]$/)[1]);
+  assert.deepEqual(codes('[fotka: portret]', null), ['fotka-v-textu-nejde'], 'no photos outside the text of a page');
+  assert.deepEqual(codes('[fotka: portrét]', photos), ['neznama-fotka-v-textu']);
+  assert.deepEqual(codes('[fotka: portret, nahoru]', photos), ['spatna-strana-fotky']);
+  assert.deepEqual(codes('[fotka: x, dole]', photos), ['neznama-fotka-v-textu', 'spatna-strana-fotky']);
+  assert.deepEqual(codes('Text a [fotka: portret] v něm.', photos), ['fotka-v-textu-sama']);
+  assert.deepEqual(codes('Bez fotky, [odkaz](/a/).', null), []);
+  assert.match(photoProblems('f', 'text', '[fotka: x]', photos)[0], /je tam: kontakt, portret/, 'names the photos there are');
+  assert.deepEqual(photoProblems('f', 'text', null, photos), []);
 });

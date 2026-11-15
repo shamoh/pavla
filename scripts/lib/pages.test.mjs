@@ -66,6 +66,21 @@ test('preparePages: a page without text stays without it, the description is opt
   assert.equal(r.pages.find((p) => p.name === '404'), undefined, 'a page with a problem is not copied');
 });
 
+test('preparePages: a text may place photos of fotky/, an unknown one or one in the closing stops the page', async () => {
+  await fs.mkdir(path.join(dir, PAGES_SUBDIR));
+  await fs.writeFile(file('o-mne'), 'text: |\n  Nahoře.\n\n  [fotka: portret, vlevo]\n\n  Vedle.\n');
+  await fs.writeFile(file('kontakt'), 'text: |\n  [fotka: neni]\n');
+  await fs.writeFile(file('404'), 'title: T\nheading: H\ntext: Text.\nclosing: |\n  [fotka: portret]\n');
+  const r = await preparePages(dir, { photos: ['portret'] });
+  assert.ok(r.pages.find((p) => p.name === 'o-mne'), 'a known photo is fine');
+  assert.match(await fs.readFile(file('o-mne'), 'utf8'), /\n {2}\[fotka: portret, vlevo\]\n/, 'the marker stays a paragraph of its own');
+  assert.deepEqual(r.problems.map((p) => p.match(/^([^:]+):.*\[([a-z-]+)\]$/).slice(1)), [
+    ['stranky/404.yaml', 'fotka-v-textu-nejde'],
+    ['stranky/kontakt.yaml', 'neznama-fotka-v-textu'],
+  ]);
+  assert.match(await fs.readFile(file('o-mne'), 'utf8'), /# Fotka ze složky fotky\/ mezi odstavci:/, 'the comment of the text explains it');
+});
+
 test('preparePages reports a file that is no page text', async () => {
   await fs.mkdir(path.join(dir, PAGES_SUBDIR, 'blog'), { recursive: true });
   await fs.writeFile(file('novinky'), 'text: x\n');
