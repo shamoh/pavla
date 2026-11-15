@@ -121,7 +121,8 @@ const jsonLd = graphLd(websiteLd(site), personLd(site, { image: photoImageUrl('p
 <style>
   .hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: clamp(24px, 5vw, 72px); align-items: center; margin-bottom: 96px; }
   .hero-text h1 { margin-top: 0.1em; }
-  .desc { white-space: pre-line; }
+  /* justified like the text of O mně; Czech hyphenation (lang="cs") keeps the gaps between words small */
+  .desc { white-space: pre-line; text-align: justify; hyphens: auto; }
   .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0 0; }
   .actions .ghost { border-color: var(--line); }
   .section-head { display: flex; align-items: baseline; gap: 12px 20px; border-top: 1px solid var(--line); padding-top: 24px; margin-bottom: 28px; }

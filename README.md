@@ -467,7 +467,7 @@ v `scripts/lib/rich-text.mjs`, komentář `PHOTO_DOC` ve schématu): samostatný
 ji obtékají z druhé strany (`float`, šířka `min(42 %, 300px)`) a po jejím konci zase běží přes celou šířku; `closing`
 je ve stejném bloku (`display: flow-root`, nic za ním do fotky nevteče). Do 640 px je fotka mezi odstavci bez obtékání.
 Vykresluje `src/components/TextBlocks.astro` (`getPage` vrací `blocks`: `{ html }` | `{ photo, side }`), na všech
-stránkách ze `stranky/`. O mně: s fotkou v textu zmizí sloupec s portrétem vpravo a text jde přes celou šířku stránky jako úvodní fotka, zarovnaný do bloku s dělením slov (`placed`, `hyphens: auto`);
+stránkách ze `stranky/`. O mně: s fotkou v textu zmizí sloupec s portrétem vpravo a text jde přes celou šířku stránky jako úvodní fotka, zarovnaný do bloku s dělením slov (`placed`, `hyphens: auto`); stejně text úvodní stránky vedle velkého obrazu (`.desc` v `src/pages/index.astro`);
 bez ní zůstává portrét vedle textu jako dřív. Značka není text: `plainText` (popis pro vyhledávače, hledání) ji
 vynechá, `export/stranky/README.md` ji ukáže jako „_(fotka <jméno>, <strana>)_“. Chyby (zastaví běh): fotka, která
 není ve `fotky/` (`[neznama-fotka-v-textu]`, hláška vyjmenuje existující), jiná strana (`[spatna-strana-fotky]`),
