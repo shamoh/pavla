@@ -161,7 +161,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   čistý `detailCaption`). Přehled `export/README.md` ukáže texty formátované (`richTextMarkdown`, odkazy na web s celou
   adresou `siteUrl`). Kontroly `textProblems`/`allTextProblems`.
 - Tvrdé mezery české typografie (`scripts/lib/typography.mjs`: jednopísmenná slova, číslo + jednotka `UNITS`, `×`,
-  zkratky `ABBREVIATIONS`, data, pořadová čísla, pomlčka ve větě, rozsah čísel s `\u2060`): formátované texty přes
+  zkratky `ABBREVIATIONS`, data, pořadová čísla, pomlčka ve větě, rozsah čísel s `\u2060`, `...` → `…`): formátované texty přes
   `richTextHtml` (`keepTogetherHtml`), názvy a nadpisy na stránce přes `keepTogether` (nový zobrazený název či nadpis = taky),
   text příspěvku pro Instagram (`instagramPost`, `gridPosts`, ne adresa a hashtagy) a popis pro Fler; nikdy v datech,
   adresách, `<title>`, JSON-LD a bublinách.

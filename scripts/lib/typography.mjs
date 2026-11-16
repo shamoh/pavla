@@ -7,7 +7,8 @@
 //   - a date stays whole: "15. 11. 2026", an ordinal number stays with its word: "1. místo", "15. listopadu",
 //   - a range of numbers is never split at its dash: "2019–2024" (also "2019 – 2024" and "2019 - 2024", written
 //     as "2019–2024"; "2019-2024" keeps its hyphen), joined by word joiners (U+2060, invisible),
-//   - a dash in a sentence never starts a line: "chvíle – kdy" (the space before it; also "-" used as a dash).
+//   - a dash in a sentence never starts a line: "chvíle – kdy" (the space before it; also "-" used as a dash),
+//   - three dots are the ellipsis: "kopretiny..." -> "kopretiny…" (one character; never inside an address).
 // keepTogether for a plain text (titles, headings: Astro escapes them), keepTogetherHtml for HTML of a formatted text
 // (scripts/lib/rich-text.mjs richTextHtml): only its text changes, never a tag, and a rule works across a tag too
 // ("a <strong>s barvou</strong>"). Only for showing: never in data, addresses, <title>, JSON-LD or attributes.
@@ -28,6 +29,8 @@ export const ABBREVIATIONS = ['např', 'tzv', 'tj', 'tzn', 'resp', 'cca', 'č', 
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const RULES = [
+  // three dots (exactly three) -> the ellipsis, except in a word that is an address (with "/" or "www.")
+  [/[^\s]*(?<!\.)\.{3}(?!\.)[^\s]*/g, (word) => (/\/|www\./i.test(word) ? word : word.replace(/(?<!\.)\.{3}(?!\.)/g, '…'))],
   // a range of numbers: "2019–2024", "2019 – 2024", "2019 - 2024" -> "2019–2024"; "2019-2024" keeps its hyphen
   [/(?<=\d)(?: *– *| +- +)(?=\d)/g, `${JOIN}–${JOIN}`],
   [/(?<=\d)-(?=\d)/g, `${JOIN}-${JOIN}`],

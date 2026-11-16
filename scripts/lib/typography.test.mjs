@@ -57,3 +57,11 @@ test('keepTogether: ranges of numbers and dashes in sentences', () => {
   assert.equal(k('chvíle - kdy, a — pak'), 'chvíle~- kdy, a~— pak');
   assert.equal(k('Plenér Šumava-jih'), 'Plenér Šumava-jih', 'a hyphen inside a word stays');
 });
+
+test('keepTogether: three dots are the ellipsis, never in an address or with more dots', () => {
+  assert.equal(k('kopretiny... v jemných tónech'), 'kopretiny… v~jemných tónech');
+  assert.equal(k('...vyprávění a konec...'), '…vyprávění a~konec…');
+  assert.equal(k('a....b'), 'a....b', 'four dots stay');
+  assert.equal(k('viz https://x.cz/a...b a www.x...cz'), 'viz https://x.cz/a...b a~www.x...cz');
+  assert.equal(keepTogetherHtml('<a href="/a...b/">tak...</a>'), '<a href="/a...b/">tak…</a>', 'the address of a link is a tag');
+});

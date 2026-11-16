@@ -388,7 +388,8 @@ Každý popis s textem na webu (dílo, kolekce, rok, úvod, „Mimo kolekce“, 
   (`30 × 40 cm`), za zkratkou (`ABBREVIATIONS`: `např.`, `tzv.`, `tj.`, `sv.`, `cca`, …), uvnitř data (`15. 11. 2026`),
   za pořadovým číslem před slovem malým písmenem (`1. místo`, `15. listopadu`) a před pomlčkou ve větě (`chvíle – kdy`,
   i `-` s mezerami). Rozsah čísel se nikdy nerozdělí: `2019–2024`, `2019 – 2024` i `2019 - 2024` se zobrazí jako
-  `2019–2024`, `2019-2024` si nechá spojovník; kolem pomlčky neviditelné `\u2060` (word joiner). Formátované texty
+  `2019–2024`, `2019-2024` si nechá spojovník; kolem pomlčky neviditelné `\u2060` (word joiner). Tři tečky `...`
+  (přesně tři) se zobrazí jako výpustka `…` (jeden znak), ne ve slově, které je adresou (`/` nebo `www.`). Formátované texty
   (`richTextHtml` → `keepTogetherHtml`, jen v textu, nikdy uvnitř značky, i přes ni: `a **s barvou**`) a názvy a nadpisy
   (`keepTogether`): název díla na kartě, na stránce díla a v odkazech na předchozí / další, kolekce (nadpis, přehled,
   odkaz na stránce díla), nadpis úvodu, 404 a obecné stránky, promítání; text příspěvku pro Instagram (`instagramPost`:
