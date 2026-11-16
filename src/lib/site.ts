@@ -106,6 +106,8 @@ export interface Work {
    */
   image: ImageSet & {
     mockups?: Mockup[]; details?: Detail[];
+    /** Its colours (scripts/lib/colors.mjs analyseColours: paper, balanced bins [l, a, b, weight]), read by colourBins. */
+    colors?: { version: number; paper: number[] | null; bins: number[][] };
     og?: { width: number; height: number; file?: string };
     pin?: { width: number; height: number; bytes: number; file?: string; feed?: boolean; feedFile?: string; feedVersion?: number };
   };

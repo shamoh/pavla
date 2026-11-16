@@ -20,6 +20,7 @@ import { ownText } from './rich-text.mjs';
 import { summarize } from './seo.mjs';
 import { PALETTES, paletteCss } from './palettes.mjs';
 import { SAMPLE_PICKS, SAMPLE_SIZE, prepareGame } from './detail-game-data.mjs';
+import { COLOUR_ANALYSIS_SIZE, analyseColours, balancePalette, colourBins, colourDistance, colourSettings, familyShares, nearestFamily, oklabToOklch, paletteDistance, paletteMood, paperOf, rgbToOklab, workPalette } from './colors.mjs';
 import {
   GAME_EPOCH, applyGuess, chooseDecoys, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, frameSource, gameDay, gameFrame, gameHash, gameHint, gameLevels, gameLooks, dropsWord, lookForDay, lookKey, windowHtml,
   gameRandom, gameRank, gameShareText, gameShuffle, newProgress, newRound, puzzleForLevel, winTitle,
@@ -38,6 +39,7 @@ export const PROTOTYPES = {
   'detail-efekty.html': 'detail-effects.html',
   'detail-kviz.html': 'detail-quiz.html',
   'detail-vzorek.html': 'detail-sample.html',
+  'barvy.html': 'colors.html',
 };
 
 /** The functions of the site a prototype calculates with, copied into it by their source text (self-contained ones). */
@@ -51,7 +53,32 @@ export const PROTOTYPE_FUNCTIONS = [
   // the game "Detail dne"
   gameLevels, gameLooks, lookForDay, windowHtml, dropsWord, gameHash, gameRandom, gameShuffle, gameDay, chooseDecoys, puzzleForLevel, dailyPuzzles, effectStrength, effectSettings, effectStyle, waveRipple, lookKey, frameSource, drawPixels, gameFrame, gameHint, newRound, applyGuess,
   dropsFor, winTitle, gameRank, newProgress, finishRound, gameShareText,
+  // the colours of the works (scripts/lib/colors.mjs, a prototype)
+  rgbToOklab, oklabToOklch, paperOf, balancePalette, nearestFamily, familyShares, paletteMood, paletteDistance, colourDistance,
 ];
+
+/**
+ * The colours of `works` (scripts/lib/colors.mjs) from their smallest WebP in public/ of `dataRoot` (with its
+ * transparency: the surroundings of a cut-out work stay out): { <id>: { palette (workPalette), histogram
+ * (colourHistogram, balanced by its paper: paperFromEdge, null = not balanced) } }. A picture that cannot be read has none.
+ */
+export async function prototypeColors(works, dataRoot) {
+  const { default: sharp } = await import('sharp');
+  const out = {};
+  for (const work of works) {
+    try {
+      const file = path.join(dataRoot, 'public', work.folder, `${Math.min(...work.widths)}.webp`);
+      const { data, info } = await sharp(file).resize(COLOUR_ANALYSIS_SIZE, COLOUR_ANALYSIS_SIZE, { fit: 'inside' }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      const pixels = { data, width: info.width, height: info.height, channels: info.channels };
+      // the analysis the pipeline keeps in info.json, and a palette of 8 colours to show
+      const analysis = analyseColours(pixels);
+      out[work.id] = { palette: workPalette(pixels), paper: analysis.paper, histogram: colourBins(analysis).map(({ lab, weight }) => ({ lab, weight })) };
+    } catch (error) {
+      console.warn(`colours: ${work.folder}: ${error.message}`);
+    }
+  }
+  return out;
+}
 
 /**
  * The works of the site data at `dataRoot` (content/tvorba/[<collection>/]<slug>.yaml + public/tvorba/<year>/<slug>-<id>/info.json),
@@ -121,6 +148,8 @@ export function prototypeConfig(config) {
     // the palettes of the site: their CSS (data-palette on <html>) and the switcher
     paletteCss: paletteCss(),
     palettes: PALETTES.map((p) => ({ id: p.id, label: p.label })),
+    // the colours of the filter „Barva“ (site.config.yaml gallery.colors, a prototype so far)
+    colours: colourSettings(config),
   };
 }
 
@@ -180,10 +209,11 @@ export function prototypeScenes(scenes, outDir) {
 
 
 /** Writes every prototype into `outDir` from the templates in `templatesDir`; returns the written files. */
-export function writePrototypes({ dataRoot, outDir, templatesDir, config, scenes = [], game = { prepared: {}, sample: [] } }) {
+export function writePrototypes({ dataRoot, outDir, templatesDir, config, scenes = [], game = { prepared: {}, sample: [] }, colors = {} }) {
   const data = {
     works: prototypeWorks(dataRoot), public: publicPath(outDir, dataRoot), config: prototypeConfig(config), scenes: prototypeScenes(scenes, outDir),
     game: { prepared: game.prepared, sample: game.sample, epoch: GAME_EPOCH, site: config?.site?.url ?? '' },
+    colors,
   };
   fs.mkdirSync(outDir, { recursive: true });
   return Object.entries(PROTOTYPES).map(([name, template]) => {

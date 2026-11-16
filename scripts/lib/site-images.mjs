@@ -92,3 +92,10 @@ export function staleOutputs(siteDir, wanted) {
   for (const root of OUTPUT_ROOTS) visit(root);
   return stale.sort((a, b) => a.rel.localeCompare(b.rel));
 }
+
+/**
+ * The text of an info.json: indented like JSON.stringify(…, null, 2), but every list of numbers on one line (the colour
+ * bins of a work, [l, a, b, weight] by the hundred, would take a line per number; widths read better too).
+ */
+export const infoJson = (info) => JSON.stringify(info, null, 2)
+  .replace(/\[\s+(-?[\d.e+-]+(?:,\s+-?[\d.e+-]+)*)\s+\]/g, (_, list) => `[${list.split(/,\s+/).join(', ')}]`);

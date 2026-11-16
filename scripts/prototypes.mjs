@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
-import { prepareGame, prototypeWorks, writePrototypes } from './lib/prototypes.mjs';
+import { prepareGame, prototypeColors, prototypeWorks, writePrototypes } from './lib/prototypes.mjs';
 import { loadInstagramScenes } from './lib/instagram.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -16,5 +16,6 @@ const outDir = path.resolve(process.argv[2] ?? path.join(root, '.prototypes'));
 const config = YAML.parse(fs.readFileSync(path.join(root, 'site.config.yaml'), 'utf8'));
 const { scenes } = await loadInstagramScenes();
 const game = await prepareGame(prototypeWorks(dataRoot), dataRoot);
-const files = writePrototypes({ dataRoot, outDir, templatesDir: path.join(root, 'scripts', 'prototypes'), config, scenes, game });
+const colors = await prototypeColors(prototypeWorks(dataRoot), dataRoot);
+const files = writePrototypes({ dataRoot, outDir, templatesDir: path.join(root, 'scripts', 'prototypes'), config, scenes, game, colors });
 for (const file of files) console.log(`Written: ${path.relative(process.cwd(), file)}`);

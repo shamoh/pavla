@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  HOME_PAGE_DIR, OUTPUT_ROOTS, collectionPageDir, coverDir, fingerprintedName, isContainer, isFingerprinted, ogDir, pageShareFile, photoDir, staleOutputs,
+  HOME_PAGE_DIR, OUTPUT_ROOTS, collectionPageDir, coverDir, fingerprintedName, infoJson, isContainer, isFingerprinted, ogDir, pageShareFile, photoDir, staleOutputs,
   workImageDir, yearPageDir,
 } from './site-images.mjs';
 
@@ -88,4 +88,13 @@ test('pageShareFile: the og-<hash>.jpg of the _og folder of a page, null without
   assert.equal(pageShareFile(publicDir, yearPageDir('2026')), 'tvorba/2026/_og/og-0123abcd.jpg');
   await write('_og/og-89abcdef.jpg');
   assert.equal(pageShareFile(publicDir, HOME_PAGE_DIR), '_og/og-89abcdef.jpg');
+});
+
+test('infoJson: indented, every list of numbers on one line, the same data', () => {
+  const info = { width: 1200, widths: [480, 960], colors: { version: 1, paper: null, bins: [[0.95, -0.002, 0.01, 0.31], [0.5, 1e-7, -0.05, 0.002]] }, mockups: [] };
+  const text = infoJson(info);
+  assert.deepEqual(JSON.parse(text), info);
+  assert.match(text, /\n {2}"widths": \[480, 960\],\n/);
+  assert.match(text, /\n {6}\[0\.95, -0\.002, 0\.01, 0\.31\],\n {6}\[0\.5, 1e-7, -0\.05, 0\.002\]\n/);
+  assert.match(text, /"mockups": \[\]/);
 });

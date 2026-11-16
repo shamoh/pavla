@@ -204,6 +204,21 @@ gallery:
       corner: br
       icon: cart      # cart = košík, tag = cenovka, bag = taška
       tiles: [m, l]   # na malých dlaždicích jen hvězdička
+  colors:                                # filtr „Barva“ v galerii (zatím jen prototyp: npm run prototypes, .prototypes/barvy.html)
+    minShare: 12                         # obraz patří k barvě, když jí je aspoň tolik % jeho malované plochy (bez papíru)
+    # Barvy na výběr v tomto pořadí: id (do adresy ?color=, malá písmena bez diakritiky), název, odstín (#rrggbb = kolečko
+    # u volby a odstín, ke kterému se barvy obrazů přiřazují). Každá barevná plocha obrazu patří k nejbližšímu odstínu
+    # ze seznamu, takže seznam jde libovolně měnit, přidávat i ubírat (šedé plochy nepatří k žádné barvě).
+    families:
+      - { id: cervena, label: červená, color: '#c8423b' }
+      - { id: ruzova, label: růžová, color: '#d98aa8' }
+      - { id: oranzova, label: oranžová, color: '#e08a3c' }
+      - { id: zluta, label: žlutá, color: '#e3c34b' }
+      - { id: hneda, label: hnědá, color: '#7a5434' }
+      - { id: zelena, label: zelená, color: '#5f9a52' }
+      - { id: tyrkysova, label: tyrkysová, color: '#3e9c9a' }
+      - { id: modra, label: modrá, color: '#4472b0' }
+      - { id: fialova, label: fialová, color: '#8063a8' }
 
 cinema:
   # Promítání obrazů výpisu přes celou obrazovku („▶ Promítat“ v galerii, roku a kolekci; scripts/lib/cinema.mjs,

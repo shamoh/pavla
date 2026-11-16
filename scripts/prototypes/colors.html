@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Barvy obrazů</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* The palettes of the site (scripts/lib/palettes.mjs), as in the other prototypes. */
+  :root, [data-palette='papir'] { --paper: #f7f4ee; --paper2: #efeae0; --ink: #2b2724; --ink-soft: #6d655c; --line: #ddd5c7; --accent: #487282; }
+  [data-palette='noc'] { --paper: #1c1a18; --paper2: #252220; --ink: #ece6dc; --ink-soft: #a89f93; --line: #3a3531; --accent: #8fb7c4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Work Sans', system-ui, sans-serif; font-size: 15px; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1320px; margin: 0 auto; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; font-size: .86rem; }
+  .bar h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; font-size: 1.5rem; margin: 0 auto 0 0; }
+  .tabs button { font: inherit; font-size: .84rem; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 4px 11px; cursor: pointer; }
+  .tabs button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .sw { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--line); display: inline-block; flex: none; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 8px 0; color: var(--ink-soft); font-size: .86rem; }
+  .row label { display: inline-flex; gap: 6px; align-items: center; }
+  .row input[type='range'] { width: 110px; accent-color: var(--accent); }
+  .row output { color: var(--ink); min-width: 3.5em; }
+  /* the choice of a colour as in the filter row of the gallery: a label over a select, the swatch of the picked colour */
+  .facet { display: inline-flex; flex-direction: column; gap: 3px; font-size: .78rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .08em; }
+  .facet span { display: inline-flex; align-items: center; gap: 8px; }
+  .facet select { font: inherit; font-size: .95rem; text-transform: none; letter-spacing: 0; color: var(--ink); background: transparent; border: 0; border-bottom: 1px solid var(--line); padding: 2px 4px 4px 0; min-width: 11em; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .swatches button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--paper); outline: 1px solid var(--line); cursor: pointer; padding: 0; }
+  .swatches button[aria-pressed='true'] { outline: 2px solid var(--ink); }
+  .swatches button[disabled] { opacity: .25; cursor: default; }
+  main { max-width: 1320px; margin: 0 auto; padding: 8px 16px 80px; }
+  .note { color: var(--ink-soft); font-size: .86rem; max-width: 90ch; line-height: 1.5; }
+  h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 400; font-size: 1.6rem; margin: 26px 0 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px 14px; align-items: start; }
+  .grid.small { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+  .card { display: block; cursor: pointer; color: inherit; text-decoration: none; }
+  .card img { display: block; width: 100%; height: auto; background: var(--paper2); }
+  .card.cutout img { background: none; }
+  .card.on { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .strip { display: flex; height: 10px; margin-top: 5px; border-radius: 2px; overflow: hidden; }
+  .strip span { display: block; height: 100%; }
+  .meta { font-size: .78rem; color: var(--ink-soft); margin-top: 4px; line-height: 1.35; }
+  .meta b { color: var(--ink); font-weight: 500; }
+  .pick { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: start; margin-top: 10px; }
+  .pick .card { cursor: default; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  @media (max-width: 800px) { .pick, .cols { grid-template-columns: 1fr; } }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>Barvy obrazů</h1>
+    <span class="tabs" id="tabs">
+      <button data-tab="filter" aria-pressed="true">Filtr Barva</button>
+      <button data-tab="similar" aria-pressed="false">Podobné obrazy</button>
+      <button data-tab="all" aria-pressed="false">Všechny obrazy</button>
+    </span>
+    <span class="tabs"><button id="night" aria-pressed="false">Noc</button></span>
+  </div>
+</header>
+<main>
+  <div class="row">
+    <span>Rozbor barev:</span>
+    <label>šedá do sytosti <input type="range" id="chroma" min="0.005" max="0.06" step="0.005" value="0.02" /><output id="chromaOut"></output></label>
+    <label>papír od světlosti <input type="range" id="paper" min="0.75" max="0.99" step="0.01" value="0.88" /><output id="paperOut"></output></label>
+    <label>podíl barvy aspoň <input type="range" id="share" min="0.03" max="0.5" step="0.01" /><output id="shareOut"></output></label>
+  </div>
+
+  <section id="filter">
+    <p class="note">Jedna barva na výběr, jako ostatní výběry v řádku filtrů galerie (Technika, Rok, Kolekce, Stav). Obraz k barvě patří,
+      když jí je aspoň <i>podíl</i> jeho malované plochy (papír se nepočítá, šedé plochy nepatří k žádné barvě). Barvy a výchozí podíl
+      jsou v <code>site.config.yaml</code> <code>gallery.colors</code> (id, název, odstín); každá barevná plocha obrazu patří
+      k nejbližšímu odstínu ze seznamu, takže seznam jde libovolně měnit. Počty = kolik obrazů barvě odpovídá.
+      Dvě podoby téhož výběru: rozbalovací seznam (vejde se do řádku filtrů) a kolečka (jak to dělají fotobanky).</p>
+    <div class="row">
+      <label class="facet">Barva<span><i class="sw" id="pickedSwatch"></i><select id="colour"></select></span></label>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <h2 id="count"></h2>
+    <div class="grid" id="results"></div>
+  </section>
+
+  <section id="similar" hidden>
+    <p class="note">Klikni na obraz dole (nebo v kterékoli mřížce): nahoře se ukážou nejbližší obrazy. Podobnost barev = rozdíl podílů
+      barev malované plochy + rozdíl nálady (teplé / studené, světlé / tmavé, syté / pastelové); 0 = stejné, 1 = nic společného.
+      K tomu postih za jinou techniku a za žádný společný štítek. Váhami zkoušíme budoucí společnou funkci „jak moc jsou si dva
+      obrazy podobné“ pro Podobné obrazy i hru Detail dne.</p>
+    <div class="row">
+      <label>váha barev <input type="range" id="wColour" min="0" max="3" step="0.1" value="1" /><output id="wColourOut"></output></label>
+      <label>nálada váží <input type="range" id="wMood" min="0" max="2" step="0.1" value="0.5" /><output id="wMoodOut"></output></label>
+      <label>jiná technika + <input type="range" id="wTechnique" min="0" max="0.6" step="0.01" value="0.15" /><output id="wTechniqueOut"></output></label>
+      <label>bez společného štítku + <input type="range" id="wTags" min="0" max="0.6" step="0.01" value="0.08" /><output id="wTagsOut"></output></label>
+    </div>
+    <div class="pick" id="pick"></div>
+    <div class="cols">
+      <div><h2>Nejbližší jen podle barev</h2><div class="grid small" id="byColour"></div></div>
+      <div><h2>Barvy + technika + štítky</h2><div class="grid small" id="byAll"></div></div>
+    </div>
+    <h2>Všechny obrazy (klikni pro výběr)</h2>
+    <div class="grid small" id="chooser"></div>
+  </section>
+
+  <section id="all" hidden>
+    <p class="note">Každý obraz: paleta 8 hlavních barev (šířka pruhu = podíl, papír průsvitný), barvy nad podílem a nálada.
+      Pro kontrolu, jestli barvy sedí. Klik = podobné obrazy.</p>
+    <div class="grid" id="everything"></div>
+  </section>
+</main>
+<script>
+  const DATA = /*DATA*/{};
+  const PUBLIC = DATA.public;
+  const COLOURS = DATA.colors ?? {};
+  const SETTINGS = DATA.config.colours;
+  const FAMILIES = SETTINGS.families;
+  const WORKS = DATA.works.filter((w) => COLOURS[w.id]?.histogram?.length);
+/*FUNCTIONS*/
+
+  const $ = (id) => document.getElementById(id);
+  const val = (id) => Number($(id).value);
+  $('share').value = SETTINGS.minShare;
+  const state = { colour: '', picked: WORKS[0]?.id };
+
+  /** Every pixel of a work in bins (colourHistogram, balanced by its paper); a bin light and grey enough is the paper. */
+  const colours = (work) => COLOURS[work.id].histogram.map((b) => ({ ...b, paper: b.lab[0] >= val('paper') && Math.hypot(b.lab[1], b.lab[2]) < val('chroma') }));
+  const shares = (work) => familyShares(colours(work), FAMILIES, { chroma: val('chroma') });
+  const mood = (work) => paletteMood(colours(work), { paper: val('paper'), chroma: val('chroma') });
+  const hasColour = (work, id) => !id || (shares(work)[id] ?? 0) >= val('share');
+  const family = (id) => FAMILIES.find((f) => f.id === id);
+
+  function strip(work) {
+    const el = document.createElement('div');
+    el.className = 'strip';
+    for (const c of balancePalette(COLOURS[work.id].palette)) {
+      const span = document.createElement('span');
+      span.style.background = c.hex;
+      span.style.width = `${c.weight * 100}%`;
+      span.title = `${c.paper ? 'papír' : family(nearestFamily(c.lab, FAMILIES, { chroma: val('chroma') }))?.label ?? 'šedá'} ${Math.round(c.weight * 100)} %`;
+      if (c.paper) span.style.opacity = '.4';
+      el.append(span);
+    }
+    return el;
+  }
+  function card(work, { meta = '', onClick = () => pick(work.id), width = 300 } = {}) {
+    const a = document.createElement('a');
+    a.className = 'card' + (work.transparent ? ' cutout' : '') + (work.id === state.picked ? ' on' : '');
+    a.title = `${work.title} · ${work.sub}${work.tags.length ? ' · #' + work.tags.join(' #') : ''}`;
+    const img = document.createElement('img');
+    const base = `${PUBLIC}/${work.folder}/`;
+    img.srcset = work.widths.map((w) => `${base}${w}.webp ${w}w`).join(', ');
+    img.sizes = `${width}px`;
+    img.src = `${base}${work.widths[0]}.webp`;
+    img.width = 1000; img.height = Math.round(1000 * work.ratio); img.loading = 'lazy'; img.alt = work.title;
+    a.append(img, strip(work));
+    if (meta) { const m = document.createElement('div'); m.className = 'meta'; m.innerHTML = meta; a.append(m); }
+    a.addEventListener('click', (e) => { e.preventDefault(); onClick(); });
+    return a;
+  }
+  const colourText = (work) => Object.entries(shares(work)).filter(([, v]) => v >= val('share')).sort((a, b) => b[1] - a[1])
+    .map(([id, v]) => `${family(id)?.label ?? id} ${Math.round(v * 100)} %`).join(', ') || 'bez barvy (šedé)';
+  const moodText = (work) => { const m = mood(work); return `teplo ${m.warm} · světlo ${m.light} · sytost ${m.vivid}`; };
+
+  function renderFilter() {
+    const counts = Object.fromEntries(FAMILIES.map((f) => [f.id, WORKS.filter((w) => hasColour(w, f.id)).length]));
+    const select = $('colour');
+    select.replaceChildren(new Option(`vše (${WORKS.length})`, ''), ...FAMILIES.map((f) => {
+      const o = new Option(`${f.label} (${counts[f.id]})`, f.id);
+      o.disabled = counts[f.id] === 0;
+      return o;
+    }));
+    select.value = state.colour;
+    const picked = family(state.colour);
+    $('pickedSwatch').style.background = picked ? picked.color : 'transparent';
+    $('pickedSwatch').style.visibility = picked ? 'visible' : 'hidden';
+    $('swatches').replaceChildren(...FAMILIES.map((f) => {
+      const b = document.createElement('button');
+      b.style.background = f.color;
+      b.title = `${f.label} (${counts[f.id]})`;
+      b.setAttribute('aria-label', b.title);
+      b.setAttribute('aria-pressed', String(state.colour === f.id));
+      b.disabled = counts[f.id] === 0;
+      b.onclick = () => { state.colour = state.colour === f.id ? '' : f.id; renderFilter(); };
+      return b;
+    }));
+    const shown = WORKS.filter((w) => hasColour(w, state.colour));
+    $('count').textContent = `${shown.length} z ${WORKS.length} obrazů${picked ? ` · ${picked.label}` : ''}`;
+    $('results').replaceChildren(...shown.map((w) => card(w, { meta: `<b>${w.title}</b><br>${colourText(w)}`, onClick: () => { pick(w.id); show('similar'); } })));
+  }
+
+  function score(a, b) {
+    const colour = colourDistance({ shares: shares(a), mood: mood(a) }, { shares: shares(b), mood: mood(b) }, { moodWeight: val('wMood') });
+    const technique = a.technique === b.technique ? 0 : val('wTechnique');
+    const tags = !a.tags.length || a.tags.some((t) => b.tags.includes(t)) ? 0 : val('wTags');
+    return { colour, total: val('wColour') * colour + technique + tags };
+  }
+  function renderSimilar() {
+    const target = WORKS.find((w) => w.id === state.picked) ?? WORKS[0];
+    if (!target) return;
+    const others = WORKS.filter((w) => w.id !== target.id).map((w) => ({ w, ...score(target, w) }));
+    const meta = (o, key) => `<b>${o.w.title}</b><br>${key === 'colour' ? `barvy ${o.colour.toFixed(3)}` : `skóre ${o.total.toFixed(3)} (barvy ${o.colour.toFixed(3)})`}<br>${o.w.technique}`;
+    $('pick').replaceChildren(card(target, { onClick: () => {} }), Object.assign(document.createElement('div'), {
+      className: 'meta',
+      innerHTML: `<b>${target.title}</b> · ${target.sub}<br>#${target.tags.join(' #')}<br>Barvy: ${colourText(target)}<br>Nálada: ${moodText(target)}`,
+    }));
+    $('byColour').replaceChildren(...[...others].sort((a, b) => a.colour - b.colour).slice(0, 12).map((o) => card(o.w, { meta: meta(o, 'colour'), width: 160 })));
+    $('byAll').replaceChildren(...[...others].sort((a, b) => a.total - b.total).slice(0, 12).map((o) => card(o.w, { meta: meta(o, 'total'), width: 160 })));
+    $('chooser').replaceChildren(...WORKS.map((w) => card(w, { width: 160 })));
+  }
+  function renderAll() {
+    $('everything').replaceChildren(...WORKS.map((w) => card(w, { meta: `<b>${w.title}</b><br>${colourText(w)}<br>${moodText(w)}`, onClick: () => { pick(w.id); show('similar'); } })));
+  }
+
+  function pick(id) { state.picked = id; renderSimilar(); window.scrollTo({ top: 0 }); }
+  let tab = 'filter';
+  function show(name) {
+    tab = name;
+    for (const b of $('tabs').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.tab === name));
+    for (const id of ['filter', 'similar', 'all']) $(id).hidden = id !== name;
+    render();
+  }
+  function render() {
+    for (const id of ['chroma', 'paper', 'share', 'wColour', 'wMood', 'wTechnique', 'wTags']) {
+      $(`${id}Out`).textContent = id === 'share' ? `${Math.round(val(id) * 100)} %` : val(id);
+    }
+    if (tab === 'filter') renderFilter();
+    else if (tab === 'similar') renderSimilar();
+    else renderAll();
+  }
+  $('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) show(b.dataset.tab); });
+  $('colour').addEventListener('change', () => { state.colour = $('colour').value; renderFilter(); });
+  $('night').addEventListener('click', () => {
+    const on = $('night').getAttribute('aria-pressed') !== 'true';
+    $('night').setAttribute('aria-pressed', String(on));
+    document.documentElement.dataset.palette = on ? 'noc' : 'papir';
+  });
+  for (const input of document.querySelectorAll('input')) input.addEventListener('input', render);
+  render();
+</script>
+</body>
+</html>

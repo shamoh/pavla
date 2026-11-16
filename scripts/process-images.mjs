@@ -54,6 +54,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
+import { COLOUR_ANALYSIS_SIZE, analyseColours, needsColours } from './lib/colors.mjs';
 import { isDeepStrictEqual } from 'node:util';
 import YAML from 'yaml';
 import { PUBLIC_COLLECTION_FIELDS, coverSource, prepareCollections, validateCollectionCovers } from './lib/collections.mjs';
@@ -65,7 +66,7 @@ import { fillDescriptionsWorkLinks, workLinkProblems } from './lib/work-links.mj
 import { PUBLIC_UNCOLLECTED_FIELDS, prepareUncollected } from './lib/uncollected.mjs';
 import { NO_COLLECTION_TITLE } from './lib/gallery-filter.mjs';
 import {
-  HOME_PAGE_DIR, OUTPUT_ROOTS, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, fingerprintedName, ogDir, photoDir, staleOutputs, workImageDir, yearPageDir,
+  HOME_PAGE_DIR, OUTPUT_ROOTS, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, fingerprintedName, infoJson, ogDir, photoDir, staleOutputs, workImageDir, yearPageDir,
 } from './lib/site-images.mjs';
 import { HOME_COPY, MODIFIED, UNCOLLECTED_COPY, collectionCopyPath, pageCopyPath, photoCopyPath, staleCopies, workCopyPath, yearCopyPath } from './lib/site-content.mjs';
 import { coverProblems, coverShareSource } from './lib/covers.mjs';
@@ -113,6 +114,23 @@ const exists = (p) => fs.access(p).then(() => true, () => false);
 /** Preview of an export folder on GitHub (scripts/lib/export-readme.mjs). */
 const README = 'README.md';
 const readJson = (p) => fs.readFile(p, 'utf8').then(JSON.parse, () => null);
+
+/**
+ * The colours of a work in its info.json (`colors`, analyseColours in scripts/lib/colors.mjs) from its smallest WebP
+ * in `dir` (with its transparency): analysed once and again only after a new COLOUR_VERSION; its images stay as they
+ * are (a work made again by web() gets them here again). Returns true when written.
+ */
+async function workColours(dir) {
+  const file = path.join(dir, 'info.json');
+  const info = await readJson(file);
+  if (!info || !needsColours(info)) return false;
+  const { data, info: raw } = await sharp(path.join(dir, `${Math.min(...info.widths)}.webp`))
+    .resize(COLOUR_ANALYSIS_SIZE, COLOUR_ANALYSIS_SIZE, { fit: 'inside' }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const colors = analyseColours({ data, width: raw.width, height: raw.height, channels: raw.channels });
+  await fs.writeFile(file, infoJson({ ...info, colors }));
+  return true;
+}
+
 const sha1 = (...parts) => {
   const h = createHash('sha1');
   for (const p of parts) h.update(typeof p === 'string' ? p : Buffer.from(p));
@@ -266,7 +284,7 @@ async function web(dir, m, img, { work, picked, details, fingerprint, xmp, pin, 
     width: m.width, height: m.height, widths, dominant: await dominantColor(m.buf), ...(m.transparent ? { transparent: true } : {}),
     mockups, details: detailSets, og, ...(pinInfo ? { pin: pinInfo } : {}), fingerprint,
   };
-  await fs.writeFile(path.join(dir, 'info.json'), JSON.stringify(info, null, 2));
+  await fs.writeFile(path.join(dir, 'info.json'), infoJson(info));
   return rendered;
 }
 
@@ -984,6 +1002,8 @@ export async function run({
     const key = workKey(w.slug, w.id);
     outputs.add(workImageDir(w.year, key));
     const imagesChanged = await workImages(w, key, `${w.year}/${key}`);
+    // its colours for the filter „Barva“ and similar works: analysed once from its web picture, the images stay
+    if (await workColours(path.join(publicDir, workImageDir(w.year, key)))) log(`+ colours: ${w.year}/${key}`);
     await writeWorkCopy(w, imagesChanged);
     // The text of an Instagram post and the README.md previews of the export folders: cheap, so written by every run
     // (they follow the description, tags and price at once).

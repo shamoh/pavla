@@ -171,6 +171,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (oboustranná sekce „Související obrazy“, `relatedWorks`; JSON-LD `ItemPage` s `relatedLink`, `workPageLd`). Prázdný text
   `[](<id>)` = název obrazu, doplní ho pipeline jen do dat pro web a exporty (`fillDescriptionsWorkLinks`), nikdy do souboru.
   Změna `FORMATTING_DOC` = staré znění do `FORMATTING_DOC_BEFORE`.
+- Barvy díla (`scripts/lib/colors.mjs`): pipeline jednou rozebere nejmenší WebP do `info.json` `colors` (`analyseColours`: papír
+  z okraje, vyvážené pixely v mřížce; `COLOUR_VERSION`, `needsColours`, obrázky beze změny); podíly barev k výběru až web podle
+  `site.config.yaml` `gallery.colors` (`colourSettings`, `nearestFamily`: seznam barev jde měnit bez nového rozboru).
 - Podobné obrazy na stránce díla (`scripts/lib/similar.mjs` `similarWorks`): nejpřesnější filtr galerie z techniky
   a štítků (ne kolekce) s aspoň 6 jinými díly, odkaz na galerii s ním (`galleryStatePath`) a jeho prvních 6 děl bez souvisejících
   jako malé obrázky (`SimilarTile.astro`, 6 v řadě, na telefonu 3); další krok: společná funkce podobnosti dvou děl (technika,
