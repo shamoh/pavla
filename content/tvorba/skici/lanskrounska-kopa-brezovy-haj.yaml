@@ -3,6 +3,8 @@ id: sgfrt
 date: 2021-09-11
 featured: false
 mockups: false
+related:
+  - xfbp4
 size_cm:
   - 11
   - 16
@@ -17,4 +19,4 @@ text: >
   Březový háj v kempu Obora u Dlouhého rybníka, malováno během pochodu
   Lanškrounská kopa.
 title: Lanškrounská kopa – březový háj
-derived_modified: 2026-11-06
+derived_modified: 2026-11-16
