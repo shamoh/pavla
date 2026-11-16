@@ -3,6 +3,8 @@ id: cnqzh
 date: 2026-04-17
 featured: true
 mockups: false
+related:
+  - rpxz5
 size_cm:
   - 15
   - 15
@@ -19,4 +21,4 @@ text: >
   Chrám svaté Barbory rychlými tahy brush penem. Doplněno razítkem Svatojakubské
   poutní cesty.
 title: Barbora II
-derived_modified: 2026-11-10
+derived_modified: 2026-11-16
