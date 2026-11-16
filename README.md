@@ -100,6 +100,19 @@ pavla/                                      (toto repo, veřejné)
 | `/detail-dne/` | hra Detail dne (zatím zkušebně: žádný odkaz na ni nevede, `noindex`, mimo mapu webu; viz *Hra Detail dne*) |
 | `/detail-dne/data.json` | data hry připravená při sestavení webu |
 
+**Obraz podle kódu** (`src/components/CodeJump.astro` v hlavičce každé stránky, vlevo od menu, logika
+`scripts/lib/code-jump.mjs`): tlačítko `#` rozbalí krátké pole „kód obrazu“ s nápovědou v bublině. Pole pozná kód
+i v celém vloženém řádku příspěvku z Instagramu (`pavla.kramolis.cz · jujn2`) a v adrese díla (krátký odkaz
+`/tvorba/<id>/` i stránka `/tvorba/<rok>/<slug>-<id>/`), bez ohledu na velikost písmen (`codeFromInput`: poslední
+platné `id`, ne protokol adresy). Vložení kódu nebo Enter otevře krátký odkaz díla; před tím ho ověří (`HEAD`), takže
+neznámý kód jen ohlásí pod polem „Obraz s kódem … tu není“ (`CODE_MESSAGES`). Escape nebo opuštění prázdného pole ho
+zavře. Klávesa `#` kdekoli na stránce pole rozbalí (`opensCodeJump`: ne při psaní v poli, ne s Ctrl/Cmd, ne nad
+otevřeným prohlížečem fotek či promítáním; funguje i s AltGr na české klávesnici). Na telefonu: klávesa „Přejít“
+virtuální klávesnice (`enterkeyhint="go"`) odešle pole jako Enter; vložení ze schránky (i z lišty schránky klávesnice,
+která text napíše najednou: `isBulkInput`) otevře obraz hned. Úspěch = událost `code_open` (`codeEvent`: `work_id`,
+`method` `paste` / `enter`). Bez dat ve stránce: o existenci rozhoduje krátký odkaz (jen zveřejněná díla). Vyzkoušení: `npm run demo`,
+`#` a vložit `pavla.kramolis.cz · rw4dh` (Máky) nebo neznámé `abcde`; v konzoli (Verbose) `[analytics] code_open`.
+
 **Stránka díla** (`src/pages/tvorba/[section]/[work].astro`): vlevo obraz a pod ním popis a štítky, vpravo název
 (hvězdička výběru autorky na pravém okraji v úrovni prvního řádku názvu, i u dlouhého zalomeného),
 údaje (technika = odkaz na celou tvorbu s filtrem té techniky `/tvorba/?technique=…`, jako štítky `?tag=…`, oba přes
@@ -2337,6 +2350,7 @@ analytics:
   | `cinema_close` | promítání zavřené nebo opuštěné na stránku díla či kolekce (`cinemaCloseParams`) | `listing`, `reason` (`CINEMA_CLOSE_REASONS`: `button` ×, `esc` Esc nebo konec celé obrazovky, `back` Zpět, `work` stránka díla, `collection` kolekce), `seconds`, `shown` (kolik děl ukázalo) |
   | `game_start` | první tip v kole hry Detail dne (otevření stránky měří zobrazení stránky; `gameEventParams`) | `level` (`lehka`, `stredni`, `tezka`), `day` (číslo dne jako `#15` v nadpisu), `archive` (`yes` = den z archivu, `no` = dnešek), `look` (vzhled dne z `gameLooks`, např. `mosaic`) |
   | `game_end` | kolo hry Detail dne skončilo (uhádnuté nebo po posledním pokusu) | jako `game_start` a `solved` (`yes` / `no`), `misses` (omyly), `drops` (získané kapky), `streak` (série dnů po kole), `work_id`, `work_title` (hádaný obraz) |
+  | `code_open` | obraz otevřený podle kódu z pole `#` v hlavičce (`codeEvent`, jen když obraz existuje) | `work_id`, `method` (`CODE_METHODS`: `paste` = vložený kód otevřel obraz hned, `enter` = potvrzený Enterem / „Přejít“) |
   | `image_view` | každý obrázek ukázaný v prohlížeči fotek na stránce díla (`imageEventParams`): otevření i každé listování; Zpět/Vpřed jen při jiném obrázku | `work_id`, `work_title`, `image` (kotva obrázku: `obraz`, `detail-<jméno>`, `mockup-<scéna>`), `image_kind` (`main`, `detail`, `mockup`), `method` (`IMAGE_METHODS`: `open` klik na stránce, `arrow` šipka prohlížeče, `swipe` tah, `key` klávesa ←/→, `link` stránka otevřená s kotvou, `history` Zpět/Vpřed) |
 
   Tlačítka nesou `data-track="<událost>"`, `data-work-id` a `data-work-title`; posluchač kliků je v `Base.astro`,
@@ -2355,9 +2369,9 @@ analytics:
   | Stav filtru | `status` | Filtr stavu v galerii (gallery_filter): unsold = na prodej, kept = ještě mám, gone = už nemám. |
   | Výběr autorky | `featured` | Zapnutý přepínač Doporučené (výběr autorky) v galerii (gallery_filter). |
   | Hledání | `q` | Text hledání v galerii nebo v přehledu kolekcí (gallery_filter). |
-  | ID díla | `work_id` | Trvalý kód díla (např. g4psg) u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek. |
+  | ID díla | `work_id` | Trvalý kód díla (např. g4psg) u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek, kód. |
   | Název díla | `work_title` | Název díla u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek. |
-  | Způsob | `method` | share pinterest, facebook, whatsapp, native, copy; image_view open, arrow, swipe, key, link, history; cinema_open button, link, home, footer, contact. |
+  | Způsob | `method` | Jak: share (pinterest, facebook…), image_view (open, arrow, swipe…), cinema_open (button, link…), code_open (paste, enter); vše v README webu. |
   | Typ zprávy | `message_type` | Typ odeslané zprávy (message_sent): greeting, work, purchase, collaboration, bug, other. |
   | Barvy webu | `palette` | Barvy zvolené v patičce (palette_change): papir, pergamen, noc, auto. |
   | Výpis | `listing` | Kde: view_change home = úvodní stránka, gallery = galerie; cinema_open/close gallery, year, collection. |

@@ -59,7 +59,11 @@ export const EVENTS = {
   cinemaClose: 'cinema_close', // the cinema closed: listing, reason (CINEMA_CLOSE_REASONS), seconds, shown (works shown)
   gameStart: 'game_start', // the first guess of a round of Detail dne: level, day, archive, look (gameEventParams)
   gameEnd: 'game_end', // a round of Detail dne over: level, day, archive, look, solved, misses, drops, streak, work_id, work_title
+  code: 'code_open', // a work opened by its code in the header (CodeJump.astro): work_id, method (CODE_METHODS)
 };
+
+/** How a code opened its work (code_open `method`): pasted (opens at once) or typed and confirmed (Enter, Go). */
+export const CODE_METHODS = { paste: 'paste', enter: 'enter' };
 
 /**
  * Parameters of game_start and game_end (and of `share` from the game, with `source: game`): the level, the number of the day as the

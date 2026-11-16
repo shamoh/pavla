@@ -1,4 +1,5 @@
 ---
+import CodeJump from '../components/CodeJump.astro';
 import MessagePanel from '../components/MessagePanel.astro';
 import { analyticsId, hasFeaturedWorks, hasWorksOnSale, messages, site, url, version, type ShareImage } from '../lib/site';
 import { featuredShowPath, saleShowPath } from '../../scripts/lib/cinema.mjs';
@@ -91,6 +92,8 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
         <span class="brand-tag">{site.tagline}</span>
       </a>
       <nav aria-label="Hlavní navigace">
+        <!-- "#": open a work by its code, e.g. from Instagram (src/components/CodeJump.astro) -->
+        <CodeJump />
         {nav.map((n) => (
           <a href={url(n.href)} aria-current={path.startsWith(n.href) ? 'page' : undefined}>{n.label}</a>
         ))}

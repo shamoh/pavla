@@ -1,0 +1,100 @@
+---
+// "Open a work by its code" in the header of every page, left of the main menu (scripts/lib/code-jump.mjs): a small
+// "#" button (or the key "#" anywhere on the page) that opens a short field; pasting a code (or the whole line of an
+// Instagram post with it, also from the clipboard bar of a phone keyboard) or Enter / Go opens the work. An unknown
+// code says so under the field; Escape or leaving the empty field closes it again. Statistics: code_open.
+const HINT = 'Kód obrazu, např. z Instagramu (jujn2). Vložit jde i celý řádek s adresou, Enter otevře obraz. Klávesa #.';
+---
+<div class="code-jump" data-code-jump>
+  <button type="button" class="toggle" aria-expanded="false" aria-controls="code-jump-form" aria-label="Otevřít obraz podle kódu" aria-keyshortcuts="#" title={HINT}>#</button>
+  <form id="code-jump-form" class="form" role="search" hidden>
+    <input name="code" type="text" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="kód obrazu" aria-label="Kód obrazu" title={HINT} size="11" />
+    <span class="status" role="status" aria-live="polite"></span>
+  </form>
+</div>
+<style>
+  .code-jump { position: relative; display: flex; align-items: baseline; }
+  .toggle {
+    font: inherit; font-size: 0.95rem; color: var(--ink-soft); background: none; border: 0; padding: 0 0 3px; cursor: pointer;
+    border-bottom: 1px solid transparent;
+  }
+  .toggle:hover, .toggle:focus-visible { color: var(--ink); border-color: var(--ink); }
+  .form { position: relative; }
+  input {
+    font: inherit; font-size: 0.9rem; color: var(--ink); background: transparent; width: 9.5em;
+    border: 0; border-bottom: 1px solid var(--ink-soft); padding: 0 0 2px; outline: none;
+  }
+  input:focus { border-color: var(--ink); }
+  input::placeholder { color: var(--ink-soft); }
+  .status { position: absolute; top: calc(100% + 6px); right: 0; width: max-content; max-width: 16em; font-size: 0.78rem; color: var(--ink-soft); }
+  .status:empty { display: none; }
+</style>
+<script>
+  import { CODE_MESSAGES, codeEvent, codeFromInput, codePath, isBulkInput, opensCodeJump } from '../../scripts/lib/code-jump.mjs';
+  import { trackEvent } from '../../scripts/lib/analytics.mjs';
+
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+  for (const root of document.querySelectorAll<HTMLElement>('[data-code-jump]')) {
+    const toggle = root.querySelector<HTMLButtonElement>('.toggle')!;
+    const form = root.querySelector<HTMLFormElement>('form')!;
+    const input = form.querySelector<HTMLInputElement>('input')!;
+    const status = form.querySelector<HTMLElement>('.status')!;
+
+    const open = (on: boolean) => {
+      form.hidden = !on;
+      toggle.hidden = on;
+      toggle.setAttribute('aria-expanded', String(on));
+      if (on) input.focus();
+      else {
+        input.value = '';
+        status.textContent = '';
+      }
+    };
+
+    // the short link of the work leads to its page; an unknown code has no such page (404)
+    const go = async (method: 'paste' | 'enter') => {
+      const id = codeFromInput(input.value);
+      if (!id) {
+        status.textContent = input.value.trim() ? CODE_MESSAGES.invalid : '';
+        return;
+      }
+      const target = `${base}${codePath(id)}`;
+      try {
+        const res = await fetch(target, { method: 'HEAD' });
+        if (res.ok) {
+          const event = codeEvent(id, method);
+          trackEvent(event.name, event.params);
+          location.assign(target);
+        } else {
+          status.textContent = CODE_MESSAGES.missing(id);
+        }
+      } catch {
+        status.textContent = CODE_MESSAGES.failed;
+      }
+    };
+
+    toggle.addEventListener('click', () => open(true));
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      go('enter');
+    });
+    // pasting a code (or a line with one) opens the work right away; a phone keyboard's clipboard bar types it in one go
+    input.addEventListener('input', (e) => {
+      status.textContent = '';
+      if (isBulkInput(e as InputEvent) && codeFromInput(input.value)) go('paste');
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        open(false);
+        toggle.focus();
+      }
+    });
+    input.addEventListener('blur', () => { if (!input.value.trim()) open(false); });
+    // "#" anywhere on the page (not while typing, not over an open dialog: the viewer of a work, the cinema)
+    document.addEventListener('keydown', (e) => {
+      if (!opensCodeJump(e, document.activeElement as HTMLElement) || document.querySelector('dialog[open], [role="dialog"]:not([hidden])')) return;
+      e.preventDefault();
+      open(true);
+    });
+  }
+</script>
