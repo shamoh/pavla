@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {
-  CINEMA_CLOSE_REASONS, CINEMA_LINK_SOURCES, CINEMA_OPEN_METHODS, EVENTS, IMAGE_METHODS, cinemaCloseParams, cinemaLinkMethod, gameEventParams, cinemaOpenParams, imageEventParams, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
+  CINEMA_CLOSE_REASONS, MORE_METHODS, CINEMA_LINK_SOURCES, CINEMA_OPEN_METHODS, EVENTS, IMAGE_METHODS, cinemaCloseParams, cinemaLinkMethod, gameEventParams, cinemaOpenParams, imageEventParams, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
 } from './analytics.mjs';
 
 const analytics = { googleMeasurementId: 'G-HPZNHYZ2MQ' };
@@ -117,4 +117,11 @@ test('README: every custom dimension to register in GA fits its form (descriptio
   const rows = [...table.matchAll(/^\s*\| [^|]+ \| `([a-z_]+)` \| (.+) \|\s*$/gm)];
   assert.ok(rows.length >= 10, 'the table of the dimensions is found');
   for (const [, param, description] of rows) assert.ok(description.length <= 150, `${param}: ${description.length} characters`);
+});
+
+test('trackedClick: more_click of a card under a work, the clicked work and where it was', () => {
+  assert.deepEqual(trackedClick({ track: EVENTS.more, method: MORE_METHODS.similar, workId: 'rw4dh', workTitle: 'Máky' }),
+    { name: 'more_click', params: { work_id: 'rw4dh', work_title: 'Máky', method: 'similar' } });
+  assert.deepEqual(trackedClick({ track: EVENTS.more, method: MORE_METHODS.similarFilter }), { name: 'more_click', params: { method: 'similar_filter' } });
+  assert.deepEqual(Object.values(MORE_METHODS), ['related', 'similar', 'similar_filter']);
 });

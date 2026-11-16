@@ -171,6 +171,11 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (oboustranná sekce „Související obrazy“, `relatedWorks`; JSON-LD `ItemPage` s `relatedLink`, `workPageLd`). Prázdný text
   `[](<id>)` = název obrazu, doplní ho pipeline jen do dat pro web a exporty (`fillDescriptionsWorkLinks`), nikdy do souboru.
   Změna `FORMATTING_DOC` = staré znění do `FORMATTING_DOC_BEFORE`.
+- Podobné obrazy na stránce díla (`scripts/lib/similar.mjs` `similarWorks`): nejpřesnější filtr galerie z techniky
+  a štítků (ne kolekce) s aspoň 6 jinými díly, odkaz na galerii s ním (`galleryStatePath`) a jeho prvních 6 děl bez souvisejících
+  jako malé obrázky (`SimilarTile.astro`, 6 v řadě, na telefonu 3); další krok: společná funkce podobnosti dvou děl (technika,
+  štítky, barvy) pro hledání, podobné obrazy i hru Detail dne; barvy díla
+  (až budou) = další kritérium v `criteria`.
 - Texty stránek: `stranky/<stránka>.yaml` obsahového repa (jméno = adresa, `PAGES` v `scripts/lib/pages.mjs`, schémata
   `PAGE_SCHEMAS`): O mně (`ABOUT_SCHEMA`), Kontakt (`CONTACT_SCHEMA`, `location_label`), 404 (`NOT_FOUND_SCHEMA`, `title`,
   `heading`) mají kostru s dosavadními texty (`ABOUT_*`, `CONTACT_*`, `NOT_FOUND_*`, schválené = `settled`, bez `DOPLNIT`);
@@ -332,7 +337,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   + do `STATIC_PAGES` (mapa webu). `robots.txt` a 404 (`noindex`) generuje web; ověřovací kódy `site.verification`.
 - Návštěvnost: Google Analytics 4 (`analytics.googleMeasurementId` v `site.config.yaml`, `scripts/lib/analytics.mjs`,
   značka v `Base.astro`), jen produkční build skutečného webu, nikdy dev ani testovací data; URL i s parametry filtrů.
-  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `share`, `email_click`, `message_sent`, `palette_change`, `view_change`, `image_view`, `cinema_open`, `cinema_close`, `game_start`, `game_end`, `code_open`); nový parametr události = zapsat do README
+  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `share`, `email_click`, `message_sent`, `palette_change`, `view_change`, `image_view`, `cinema_open`, `cinema_close`, `game_start`, `game_end`, `code_open`, `more_click`); nový parametr události = zapsat do README
   (tabulka událostí + seznam vlastních dimenzí k registraci v GA).
 - Zprávy od návštěvníků: Web3Forms (`messages.accessKey` v `site.config.yaml`, jedna adresa, předmět `[pavla-web] <typ>: …`),
   formulář na Kontaktu a panel „Napište mi“ na ostatních stránkách (`scripts/lib/messages.mjs`, `message-draft.mjs`,

@@ -60,7 +60,14 @@ export const EVENTS = {
   gameStart: 'game_start', // the first guess of a round of Detail dne: level, day, archive, look (gameEventParams)
   gameEnd: 'game_end', // a round of Detail dne over: level, day, archive, look, solved, misses, drops, streak, work_id, work_title
   code: 'code_open', // a work opened by its code in the header (CodeJump.astro): work_id, method (CODE_METHODS)
+  more: 'more_click', // a click under a work: the clicked work_id, work_title; method (MORE_METHODS); the page = the work it was under
 };
+
+/**
+ * Where on the page of a work a visitor went on (more_click `method`): a work of "Související obrazy" (related), a work
+ * of "Podobné obrazy" (similar) or the link of "Podobné obrazy" to the gallery with its filter (similar_filter).
+ */
+export const MORE_METHODS = { related: 'related', similar: 'similar', similarFilter: 'similar_filter' };
 
 /** How a code opened its work (code_open `method`): pasted (opens at once) or typed and confirmed (Enter, Go). */
 export const CODE_METHODS = { paste: 'paste', enter: 'enter' };

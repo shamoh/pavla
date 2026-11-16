@@ -6,7 +6,9 @@ import FeaturedStar from '../../../components/FeaturedStar.astro';
 import { collectionUrl, config, detailCaption, detailCaptionHtml, getCollection, workPinImage, workShareImage, getWorks, messages, site, statusLabel, formatSize, formatPrice, textHtml, url, workUrl, workImagePath, workDetails, type Work } from '../../../lib/site';
 import { isOnSale, relatedWorks, wantsMockups, workCodeHint, workShortPath } from '../../../../scripts/lib/works.mjs';
 import WorkCard from '../../../components/WorkCard.astro';
-import { EVENTS } from '../../../../scripts/lib/analytics.mjs';
+import SimilarTile from '../../../components/SimilarTile.astro';
+import { galleryStatePath, similarLabel, similarLinkTitle, similarWorks, worksCount } from '../../../../scripts/lib/similar.mjs';
+import { EVENTS, MORE_METHODS } from '../../../../scripts/lib/analytics.mjs';
 import { galleryFilterPath, galleryLinkTitle } from '../../../../scripts/lib/gallery-filter.mjs';
 import { pinDescription } from '../../../../scripts/lib/pinterest.mjs';
 import { shareLinks } from '../../../../scripts/lib/share.mjs';
@@ -30,6 +32,9 @@ const collection = getCollection(work.collection);
 const allWorks = getWorks();
 // "Související obrazy": its `related` and the works that name it there (both ways), published ones only
 const related = relatedWorks(work, allWorks);
+// "Podobné obrazy": a filter of the gallery from its technique and tags, its first works (without the related) as small tiles
+const similar = similarWorks(work, allWorks, { exclude: related.map((w) => w.id) });
+const collectionTitle = (slug: string) => getCollection(slug)?.title ?? slug;
 
 // Everything the viewer can step through: the work itself, its details, then its mockups.
 const base = workImagePath(work);
@@ -180,7 +185,16 @@ const story = textHtml(work.text);
   {related.length > 0 && (
     <section class="related" aria-label="Související obrazy">
       <p class="eyebrow">Související obrazy</p>
-      <div class="related-grid">{related.map((w) => <WorkCard work={w} />)}</div>
+      <div class="more-grid">{related.map((w) => <WorkCard work={w} track={MORE_METHODS.related} />)}</div>
+    </section>
+  )}
+  {similar && (
+    <section class="similar" aria-label="Podobné obrazy">
+      <p class="eyebrow">Podobné obrazy</p>
+      <p class="similar-filter">
+        <a href={url(galleryStatePath(similar.state))} title={similarLinkTitle(similar.state, collectionTitle)} data-track={EVENTS.more} data-method={MORE_METHODS.similarFilter}>{keepTogether(similarLabel(similar.state, collectionTitle))} ({worksCount(similar.total)}) →</a>
+      </p>
+      <div class="similar-grid">{similar.works.map((w) => <SimilarTile work={w} />)}</div>
     </section>
   )}
   <dialog class="viewer" id="viewer" aria-label="Prohlížení obrázků" data-views={JSON.stringify(views)} data-work-id={work.id} data-work-title={work.title} data-swipe={JSON.stringify(cinemaSettings(config).swipe)}>
@@ -416,8 +430,15 @@ const story = textHtml(work.text);
 </script>
 <style>
   .back { margin: -12px 0 24px; font-size: 0.9rem; }
-  .related { margin-top: clamp(40px, 6vw, 72px); }
-  .related-grid { columns: 4 220px; column-gap: 28px; }
+  .related, .similar { margin-top: clamp(40px, 6vw, 72px); }
+  .similar-filter { margin: -4px 0 20px; font-size: 0.95rem; }
+  .similar-filter a { color: var(--ink-soft); }
+  .similar-filter a:hover { color: var(--ink); }
+  /* the related works: cards in three columns; the similar ones: six small pictures in one row (two under each column
+     of the related ones, the same gap), three in a row on a phone */
+  .more-grid { columns: 3 260px; column-gap: 28px; }
+  .similar-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 28px; align-items: start; }
+  @media (max-width: 640px) { .similar-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } }
   .back a { text-decoration: none; color: var(--ink-soft); }
   /* The picture with its story (description, tags) under it on the left, everything else on the right; a narrow
      screen puts them one under another: picture, title and facts, story, price, sharing, details, mockups. */

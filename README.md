@@ -1058,6 +1058,18 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `title` | název |
 | `private_note` | SOUKROMÉ: zůstane jen v obsahovém repu |
 
+**Podobné obrazy** na stránce díla (`scripts/lib/similar.mjs`, pod „Související obrazy“): filtr galerie z toho, co
+dílo sdílí s jinými (technika, štítky; barvy, až budou; nikdy kolekce: tu stránka odkazuje sama, podobné obrazy mají
+vést napříč celou tvorbou), nejpřesnější takový, aby zbylo aspoň
+`SIMILAR_COUNT` = 6 jiných děl (`similarWorks`: v každém kroku přidá kritérium, které nechá nejméně děl, ale aspoň 6;
+když nenechá 6 ani jedno, vezme to s nejvíc díly, bez žádného sekce chybí). Pod nadpisem odkaz na galerii s tím filtrem
+(`galleryStatePath`, text `similarLabel` „akvarel · Plenér Šumava · #krajina · #voda (12 obrazů) →“, bublina
+`similarLinkTitle`), pod ním prvních 6 děl, která galerie s filtrem ukáže (od nejnovějšího), bez díla samotného a bez
+souvisejících; počet v odkazu = celá galerie s filtrem (i dílo samo). Související jsou karty ve třech sloupcích
+(`.more-grid`), podobné malé obrázky bez textů s bublinou `workTooltip` (`SimilarTile.astro`), na počítači 6 v řadě
+(`.similar-grid`: dva pod každým sloupcem souvisejících), do 640 px 3 v řadě. Když by zbyla jen díla, která už jsou v „Souvisejících“, sekce chybí. Kliky: událost
+`more_click` (karta `track` ve `WorkCard.astro`, odkaz `data-track`). Vyzkoušení: `npm run demo`, stránka kteréhokoli díla dole.
+
 Ukázka (výřez):
 
 ```yaml
@@ -2352,6 +2364,7 @@ analytics:
   | `game_start` | první tip v kole hry Detail dne (otevření stránky měří zobrazení stránky; `gameEventParams`) | `level` (`lehka`, `stredni`, `tezka`), `day` (číslo dne jako `#15` v nadpisu), `archive` (`yes` = den z archivu, `no` = dnešek), `look` (vzhled dne z `gameLooks`, např. `mosaic`) |
   | `game_end` | kolo hry Detail dne skončilo (uhádnuté nebo po posledním pokusu) | jako `game_start` a `solved` (`yes` / `no`), `misses` (omyly), `drops` (získané kapky), `streak` (série dnů po kole), `work_id`, `work_title` (hádaný obraz) |
   | `code_open` | obraz otevřený podle kódu z pole `#` v hlavičce (`codeEvent`, jen když obraz existuje) | `work_id`, `method` (`CODE_METHODS`: `paste` = vložený kód otevřel obraz hned, `enter` = potvrzený Enterem / „Přejít“) |
+  | `more_click` | klik pod dílem: na kartu v „Související obrazy“ nebo „Podobné obrazy“, nebo na odkaz „Podobných obrazů“ do galerie (stránka události = dílo, pod kterým byl) | `work_id`, `work_title` (kliknuté dílo, u odkazu nic), `method` (`MORE_METHODS`: `related`, `similar`, `similar_filter`) |
   | `image_view` | každý obrázek ukázaný v prohlížeči fotek na stránce díla (`imageEventParams`): otevření i každé listování; Zpět/Vpřed jen při jiném obrázku | `work_id`, `work_title`, `image` (kotva obrázku: `obraz`, `detail-<jméno>`, `mockup-<scéna>`), `image_kind` (`main`, `detail`, `mockup`), `method` (`IMAGE_METHODS`: `open` klik na stránce, `arrow` šipka prohlížeče, `swipe` tah, `key` klávesa ←/→, `link` stránka otevřená s kotvou, `history` Zpět/Vpřed) |
 
   Tlačítka nesou `data-track="<událost>"`, `data-work-id` a `data-work-title`; posluchač kliků je v `Base.astro`,
@@ -2372,7 +2385,7 @@ analytics:
   | Hledání | `q` | Text hledání v galerii nebo v přehledu kolekcí (gallery_filter). |
   | ID díla | `work_id` | Trvalý kód díla (např. g4psg) u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek, kód. |
   | Název díla | `work_title` | Název díla u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek. |
-  | Způsob | `method` | Jak: share (pinterest, facebook…), image_view (open, arrow, swipe…), cinema_open (button, link…), code_open (paste, enter); vše v README webu. |
+  | Způsob | `method` | Jak: share, image_view, cinema_open, code_open (paste, enter), more_click (related, similar, similar_filter); hodnoty v README webu. |
   | Typ zprávy | `message_type` | Typ odeslané zprávy (message_sent): greeting, work, purchase, collaboration, bug, other. |
   | Barvy webu | `palette` | Barvy zvolené v patičce (palette_change): papir, pergamen, noc, auto. |
   | Výpis | `listing` | Kde: view_change home = úvodní stránka, gallery = galerie; cinema_open/close gallery, year, collection. |

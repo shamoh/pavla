@@ -1,0 +1,18 @@
+---
+// A small picture of "Podobné obrazy" under a work (scripts/lib/similar.mjs): only the picture, linked to its work,
+// its title and the rest in the tooltip (workTooltip), like a tile of the gallery. A click is the statistics event
+// more_click with the method `similar` (MORE_METHODS).
+import Picture from './Picture.astro';
+import { type Work, workUrl } from '../lib/site';
+import { EVENTS, MORE_METHODS } from '../../scripts/lib/analytics.mjs';
+
+interface Props { work: Work }
+const { work } = Astro.props;
+---
+<a class="similar-tile" href={workUrl(work)} data-track={EVENTS.more} data-method={MORE_METHODS.similar} data-work-id={work.id} data-work-title={work.title}>
+  <Picture work={work} sizes="(max-width: 640px) 33vw, 180px" tooltip />
+</a>
+<style>
+  .similar-tile { display: block; text-decoration: none; }
+  .similar-tile :global(img) { display: block; width: 100%; height: auto; }
+</style>
