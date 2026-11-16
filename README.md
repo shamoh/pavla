@@ -1095,14 +1095,28 @@ malované plochy, `families` = `{ id, label, color }` v pořadí výběru, barev
 v `scripts/lib/site-images.mjs`). Vyzkoušení: `npm run demo:prepare` (v logu `+ colours`, podruhé nic),
 `.demo/site/public/tvorba/<rok>/<dílo>/info.json` → `colors`; prototyp `.prototypes/barvy.html`.
 
+**Podobnost dvou děl** (`scripts/lib/affinity.mjs`, jedna míra pro Podobné obrazy a hru Detail dne, později i hledání):
+`workDistance` (0 = stejná, víc = vzdálenější) = barvy (`colourDistance` nad `colourProfile` díla: podíly barev
+malované plochy a nálada teplé / studené, světlé / tmavé, syté / pastelové; jen když mají rozbor barev obě díla)
++ technika (stejná 0, jiná z téže rodiny malba / kresba `techniqueFamily` málo, jiná rodina víc) + štítky (čím větší
+podíl menší sady štítků obou děl je společný, tím blíž; bez štítků se nepočítají). Váhy `AFFINITY_WEIGHTS` (vyzkoušené
+v prototypu `.prototypes/barvy.html`, záložka „Podobné obrazy“). `colourProfile` počítá web při stavbě z `colors`
+v `info.json` podle `gallery.colors`. Hra Detail dne: `rankLookalikes` = podobnost výřezu (`lookalikeDistance`) +
+`GAME_AFFINITY_SCALE` (100) × `workDistance` s `GAME_AFFINITY_WEIGHTS` (kresba mezi malbami 25, jiná malba 6, jiný námět 8
+podle pravidla hry `anyTag`: jeden společný štítek cíle = stejný námět, barvy a nálada celého díla až ~15), takže barvy
+celého díla posunou pořadí nabízených obrazů. Jak matoucí je výřez (`confusion`, práh úrovní `maxConfusion`) se počítá
+bez barev celého díla: barvy mění, které obrazy se nabídnou, nikdy které obrazy můžou být hádankou (na skutečných datech
+77 / 72 / 64 hádanek v úrovních jako dřív, z 5 nejbližších nabízených obrazů je asi 40–46 % jiných). Data hry nesou
+`colourProfile` děl (`src/pages/detail-dne/data.json.ts`).
+
 **Podobné obrazy** na stránce díla (`scripts/lib/similar.mjs`, pod „Související obrazy“): filtr galerie z toho, co
 dílo sdílí s jinými (technika, štítky; barvy, až budou; nikdy kolekce: tu stránka odkazuje sama, podobné obrazy mají
 vést napříč celou tvorbou), nejpřesnější takový, aby zbylo aspoň
 `SIMILAR_COUNT` = 6 jiných děl (`similarWorks`: v každém kroku přidá kritérium, které nechá nejméně děl, ale aspoň 6;
 když nenechá 6 ani jedno, vezme to s nejvíc díly, bez žádného sekce chybí). Pod nadpisem odkaz na galerii s tím filtrem
 (`galleryStatePath`, text `similarLabel` „akvarel · Plenér Šumava · #krajina · #voda (12 obrazů) →“, bublina
-`similarLinkTitle`), pod ním prvních 6 děl, která galerie s filtrem ukáže (od nejnovějšího), bez díla samotného a bez
-souvisejících; počet v odkazu = celá galerie s filtrem (i dílo samo). Související jsou karty ve třech sloupcích
+`similarLinkTitle`), pod ním 6 děl z toho filtru nejpodobnějších dílu (`rank` = `workDistance`, viz níže; stejně podobná od nejnovějšího),
+bez díla samotného a bez souvisejících; počet v odkazu = celá galerie s filtrem (i dílo samo). Související jsou karty ve třech sloupcích
 (`.more-grid`), podobné malé obrázky bez textů s bublinou `workTooltip` (`SimilarTile.astro`) a se značkami jako dlaždice galerie (hvězdička výběru autorky, košík díla na prodej: `gallery.tileMarks` pro velikost `SIMILAR_TILE_SIZE` = `m`), na počítači 6 v řadě
 (`.similar-grid`: dva pod každým sloupcem souvisejících), do 640 px 3 v řadě. Když by zbyla jen díla, která už jsou v „Souvisejících“, sekce chybí. Kliky: událost
 `more_click` (karta `track` ve `WorkCard.astro`, odkaz `data-track`). Vyzkoušení: `npm run demo`, stránka kteréhokoli díla dole.

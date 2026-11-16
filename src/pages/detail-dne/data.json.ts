@@ -16,6 +16,8 @@ export async function GET() {
     year: w.year,
     technique: w.technique,
     tags: w.tags,
+    // the colours and mood of the whole work: how alike two works are (workDistance), with the close-up in rankLookalikes
+    colourProfile: w.colourProfile,
     collection: w.collection ?? '',
     collectionTitle: w.collection ? titles.get(w.collection) ?? '' : '',
     text: summarize(ownText(w.text), VIEWER_TEXT_MAX),

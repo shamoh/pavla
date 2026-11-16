@@ -18,6 +18,7 @@ import { messagesSettings } from '../../scripts/lib/messages.mjs';
 import { workTooltip } from '../../scripts/lib/tooltip.mjs';
 import { tileMarksFor } from '../../scripts/lib/tile-marks.mjs';
 import { colourSettings, workColourIds } from '../../scripts/lib/colors.mjs';
+import { colourProfile } from '../../scripts/lib/affinity.mjs';
 import { execSync } from 'node:child_process';
 
 const root = process.cwd();
@@ -90,6 +91,8 @@ export interface Work {
    * painted part, the biggest first (workColourIds over the analysis in its info.json; none before the pipeline made it).
    */
   colors: string[];
+  /** Its colours for comparing it with other works (colourProfile: shares of the colours, mood; workDistance). */
+  colourProfile: ReturnType<typeof colourProfile>;
   /** Ids of related works (`related`): its page shows them and they show it (relatedWorks, both ways). */
   related?: string[];
   /** Captions of detail photos: "<detail photo name>: <caption>" (keys match via detailKey). */
@@ -190,6 +193,7 @@ export function getWorks(): Work[] {
       status: data.status ?? 'not-for-sale',
       image,
       colors: workColourIds(image.colors, colourChoices),
+      colourProfile: colourProfile(image.colors, colourChoices),
     });
   }
   cache = works.sort((a, b) => b.date.getTime() - a.date.getTime());

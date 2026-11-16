@@ -2,7 +2,8 @@
 // technique and its tags; its colours once the works have them; never its collection: the page links the collection
 // itself, the similar works should lead across the whole work), a link to the gallery with that
 // filter and the first works it shows there (newest first, as the gallery), without the work itself and without the
-// works already shown under "Související obrazy".
+// works already shown under "Související obrazy". The works of the filter are in the order of `rank` (workDistance of
+// scripts/lib/affinity.mjs on the site: the most alike first), without it newest first as in the gallery.
 // The filter is the most specific one that still leaves at least SIMILAR_COUNT other works: greedily, every step
 // adds the criterion that keeps the fewest works but not fewer than SIMILAR_COUNT. When even one criterion leaves
 // fewer, the one with the most works (at least one) is the filter; without any, the work has no similar works.
@@ -38,11 +39,12 @@ const filterable = (w) => ({ ...w, year: String(w.year ?? ''), collection: w.col
 
 /**
  * The similar works of `work` among `works` (the published ones, newest first): { state (the filter of the gallery),
- * works (the first `count` matching, without the work and the `exclude` ids), total (how many works the gallery shows
+ * works (the first `count` matching, without the work and the `exclude` ids, nearest first by `rank(work, other)`, a
+ * distance; ties and without `rank` newest first), total (how many works the gallery shows
  * with the filter, the work itself included) }, or null without any similar work (also when all of them are among
  * `exclude`: the section would only repeat "Související obrazy").
  */
-export function similarWorks(work, works, { exclude = [], count = SIMILAR_COUNT } = {}) {
+export function similarWorks(work, works, { exclude = [], count = SIMILAR_COUNT, rank = null } = {}) {
   const skip = new Set([work.id, ...exclude]);
   const pool = works.filter((w) => !skip.has(w.id)).map((w) => [w, filterable(w)]);
   const matching = (state) => pool.filter(([, f]) => matchesFilters(f, state)).map(([w]) => w);
@@ -60,7 +62,8 @@ export function similarWorks(work, works, { exclude = [], count = SIMILAR_COUNT 
     if (!options.length) return null;
     state = withCriterion(state, options.reduce((a, b) => (b.n > a.n ? b : a)).c);
   }
-  const shown = matching(state);
+  // the most alike first (a stable sort: equally alike ones stay newest first)
+  const shown = rank ? matching(state).map((w) => [w, rank(work, w)]).sort((x, y) => x[1] - y[1]).map(([w]) => w) : matching(state);
   return {
     state,
     works: shown.slice(0, count),

@@ -42,6 +42,8 @@ export function gameLooks() {
   ];
 }
 
+import { GAME_AFFINITY_SCALE, GAME_AFFINITY_WEIGHTS, techniqueFamily, workDistance } from './affinity.mjs';
+
 /** The first day of the game (day 0, shown as #1). */
 export const GAME_EPOCH = '2026-11-01';
 /** The longer side of the small picture the analysis reads. */
@@ -233,30 +235,28 @@ export function lookalikeDistance(crop, analysis) {
   return best;
 }
 
-/**
- * What a technique looks like to a player: `colour` = a painting (watercolour, oil, acrylic, gouache, pastel, also with lines in it),
- * `drawing` = lines in black or one colour (ink, brush pen, marker, pencil, a print). A player tells the two apart at a glance, the
- * techniques of one family hardly.
- */
-export function techniqueFamily(technique) {
-  return /akvarel|olej|akryl|kvaš|pastel|tempera/i.test(String(technique ?? '')) ? 'colour' : 'drawing';
-}
+/** What a technique looks like to a player (painting or drawing): scripts/lib/affinity.mjs, the measure of how alike works are. */
+export { techniqueFamily };
 
 /**
- * The other works by how much they look like a close-up, the closest first. Another technique of the same family (techniqueFamily)
- * counts as `familyGap` farther, one of the other family as `techniqueGap`, a work without a common tag as `tagGap` farther: a player
- * rules out a drawing among paintings or another subject at a glance, whatever its colours.
+ * The other works by how much they look like a close-up, the closest first: how alike the close-up looks (lookalikeDistance) plus how
+ * alike the whole works are (workDistance of scripts/lib/affinity.mjs with GAME_AFFINITY_WEIGHTS × GAME_AFFINITY_SCALE): a player
+ * rules out a drawing among paintings or another subject at a glance, and the colours and mood of the whole work (`colourProfile` of
+ * the works, when they have one) tip the balance. [{ id, distance, confusion }]: `confusion` is the same without the colours of the
+ * whole work, what the levels measure how confusing a close-up is by (confusingCrops, level.maxConfusion), so the colours change
+ * which works are offered, never which works can be a puzzle.
  */
-export function rankLookalikes({ target, crop, pool, analyses, techniqueGap = 25, familyGap = 6, tagGap = 8 }) {
-  const tags = target.tags ?? [];
-  const sameSubject = (work) => !tags.length || (work.tags ?? []).some((tag) => tags.includes(tag));
-  const family = techniqueFamily(target.technique);
-  const techniqueDistance = (work) => (work.technique === target.technique ? 0 : techniqueFamily(work.technique) === family ? familyGap : techniqueGap);
+export function rankLookalikes({ target, crop, pool, analyses, weights = GAME_AFFINITY_WEIGHTS, scale = GAME_AFFINITY_SCALE }) {
+  const round = (v) => Math.round(v * 1000) / 1000;
   return pool
-    .map((work) => ({
-      id: work.id,
-      distance: lookalikeDistance(crop, analyses[work.id]) + techniqueDistance(work) + (sameSubject(work) ? 0 : tagGap),
-    }))
+    .map((work) => {
+      const look = lookalikeDistance(crop, analyses[work.id]);
+      return {
+        id: work.id,
+        distance: round(look + scale * workDistance(target, work, weights)),
+        confusion: round(look + scale * workDistance(target, work, { ...weights, colour: 0 })),
+      };
+    })
     .sort((a, b) => a.distance - b.distance || a.id.localeCompare(b.id));
 }
 
@@ -283,8 +283,9 @@ export function confusingCrops({ target, pool, analyses, count }) {
   return analyses[target.id].crops
     .map((crop) => {
       const ranked = rankLookalikes({ target, crop, pool, analyses });
-      const closest = ranked.slice(0, count);
-      return { crop, ranked, confusion: closest.reduce((sum, r) => sum + r.distance, 0) / Math.max(1, closest.length) };
+      // how confusing: the closest lookalikes by the close-up, technique and subject (not the colours of the whole work)
+      const closest = [...ranked].sort((a, b) => a.confusion - b.confusion).slice(0, count);
+      return { crop, ranked, confusion: closest.reduce((sum, r) => sum + r.confusion, 0) / Math.max(1, closest.length) };
     })
     .sort((a, b) => a.confusion - b.confusion || b.crop.detail - a.crop.detail);
 }

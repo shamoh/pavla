@@ -139,6 +139,20 @@ test('rankLookalikes: the closest first; another technique or subject is farther
   assert.deepEqual(rank(pool.map((w) => ({ ...w, tags: ['x'] })), { ...target, tags: [] }), ['w01', 'w02', 'w03'], 'a target without tags compares colours only');
 });
 
+test('rankLookalikes: the colours of the whole work change the order, never the confusion of the levels', () => {
+  const { works, analyses } = library(4, (i) => [50 + i * 4, 0, 0]);
+  const [target, ...pool] = works;
+  const crop = analyses[target.id].crops[0];
+  const profile = (warm) => ({ shares: { modra: warm ? 0 : 1, oranzova: warm ? 1 : 0 }, mood: { warm: warm ? 1 : -1, light: 0, vivid: 0 }, analysed: true });
+  const t = { ...target, colourProfile: profile(false) };
+  // w01 is the closest by the close-up, but all warm against a cool target; w02 and w03 are cool too
+  const coloured = pool.map((w) => ({ ...w, colourProfile: profile(w.id === 'w01') }));
+  const ranked = rankLookalikes({ target: t, crop, pool: coloured, analyses });
+  assert.deepEqual(ranked.map((r) => r.id), ['w02', 'w03', 'w01'], 'the warm w01 drops behind the cool ones');
+  const plain = rankLookalikes({ target, crop, pool, analyses });
+  for (const r of ranked) assert.equal(r.confusion, plain.find((p) => p.id === r.id).distance, 'confusion without the colours of the whole work');
+});
+
 test('techniqueFamily: paintings and drawings, as a player sees them', () => {
   for (const t of ['akvarel', 'olej', 'akvarel a fix', 'akvarel a brush pen', 'Akryl', 'kvaš']) assert.equal(techniqueFamily(t), 'colour', t);
   for (const t of ['tuš', 'brush pen', 'kresba fixem', 'brush pen a pero', 'tisk z výšky', '', undefined]) assert.equal(techniqueFamily(t), 'drawing', String(t));

@@ -8,6 +8,7 @@ import { isOnSale, relatedWorks, wantsMockups, workCodeHint, workShortPath } fro
 import WorkCard from '../../../components/WorkCard.astro';
 import SimilarTile from '../../../components/SimilarTile.astro';
 import { galleryStatePath, similarLabel, similarLinkTitle, similarWorks, worksCount } from '../../../../scripts/lib/similar.mjs';
+import { workDistance } from '../../../../scripts/lib/affinity.mjs';
 import { EVENTS, MORE_METHODS } from '../../../../scripts/lib/analytics.mjs';
 import { galleryFilterPath, galleryLinkTitle } from '../../../../scripts/lib/gallery-filter.mjs';
 import { pinDescription } from '../../../../scripts/lib/pinterest.mjs';
@@ -32,8 +33,9 @@ const collection = getCollection(work.collection);
 const allWorks = getWorks();
 // "Související obrazy": its `related` and the works that name it there (both ways), published ones only
 const related = relatedWorks(work, allWorks);
-// "Podobné obrazy": a filter of the gallery from its technique and tags, its first works (without the related) as small tiles
-const similar = similarWorks(work, allWorks, { exclude: related.map((w) => w.id) });
+// "Podobné obrazy": a filter of the gallery from its technique and tags, its works most alike first (colours, mood,
+// technique, tags: workDistance), without the related ones, as small tiles
+const similar = similarWorks(work, allWorks, { exclude: related.map((w) => w.id), rank: workDistance });
 const collectionTitle = (slug: string) => getCollection(slug)?.title ?? slug;
 
 // Everything the viewer can step through: the work itself, its details, then its mockups.

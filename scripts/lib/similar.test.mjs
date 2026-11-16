@@ -69,3 +69,10 @@ test('SIMILAR_TILE_SIZE: a size of the tiles of the gallery', async () => {
   const { TILE_SIZES } = await import('./gallery-filter.mjs');
   assert.ok(TILE_SIZES.includes(SIMILAR_TILE_SIZE));
 });
+
+test('similarWorks: the works of the filter in the order of rank (the most alike first), ties newest first', () => {
+  const rankOf = { a0004: 0.1, a0002: 0.5, a0003: 0.1, a0005: 0.9, a0006: 0.2 };
+  const r = similarWorks(works[0], works, { count: 3, rank: (_, w) => rankOf[w.id] ?? 1 });
+  assert.deepEqual(r.state.tag, ['krajina', 'voda'], 'the same filter as without rank');
+  assert.deepEqual(r.works.map((x) => x.id), ['a0003', 'a0004', 'a0002'], 'by rank; a0003 and a0004 tie: newest first');
+});

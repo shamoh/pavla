@@ -175,10 +175,12 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Barvy díla (`scripts/lib/colors.mjs`): pipeline jednou rozebere nejmenší WebP do `info.json` `colors` (`analyseColours`: papír
   z okraje, vyvážené pixely v mřížce; `COLOUR_VERSION`, `needsColours`, obrázky beze změny); podíly barev k výběru až web podle
   `site.config.yaml` `gallery.colors` (`colourSettings`, `nearestFamily`: seznam barev jde měnit bez nového rozboru).
+- Podobnost dvou děl jen `scripts/lib/affinity.mjs` `workDistance` (barvy + nálada `colourProfile`, technika, štítky; váhy
+  `AFFINITY_WEIGHTS`): Podobné obrazy podle ní řadí, hra Detail dne ji přičítá k podobnosti výřezu (`rankLookalikes`,
+  `GAME_AFFINITY_WEIGHTS` × `GAME_AFFINITY_SCALE`; práh úrovní `confusion` bez barev celého díla), hledání ji má používat taky.
 - Podobné obrazy na stránce díla (`scripts/lib/similar.mjs` `similarWorks`): nejpřesnější filtr galerie z techniky
-  a štítků (ne kolekce) s aspoň 6 jinými díly, odkaz na galerii s ním (`galleryStatePath`) a jeho prvních 6 děl bez souvisejících
-  jako malé obrázky (`SimilarTile.astro`, 6 v řadě, na telefonu 3); další krok: společná funkce podobnosti dvou děl (technika,
-  štítky, barvy) pro hledání, podobné obrazy i hru Detail dne; barvy díla
+  a štítků (ne kolekce) s aspoň 6 jinými díly, odkaz na galerii s ním (`galleryStatePath`) a jeho 6 nejpodobnějších děl (`rank`) bez souvisejících
+  jako malé obrázky (`SimilarTile.astro`, 6 v řadě, na telefonu 3); barvy díla
   (až budou) = další kritérium v `criteria`.
 - Texty stránek: `stranky/<stránka>.yaml` obsahového repa (jméno = adresa, `PAGES` v `scripts/lib/pages.mjs`, schémata
   `PAGE_SCHEMAS`): O mně (`ABOUT_SCHEMA`), Kontakt (`CONTACT_SCHEMA`, `location_label`), 404 (`NOT_FOUND_SCHEMA`, `title`,
