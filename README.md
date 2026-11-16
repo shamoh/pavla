@@ -229,6 +229,13 @@ v prohlížeči a přepočítá při změně šířky (`visibleCount`). Vybraný
 Odkaz **Kolekce** v řádku s roky vede na přehled `/tvorba/kolekce/`, na stránce roku
 rovnou na přehled vyfiltrovaný na ten rok (`/tvorba/kolekce/?year=2026`), pokud ho přehled nabízí (`overviewLink`).
 
+Filtr **Barva** (`color`, `?color=modra`, jen jedna barva): výběr „Barva“ na předposledním místě řádku (za Stavem, před „Doporučené“) s kroužkem před ním, prázdným pro „vše“,
+po výběru vyplněným odstínem barvy (`--swatch` z `data-color` volby). Volby = barvy `site.config.yaml`
+`gallery.colors.families` v jejich pořadí, které má aspoň jedno dílo stránky, s počty jako ostatní výběry; dílo k barvě patří, když jí má aspoň `minShare` (12 %) malované plochy (`colors` díla
+z `workColourIds` při stavbě webu, na kartě `data-colors`, viz *Barvy díla*). Jinak jako ostatní výběry: jen volby, které
+zúží a nevyprázdní, čip v liště, „Zrušit filtry“, událost `gallery_filter` s `color`. Dokud žádné dílo stránky nemá
+rozbor barev, výběr chybí. Vyzkoušení: `npm run demo`, `/tvorba/?color=zelena`.
+
 Filtr **Stav** má čtyři volby (`STATUS_FILTERS` v `scripts/lib/gallery-filter.mjs`):
 - **vše**,
 - **na prodej** (`unsold`): díla, která se prodávají a ještě nejsou prodaná, `available` + `reserved`,
@@ -243,10 +250,15 @@ Odkaz s takovou volbou ukáže vše. Dřívější volba `?status=available` (je
 `/tvorba/?collection=plener-sumava-2026&status=unsold&tag=voda`, nebo jen výběr autorky
 na prodej: `/tvorba/?featured=1&status=unsold`.
 
-**Řádek filtrů** (výběry, „Doporučené“ a počet děl) je ve formuláři první, čipy štítků pod ním. Na počítači (okno od 1280 px) se vejde vždy na jeden řádek (ověřeno i v nejhorším případě: všechny filtry, nejdelší texty a 9999 děl; ještě s odkazem „O kolekci“, který už v řádku není): výběry mají pevnou největší šířku
-(`max-width` 11em, Kolekce 13em) a delší volbu zavřené zkrátí „…“ (rozbalené ukážou vše celé), přepínač výběru
-autorky se jmenuje krátce „Doporučené“ (plný název v bublině) a „Na stránku“ je pod díly. Pipeline doporučí kratší
-název kolekce (nad 19 znaků) a techniku (nad 14 znaků), viz *Souhrn běhu*. Na telefonu se řádek zalamuje.
+**Řádek filtrů** (výběry a „Doporučené“) je ve formuláři první, pod ním čipy štítků a za nimi jeden blok s počtem
+děl, „× Zrušit filtry“ (jen se zapnutým filtrem) a „▶ Promítat“ (`.count-group` uvnitř `.chips`), vždy u pravého okraje:
+na řádku posledních štítků, když se tam vejde celý, jinak na vlastním řádku; o kousek níž než štítky. Na počítači (formulář široký 1224 px) se řádek výběrů vejde na jeden řádek i s nejdelšími texty
+a 9999 díly: výběry mají pevnou největší šířku (`max-width` 11em, Kolekce 13em, Barva 9em) a delší volbu zavřené
+zkrátí „…“ (rozbalené ukážou vše celé), přepínač výběru autorky se jmenuje krátce „Doporučené“ (plný název
+v bublině) a „Na stránku“ je pod díly. Čipy štítků jsou úsporné (stejné písmo jako výběry, menší vnitřní okraje
+a mezery). Pipeline doporučí kratší název kolekce (nad `COLLECTION_TITLE_CHARS` = 19 znaků) a techniku (nad
+`TECHNIQUE_CHARS` = 14 znaků), viz *Souhrn běhu*. Na telefonu se řádek zalamuje. Odkaz „Kolekce“ na konci řádku s roky
+je výraznější: písmo nadpisů (patkové, jako „Tvorba“ nad galerií), větší než roky, v barvě písma.
 
 **Lišta filtrů** (`scripts/lib/filter-bar.mjs`, `WorkGallery.astro`): když formulář filtrů odjede z obrazovky, posun
 stránky nahoru o `REVEAL_AFTER` (40 px) od posledního obratu vysune shora tenkou lištu s vybranými filtry jako
@@ -1271,6 +1283,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | fotky stránek | zástupné `o-mne-uvod` (s `focus`), `portret` a `kontakt` |
 | texty stránek (`description`, odstavce `text`, tlumený `closing`, formátování a odkazy, `location_label`, texty 404) | `demo-content/stranky/o-mne.yaml`, `kontakt.yaml`, `404.yaml`; `/o-mne/`, `/kontakt/`, neexistující adresa |
 | fotka v textu stránky vlevo (bez sloupce s portrétem) a vpravo, obtékání a konec obtékání | `demo-content/stranky/o-mne.yaml` (`[fotka: portret, vlevo]`), `kurzy.yaml` (`[fotka: kontakt, vpravo]`); `/o-mne/`, `/kurzy/`, `.demo/content/export/stranky/README.md` |
+| barvy děl a filtr Barva (`colors` v `info.json`, `?color=`) | vymyšlené obrázky testovacích děl (`npm run demo:prepare` jim rozebere barvy); `/tvorba/?color=zelena`, `/tvorba/?color=tyrkysova&technique=akvarel` |
 | obecná textová stránka jen se souborem (`optional`), v mapě webu | `demo-content/stranky/kurzy.yaml`; `/kurzy/`, `/sitemap.xml` |
 | nadpis úvodní stránky na dva řádky (`heading`) | `demo-content/_index.yaml`; `/` |
 | tlačítko „▶ Moje nejmilejší“ (`button_show`), „Moje nejmilejší“ v patičce a „Promítnout“ na Kontaktu = promítání výběru autorky (`method` `home` / `footer` / `contact`) | `demo-content/_index.yaml`, díla s `featured: true`; `/`; `button_show: ""` jen unit testy |
@@ -2403,6 +2416,7 @@ analytics:
   |---|---|---|
   | Štítek | `tag` | Filtr štítků v galerii (gallery_filter); víc štítků jako jedna hodnota spojená čárkou, např. krajina,voda. |
   | Technika | `technique` | Filtr techniky v galerii (gallery_filter), např. akvarel. |
+  | Barva | `color` | Filtr barvy v galerii (gallery_filter): id barvy ze site.config.yaml gallery.colors, např. modra. |
   | Rok | `year` | Filtr roku v galerii nebo na přehledu kolekcí (gallery_filter). |
   | Kolekce | `collection` | Filtr kolekce v galerii (gallery_filter): slug kolekce, none = díla bez kolekce. |
   | Stav filtru | `status` | Filtr stavu v galerii (gallery_filter): unsold = na prodej, kept = ještě mám, gone = už nemám. |

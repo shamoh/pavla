@@ -6,7 +6,7 @@ import { ALL_PAGES, FEATURED_ON, NO_COLLECTION, czechOrder, galleryFilterPath, g
 } from './gallery-filter.mjs';
 
 const work = (status, extra = {}) => ({ tags: ['krajina'], technique: 'akvarel', year: '2026', collection: '', status, ...extra });
-const all = { tag: [], technique: '', year: '', collection: '', status: '', featured: '', q: '' };
+const all = { tag: [], technique: '', color: '', year: '', collection: '', status: '', featured: '', q: '' };
 const allState = { ...all, page: 1, perPage: null, view: 'grid', tile: 'm' };
 const statuses = ['available', 'reserved', 'sold', 'gifted', 'not-for-sale'];
 const passing = (state) => statuses.filter((s) => matchesFilters(work(s), { ...all, ...state }));
@@ -59,7 +59,7 @@ test('stateFromParams reads every filter and drops an unknown status', () => {
 
 test('stateToParams leaves out empty filters and round-trips any combination', () => {
   assert.equal(stateToParams(all).toString(), '');
-  const state = { tag: ['řeka a mlha'], technique: 'akvarel', year: '2025', collection: 'plener', status: 'gone', featured: '1', q: 'mlha', page: 3, perPage: 48, view: 'tiles', tile: 'l' };
+  const state = { tag: ['řeka a mlha'], technique: 'akvarel', color: '', year: '2025', collection: 'plener', status: 'gone', featured: '1', q: 'mlha', page: 3, perPage: 48, view: 'tiles', tile: 'l' };
   assert.equal(stateToParams({ ...all, technique: 'akvarel', status: 'kept' }).toString(), 'technique=akvarel&status=kept');
   assert.deepEqual(stateFromParams(new URLSearchParams(stateToParams(state).toString())), state);
 });
@@ -459,4 +459,23 @@ test('filtersToParams: only the filters (the address of the cinema), never the v
   assert.equal(filtersToParams(state).toString(), 'tag=les&tag=voda&status=unsold');
   assert.match(stateToParams(state).toString(), /page=3/, 'the gallery keeps its paging');
   assert.equal(filtersToParams(stateFromParams(new URLSearchParams('view=tiles'))).toString(), '');
+});
+
+test('the colour filter: one colour, a work with enough of it (colors), facet counts per colour, in the address', () => {
+  const works = [
+    work('available', { colors: ['modra', 'zelena'] }),
+    work('available', { colors: ['modra'] }),
+    work('available', { colors: [] }),
+    work('available'),
+  ];
+  const none = stateFromParams(new URLSearchParams());
+  assert.equal(none.color, '');
+  const blue = stateFromParams(new URLSearchParams('color=modra'));
+  assert.equal(blue.color, 'modra');
+  assert.deepEqual(works.map((w) => matchesFilters(w, blue)), [true, true, false, false]);
+  assert.deepEqual(facetValues(works[0], 'color'), ['modra', 'zelena']);
+  assert.deepEqual(facetValues(works[3], 'color'), [], 'not analysed yet: no colour');
+  assert.deepEqual(facetChoices(works, none, 'color', ['modra', 'zelena', 'cervena']).map((c) => [c.value, c.count, c.offered]),
+    [['modra', 2, true], ['zelena', 1, true], ['cervena', 0, false]]);
+  assert.equal(filtersToParams({ ...none, color: 'modra', technique: 'akvarel' }).toString(), 'technique=akvarel&color=modra');
 });

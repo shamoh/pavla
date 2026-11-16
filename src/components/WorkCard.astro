@@ -25,6 +25,7 @@ const shownMarks = marks ? workMarks({ featured: Boolean(work.featured), onSale:
   href={workUrl(work)}
   data-tags={work.tags.join('|')}
   data-technique={work.technique}
+  data-colors={work.colors.join(' ')}
   data-status={shownStatus(work.status)}
   data-collection={work.collection ?? ''}
   data-year={work.year}

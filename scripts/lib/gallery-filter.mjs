@@ -55,7 +55,7 @@ export function yearFilterOptions(years) {
 /** Former status filter values, still accepted in shared links: old value → current one. */
 export const STATUS_ALIASES = { available: 'unsold' };
 
-export const FILTER_KEYS = ['tag', 'technique', 'year', 'collection', 'status', 'featured', 'q'];
+export const FILTER_KEYS = ['tag', 'technique', 'year', 'collection', 'status', 'color', 'featured', 'q'];
 /** Value of `featured` when the visitor shows only the author's selection ("Výběr autorky", ?featured=1). */
 export const FEATURED_ON = '1';
 /**
@@ -78,13 +78,15 @@ export const NO_COLLECTION_TITLE = 'Mimo kolekce';
 const inCollection = (collection, picked) => !picked || (picked === NO_COLLECTION ? !collection : collection === picked);
 
 /**
- * True when a work ({ search or title + description, tags, technique, year as string, collection, status, featured })
+ * True when a work ({ search or title + description, tags, technique, colors (the ids of its colours, workColourIds),
+ * year as string, collection, status, featured })
  * passes every active filter, the search (`q`) in its title and description too (`search`: searchText, from the card).
  */
 export function matchesFilters(work, state) {
   return (
     state.tag.every((t) => work.tags.includes(t)) &&
     (!state.technique || work.technique === state.technique) &&
+    (!state.color || (work.colors ?? []).includes(state.color)) &&
     (!state.year || work.year === state.year) &&
     inCollection(work.collection, state.collection) &&
     (!state.status || (STATUS_FILTERS[state.status]?.(work.status) ?? true)) &&
@@ -117,17 +119,18 @@ export function tagChoices(tags, shownTags, picked) {
 }
 
 /** The filters with one picked option each (selects and the author's selection switch), besides the tags. */
-export const FACETS = ['technique', 'year', 'collection', 'status', 'featured'];
+export const FACETS = ['technique', 'year', 'collection', 'status', 'color', 'featured'];
 
 /**
- * The options of filter `key` a work ({ technique, year, collection, status, featured }) falls under: one technique,
- * year or collection (NO_COLLECTION without a collection), every status option its status passes (an available work is both
+ * The options of filter `key` a work ({ technique, colors, year, collection, status, featured }) falls under: one technique,
+ * year or collection (NO_COLLECTION without a collection), every colour it has enough of (colors), every status option its status passes (an available work is both
  * "na prodej" and "ještě mám"), FEATURED_ON for a featured work.
  */
 export function facetValues(work, key) {
   if (key === 'status') return Object.keys(STATUS_FILTERS).filter((k) => STATUS_FILTERS[k](work.status));
   if (key === 'featured') return work.featured ? [FEATURED_ON] : [];
   if (key === 'collection') return [work.collection || NO_COLLECTION];
+  if (key === 'color') return work.colors ?? [];
   return work[key] ? [String(work[key])] : [];
 }
 

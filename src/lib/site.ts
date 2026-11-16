@@ -17,6 +17,7 @@ import { measurementIdFor } from '../../scripts/lib/analytics.mjs';
 import { messagesSettings } from '../../scripts/lib/messages.mjs';
 import { workTooltip } from '../../scripts/lib/tooltip.mjs';
 import { tileMarksFor } from '../../scripts/lib/tile-marks.mjs';
+import { colourSettings, workColourIds } from '../../scripts/lib/colors.mjs';
 import { execSync } from 'node:child_process';
 
 const root = process.cwd();
@@ -84,6 +85,11 @@ export interface Work {
   featured?: boolean;
   /** Mockups (the work in a frame on a wall) shown on the page, independent of the status. */
   mockups?: boolean;
+  /**
+   * The colours a visitor can find it by (the filter „Barva“): ids of site.config.yaml gallery.colors with enough of its
+   * painted part, the biggest first (workColourIds over the analysis in its info.json; none before the pipeline made it).
+   */
+  colors: string[];
   /** Ids of related works (`related`): its page shows them and they show it (relatedWorks, both ways). */
   related?: string[];
   /** Captions of detail photos: "<detail photo name>: <caption>" (keys match via detailKey). */
@@ -170,6 +176,7 @@ export function getWorks(): Work[] {
       console.warn(`[works] ${year}/${key}: images missing, run "npm run images", skipped`);
       continue;
     }
+    const image = JSON.parse(fs.readFileSync(infoPath, 'utf8'));
     works.push({
       ...data,
       id: data.id,
@@ -181,7 +188,8 @@ export function getWorks(): Work[] {
       collection: collection ?? undefined,
       modified: data.derived_modified,
       status: data.status ?? 'not-for-sale',
-      image: JSON.parse(fs.readFileSync(infoPath, 'utf8')),
+      image,
+      colors: workColourIds(image.colors, colourChoices),
     });
   }
   cache = works.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -261,6 +269,9 @@ export const version = buildVersion(new Date(), currentCommit());
 /** Google Analytics measurement ID for this build, null when it must not measure (dev server, test data). */
 /** Marks over the tiles (star of the selection, a work on sale) of each place: site.config.yaml home.tileMarks, gallery.tileMarks, checked once. */
 export const marks = { home: tileMarksFor(config, 'home'), gallery: tileMarksFor(config, 'gallery') };
+
+/** The colours a visitor can pick in the filter „Barva“ and the share a work needs (site.config.yaml gallery.colors). */
+export const colourChoices = colourSettings(config);
 
 export const analyticsId = measurementIdFor(config.analytics, { production: import.meta.env.PROD, demo: Boolean(process.env.SITE_DATA_DIR) });
 

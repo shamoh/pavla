@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  COLOUR_VERSION, DEFAULT_COLOUR_FAMILIES, analyseColours, colourBins, colourHistogram, needsColours, colourSettings, familyShares, nearestFamily, oklabToOklch, paletteDistance, paletteMood, paperFromEdge, rgbToOklab, workPalette,
+  COLOUR_VERSION, DEFAULT_COLOUR_FAMILIES, analyseColours, colourBins, colourHistogram, needsColours, workColourIds, colourSettings, familyShares, nearestFamily, oklabToOklch, paletteDistance, paletteMood, paperFromEdge, rgbToOklab, workPalette,
 } from './colors.mjs';
 
 const lab = (r, g, b) => rgbToOklab(r, g, b);
@@ -117,4 +117,13 @@ test('analyseColours, colourBins, needsColours: what info.json keeps and how it 
   assert.equal(needsColours({}), true);
   assert.equal(needsColours({ colors: { version: COLOUR_VERSION - 1 } }), true);
   assert.equal(needsColours({ colors }), false);
+});
+
+test('workColourIds: the colours with at least minShare of the painted part, the biggest first; none without analysis', () => {
+  // a blue square (2/3 of the painted part) and a yellow stripe (1/3) on paper
+  const p = pixels(60, 60, (x, y) => (y > 15 && y < 45 && x > 10 && x < 40 ? [60, 100, 190, 255] : y > 15 && y < 45 && x >= 40 && x < 55 ? [230, 200, 60, 255] : [225, 215, 200, 255]));
+  const settings = colourSettings({});
+  assert.deepEqual(workColourIds(analyseColours(p), settings), ['modra', 'zluta']);
+  assert.deepEqual(workColourIds(analyseColours(p), { ...settings, minShare: 0.5 }), ['modra']);
+  assert.deepEqual(workColourIds(undefined, settings), []);
 });

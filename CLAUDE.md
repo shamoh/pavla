@@ -130,10 +130,11 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   přehled kolekcí končí položkou „Mimo kolekce“ (`NO_COLLECTION_TITLE`, `getUncollected`); slug `none` pipeline odmítne.
   Její text (`text`, v přehledu čistý, prázdný = `UNCOLLECTED_TEXT`) a úvodní obraz: `tvorba/_index.yaml` + `tvorba/_cover.jpg` obsahového repa (`UNCOLLECTED_SCHEMA`, `scripts/lib/uncollected.mjs`,
   výstup `public/tvorba/_cover/`, kopie `content/tvorba/_index.yaml`, bez og), stejné pravidlo jako kolekce.
-  Řádek filtrů na počítači (od 1280 px) vždy na jeden řádek: výběry s `max-width` a zkrácením „…“, přepínač „Doporučené“
+  Řádek výběrů na počítači (od 1280 px) vždy na jeden řádek: výběry s `max-width` a zkrácením „…“ (počet děl, „Zrušit filtry“
+  a „▶ Promítat“ jsou jeden blok za čipy štítků vždy vpravo, `.count-group`), přepínač „Doporučené“
   (= výběr autorky), „Na stránku“ pod díly; nový filtr = ověřit nejhorší případ (všechny volby, nejdelší texty, 9999 děl) a
   případně limity `TECHNIQUE_CHARS` / `COLLECTION_TITLE_CHARS` v `scripts/lib/advice.mjs` (doporučení v souhrnu).
-  Výběry (Technika, Rok, Kolekce, Stav) a přepínač Výběr autorky stejně: počty s ostatními filtry, jen volby,
+  Výběry (Technika, Rok, Kolekce, Stav, Barva) a přepínač Výběr autorky stejně (Barva: jedna barva `?color=`, kroužek s odstínem před výběrem): počty s ostatními filtry, jen volby,
   které zúží a nevyprázdní (`facetChoices`), vybraná vždy, bez žádné filtr zašedne (nikdy se neskryje, `facetDisplay`, ukáže společnou hodnotu); nový filtr = do `FACETS`.
   Lišta filtrů (`scripts/lib/filter-bar.mjs`): po posunu nahoru tenký řádek s vybranými filtry jako čipy s „×“
   (`withoutFilter`) + „Upravit“ = týž formulář jako panel (nikdy kopie); nový filtr = i do `activeFilters` a `withoutFilters`.

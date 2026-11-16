@@ -2,7 +2,7 @@
 import WorkGrid from './WorkGrid.astro';
 import Pager from './Pager.astro';
 import Cinema from './Cinema.astro';
-import { type Work, collectionUrl, config, getCollections, getYears, url } from '../lib/site';
+import { type Work, collectionUrl, colourChoices, config, getCollections, getYears, url } from '../lib/site';
 import { DEFAULT_VIEW, NO_COLLECTION, NO_COLLECTION_TITLE, TILE_SIZE_STORAGE_KEY, VIEW_STORAGE_KEY, czechOrder, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
 import { columnsFor, viewScript, viewSetup } from '../../scripts/lib/view-layout.mjs';
 import { overviewLink, yearCounts, yearOptions } from '../../scripts/lib/collection-filter.mjs';
@@ -20,6 +20,10 @@ const count = (vals: string[]) => {
 const tags = count(works.flatMap((w) => w.tags)).sort((a, b) => a[0].localeCompare(b[0], 'cs'));
 // Techniques in Czech alphabetical order, like the collections.
 const techniques = czechOrder(count(works.map((w) => w.technique)), ([t]) => t);
+// The colours of site.config.yaml gallery.colors in their order, each with its works on this page (one colour can be
+// picked, „Barva“); none while no work here has its colours analysed yet.
+const colourCounts = new Map(count(works.flatMap((w) => w.colors)));
+const colours = colourChoices.families.filter((f) => colourCounts.has(f.id)).map((f) => ({ ...f, n: colourCounts.get(f.id)! }));
 // Collections in Czech alphabetical order (easy to find a known one), each with its works on this page;
 // the collection filter is a combobox over this select (src/lib/combobox.ts).
 const inPage = new Map(count(works.flatMap((w) => (w.collection ? [w.collection] : []))));
@@ -96,19 +100,27 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
         </select>
       </label>
     )}
+    {/* „Barva“: the ring before the select, empty = all, filled = the picked colour */}
+    {colours.length > 0 && (
+      <label class="with-swatch">Barva
+          <span class="swatch" data-colour-swatch aria-hidden="true"></span>
+          <select name="color"><option value="">vše</option>{colours.map((c) => <option value={c.id} data-label={c.label} data-color={c.color}>{c.label} ({c.n})</option>)}</select>
+      </label>
+    )}
     {works.length > 0 && (
       <label class="switch" title="Výběr autorky: obrazy, které sama doporučuji"><input type="checkbox" name="featured" value="1" /> <span>Doporučené (<span data-featured-count>{featuredCount}</span>)</span></label>
     )}
+  </div>
+  <!-- The selects first (one line on a computer), the tag chips under them, the count and „Promítat“ right after the tags. -->
+  <div class="chips" id="chips" role="group" aria-label="Témata (lze vybrat víc najednou)">
+    <button type="button" data-filter="tag" data-value="" aria-pressed="true">Vše</button>
+    {tags.map(([t, n]) => <button type="button" data-filter="tag" data-value={t} aria-pressed="false">#{t} <small>{n}</small></button>)}
+    <!-- one block after the tags, at the right edge: how many works, "× Zrušit filtry" while a filter is on, "▶ Promítat" -->
     <span class="count-group">
       <span class="muted" id="count" aria-live="polite">{works.length} děl</span>
       <button type="button" class="reset-link" data-filters-reset hidden><span aria-hidden="true">×</span> Zrušit filtry</button>
       <a class="play-link" data-cinema-open href="?cinema=random" title="Vybraná díla jedno po druhém přes celou obrazovku"><span aria-hidden="true">▶</span> Promítat</a>
     </span>
-  </div>
-  <!-- The selects first (one line on a computer), the tag chips under them. -->
-  <div class="chips" id="chips" role="group" aria-label="Témata (lze vybrat víc najednou)">
-    <button type="button" data-filter="tag" data-value="" aria-pressed="true">Vše</button>
-    {tags.map(([t, n]) => <button type="button" data-filter="tag" data-value={t} aria-pressed="false">#{t} <small>{n}</small></button>)}
   </div>
   <div class="filters-actions">
     <button type="button" class="filters-reset" data-filters-reset hidden>Zrušit filtry</button>
@@ -165,7 +177,10 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   const tagsOf = (card: HTMLElement) => card.dataset.tags!.split('|').filter(Boolean);
   const workOf = (c: HTMLElement) => {
     const d = c.dataset;
-    return { search: d.search!, tags: tagsOf(c), technique: d.technique!, year: d.year!, collection: d.collection!, status: d.status!, featured: d.featured === '1' };
+    return {
+      search: d.search!, tags: tagsOf(c), technique: d.technique!, colors: (d.colors ?? '').split(' ').filter(Boolean), year: d.year!,
+      collection: d.collection!, status: d.status!, featured: d.featured === '1',
+    };
   };
   const works = cards.map(workOf);
   // The search in titles and descriptions next to the heading (SearchField.astro, on every page with a gallery).
@@ -191,7 +206,9 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   const featuredBox = form.elements.namedItem('featured') as HTMLInputElement | null;
   const select = (name: string) => form.elements.namedItem(name) as HTMLSelectElement | null;
   // Filters without a select on this page (year on a year page, collection on a collection page) are off.
-  const selects = (['technique', 'year', 'collection', 'status'] as const).filter((k) => select(k));
+  const selects = (['technique', 'year', 'collection', 'status', 'color'] as const).filter((k) => select(k));
+  // The swatch of the picked colour next to „Barva“ (its shade from the option, data-color); empty with "vše".
+  const colourSwatch = form.querySelector<HTMLElement>('[data-colour-swatch]');
   // Every option of each select as built ("vše" first); apply() puts back only the offered ones (removing them
   // instead of hiding, which Safari on iOS ignores).
   const allOptions = Object.fromEntries(selects.map((k) => [k, [...select(k)!.options]]));
@@ -247,7 +264,7 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   fillPageSizes();
   for (const k of ['year', 'collection'] as const) if (!select(k)) state[k] = '';
   // A year or status option not offered here (nothing behind it, e.g. an old link) is off, like a missing filter.
-  for (const k of ['year', 'status'] as const) {
+  for (const k of ['year', 'status', 'color'] as const) {
     const s = select(k);
     if (!s || ![...s.options].some((o) => o.value === state[k])) state[k] = '';
   }
@@ -287,7 +304,8 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
       b.querySelector('small')!.textContent = picked ? '' : String(count);
     });
     // No chips only when the works of this page have no tags at all.
-    chipGroup.hidden = tagChips.length === 0;
+    // no tags on this page: no "Vše" chip either, the count and „Promítat“ stay in the row
+    chips[0].hidden = tagChips.length === 0;
     for (const k of selects) {
       const [all, ...options] = allOptions[k];
       const choices = facetChoices(works, state, k, options.map((o) => o.value));
@@ -302,6 +320,12 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
       const label = s.closest('label')!;
       label.classList.toggle('off', off);
       label.title = off ? 'Všechna zobrazená díla mají stejnou hodnotu, není z čeho vybírat' : '';
+    }
+    // the swatch of the picked colour (its shade from site.config.yaml, data-color of the option); none with "vše"
+    if (colourSwatch) {
+      const picked = allOptions.color?.find((o) => o.value && o.value === select('color')!.value);
+      if (picked) colourSwatch.style.setProperty('--swatch', picked.dataset.color!);
+      colourSwatch.classList.toggle('picked', Boolean(picked));
     }
     if (featuredBox) {
       featuredBox.checked = state.featured === FEATURED_ON;
@@ -641,8 +665,13 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   }
   .bar-reset:hover, .reset-link:hover { text-decoration: underline; text-underline-offset: 3px; }
   .bar-reset[hidden], .reset-link[hidden], .filters-reset[hidden] { display: none; }
-  /* The count at the end of the selects, "× Zrušit filtry" after it while a filter is on. */
-  .count-group { margin-left: auto; display: flex; gap: 12px; align-items: baseline; white-space: nowrap; }
+  /* The count, "× Zrušit filtry" while a filter is on and „Promítat“: one block after the tag chips, always at the right
+     edge (on the line of the last chips when it fits whole there, otherwise on a line of its own), a little lower than
+     the chips, so it reads as a block of its own and not as one more chip. */
+  .count-group {
+    margin-left: auto; padding-left: 16px; align-self: flex-end; margin-top: 12px;
+    display: flex; gap: 12px; align-items: center; white-space: nowrap; font-size: 0.9rem;
+  }
   .reset-link { font-size: 0.9rem; }
   /* "▶ Promítat": the works of the filters over the whole screen (Cinema.astro); in the bar only "▶". */
   .play-link, .bar-play {
@@ -675,21 +704,23 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     .filters.floating { top: auto; bottom: 0; z-index: 45; max-height: 75vh; border-radius: 12px 12px 0 0; border-top: 1px solid var(--line); }
   }
   @media (prefers-reduced-motion: reduce) { .filter-bar, .filter-bar.shown { transition: none; } }
-  .filters { display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chips button {
-    font: inherit; font-size: 0.88rem; color: var(--ink); background: transparent; cursor: pointer;
-    border: 1px solid var(--line); border-radius: 99px; padding: 5px 14px;
+  /* less room above and under the line between the filters and the works */
+  .filters { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  /* The tag chips: compact (the same type as the selects, less air), the count group right after the last one. */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chips > button {
+    font: inherit; font-size: 0.88rem; line-height: 1.3; color: var(--ink); background: transparent; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px;
   }
   .chips[hidden], .chips button[hidden] { display: none; }
   /* A chip or a filter that would change nothing now: greyed and disabled, but in place (facetDisplay). */
-  .chips button:disabled { opacity: .4; cursor: default; }
+  .chips > button:disabled { opacity: .4; cursor: default; }
   .selects label.off { opacity: .45; }
   .selects label.off select, .selects label.off input { cursor: default; }
-  .chips button small:empty { display: none; }
-  .chips button small { color: var(--ink-soft); margin-left: 2px; }
-  .chips button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-  .chips button[aria-pressed='true'] small { color: inherit; opacity: .7; }
+  .chips > button small:empty { display: none; }
+  .chips > button small { color: var(--ink-soft); margin-left: 2px; }
+  .chips > button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .chips > button[aria-pressed='true'] small { color: inherit; opacity: .7; }
   .selects { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; font-size: 0.9rem; }
   .selects label { display: flex; gap: 6px; align-items: center; color: var(--ink-soft); }
   .selects select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 4px 8px; border-radius: 2px; }
@@ -697,6 +728,12 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
      So the filters stay on one line on a computer whatever the names (SELECT_CHARS in scripts/lib/advice.mjs). */
   .selects select { max-width: 11em; text-overflow: ellipsis; }
   .selects select[name='collection'] { max-width: 13em; }
+  /* „Barva“: a ring before the select, empty for "vše", filled with the picked colour (--swatch set by the script from
+     the option, a shade of site.config.yaml gallery.colors) */
+  .with-swatch { gap: 6px; }
+  .swatch { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--ink-soft); flex: none; }
+  .swatch.picked { background: var(--swatch); box-shadow: 0 0 0 1px var(--line); }
+  .selects select[name='color'] { max-width: 9em; }
   /* The collection combobox (src/lib/combobox.ts, made by the script, so :global): looks like the selects, as wide as
      the collection select was; the list under it is as wide as its longest name needs and shows every name whole. */
   .selects :global(.combo) { position: relative; display: inline-flex; }
@@ -723,5 +760,7 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   .selects :global(.combo-list li[aria-selected='true']) { font-weight: 500; }
   .selects label[hidden] { display: none; }
   .selects .switch { color: var(--ink); cursor: pointer; }
-  .years .to-collections { margin-left: auto; font-size: 1rem; font-family: var(--sans); align-self: center; }
+  /* „Kolekce“: the way to the overview of collections, in the type of the headings (as „Tvorba“ and „Kolekce“ over
+     their pages), bigger than the years */
+  .years .to-collections { margin-left: auto; font-family: var(--serif); font-size: 1.6rem; line-height: 1; color: var(--ink); align-self: center; }
 </style>

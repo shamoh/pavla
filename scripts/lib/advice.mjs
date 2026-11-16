@@ -74,8 +74,9 @@ export function workAdvice(works, { siteTitle = '' } = {}) {
 
 // The gallery selects have a fixed width on a computer (WorkGallery.astro, so the filters stay on one line): closed,
 // a longer option is cut ("…"), opened, the list shows it whole. These many characters of a name still show whole
-// (measured in the browser at max-width 11em / 13em with ordinary Czech text; the worst case of the whole row is
-// every filter shown with the longest texts and 9999 works, which still fits a 1280 px window).
+// (measured in the browser at max-width 11em / 13em with ordinary Czech text; the row of the selects, „Barva“ included,
+// fits the 1224 px of the filter form even with the longest texts and 9999 works: the count and „Promítat“ are after
+// the tag chips).
 /** Characters of a technique the closed "Technika" select shows whole (its count may be cut). */
 export const TECHNIQUE_CHARS = 14;
 /** Characters of a collection title the closed "Kolekce" select shows whole (its count may be cut). */

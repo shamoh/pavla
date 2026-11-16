@@ -365,3 +365,12 @@ export function colourBins(colors, { paper = 0.88, chroma = 0.02 } = {}) {
 
 /** Whether a work needs its colours analysed: none yet in its info.json, or from an older analysis (COLOUR_VERSION). */
 export const needsColours = (info) => info?.colors?.version !== COLOUR_VERSION;
+
+/**
+ * The colours a visitor can find a work by (the filter „Barva“): the ids of the colours of `settings` (colourSettings)
+ * that have at least `minShare` of its painted part, the biggest first. `colors`: its info.json `colors`; none without.
+ */
+export function workColourIds(colors, settings, options = {}) {
+  const shares = familyShares(colourBins(colors, options), settings.families, options);
+  return Object.entries(shares).filter(([, share]) => share >= settings.minShare).sort((a, b) => b[1] - a[1]).map(([id]) => id);
+}
