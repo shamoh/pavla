@@ -10,8 +10,7 @@ import { contactLink, pageContext } from '../../scripts/lib/messages.mjs';
 import { PALETTES, paletteCss, paletteScript } from '../../scripts/lib/palettes.mjs';
 import PalettePicker from '../components/PalettePicker.astro';
 import NameShades from '../components/NameShades.astro';
-import { RETURN_SCOPE, insideScope } from '../../scripts/lib/page-return.mjs';
-import { skipHeaderScript } from '../../scripts/lib/skip-header.mjs';
+import { skipHeaderScope, skipHeaderScript } from '../../scripts/lib/skip-header.mjs';
 
 /**
  * `type`: og:type ('article' for a work); `noindex`: a page search engines should leave out (404), without canonical;
@@ -40,8 +39,8 @@ const withMessages = Boolean(messages.mode) && messagePanel;
 const onSale = hasWorksOnSale();
 const featured = hasFeaturedWorks();
 const messageContext = Astro.props.message !== undefined ? Astro.props.message : pageContext(Astro.url.pathname, title ?? site.title);
-// Pages of the Tvorba section open scrolled past the header (scripts/lib/skip-header.mjs).
-const skipsHeader = insideScope(Astro.url.pathname, import.meta.env.BASE_URL);
+// Pages of the Tvorba section and the game open scrolled past the header (scripts/lib/skip-header.mjs).
+const skipScope = skipHeaderScope(Astro.url.pathname, import.meta.env.BASE_URL);
 ---
 <!doctype html>
 <html lang="cs">
@@ -120,7 +119,7 @@ const skipsHeader = insideScope(Astro.url.pathname, import.meta.env.BASE_URL);
         {withMessages && <a href={url(contactLink(messageContext))} data-message-open="">Napsat k této stránce</a>}
       </span>
     </footer>
-    {skipsHeader && <script is:inline set:html={skipHeaderScript(url(RETURN_SCOPE))} />}
+    {skipScope && <script is:inline set:html={skipHeaderScript(skipScope)} />}
     {withMessages && <MessagePanel context={messageContext} />}
   </body>
 </html>

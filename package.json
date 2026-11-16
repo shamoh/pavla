@@ -30,5 +30,8 @@
   "allowScripts": {
     "esbuild": true,
     "fsevents": false
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

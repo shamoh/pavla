@@ -68,7 +68,7 @@
 const DATA = /*DATA*/{};
 /*FUNCTIONS*/
 
-const STORE = 'pavla.prototype.detailEffects.v3';
+const STORE = 'pavla.prototype.detailEffects.v4';
 const { works, public: PUBLIC, config: CONFIG, game: GAME } = DATA;
 const LEVELS = gameLevels();
 const LOOKS = gameLooks();
@@ -99,7 +99,7 @@ function save() {
 }
 const saved = load();
 const defaultLooks = () => Object.fromEntries(LEVELS.map((l) => [l.id, LOOKS.filter((look) => l.looks.includes(look.id)).map((look) => lookKey([look.effect, look.colour]))]));
-const state = { level: 'stredni', work: '', crop: 0, zoom: '0.45', sizeColour: '', view: 'steps', ...saved, settings: { ...effectSettings(), ...saved.settings }, looks: { ...defaultLooks(), ...saved.looks } };
+const state = { level: 'medium', work: '', crop: 0, zoom: '0.45', sizeColour: '', view: 'steps', ...saved, settings: { ...effectSettings(), ...saved.settings }, looks: { ...defaultLooks(), ...saved.looks } };
 const $ = (id) => document.getElementById(id);
 const levelNow = () => LEVELS.find((l) => l.id === state.level);
 const answersNow = () => GAME.prepared[state.level] ?? {};

@@ -18,7 +18,7 @@ import { findUnknownAttributes, findUnknownTechniques, findUntranslatedTags } fr
 import { checkSiteImages, evaluateSiteImages } from './lib/site-check.mjs';
 import { evaluatePageTexts } from './lib/page-check.mjs';
 import {
-  DRY_RUNS, evaluateCheckToken, evaluateDeploy, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure,
+  DRY_RUNS, evaluateCheckToken, evaluateDeploy, evaluateGameAnalyses, evaluateGamePlan, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure,
 } from './lib/health.mjs';
 
 const SITE_REPO = 'shamoh/pavla';
@@ -115,6 +115,22 @@ const siteImages = await guarded('obrázky webu', async () => {
 // a build); not checked when the site could not be read.
 const pageTexts = evaluatePageTexts(site?.html ?? null);
 
+// The plan of the days of the game Detail dne on the deployed site reaches at least a week ahead (no game page = not checked).
+const gamePlan = await guarded('plán hry Detail dne', async () => {
+  const res = await fetch(new URL('/detail-dne/data.json', textArg('--site-url') ?? config.site.url));
+  if (res.status === 404) return evaluateGamePlan(null);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return evaluateGamePlan(await res.json());
+});
+
+// The kept analyses of the pictures of the game (game/detail-dne/analysis/ on main of the public repository of the site, not in
+// the sparse checkout): their sizes from the tree of main.
+const gameAnalyses = await guarded('rozbory obrázků hry Detail dne', async () => {
+  const tree = await json(`/repos/${SITE_REPO}/git/trees/main?recursive=1`);
+  if (tree.truncated) return evaluateGameAnalyses(null);
+  return evaluateGameAnalyses(tree.tree.filter((e) => e.type === 'blob' && /^game\/detail-dne\/analysis\/[^/]+\.json$/.test(e.path)).map((e) => e.size));
+});
+
 // Sizes against the limits of GitHub: `size` of a repository is in KiB (its whole history), the deployed site is its
 // last Pages artifact (packed, the images inside barely shrink). A size that cannot be read is only listed as such.
 const sizes = await guarded('velikosti rep a webu', async () => {
@@ -170,7 +186,7 @@ const settings = !monthly ? evaluateSettings(null, { reason: 'jen první ponděl
       return evaluateSettings(results);
     });
 
-const report = formatReport(token, checkTokenState, runs, dryRun, deploy, pr, unknown, techniques, translations, siteImages, pageTexts, sizes, minutes, settings);
+const report = formatReport(token, checkTokenState, runs, dryRun, deploy, pr, unknown, techniques, translations, siteImages, pageTexts, gamePlan, gameAnalyses, sizes, minutes, settings);
 console.log(report.text);
 if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, report.text);
 // codes: "[token-vyprsi] [obrazky-chybi]" for the title of the issue (e-mails filtered by code)

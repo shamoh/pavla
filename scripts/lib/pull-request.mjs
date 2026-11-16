@@ -12,11 +12,11 @@ import { parseWorkKey } from './works.mjs';
 const git = async (cwd, ...args) => (await promisify(execFile)('git', args, { cwd, maxBuffer: 64 * 1024 * 1024 })).stdout;
 
 /**
- * What a content update changes in main of this repo: the public copies (content/) and binary.lock, the name of its
- * images. The images themselves (public/…, SITE_BINARY.paths) are not in main: they go to their branch
+ * What a content update changes in main of this repo: the public copies (content/), the plan of the days of the game
+ * Detail dne (game/, scripts/lib/game-plan.mjs) and binary.lock, the name of its images. The images themselves (public/…, SITE_BINARY.paths) are not in main: they go to their branch
  * (scripts/lib/binary.mjs) before the pull request is made.
  */
-export const OUTPUT_PATHS = ['content', SITE_BINARY.lock];
+export const OUTPUT_PATHS = ['content', 'game', SITE_BINARY.lock];
 
 /**
  * The output folders to put into the pull request: those that exist, or that git knows (a folder deleted as a
@@ -65,6 +65,8 @@ export function changedItems(files) {
     [/^content\/fotky\/([^/]+)\.yaml$/, (m) => `fotka ${m[1]}`],
     [/^public\/fotky\/([^/]+)\//, (m) => `fotka ${m[1]}`],
     [/^content\/roky\/(\d{4})\.yaml$/, (m) => `rok ${m[1]}`],
+    [/^game\/detail-dne\/analysis\//, () => 'rozbor obrazů hry Detail dne'],
+    [/^game\/detail-dne\//, () => 'plán hry Detail dne'],
   ];
   const items = new Set();
   for (const f of files) {

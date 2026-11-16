@@ -96,6 +96,8 @@ import {
 } from './lib/advice.mjs';
 import { addedDates, lineDates } from './lib/git-dates.mjs';
 import { formatLaps, stopwatch } from './lib/timing.mjs';
+import { updateGamePlan } from './lib/game-plan.mjs';
+import { ANALYSIS_DIR } from './lib/detail-game-data.mjs';
 import {
   EXPORT_FILES, PUBLIC_WORK_FIELDS, expectedExports, exportFileName, exportFolder, exportPattern, instagramGrid, isInstagramUrl, isOnSale, makesFlerExports, makesInstagramExports, wantsFler, wantsInstagram, wantsMockups,
   isValidId, pinterestVersion, wantsPinterest, planFolderPrune, publicFields, validSize, validateWorks, workKey, workPath,
@@ -460,7 +462,9 @@ async function removeEmptyDirs(root) {
 
 /**
  * Runs the whole pipeline. Returns a summary; throws on configuration errors.
- * Options: contentDir, siteDir, config, force, only (slugs), log, today, random, dataset, prepareOnly.
+ * Options: contentDir, siteDir, config, force, only (slugs), log, today, random, dataset, prepareOnly, gamePlan.
+ * `gamePlan` (the command line and `npm run demo`, off in tests): a full run also extends the plan of the days of the game
+ * Detail dne (game/detail-dne/, scripts/lib/game-plan.mjs); a failure there is only logged, the game then computes.
  * `prepareOnly` stops after skeletons, ids, corners of the sheets, checks and the cut previews of drafts: nothing is
  * written to the site or the exports.
  * `previewDir`: where the cut previews of drafts drawn in this run go (default .previews/ of the site directory,
@@ -483,6 +487,7 @@ export async function run({
   dataset = 'real',
   prepareOnly = false,
   previewDir,
+  gamePlan = false,
 } = {}) {
   // how long the phases of the run take, in its log (a slow run on GitHub shows where its time goes)
   const runWatch = stopwatch();
@@ -1183,6 +1188,17 @@ export async function run({
   runWatch.lap('prune');
   if (!only.length) await writeOverview({ misfits });
   runWatch.lap('overview');
+  // The plan of the days of the game Detail dne: the days up to tomorrow stay, the next two weeks from the works of now.
+  if (!only.length && gamePlan) {
+    try {
+      const plan = await updateGamePlan({ siteDir, config, date: today ?? new Date() });
+      const planFiles = plan.changed.filter((file) => !file.startsWith(ANALYSIS_DIR));
+      log(`Detail dne: plan ${planFiles.length ? `updated (${planFiles.join(', ')})` : 'unchanged'}, ${plan.days} days up to ${plan.ahead}; pictures analysed ${plan.analysis.written.length}, kept ${plan.analysis.reused}, removed ${plan.analysis.removed.length}`);
+    } catch (error) {
+      log(`! Detail dne: the plan of the days was not updated: ${error.message}`);
+    }
+    runWatch.lap('game plan');
+  }
   logPhases();
   return { ok: missing.length === 0, problems: [], created, assigned, detected, updated, pending, advice, todo, tags, processed, skipped, missing, pruned, previews, misfits, commentedOut };
 }
@@ -1200,6 +1216,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       prepareOnly: args.includes('--prepare-only'),
       dataset: args.includes('--demo') ? 'demo' : 'real',
       only: args.filter((a) => !a.startsWith('--')),
+      gamePlan: true,
     });
     r.problems.forEach((p) => console.error(`✗ ${p}`));
     if (r.problems.length === 0) console.log(r.prepared ? 'Prepared: skeletons, ids and checks only.' : `Done: ${r.processed} processed, ${r.skipped} unchanged.`);

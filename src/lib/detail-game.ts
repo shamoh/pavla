@@ -2,24 +2,27 @@
 // scripts/lib/detail-game.mjs): three puzzles a day, the same for everyone; the data comes ready from the build
 // (/detail-dne/data.json, scripts/lib/detail-game-data.mjs). The progress (drops, series, rank, the collection) stays in this
 // browser only (localStorage, GAME_STORE), the page works without it too, it only forgets. The days before today are the archive
-// (?den=<number>, half the drops, the series stays): every round keeps its puzzle (roundPuzzle), so a played day stays the same when
+// (?den=2026-320, the key of the day dayId; half the drops, the series stays): every round keeps its puzzle (roundPuzzle), so a played day stays the same when
 // new works change the order of the days. Events of Google Analytics: game_start, game_end and share (source game).
 // The layout never moves while a round goes on: the stage, the status and the thumbnails keep their place and size, the card
 // of the end comes under the thumbnails. On a phone the stage is as big as it can be with all thumbnails still on the screen.
+// The prototype of the game (.prototypes/detail-dne.html, scripts/lib/prototypes.mjs) runs this same code, bundled, with its own
+// options (GameOptions): the data inside the page, its own memory, a look or a collection chosen by its tuning, days to come.
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, gameEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
+import { SKIP_HEADER_ROOM, skipHeaderScope, skipsHeader } from '../../scripts/lib/skip-header.mjs';
 import {
-  applyGuess, archiveDays, dailyPuzzles, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
-  gameLevels, gameLooks, gameRank, gameShareText, newProgress, newRound, winTitle,
+  applyGuess, archiveDays, dailyPuzzles, dayId, dayLabel, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
+  collectionHtml, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
 } from '../../scripts/lib/detail-game.mjs';
 
 /** Where the progress of a player is kept; a new format of it = a new key. */
-export const GAME_STORE = 'pavla.detailDne.v1';
+export const GAME_STORE = 'pavla.detailDne.v2';
 
 type GameWork = {
   id: string; title: string; sub: string; year: number; technique: string; collection: string; collectionTitle: string;
   text: string; url: string; folder: string; widths: number[]; ratio: number;
 };
-type GameData = { epoch: string; site: string; works: GameWork[]; prepared: Record<string, Record<string, unknown[]>> };
+type GameData = { epoch: string; site: string; works: GameWork[]; prepared: Record<string, Record<string, unknown[]>>; plan?: { days: Record<string, any>; archive?: number[] } };
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 const LEVELS = gameLevels();
@@ -36,30 +39,79 @@ const TWO_COLUMNS = '(min-width: 800px), (orientation: landscape) and (min-width
 const ARCHIVE_SHOWN = 14;
 const MARK_WORDS: Record<string, string> = { solved: 'uhodnuto', lost: 'neuhodnuto', open: 'čeká' };
 
-/** A picture of a work: the largest for the stage (the close-up is zoomed in), the smallest for a thumbnail. */
-const picture = (work: GameWork, largest: boolean) => `${BASE}/${work.folder}/${largest ? Math.max(...work.widths) : Math.min(...work.widths)}.webp`;
+/** What the page of the site leaves as it is and the prototype sets its own way. */
+export type GameOptions = {
+  /** The data of the game (otherwise read from data-src of the root). */
+  data?: GameData;
+  /** Where the pages of the site and the files of the plan are (the base path of the site). */
+  base?: string;
+  /** Where the pictures of the works are (folder/<width>.webp). */
+  pictures?: string;
+  /** The key of the memory of the player in localStorage. */
+  store?: string;
+  /** The look of the close-up instead of the one of the day (an id of gameLooks), or null. */
+  look?: () => string | null;
+  /** The rounds "Moje sbírka" shows instead of the player's own (a made-up player), or null. */
+  collectionRounds?: () => Record<string, any> | null;
+  /** The last day that can be opened (today; the prototype goes on into the days to come). */
+  lastDay?: number;
+};
 
-export async function startGame(root: HTMLElement) {
+/** What the page of the game can be told from outside (the tuning of the prototype). */
+export type GameControl = { render: () => void; openDay: (day: number) => Promise<void>; reset: () => void; day: () => number; today: number };
+
+export async function startGame(root: HTMLElement, options: GameOptions = {}): Promise<GameControl | undefined> {
   const $ = <T extends HTMLElement = HTMLElement>(name: string) => root.querySelector(`[data-${name}]`) as T;
   const content = $('content');
+  const base = options.base ?? BASE;
+  const storeKey = options.store ?? GAME_STORE;
+  /** A picture of a work: the largest for the stage (the close-up is zoomed in), the smallest for a thumbnail. */
+  const picture = (work: GameWork, largest: boolean) => `${options.pictures ?? BASE}/${work.folder}/${largest ? Math.max(...work.widths) : Math.min(...work.widths)}.webp`;
   let data: GameData;
   try {
-    const response = await fetch(root.dataset.src as string);
-    if (!response.ok) throw new Error(String(response.status));
-    data = await response.json();
+    if (options.data) data = options.data;
+    else {
+      const response = await fetch(root.dataset.src as string);
+      if (!response.ok) throw new Error(String(response.status));
+      data = await response.json();
+    }
   } catch {
     content.innerHTML = '<p class="empty">Dnešní detail se nepodařilo načíst. Zkuste stránku obnovit.</p>';
-    return;
+    return undefined;
   }
   const byId = new Map(data.works.map((w) => [w.id, w]));
   const today = gameDay(localDate(), data.epoch);
+  const lastDay = options.lastDay ?? today;
   /** The day on the screen: today, or a day of the archive. */
-  let day = dayFromParam(new URLSearchParams(location.search).get('den'), today);
+  let day = dayFromParam(new URLSearchParams(location.search).get('den'), today, data.epoch);
+  /** A day of the game in its title: "2026#320" (dayLabel); its key "2026-320" (dayId: plan, address, events). */
+  const labelOf = (d: number) => dayLabel(gameDate(d, data.epoch));
+  const idOf = (d: number) => dayId(gameDate(d, data.epoch));
   const daily = new Map<number, Record<string, any>>();
   const dailyOf = (d: number) => {
-    if (!daily.has(d)) daily.set(d, dailyPuzzles({ day: d, levels: LEVELS, prepared: data.prepared }));
+    // the planned day (game/detail-dne/), a level without it (or with a work gone from the site) computed as before
+    if (!daily.has(d)) daily.set(d, plannedPuzzles({ plan: data.plan, day: d, levels: LEVELS, hasWork: (id: string) => byId.has(id), computed: dailyPuzzles({ day: d, levels: LEVELS, prepared: data.prepared }) }));
     return daily.get(d)!;
   };
+  /** The archive years of the plan already read (their days added to data.plan, their works to byId). */
+  const loadedYears = new Set<number>();
+  /**
+   * Before a day of an archive year is shown (older than the year before this one, data.plan.archive): its file
+   * /detail-dne/plan/<year>.json is read once; without it the days of that year are computed as before.
+   */
+  async function ensureDay(d: number) {
+    const year = planYearOf(d, data.epoch);
+    if (!data.plan?.archive?.includes(year) || loadedYears.has(year)) return;
+    loadedYears.add(year);
+    try {
+      const response = await fetch(`${base}/detail-dne/plan/${year}.json`);
+      if (!response.ok) throw new Error(String(response.status));
+      const part = await response.json();
+      data.plan = mergePlanDays(data.plan, part) as GameData['plan'];
+      for (const w of (part.works ?? []) as GameWork[]) if (!byId.has(w.id)) byId.set(w.id, w);
+      daily.clear();
+    } catch { /* the days of that year are computed */ }
+  }
   /** The puzzle of a level on the shown day: the one the player's round kept, otherwise the one of the day. */
   const puzzleOf = (levelId: string) => keptPuzzle({ computed: dailyOf(day)[levelId] ?? null, round: store.rounds[roundKey(levelId)], hasWork: (id: string) => byId.has(id), day, level: levelId });
   const archive = () => day !== today;
@@ -68,20 +120,21 @@ export async function startGame(root: HTMLElement) {
   const monthsOpen = new Map<string, boolean>();
 
   const load = () => {
-    try { return JSON.parse(localStorage.getItem(GAME_STORE) ?? 'null') ?? {}; } catch { return {}; }
+    try { return JSON.parse(localStorage.getItem(storeKey) ?? 'null') ?? {}; } catch { return {}; }
   };
   const store = { progress: newProgress(), rounds: {} as Record<string, any>, level: LEVELS[0].id, ...load() };
   const save = () => {
-    try { localStorage.setItem(GAME_STORE, JSON.stringify(store)); } catch { /* the game goes on without memory */ }
+    try { localStorage.setItem(storeKey, JSON.stringify(store)); } catch { /* the game goes on without memory */ }
   };
 
   let puzzle: any = null;
   let optionWorks: GameWork[] = [];
   const levelOf = (id: string) => LEVELS.find((l) => l.id === id) ?? LEVELS[0];
-  const roundKey = (levelId: string) => `${day}:${levelId}`;
+  /** The key of a round of the shown day in the progress: "2026-320:easy" (roundKey, the key of the day as in the plan). */
+  const roundKey = (levelId: string) => gameRoundKey(day, levelId, data.epoch);
   const currentRound = () => store.rounds[roundKey(store.level)] ?? newRound();
   const missesOf = (round: any) => round.guesses.length - (round.solved ? 1 : 0);
-  const lookNow = () => LOOKS.find((l) => l.id === puzzle.look) ?? LOOKS[0];
+  const lookNow = () => LOOKS.find((l) => l.id === (options.look?.() ?? puzzle.look)) ?? LOOKS[0];
 
   /** Puts the part of the work around `frame` into the window (in shares of the window, so it survives a resize). */
   function showFrame(img: HTMLImageElement, work: GameWork, frame: { x: number; y: number; size: number }) {
@@ -210,14 +263,24 @@ export async function startGame(root: HTMLElement) {
     }).join('');
   }
 
+  /** "Moje sbírka": the solved works, the newest first, each with the colours of its close-ups (gameCollection). */
+  let collectionOpen = false;
   function renderCollection() {
-    const { collected, pigments } = store.progress;
-    const works = collected.map((id: string) => byId.get(id)).filter(Boolean) as GameWork[];
-    $('collection').innerHTML = works.length
-      ? `<div class="collected">${works.map((w) => `<a href="${w.url}" title="${escapeHtml(w.title)}"><img src="${picture(w, false)}" alt="${escapeHtml(w.title)}" loading="lazy" /></a>`).join('')}</div>
-         <div class="pigments" aria-label="Moje paleta">${pigments.map((hex: string) => `<span class="pigment" style="background:${escapeHtml(hex)}"></span>`).join('')}</div>`
-      : '<p class="empty">Každý uhádnutý obraz sem přibude i s barvami z výřezu.</p>';
+    const made = options.collectionRounds?.() ?? null;
+    const items = gameCollection({ rounds: made ?? store.rounds, collected: made ? [] : store.progress.collected, hasWork: (id: string) => byId.has(id) });
+    $('collection').innerHTML = collectionHtml({
+      items, open: collectionOpen,
+      work: (id: string) => {
+        const w = byId.get(id);
+        return w ? { title: w.title, href: w.url, src: picture(w, false) } : null;
+      },
+    });
   }
+  $('collection').addEventListener('click', (e) => {
+    if (!(e.target as HTMLElement).closest('[data-collection-toggle]')) return;
+    collectionOpen = !collectionOpen;
+    renderCollection();
+  });
 
   /**
    * The status over the thumbnails, always the same lines: the question (the verdict at the end), the look with the guess and the drops
@@ -240,7 +303,9 @@ export async function startGame(root: HTMLElement) {
     const hint = !level.hints ? ''
       : round.over ? `<p class="hint"><b>${escapeHtml(byId.get(puzzle.targetId)!.title)}</b></p>`
         : lastHint ? `<p class="hint"><b>Nápověda:</b> ${escapeHtml(lastHint)}</p>`
-          : '<p class="hint waiting">Po omylu může přijít nápověda.</p>';
+          // no attribute rules out one or two works (gameHint): then only the zoom helps
+          : round.guesses.length ? '<p class="hint waiting">Tentokrát nápověda není, detail se aspoň oddálil.</p>'
+            : '<p class="hint waiting">Po omylu přijde nápověda.</p>';
     return `<div class="status${round.over ? (round.solved ? ' won' : ' lost') : ''}" aria-live="polite"><p class="ask">${ask}</p><p class="tries">${tries}</p>${hint}</div>`;
   }
 
@@ -261,11 +326,11 @@ export async function startGame(root: HTMLElement) {
       : `<p class="verdict"><span class="sign" aria-hidden="true">✗</span> Tentokrát ne <span class="gain">byl to tenhle obraz</span></p>`;
     const text = work.text ? `<p class="text">${escapeHtml(work.text)}</p>` : '';
     const collection = work.collection
-      ? `<a class="action quiet" href="${BASE}/tvorba/kolekce/${work.collection}/" title="Kolekce ${escapeHtml(work.collectionTitle)}">Kolekce</a>` : '';
+      ? `<a class="action quiet" href="${base}/tvorba/kolekce/${work.collection}/" title="Kolekce ${escapeHtml(work.collectionTitle)}">Kolekce</a>` : '';
     const dayDone = LEVELS.every((l) => !puzzleOf(l.id) || store.progress.played[roundKey(l.id)]);
     // the whole day done: what else waits, with a way down to the archive
-    const waiting = dayDone ? unplayedDays({ played: store.progress.played, levels: LEVELS, before: today + 1 }).filter((d) => d !== day) : [];
-    const finished = archive() ? `Den #${day + 1} máš za sebou.` : 'Všechny dnešní detaily máš za sebou. Zítra přijdou nové.';
+    const waiting = dayDone ? unplayedDays({ played: store.progress.played, levels: LEVELS, before: today + 1, epoch: data.epoch }).filter((d) => d !== day) : [];
+    const finished = archive() ? `Den ${labelOf(day)} máš za sebou.` : 'Všechny dnešní detaily máš za sebou. Zítra přijdou nové.';
     const more = waiting.length
       ? ` <a class="to-archive" href="#archiv" data-to-archive>V archivu na tebe čeká ještě ${waiting.length} ${daysWord(waiting.length)} ↓</a>${archive() ? '' : ' <span class="half">za poloviční kapky</span>'}`
       : archive() ? ' Archiv máš celý dohraný.' : '';
@@ -296,7 +361,7 @@ export async function startGame(root: HTMLElement) {
     if (!archive()) return;
     bar.innerHTML = `<button class="step" type="button" data-day="${day - 1}" aria-label="Starší den"${day > 0 ? '' : ' disabled'}>‹</button>
       <span class="which">Archiv · ${dateWords(day)} · <span class="half">poloviční kapky</span></span>
-      <button class="step" type="button" data-day="${day + 1}" aria-label="Novější den">›</button>
+      <button class="step" type="button" data-day="${day + 1}" aria-label="Novější den"${day < lastDay ? '' : ' disabled'}>›</button>
       <button class="today" type="button" data-day="${today}">Dnes</button>`;
   }
 
@@ -310,9 +375,9 @@ export async function startGame(root: HTMLElement) {
   function renderArchive() {
     const days = [today, ...archiveDays(today)];
     const tile = (d: number) => {
-      const marks = dayMarks(store.progress.played, d, LEVELS).map((m) => m ?? 'open');
+      const marks = dayMarks(store.progress.played, d, LEVELS, data.epoch).map((m) => m ?? 'open');
       const dots = marks.map((m) => `<span class="dot ${m}"></span>`).join('');
-      const told = `Detail dne #${d + 1} · ${dateWords(d)} · ${marks.map((m, i) => `${LEVELS[i].label} ${MARK_WORDS[m]}`).join(', ')}`;
+      const told = `Detail dne ${labelOf(d)} · ${dateWords(d)} · ${marks.map((m, i) => `${LEVELS[i].label} ${MARK_WORDS[m]}`).join(', ')}`;
       const waits = marks.includes('open') ? ' waits' : '';
       return `<button class="day${waits}" type="button" data-day="${d}" aria-pressed="${d === day}" title="${told}" aria-label="${told}">`
         + `<b>${d === today ? 'Dnes' : dateWords(d, true)}</b><small>${d === today ? dateWords(d, true) : weekday(d)}</small><span class="dots">${dots}</span></button>`;
@@ -339,7 +404,7 @@ export async function startGame(root: HTMLElement) {
     const box = $('diagnostics');
     if (!box) return;
     if (!puzzle) {
-      diagnostics = [['Den', `#${day + 1} · ${gameDate(day, data.epoch)}`], ['Úroveň', `${store.level} bez hádanky`]];
+      diagnostics = [['Den', `${idOf(day)} (${labelOf(day)}) · ${gameDate(day, data.epoch)}`], ['Úroveň', `${store.level} bez hádanky`]];
       box.innerHTML = '<p class="empty">Žádná hádanka.</p>';
       return;
     }
@@ -360,7 +425,7 @@ export async function startGame(root: HTMLElement) {
 
   function render(outcome?: any) {
     puzzle = puzzleOf(store.level);
-    $('number').textContent = `#${day + 1}`;
+    $('number').textContent = labelOf(day);
     renderStats();
     renderLevels();
     renderArchiveBar();
@@ -426,11 +491,11 @@ export async function startGame(root: HTMLElement) {
     if (round === before) return;
     // the round keeps its puzzle from the first guess on
     store.rounds[roundKey(store.level)] = { ...round, puzzle: before.puzzle ?? roundPuzzle(puzzle) };
-    const event = { level: level.id, day, today, look: puzzle.look };
+    const event = { level: level.id, day, today, id: idOf(day), look: puzzle.look };
     if (!before.guesses.length) trackEvent(EVENTS.gameStart, gameEventParams(event));
     let outcome;
     if (round.over) {
-      outcome = finishRound(store.progress, { day, today, level: level.id, multiplier: level.drops, solved: round.solved, misses: missesOf(round), workId: puzzle.targetId, pigments: puzzle.crop.colours });
+      outcome = finishRound(store.progress, { day, today, level: level.id, epoch: data.epoch, multiplier: level.drops, solved: round.solved, misses: missesOf(round), workId: puzzle.targetId });
       store.progress = outcome.progress;
       trackEvent(EVENTS.gameEnd, gameEventParams(event, { solved: round.solved, misses: missesOf(round), drops: outcome.gained, streak: outcome.progress.streak, work: byId.get(puzzle.targetId)! }));
     }
@@ -461,9 +526,9 @@ export async function startGame(root: HTMLElement) {
 
   async function share(button: HTMLElement) {
     const round = currentRound();
-    const url = `${data.site.replace(/\/$/, '')}/detail-dne/${archive() ? `?den=${day + 1}` : ''}`;
-    const text = gameShareText({ day, level: levelOf(store.level).label, misses: missesOf(round), solved: round.solved, url });
-    const params = { source: 'game', ...gameEventParams({ level: store.level, day, today, look: puzzle.look }) };
+    const url = `${data.site.replace(/\/$/, '')}/detail-dne/${archive() ? `?den=${idOf(day)}` : ''}`;
+    const text = gameShareText({ label: labelOf(day), level: levelOf(store.level).label, misses: missesOf(round), solved: round.solved, url });
+    const params = { source: 'game', ...gameEventParams({ level: store.level, day, today, id: idOf(day), look: puzzle.look }) };
     try {
       if (navigator.share) {
         await navigator.share({ text });
@@ -490,14 +555,17 @@ export async function startGame(root: HTMLElement) {
   }
 
   /** Another day: its address (?den= only for the archive), the game from its top. */
-  function openDay(next: number) {
-    if (!Number.isInteger(next) || next < 0 || next > today) return;
+  async function openDay(next: number) {
+    if (!Number.isInteger(next) || next < 0 || next > lastDay) return;
+    await ensureDay(next);
     day = next;
     const params = new URLSearchParams(location.search);
-    if (archive()) params.set('den', String(day + 1));
+    if (archive()) params.set('den', idOf(day));
     else params.delete('den');
     const query = params.toString();
-    history.replaceState(history.state, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`);
+    try {
+      history.replaceState(history.state, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`);
+    } catch { /* a page opened from the disk may not change its address */ }
     render();
     root.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
@@ -552,7 +620,25 @@ export async function startGame(root: HTMLElement) {
     placePicture(currentRound());
     snapToGame();
   }));
+  await ensureDay(day);
   render();
-  // only once it is drawn: before that the page is too short to scroll
+  // only once it is drawn: before that the page is too short to scroll. A fresh visit opens past the header of the site, the title
+  // of the game on top (as the pages of Tvorba, scripts/lib/skip-header.mjs; the script of the layout comes too early for it).
+  const entry = performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined;
+  const page = { path: location.pathname, scope: skipHeaderScope(location.pathname, BASE || '/'), hash: location.hash, navigation: entry?.type ?? '' };
+  if (skipsHeader(page)) scrollTo(0, Math.max(0, root.getBoundingClientRect().top + scrollY - SKIP_HEADER_ROOM));
   snapToGame();
+
+  return {
+    render,
+    openDay,
+    reset: () => {
+      store.progress = newProgress();
+      store.rounds = {};
+      save();
+      render();
+    },
+    day: () => day,
+    today,
+  };
 }

@@ -1,31 +1,15 @@
 // The data of the game Detail dne (/detail-dne/data.json): its answers and thumbnails prepared from the pictures of the site
-// while it is built (scripts/lib/detail-game-data.mjs), so the browser only plays (src/lib/detail-game.ts).
-import { formatSize, getCollections, getWorks, site, siteDataRoot, workUrl } from '../../lib/site';
+// while it is built (scripts/lib/detail-game-data.mjs) and the plan of the days the pipeline keeps (game/detail-dne/,
+// scripts/lib/game-plan.mjs: this year and the one before, older years are files of their own, plan/[year].json.ts), so the
+// browser only plays (src/lib/detail-game.ts).
+import { site, siteDataRoot } from '../../lib/site';
+import { gameWorks } from '../../lib/detail-game-works';
 import { gameData, prepareGame } from '../../../scripts/lib/detail-game-data.mjs';
-import { workImageDir } from '../../../scripts/lib/site-images.mjs';
-import { ownText } from '../../../scripts/lib/rich-text.mjs';
-import { summarize } from '../../../scripts/lib/seo.mjs';
-import { VIEWER_TEXT_MAX } from '../../../scripts/lib/work-viewer.mjs';
+import { planBuildYear, sitePlan } from '../../../scripts/lib/game-plan.mjs';
 
 export async function GET() {
-  const titles = new Map(getCollections().map((c) => [c.slug, c.title]));
-  const works = getWorks().map((w) => ({
-    id: w.id,
-    title: w.title,
-    sub: [w.technique, formatSize(w.size_cm)].filter(Boolean).join(' · '),
-    year: w.year,
-    technique: w.technique,
-    tags: w.tags,
-    // the colours and mood of the whole work: how alike two works are (workDistance), with the close-up in rankLookalikes
-    colourProfile: w.colourProfile,
-    collection: w.collection ?? '',
-    collectionTitle: w.collection ? titles.get(w.collection) ?? '' : '',
-    text: summarize(ownText(w.text), VIEWER_TEXT_MAX),
-    url: workUrl(w),
-    folder: workImageDir(w.year, w.key),
-    widths: w.image.widths,
-    ratio: w.image.height / w.image.width,
-  }));
+  const works = gameWorks();
   const { prepared } = await prepareGame(works, siteDataRoot);
-  return new Response(JSON.stringify(gameData({ works, prepared, site: site.url })), { headers: { 'Content-Type': 'application/json; charset=utf-8' } });
+  const plan = await sitePlan(siteDataRoot, planBuildYear());
+  return new Response(JSON.stringify(gameData({ works, prepared, site: site.url, plan })), { headers: { 'Content-Type': 'application/json; charset=utf-8' } });
 }

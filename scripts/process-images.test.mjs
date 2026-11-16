@@ -1907,3 +1907,24 @@ test('care of the site: a published work without size or text is a recommendatio
   assert.ok(mine.some((a) => a.includes('nemá text')), mine.join('\n'));
   assert.ok(!r.advice.some((a) => a.includes('rozpracovaný už') || a.includes('připravené od')), 'the test content is no git repository');
 });
+
+test('gamePlan: a full run extends the plan of the days of Detail dne (game/detail-dne/, a file per year); off by default', async () => {
+  await addWork('2026', 'rano', 'title: Ráno\ndate: 2026-06-14\n');
+  const dir = path.join(siteDir, 'game', 'detail-dne');
+  await run(opts());
+  assert.equal(await exists(dir), false, 'tests and other callers run without it');
+  const lines = [];
+  const today = new Date('2026-12-25T12:00:00Z');
+  await run(opts({ gamePlan: true, today, log: (l) => lines.push(l) }));
+  assert.deepEqual((await fs.readdir(dir)).sort(), ['2026.json', '2027.json', 'analysis', 'details.json'], 'the two weeks ahead reach into 2027');
+  const analysed = (await fs.readdir(path.join(dir, 'analysis'))).sort();
+  assert.ok(analysed.length > 0 && analysed.every((n) => /^[a-z][a-z0-9]{4}\.json$/.test(n)), 'the analysis of each picture, a file a work');
+  const days2026 = JSON.parse(await fs.readFile(path.join(dir, '2026.json'), 'utf8')).days;
+  assert.deepEqual(Object.keys(days2026), Array.from({ length: 61 }, (_, i) => `2026-${305 + i}`), '1 Nov (2026-305) to 31 Dec 2026 (2026-365), by the key of the day');
+  assert.equal(days2026['2026-320'].date, '2026-11-16');
+  assert.equal(JSON.parse(await fs.readFile(path.join(dir, '2027.json'), 'utf8')).days['2027-1'].date, '2027-01-01');
+  assert.ok(lines.some((l) => /^Detail dne: plan updated \(game\/detail-dne\/details\.json, game\/detail-dne\/2026\.json, game\/detail-dne\/2027\.json\), 69 days up to 2027-01-08; pictures analysed \d+, kept 0, removed 0$/.test(l)), lines.join('\n'));
+  lines.length = 0;
+  await run(opts({ gamePlan: true, today, log: (l) => lines.push(l) }));
+  assert.ok(lines.some((l) => new RegExp(`^Detail dne: plan unchanged, 69 days up to 2027-01-08; pictures analysed 0, kept ${analysed.length}, removed 0$`).test(l)), `the same day and works change nothing, no picture analysed again: ${lines.join('\n')}`);
+});

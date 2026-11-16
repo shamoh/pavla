@@ -9,13 +9,15 @@ import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { prepareGame, prototypeColors, prototypeWorks, writePrototypes } from './lib/prototypes.mjs';
 import { loadInstagramScenes } from './lib/instagram.mjs';
+import { planWorks, readPlan } from './lib/game-plan.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dataRoot = process.env.SITE_DATA_DIR ? path.resolve(root, process.env.SITE_DATA_DIR) : root;
 const outDir = path.resolve(process.argv[2] ?? path.join(root, '.prototypes'));
 const config = YAML.parse(fs.readFileSync(path.join(root, 'site.config.yaml'), 'utf8'));
 const { scenes } = await loadInstagramScenes();
-const game = await prepareGame(prototypeWorks(dataRoot), dataRoot);
+// the game as the site prepares it (the works with their colour profile) and the whole plan of its days (every year at once)
+const game = { ...await prepareGame(await planWorks(dataRoot, config), dataRoot), plan: { ...await readPlan(dataRoot), archive: [] } };
 const colors = await prototypeColors(prototypeWorks(dataRoot), dataRoot);
 const files = writePrototypes({ dataRoot, outDir, templatesDir: path.join(root, 'scripts', 'prototypes'), config, scenes, game, colors });
 for (const file of files) console.log(`Written: ${path.relative(process.cwd(), file)}`);

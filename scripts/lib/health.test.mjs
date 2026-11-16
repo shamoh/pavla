@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DRY_RUNS, MINUTE_LIMITS, SIZE_LIMITS, evaluateCheckToken, evaluateDeploy, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure, parseExpiration, permissionsText,
+  DRY_RUNS, GAME_ANALYSIS_LIMITS, GAME_PLAN_MIN_DAYS, MINUTE_LIMITS, SIZE_LIMITS, evaluateCheckToken, evaluateDeploy, evaluateGameAnalyses, evaluateGamePlan, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure, parseExpiration, permissionsText,
 } from './health.mjs';
 
 test('httpFailure: the reason of GitHub when it gives one, otherwise only the status', () => {
@@ -318,4 +318,35 @@ test('evaluateSettings: the same settings are fine; a difference or a missing ex
   const many = evaluateSettings([{ repo: 'r', diffs: Array.from({ length: 25 }, (_, i) => `x${i}: 1 → 2`) }]);
   assert.match(many.message, /- x19: 1 → 2\n {2}- … a dalších 5/);
   assert.deepEqual(evaluateSettings(null, { reason: 'jen první pondělí v měsíci' }), { ok: true, message: 'Nastavení rep nebylo porovnáno (jen první pondělí v měsíci).' });
+});
+
+test('evaluateGameAnalyses: the size of the kept analyses told every week; too big in all or on average is a problem', () => {
+  assert.deepEqual(evaluateGameAnalyses(Array(85).fill(22_400)), { ok: true, message: 'Uložené rozbory obrázků hry Detail dne: 1,9 MB (85 obrazů, průměrně 22 kB).' });
+  assert.deepEqual(evaluateGameAnalyses([12_000, 8_000]), { ok: true, message: 'Uložené rozbory obrázků hry Detail dne: 20 kB (2 obrazů, průměrně 10 kB).' });
+  assert.equal(evaluateGameAnalyses(null).ok, true, 'not read = not checked');
+  assert.match(evaluateGameAnalyses([]).message, /zatím nejsou/);
+  const many = evaluateGameAnalyses(Array(1200).fill(22_000));
+  assert.equal(many.ok, false);
+  assert.match(many.message, /26,4 MB \(1200 obrazů, průměrně 22 kB\), celkem přes 25 MB\. \[rozbory-hry-velke\]/);
+  const fat = evaluateGameAnalyses([90_000, 80_000]);
+  assert.equal(fat.ok, false);
+  assert.match(fat.message, /průměr přes 60 kB na obraz/);
+  assert.doesNotMatch(fat.message, /celkem přes/);
+  assert.equal(evaluateGameAnalyses([30_000], { ...GAME_ANALYSIS_LIMITS, maxAverage: 20_000 }).ok, false, 'limits can be given');
+  assert.deepEqual(formatReport({ ok: true, message: 'token' }, many).codes, ['rozbory-hry-velke']);
+});
+
+test('evaluateGamePlan: the plan of the game on the site reaches a week ahead; no plan or a short one is a problem', () => {
+  const now = new Date('2026-11-16T10:00:00Z'); // day 15 since 2026-11-01
+  const game = (last) => ({ epoch: '2026-11-01', plan: { days: Object.fromEntries(Array.from({ length: last + 1 }, (_, d) => [d, {}])) } });
+  assert.deepEqual(evaluateGamePlan(game(29), { now }), { ok: true, message: 'Plán dnů hry Detail dne sahá do 2026-11-30 (ještě 14 dní).' });
+  assert.equal(evaluateGamePlan(game(15 + GAME_PLAN_MIN_DAYS), { now }).ok, true);
+  const short = evaluateGamePlan(game(18), { now });
+  assert.equal(short.ok, false);
+  assert.match(short.message.split('\n')[0], /do 2026-11-19 \(ještě 3 dní, má aspoň 7\)\. \[plan-hry-dochazi\]$/);
+  assert.match(evaluateGamePlan(game(10), { now }).message, /ještě 0 dní/, 'already over');
+  assert.match(evaluateGamePlan({ epoch: '2026-11-01', plan: { days: {} } }, { now }).message.split('\n')[0], /\[plan-hry-chybi\]$/);
+  assert.match(evaluateGamePlan({ epoch: '2026-11-01' }, { now }).message, /\[plan-hry-chybi\]/, 'data without a plan (an older build)');
+  assert.deepEqual(evaluateGamePlan(null), { ok: true, message: 'Plán hry Detail dne nebyl zkontrolován (web hru nemá).' });
+  assert.equal(evaluateGamePlan(game(18), { now: new Date('2026-11-15T23:30:00Z') }).message.includes('ještě 3 dní'), true, 'the day in Prague (already the 16th)');
 });

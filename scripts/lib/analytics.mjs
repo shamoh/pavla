@@ -73,12 +73,12 @@ export const MORE_METHODS = { related: 'related', similar: 'similar', similarFil
 export const CODE_METHODS = { paste: 'paste', enter: 'enter' };
 
 /**
- * Parameters of game_start and game_end (and of `share` from the game, with `source: game`): the level, the number of the day as the
- * page shows it (#1 = day 0), `archive` yes / no (a day before today), the look. game_end adds the outcome: `solved` yes / no,
- * `misses`, `drops` won, `streak` after it and the work.
+ * Parameters of game_start and game_end (and of `share` from the game, with `source: game`): the level, the key of the day (`id`,
+ * dayId of scripts/lib/detail-game.mjs: "2026-320"), `archive` yes / no (`day` before `today`), the look. game_end adds
+ * the outcome: `solved` yes / no, `misses`, `drops` won, `streak` after it and the work.
  */
-export function gameEventParams({ level, day, today, look }, end = null) {
-  const params = { level, day: day + 1, archive: day === today ? 'no' : 'yes', look };
+export function gameEventParams({ level, day, today, id, look }, end = null) {
+  const params = { level, day: id, archive: day === today ? 'no' : 'yes', look };
   if (!end) return params;
   return { ...params, solved: end.solved ? 'yes' : 'no', misses: end.misses, drops: end.drops, streak: end.streak, work_id: end.work.id, work_title: end.work.title };
 }

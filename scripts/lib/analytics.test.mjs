@@ -104,11 +104,11 @@ test('image_view: the work, the picture, its kind and how it got into the viewer
 test('game_start / game_end: the level, the day as the page counts it, archive, the look; the end with its outcome', () => {
   assert.equal(EVENTS.gameStart, 'game_start');
   assert.equal(EVENTS.gameEnd, 'game_end');
-  assert.deepEqual(gameEventParams({ level: 'lehka', day: 14, today: 14, look: 'mosaic' }), { level: 'lehka', day: 15, archive: 'no', look: 'mosaic' });
-  assert.equal(gameEventParams({ level: 'lehka', day: 3, today: 14, look: 'mosaic' }).archive, 'yes');
-  const end = gameEventParams({ level: 'tezka', day: 3, today: 14, look: 'dream' }, { solved: true, misses: 1, drops: 9, streak: 2, work: { id: 'g4psg', title: 'Orangutan' } });
-  assert.deepEqual(end, { level: 'tezka', day: 4, archive: 'yes', look: 'dream', solved: 'yes', misses: 1, drops: 9, streak: 2, work_id: 'g4psg', work_title: 'Orangutan' });
-  assert.equal(gameEventParams({ level: 'tezka', day: 3, today: 3, look: 'dream' }, { solved: false, misses: 3, drops: 0, streak: 1, work: { id: 'a', title: 'A' } }).solved, 'no');
+  assert.deepEqual(gameEventParams({ level: 'easy', day: 14, today: 14, id: '2026-319', look: 'mosaic' }), { level: 'easy', day: '2026-319', archive: 'no', look: 'mosaic' });
+  assert.equal(gameEventParams({ level: 'easy', day: 3, today: 14, look: 'mosaic' }).archive, 'yes');
+  const end = gameEventParams({ level: 'hard', day: 3, today: 14, id: '2026-308', look: 'dream' }, { solved: true, misses: 1, drops: 9, streak: 2, work: { id: 'g4psg', title: 'Orangutan' } });
+  assert.deepEqual(end, { level: 'hard', day: '2026-308', archive: 'yes', look: 'dream', solved: 'yes', misses: 1, drops: 9, streak: 2, work_id: 'g4psg', work_title: 'Orangutan' });
+  assert.equal(gameEventParams({ level: 'hard', day: 3, today: 3, look: 'dream' }, { solved: false, misses: 3, drops: 0, streak: 1, work: { id: 'a', title: 'A' } }).solved, 'no');
 });
 
 test('README: every custom dimension to register in GA fits its form (description at most 150 characters)', async () => {

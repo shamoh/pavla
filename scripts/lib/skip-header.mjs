@@ -1,8 +1,20 @@
-// Pages of the Tvorba section open scrolled past the site header (name, tagline, menu): the visitor starts at the
+// Pages of the Tvorba section and the game Detail dne (SKIP_HEADER_SCOPES) open scrolled past the site header (name, tagline, menu): the visitor starts at the
 // heading of the page ("Tvorba", a year, "Kolekce", "← Kolekce" of a work), the header is just above. Only a fresh
 // visit: back / forward and reload keep the place the browser restores, a link to an anchor (#…) goes to its anchor.
 // Inlined into the page right after the footer (Base.astro), so the whole page is laid out and nothing jumps later;
 // the functions are copied as text, so they use nothing outside this module and call only each other.
+
+/** The sections (paths under the site base) whose pages open past the header: Tvorba, and the game (its title on top). */
+export const SKIP_HEADER_SCOPES = ['/tvorba/', '/detail-dne/'];
+
+/**
+ * The section of SKIP_HEADER_SCOPES `pathname` lies in on a site with base path `base` ('/' or '/pavla/'), also the section
+ * itself without its slash (the dev server serves it as it is); '' outside all of them.
+ */
+export function skipHeaderScope(pathname, base = '/') {
+  const scope = SKIP_HEADER_SCOPES.find((s) => `${pathname}/`.startsWith(`${base.replace(/\/$/, '')}${s}`));
+  return scope ? `${base.replace(/\/$/, '')}${scope}` : '';
+}
 
 /** Room in px left above the page content (part of the header's own bottom padding). */
 export const SKIP_HEADER_ROOM = 16;

@@ -29,7 +29,7 @@ async function siteRepo() {
 
 test('pullRequestPaths: content/ and binary.lock, never the images (they are in their own branch)', async () => {
   const { dir, write } = await siteRepo();
-  assert.deepEqual(OUTPUT_PATHS, ['content', 'binary.lock']);
+  assert.deepEqual(OUTPUT_PATHS, ['content', 'game', 'binary.lock']);
   // before the first update with a lock: only content/
   assert.deepEqual(await pullRequestPaths(dir), ['content']);
   await write('binary.lock', `${'a'.repeat(40)}\n`);
@@ -96,8 +96,12 @@ test('changedItems names each work, collection and photo once', () => {
     'content/roky/2026.yaml',
     'content/_index.yaml',
     'public/og/somethingelse.txt',
+    'game/detail-dne/2026.json',
+    'game/detail-dne/details.json',
+    'game/detail-dne/analysis/k3f9a.json',
+    'game/detail-dne/analysis/m2b7c.json',
   ]);
-  assert.deepEqual(items, ['dílo rano', 'dílo smrk', 'dílo vecer', 'fotka portret', 'kolekce 2026-plener-sumava', 'rok 2026', 'úvodní stránka']);
+  assert.deepEqual(items, ['dílo rano', 'dílo smrk', 'dílo vecer', 'fotka portret', 'kolekce 2026-plener-sumava', 'plán hry Detail dne', 'rok 2026', 'rozbor obrazů hry Detail dne', 'úvodní stránka']);
 });
 
 test('pullRequestBody names the run, never the (private) content repository; lists the items', () => {

@@ -85,7 +85,7 @@ export async function prepareDemo({
   }
 
   // 3. the same pipeline as for the real content, but it must only see test data
-  const result = await run({ contentDir, siteDir: dataDir, config, log, dataset: 'demo' });
+  const result = await run({ contentDir, siteDir: dataDir, config, log, dataset: 'demo', gamePlan: true });
 
   // 4. ids and skeletons written by the pipeline go back to demo-content/, so they stay stable
   for (const f of await listYaml(contentDir)) {

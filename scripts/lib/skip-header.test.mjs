@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SKIP_HEADER_ROOM, skipHeaderScript, skipsHeader } from './skip-header.mjs';
+import { SKIP_HEADER_ROOM, SKIP_HEADER_SCOPES, skipHeaderScope, skipHeaderScript, skipsHeader } from './skip-header.mjs';
 
 const page = (over = {}) => ({ path: '/tvorba/2026/maky-ab12c/', scope: '/tvorba/', hash: '', navigation: 'navigate', ...over });
 
@@ -56,4 +56,15 @@ test('skipHeaderScript: stays put outside the section, with an anchor, after bac
   assert.equal(run({ navigation: 'back_forward' }), null);
   assert.equal(run({ navigation: '' }), null);
   assert.equal(run({ main: false }), null);
+});
+
+test('skipHeaderScope: Tvorba and the game, with the base path of the site; nothing elsewhere', () => {
+  assert.deepEqual(SKIP_HEADER_SCOPES, ['/tvorba/', '/detail-dne/']);
+  assert.equal(skipHeaderScope('/tvorba/2026/maky-ab12c/'), '/tvorba/');
+  assert.equal(skipHeaderScope('/tvorba'), '/tvorba/', 'the dev server serves it without the slash');
+  assert.equal(skipHeaderScope('/detail-dne/'), '/detail-dne/');
+  assert.equal(skipHeaderScope('/detail-dne'), '/detail-dne/');
+  assert.equal(skipHeaderScope('/web/detail-dne/', '/web/'), '/web/detail-dne/');
+  for (const path of ['/', '/o-mne/', '/kontakt/', '/detail-dnes/', '/tvorbax/']) assert.equal(skipHeaderScope(path), '', path);
+  assert.equal(skipsHeader({ path: '/detail-dne/', scope: skipHeaderScope('/detail-dne/'), hash: '', navigation: 'navigate' }), true);
 });

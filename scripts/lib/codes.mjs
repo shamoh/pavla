@@ -140,6 +140,9 @@ export const CODES = {
   'jsonld-bez-contextu': { level: 'health', text: 'JSON-LD bez @context schema.org' },
   'jsonld-prazdny-graf': { level: 'health', text: 'JSON-LD s prázdným @graph' },
   'jsonld-bez-typu': { level: 'health', text: 'uzel JSON-LD bez @type' },
+  'plan-hry-dochazi': { level: 'health', text: 'plán dnů hry Detail dne na webu brzy dojde' },
+  'plan-hry-chybi': { level: 'health', text: 'hra Detail dne na webu nemá plán dnů' },
+  'rozbory-hry-velke': { level: 'health', text: 'uložené rozbory obrázků hry Detail dne jsou velké' },
 };
 
 const CODE_RE = /\[([a-z0-9-]+)\]/g;

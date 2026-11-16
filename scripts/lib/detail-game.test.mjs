@@ -2,7 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   analyzePixels, applyGuess, archiveDays, gameDiagnostics, diagnosticsText, monthGroups, unplayedDays, daysWord, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
+  collectionHtml, gameCollection, simulatedRounds,
+  PLAN_DETAIL_GAP, PLAN_HORIZON, PLAN_MAX_DETAILS, PLAN_WORK_GAP, extendPlan, planDay, planDetailOf, planDetails, planDaysByYear, planDetailsText, planUsage, planYearOf, planYearText, planYearsShown, plannedPuzzles, mergePlanDays, pragueDate, gameDiagnostics as diagnosticsOf,
   lookalikeDistance, newProgress, newRound, paletteDistance, rankLookalikes, regionDetail, regionEdges, regionPalette, rgbToLab, winTitle,
+  PLACE_OVERLAP, GAME_CANDIDATES, candidatePool, roundKey, roundOrder, yearDay, dayId, dayLabel, dayOfId, PLAN_FILE_VERSION, planYearDays,
 } from './detail-game.mjs';
 
 /** Raw pixels of `width` × `height` coloured by `paint(x, y)` = [r, g, b]. */
@@ -83,6 +86,30 @@ test('analyzePixels: the close-up is where the painting is, away from the edges,
   for (const [a, b] of crops.flatMap((c, i) => crops.slice(i + 1).map((d) => [c, d]))) {
     assert.ok(Math.abs(a.x - b.x) * 100 >= 7 || Math.abs(a.y - b.y) * 50 >= 7, 'no overlap');
   }
+});
+
+test('analyzePixels: with overlap the places sharing a part of their side follow, those sharing nothing stay the same', () => {
+  const noisy = pixels(100, 100, (x, y) => ((x * 7 + y * 13) % 5 < (x < 30 || y > 50 ? 1 : 3) ? [30, 60, 120] : WHITE));
+  const options = { size: 0.2, count: 20 };
+  const strict = analyzePixels(noisy, options).crops;
+  const loose = analyzePixels(noisy, { ...options, overlap: 0.4 }).crops;
+  assert.ok(strict.every((c) => !c.overlaps));
+  assert.deepEqual(loose.slice(0, strict.length), strict);
+  const extra = loose.slice(strict.length);
+  assert.ok(extra.length > 0 && extra.every((c) => c.overlaps), 'more places, all marked');
+  assert.ok(loose.length <= 20);
+  for (const [i, a] of loose.entries()) {
+    for (const b of loose.slice(i + 1)) {
+      const apart = Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+      assert.ok(apart >= a.size * 0.6 - 0.011, `at most 40 % shared: ${apart}`);
+      assert.ok(Math.hypot(a.x - b.x, a.y - b.y) > a.size / 2, 'each its own numbered detail (planDetailOf)');
+    }
+  }
+});
+
+test('PLACE_OVERLAP: a slight overlap in every level, under half a side (every place its own number)', () => {
+  assert.ok(PLACE_OVERLAP > 0 && PLACE_OVERLAP < 0.5);
+  assert.ok(gameLevels().every((l) => l.overlap === undefined), 'one rule for all levels');
 });
 
 test('analyzePixels: a blank paper has no close-up', () => {
@@ -191,7 +218,7 @@ const LEVEL = { id: 'l', zone: 'any', pick: 'confusing', maxConfusion: 14, optio
 
 test('gameLevels: from the easiest; harder = smaller close-up, more drops; always 3 × 3 thumbnails', () => {
   const levels = gameLevels();
-  assert.deepEqual(levels.map((l) => l.id), ['lehka', 'stredni', 'tezka']);
+  assert.deepEqual(levels.map((l) => l.id), ['easy', 'medium', 'hard']);
   for (const [easier, harder] of [[levels[0], levels[1]], [levels[1], levels[2]]]) {
     assert.ok(harder.size < easier.size && harder.drops > easier.drops && harder.lastView < easier.lastView);
   }
@@ -230,6 +257,60 @@ test('prepareLevel: the zone and the pick of the level; a work without analysis 
   assert.deepEqual(Object.keys(edge), ['w00'], 'no close-up in the zone = no answer');
   const few = prepareLevel({ level: { ...LEVEL, options: 7 }, works, analyses });
   assert.deepEqual(few, {}, 'too few works for the thumbnails');
+});
+
+test('candidatePool: every work up to the limit (the same list); over it the nearest by the whole work', () => {
+  const { works } = library(10);
+  works.slice(5).forEach((w) => Object.assign(w, { technique: 'olej', tags: ['zatisi'] }));
+  const [target, ...pool] = works;
+  assert.equal(candidatePool(target, pool, 9), pool, 'not over the limit: untouched, the games prepared so far stay the same');
+  assert.equal(candidatePool(target, pool), pool, 'today (GAME_CANDIDATES over the number of works) untouched');
+  assert.ok(GAME_CANDIDATES >= 100);
+  assert.deepEqual(candidatePool(target, pool, 4).map((w) => w.id), ['w01', 'w02', 'w03', 'w04'], 'the same technique and subject first');
+  assert.deepEqual(candidatePool(target, [...pool].reverse(), 4).map((w) => w.id).sort(), ['w01', 'w02', 'w03', 'w04'], 'whatever the order of the pool');
+});
+
+test('prepareLevel: a close-up compared with the candidates only; the plan may take more confusing ones (planConfusion)', () => {
+  const { works, analyses } = library(10);
+  works.slice(5).forEach((w) => Object.assign(w, { technique: 'olej', tags: ['zatisi'] }));
+  const narrow = prepareLevel({ level: LEVEL, works, analyses, candidates: 8 });
+  assert.equal(narrow.w00[0].ranked.length, 8);
+  assert.deepEqual([...narrow.w00[0].ranked].sort(), candidatePool(works[0], works.slice(1), 8).map((w) => w.id).sort(), 'the farthest work left out');
+  assert.deepEqual(prepareLevel({ level: LEVEL, works, analyses, candidates: 9 }), prepareLevel({ level: LEVEL, works, analyses }), 'all of them = as before');
+  const strict = { ...LEVEL, maxConfusion: -1, planConfusion: 1000 };
+  assert.deepEqual(prepareLevel({ level: strict, works, analyses }), {}, 'the answers keep maxConfusion');
+  assert.equal(Object.keys(prepareLevel({ level: strict, works, analyses, plan: true })).length, 10, 'the places of the plan take planConfusion');
+  assert.deepEqual(prepareLevel({ level: { ...LEVEL, maxConfusion: -1 }, works, analyses, plan: true }), {}, 'without planConfusion the plan keeps maxConfusion');
+});
+
+test('inZone: the middle of the picture, wider when asked (the plan of the easy level)', () => {
+  const crop = { x: 0.5 + 0.235, y: 0.5 };
+  assert.equal(inZone(crop, 'center'), false);
+  assert.equal(inZone(crop, 'center', 0.25), true);
+  assert.equal(inZone({ x: 0.5, y: 0.5 + 0.26 }, 'center', 0.25), false);
+  assert.equal(inZone(crop, 'edge', 0.25), false, 'the edge stays the same');
+});
+
+test('prepareLevel: the plan takes a wider middle with planCentre, the answers keep theirs', () => {
+  const { works, analyses } = library(8);
+  analyses.w00.crops = [{ x: 0.5, y: 0.735, size: 0.2, detail: 30, palette: [colour([50, 0, 0])] }, { x: 0.5, y: 0.5, size: 0.2, detail: 20, palette: [colour([50, 0, 0])] }];
+  const level = { ...LEVEL, pick: 'clear', zone: 'center', planCentre: 0.25 };
+  assert.deepEqual(prepareLevel({ level, works, analyses, keep: 20 }).w00.map((c) => c.crop.y), [0.5]);
+  assert.deepEqual(prepareLevel({ level, works, analyses, keep: 20, plan: true }).w00.map((c) => c.crop.y), [0.735, 0.5]);
+});
+
+test('gameLevels: the easy level takes a wider middle into the plan, a little over its answers', () => {
+  const easy = gameLevels().find((l) => l.id === 'easy');
+  assert.equal(easy.zone, 'center');
+  assert.ok(easy.planCentre > 0.22 && easy.planCentre < 0.28, 'between the middle of the answers and the edge');
+  assert.deepEqual(gameLevels().map((l) => l.planCentre ?? null), [0.25, null, null]);
+});
+
+test('gameLevels: only the hard level takes more confusing places into the plan, a little over its answers', () => {
+  const levels = gameLevels();
+  assert.deepEqual(levels.map((l) => l.planConfusion ?? null), [null, null, 18]);
+  const hard = levels.find((l) => l.id === 'hard');
+  assert.ok(hard.planConfusion > hard.maxConfusion && hard.planConfusion - hard.maxConfusion <= 4);
 });
 
 /** Answers of a level: every work with the others as lookalikes. */
@@ -298,7 +379,7 @@ test('gameLooks: unique names and pairs, five for each level, each pair in one l
   assert.equal(new Set(looks.map((l) => l.id)).size, looks.length);
   assert.equal(new Set(looks.map((l) => l.label)).size, looks.length);
   assert.equal(new Set(looks.map((l) => lookKey([l.effect, l.colour]))).size, looks.length, 'no pair under two names');
-  for (const level of ['lehka', 'stredni', 'tezka']) assert.equal(looks.filter((l) => l.level === level).length, 5, level);
+  for (const level of ['easy', 'medium', 'hard']) assert.equal(looks.filter((l) => l.level === level).length, 5, level);
   const effects = new Set([null, 'mist', 'raster', 'pixel', 'wave']);
   const colours = new Set([null, 'gray', 'sepia', 'hue']);
   assert.ok(looks.every((l) => effects.has(l.effect) && colours.has(l.colour)), 'only effects and colours effectStyle knows');
@@ -499,23 +580,35 @@ test('gameRank: by the drops, with the next one; none above the top', () => {
   assert.deepEqual(gameRank(999), { title: 'Mistr akvarelu', next: null, nextTitle: null });
 });
 
-test('finishRound: drops by the level, collection and pigments; each puzzle once, each level of a day apart', () => {
-  const win = { day: 3, today: 3, level: 'tezka', multiplier: 3, solved: true, misses: 0, workId: 'w', pigments: ['#111111', '#222222'] };
+/** The first day of the game in the tests of the progress: day 0 = 2026-305, the key of a day = 2026-(305 + day). */
+const E = '2026-11-01';
+
+test('roundKey, roundOrder: the key of a round by the key of its day (as in the plan), in order', () => {
+  assert.equal(roundKey(15, 'easy', E), '2026-320:easy');
+  assert.equal(roundKey(61, 'hard', E), '2027-1:hard');
+  assert.ok(roundOrder('2027-1:hard') > roundOrder('2026-365:easy'));
+  assert.ok(roundOrder('2026-320:easy') > roundOrder('2026-99:easy'), 'by the number, not as text');
+  assert.ok(Number.isNaN(roundOrder('15:easy')));
+});
+
+test('finishRound: drops by the level and the collection; each puzzle once, each level of a day apart', () => {
+  const win = { day: 3, today: 3, level: 'hard', epoch: E, multiplier: 3, solved: true, misses: 0, workId: 'w' };
   const first = finishRound(newProgress(), win);
   assert.equal(first.gained, 30);
   assert.deepEqual(first.progress.collected, ['w']);
-  assert.deepEqual(first.progress.pigments, ['#111111', '#222222']);
-  assert.deepEqual(first.progress.played['3:tezka'], { solved: true, misses: 0, drops: 30 });
+  assert.equal('pigments' in first.progress, false, 'the colours come from the rounds now (gameCollection)');
+  assert.deepEqual(first.progress.played['2026-308:hard'], { solved: true, misses: 0, drops: 30 });
+  assert.equal(first.progress.lastDay, '2026-308', 'the last day of the series by its key');
   const again = finishRound(first.progress, win);
   assert.equal(again.progress, first.progress, 'already played');
   assert.equal(again.gained, 0);
-  const other = finishRound(first.progress, { ...win, level: 'lehka', multiplier: 1, workId: 'x' });
+  const other = finishRound(first.progress, { ...win, level: 'easy', multiplier: 1, workId: 'x' });
   assert.equal(other.gained, 10);
   assert.equal(other.progress.streak, 1, 'more games on one day are one day of the series');
 });
 
 test('finishRound: the series goes on day by day, survives a lost game, restarts after a gap, ignores the archive', () => {
-  const play = (progress, day, today = day, solved = true) => finishRound(progress, { day, today, level: 'l', solved, misses: 0, workId: `w${day}`, pigments: [] }).progress;
+  const play = (progress, day, today = day, solved = true) => finishRound(progress, { day, today, level: 'l', epoch: E, solved, misses: 0, workId: `w${day}` }).progress;
   let p = play(newProgress(), 1);
   p = play(p, 2);
   assert.equal(p.streak, 2);
@@ -523,35 +616,38 @@ test('finishRound: the series goes on day by day, survives a lost game, restarts
   assert.deepEqual([p.streak, p.drops], [3, 21], 'lost: no drops, the series goes on');
   assert.deepEqual(p.collected, ['w1', 'w2'], 'lost: nothing collected');
   const archive = play(p, 0, 3);
-  assert.deepEqual([archive.streak, archive.lastDay, archive.drops], [3, 3, 26], 'the archive leaves the series alone, half the drops');
+  assert.deepEqual([archive.streak, archive.lastDay, archive.drops], [3, '2026-308', 26], 'the archive leaves the series alone, half the drops');
   p = play(p, 9);
   assert.deepEqual([p.streak, p.best], [1, 3], 'a day left out starts a new series');
+  let year = play(newProgress(), 60);
+  year = play(year, 61);
+  assert.deepEqual([year.streak, year.lastDay], [2, '2027-1'], 'the series goes on over New Year (2026-365 → 2027-1)');
 });
 
 test('finishRound: says when a new rank is reached', () => {
   const near = { ...newProgress(), drops: 15 };
-  assert.equal(finishRound(near, { day: 1, today: 1, level: 'l', solved: true, misses: 0, workId: 'w' }).rankUp, true);
-  assert.equal(finishRound(near, { day: 1, today: 1, level: 'l', solved: false, misses: 4, workId: 'w' }).rankUp, false);
+  assert.equal(finishRound(near, { day: 1, today: 1, level: 'l', epoch: E, solved: true, misses: 0, workId: 'w' }).rankUp, true);
+  assert.equal(finishRound(near, { day: 1, today: 1, level: 'l', epoch: E, solved: false, misses: 4, workId: 'w' }).rankUp, false);
 });
 
 test('gameShareText: the level and a mark for each guess, no name of the work', () => {
-  assert.equal(gameShareText({ day: 11, level: 'Těžká', misses: 2, solved: true, url: 'https://x.cz' }), 'Detail dne #12 · Těžká 🟨🟨🟩\nPoznáš obraz podle detailu?\nhttps://x.cz');
-  assert.match(gameShareText({ day: 0, level: 'Lehká', misses: 4, solved: false, url: 'u' }), /^Detail dne #1 · Lehká 🟨🟨🟨🟨\n/);
+  assert.equal(gameShareText({ label: '2026#316', level: 'Těžká', misses: 2, solved: true, url: 'https://x.cz' }), 'Detail dne 2026#316 · Těžká 🟨🟨🟩\nPoznáš obraz podle detailu?\nhttps://x.cz');
+  assert.match(gameShareText({ label: '2026#305', level: 'Lehká', misses: 4, solved: false, url: 'u' }), /^Detail dne 2026#305 · Lehká 🟨🟨🟨🟨\n/);
 });
 
 test('roundPuzzle / keptPuzzle: a played day stays as it was while its works are on the site', () => {
-  const computed = { day: 3, level: 'lehka', targetId: 'n', crop: { x: 0.4 }, optionIds: ['n', 'm'], look: 'clear', effect: 'none', colour: 'none' };
-  const old = { day: 3, level: 'lehka', targetId: 'a', crop: { x: 0.5, y: 0.5, size: 0.2, colours: ['#fff'] }, optionIds: ['b', 'a', 'c'], look: 'mosaic', effect: 'pixel', colour: null };
+  const computed = { day: 3, level: 'easy', targetId: 'n', crop: { x: 0.4 }, optionIds: ['n', 'm'], look: 'clear', effect: 'none', colour: 'none' };
+  const old = { day: 3, level: 'easy', targetId: 'a', crop: { x: 0.5, y: 0.5, size: 0.2, colours: ['#fff'] }, optionIds: ['b', 'a', 'c'], look: 'mosaic', effect: 'pixel', colour: null };
   const kept = roundPuzzle(old);
   assert.deepEqual(kept, { targetId: 'a', crop: old.crop, optionIds: ['b', 'a', 'c'], look: 'mosaic' });
   assert.deepEqual(JSON.parse(JSON.stringify(kept)), kept, 'it goes into the storage as it is');
   const all = () => true;
-  assert.deepEqual(keptPuzzle({ computed, round: { puzzle: kept }, hasWork: all, day: 3, level: 'lehka' }), old);
-  assert.equal(keptPuzzle({ computed, round: { puzzle: kept }, hasWork: (id) => id !== 'c', day: 3, level: 'lehka' }), computed, 'a work left the site');
-  assert.equal(keptPuzzle({ computed, round: { guesses: [] }, hasWork: all, day: 3, level: 'lehka' }), computed, 'a round from before');
-  assert.equal(keptPuzzle({ computed, round: undefined, hasWork: all, day: 3, level: 'lehka' }), computed);
-  assert.equal(keptPuzzle({ computed: null, round: undefined, hasWork: all, day: 3, level: 'lehka' }), null);
-  const gone = keptPuzzle({ computed, round: { puzzle: { ...kept, look: 'no-more' } }, hasWork: all, day: 3, level: 'lehka' });
+  assert.deepEqual(keptPuzzle({ computed, round: { puzzle: kept }, hasWork: all, day: 3, level: 'easy' }), old);
+  assert.equal(keptPuzzle({ computed, round: { puzzle: kept }, hasWork: (id) => id !== 'c', day: 3, level: 'easy' }), computed, 'a work left the site');
+  assert.equal(keptPuzzle({ computed, round: { guesses: [] }, hasWork: all, day: 3, level: 'easy' }), computed, 'a round from before');
+  assert.equal(keptPuzzle({ computed, round: undefined, hasWork: all, day: 3, level: 'easy' }), computed);
+  assert.equal(keptPuzzle({ computed: null, round: undefined, hasWork: all, day: 3, level: 'easy' }), null);
+  const gone = keptPuzzle({ computed, round: { puzzle: { ...kept, look: 'no-more' } }, hasWork: all, day: 3, level: 'easy' });
   assert.equal(gone.look, 'clear', 'a look taken out of the catalogue: the one of the day');
 });
 
@@ -562,16 +658,34 @@ test('gameDate: back from the number of a day, also over the change of the clock
   for (const day of [0, 1, 30, 200, 400]) assert.equal(gameDay(gameDate(day, '2026-11-01'), '2026-11-01'), day);
 });
 
-test('dayFromParam: #1 = day 0; today without it, for the future, before the first day and for nonsense', () => {
-  assert.equal(dayFromParam('1', 14), 0);
-  assert.equal(dayFromParam('15', 14), 14);
-  assert.equal(dayFromParam('16', 14), 14);
-  assert.equal(dayFromParam('0', 14), 14);
-  assert.equal(dayFromParam('-3', 14), 14);
-  assert.equal(dayFromParam('2.5', 14), 14);
-  assert.equal(dayFromParam('abc', 14), 14);
-  assert.equal(dayFromParam(null, 14), 14);
-  assert.equal(dayFromParam(undefined, 14), 14);
+test('yearDay, dayId, dayLabel: the year and the number of the day in it', () => {
+  assert.deepEqual(yearDay('2026-01-01'), { year: 2026, number: 1 });
+  assert.deepEqual(yearDay('2026-11-01'), { year: 2026, number: 305 });
+  assert.deepEqual(yearDay('2026-12-31'), { year: 2026, number: 365 });
+  assert.deepEqual(yearDay('2028-12-31'), { year: 2028, number: 366 }, 'a leap year');
+  assert.equal(dayLabel('2026-11-16'), '2026#320');
+  assert.equal(dayId('2026-11-16'), '2026-320');
+  assert.equal(dayOfId('2026-320', '2026-11-01'), 15);
+  assert.equal(dayOfId('2027-1', '2026-11-01'), 61);
+  for (const bad of ['2026#320', '2026-0', '2026-366', '320', '', null, undefined]) assert.equal(dayOfId(bad, '2026-11-01'), null, String(bad));
+  assert.equal(dayOfId('2028-366', '2026-11-01'), 791, 'a leap year has 366');
+  assert.equal(dayLabel(gameDate(15, '2026-11-01')), '2026#320', 'day 15 of the game = 16 Nov');
+});
+
+test('dayFromParam: the key of the day (dayId); today without it, for the future, before the first day and for anything else', () => {
+  const epoch = '2026-11-01';
+  assert.equal(dayFromParam('2026-305', 14, epoch), 0, '1 Nov 2026');
+  assert.equal(dayFromParam('2026-319', 14, epoch), 14);
+  assert.equal(dayFromParam('2026#310', 14, epoch), 14, 'only the key');
+  assert.equal(dayFromParam('2026-320', 14, epoch), 14, 'tomorrow: today');
+  assert.equal(dayFromParam('2026-304', 14, epoch), 14, 'before the first day');
+  assert.equal(dayFromParam('2026-0', 14, epoch), 14);
+  assert.equal(dayFromParam('2026-366', 400, epoch), 400, '2026 has no day 366');
+  assert.equal(dayFromParam('2027-1', 100, epoch), 61, '1 Jan 2027');
+  assert.equal(dayFromParam(dayId(gameDate(9, epoch)), 14, epoch), 9, 'there and back');
+  assert.equal(dayFromParam('1', 14, epoch), 14, 'no older addresses');
+  assert.equal(dayFromParam(null, 14, epoch), 14);
+  assert.equal(dayFromParam(undefined, 14, epoch), 14);
 });
 
 test('archiveDays: every day before today, the newest first; none on the first day', () => {
@@ -582,17 +696,18 @@ test('archiveDays: every day before today, the newest first; none on the first d
 
 test('dayMarks: how a day went in each level', () => {
   const levels = gameLevels();
-  const played = { '5:lehka': { solved: true }, '5:stredni': { solved: false }, '5:tezka': { solved: true }, '4:lehka': { solved: true } };
-  assert.deepEqual(dayMarks(played, 5, levels), ['solved', 'lost', 'solved']);
-  assert.deepEqual(dayMarks(played, 4, levels), ['solved', null, null]);
-  assert.deepEqual(dayMarks({}, 1, levels), [null, null, null]);
+  const played = { '2026-310:easy': { solved: true }, '2026-310:medium': { solved: false }, '2026-310:hard': { solved: true }, '2026-309:easy': { solved: true } };
+  assert.deepEqual(dayMarks(played, 5, levels, E), ['solved', 'lost', 'solved']);
+  assert.deepEqual(dayMarks(played, 4, levels, E), ['solved', null, null]);
+  assert.deepEqual(dayMarks({}, 1, levels, E), [null, null, null]);
+  assert.deepEqual(dayMarks({ '5:easy': { solved: true } }, 5, levels, E), [null, null, null], 'the older keys are not read');
 });
 
 test('unplayedDays / daysWord: the days of the archive still waiting, the newest first, and their count in words', () => {
   const levels = gameLevels();
-  const played = { '2:lehka': { solved: true }, ...Object.fromEntries(levels.map((l) => [`1:${l.id}`, { solved: false }])) };
-  assert.deepEqual(unplayedDays({ played, levels, before: 4 }), [3, 2, 0]);
-  assert.deepEqual(unplayedDays({ played, levels, before: 0 }), []);
+  const played = { '2026-307:easy': { solved: true }, ...Object.fromEntries(levels.map((l) => [`2026-306:${l.id}`, { solved: false }])) };
+  assert.deepEqual(unplayedDays({ played, levels, before: 4, epoch: E }), [3, 2, 0]);
+  assert.deepEqual(unplayedDays({ played, levels, before: 0, epoch: E }), []);
   assert.deepEqual([0, 1, 2, 4, 5, 11].map(daysWord), ['dní', 'den', 'dny', 'dny', 'dní', 'dní']);
 });
 
@@ -604,7 +719,7 @@ test('diagnosticsText: the address, then a row a line', () => {
 test('monthGroups: the days by month, the newest first, with how many days still wait; one month = one group', () => {
   assert.deepEqual(monthGroups([14, 13, 0], '2026-11-01'), [{ month: '2026-11', days: [14, 13, 0], waiting: 0 }]);
   const levels = gameLevels();
-  const played = { ...Object.fromEntries(levels.map((l) => [`30:${l.id}`, { solved: true }])), '0:lehka': { solved: false } };
+  const played = { ...Object.fromEntries(levels.map((l) => [`2026-335:${l.id}`, { solved: true }])), '2026-305:easy': { solved: false } };
   assert.deepEqual(monthGroups([32, 30, 29, 0], '2026-11-01', played, levels), [
     { month: '2026-12', days: [32, 30], waiting: 1 },
     { month: '2026-11', days: [29, 0], waiting: 2 },
@@ -619,8 +734,9 @@ test('gameDiagnostics: the day, the level, the work, the view of this try and th
   const titleOf = (id) => ({ a: 'Les', b: 'Louka', c: 'Řeka' })[id];
   const rows = (round, kept) => Object.fromEntries(gameDiagnostics({ day: 3, today: 5, date: '2026-11-04', level, puzzle, round, work, kept, titleOf }));
   const first = rows(newRound(), false);
-  assert.equal(first['Den'], '#4 · 2026-11-04 · archiv');
-  assert.match(first['Úroveň'], /^Střední \(stredni\) · 9 náhledů · 4 pokusy · nápovědy ne · kapky ×2$/);
+  assert.equal(first['Den'], '308. den roku 2026 · středa 4. listopadu 2026 · archiv');
+  assert.equal(first['Klíč dne'], '2026-308 (v nadpisu 2026#308) · plán game/detail-dne/2026.json, den "2026-308" · adresa ?den=2026-308 · 3. den hry od začátku');
+  assert.match(first['Úroveň'], /^Střední \(medium\) · 9 náhledů · 4 pokusy · nápovědy ne · kapky ×2$/);
   assert.match(first['Hádanka'], /^spočítaná pro den/);
   assert.equal(first['Stav'], 'pokus 1 z 4');
   assert.match(first['Vzhled'], /^Za šera \(dusk\) · efekt mist · barvy gray · síla teď 100 %$/);
@@ -641,16 +757,216 @@ test('gameDiagnostics: the day, the level, the work, the view of this try and th
   assert.equal(won['Vyřazené nápovědou'], '–');
   assert.equal(rows({ ...newRound(), guesses: ['b', 'c', 'x', 'y'], over: true }, true)['Stav'], 'neuhodnuto');
   assert.equal(rows(newRound(), false)['Den'].endsWith('archiv'), true);
-  assert.equal(Object.fromEntries(gameDiagnostics({ day: 5, today: 5, date: 'd', level, puzzle, round: newRound(), work }))['Den'], '#6 · d · dnes');
+  assert.equal(Object.fromEntries(gameDiagnostics({ day: 5, today: 5, date: '2026-11-06', level, puzzle, round: newRound(), work }))['Den'], '310. den roku 2026 · pátek 6. listopadu 2026 · dnes');
 });
 
 test('finishRound: a day of the archive gives half the drops, keeps the series and the last day', () => {
   const today = 10;
-  const progress = { ...newProgress(), streak: 4, best: 4, lastDay: 10 };
-  const { progress: after, gained } = finishRound(progress, { day: 3, today, level: 'stredni', multiplier: 2, solved: true, misses: 0, workId: 'a' });
+  const progress = { ...newProgress(), streak: 4, best: 4, lastDay: '2026-315' };
+  const { progress: after, gained } = finishRound(progress, { day: 3, today, level: 'medium', epoch: E, multiplier: 2, solved: true, misses: 0, workId: 'a' });
   assert.equal(gained, dropsFor(0, 4, true, 2));
   assert.equal(gained, 10);
   assert.equal(after.streak, 4);
-  assert.equal(after.lastDay, 10);
+  assert.equal(after.lastDay, '2026-315');
   assert.deepEqual(after.collected, ['a']);
+});
+
+/** A solved (or lost) round of `id` with the colours of its close-up, as rounds keep them. */
+const kept = (id, colours, solved = true) => ({ guesses: [], solved, over: true, puzzle: { targetId: id, crop: { x: 0.5, y: 0.5, size: 0.2, colours }, optionIds: [id], look: 'clear' } });
+
+test('gameCollection: solved works the newest first, the colours of their close-ups, each work once', () => {
+  const rounds = {
+    '2026-308:easy': kept('a', ['#111111', '#222222', '#333333']),
+    '2026-308:medium': kept('b', ['#444444']),
+    '2026-310:easy': kept('c', ['#555555']),
+    '2026-314:hard': kept('d', ['#666666'], false),
+    '2027-2:medium': kept('a', ['#333333', '#777777', '#888888']),
+  };
+  assert.deepEqual(gameCollection({ rounds }), [
+    { id: 'a', colours: ['#333333', '#777777', '#888888', '#111111', '#222222'], times: 2 },
+    { id: 'c', colours: ['#555555'], times: 1 },
+    { id: 'b', colours: ['#444444'], times: 1 },
+  ], 'the lost round of d is not in it; a again in 2027 = first, its colours of both close-ups, the newest first, each once');
+  assert.equal(gameCollection({ rounds, maxColours: 2 })[0].colours.length, 2, 'at most maxColours');
+  assert.deepEqual(gameCollection({ rounds, hasWork: (id) => id !== 'c' }).map((i) => i.id), ['a', 'b'], 'a work gone from the site is left out');
+});
+
+test('gameCollection: a work collected before rounds kept their puzzle comes last, without colours; nothing played = empty', () => {
+  const rounds = { '2026-309:easy': kept('b', ['#444444']), '2026-310:easy': { guesses: ['x'], solved: true, over: true } };
+  assert.deepEqual(gameCollection({ rounds, collected: ['old1', 'b', 'old2'] }), [
+    { id: 'b', colours: ['#444444'], times: 1 },
+    { id: 'old2', colours: [], times: 1 },
+    { id: 'old1', colours: [], times: 1 },
+  ]);
+  assert.deepEqual(gameCollection({}), []);
+});
+
+test('collectionHtml: pictures with their colour dots, the newest limit, the whole collection on demand, escaped', () => {
+  const items = Array.from({ length: 14 }, (_, i) => ({ id: `w${i}`, colours: i ? ['#abcdef'] : ['#111111', '#222222'], times: i === 1 ? 3 : 1 }));
+  const work = (id) => (id === 'w13' ? null : { title: `Obraz <${id}>`, href: `/tvorba/2026/${id}/`, src: `/${id}/480.webp` });
+  const html = collectionHtml({ items, work });
+  assert.doesNotMatch(html, /z \d+ obraz|kompletní/, 'no count of works: the game asks for details');
+  assert.equal(html.match(/class="piece"/g).length, 12, 'the newest 12');
+  assert.match(html, /<a class="piece" href="\/tvorba\/2026\/w0\/" title="Obraz &lt;w0&gt;"><img src="\/w0\/480.webp" alt="Obraz &lt;w0&gt;" loading="lazy" \/><span class="dots" aria-hidden="true"><i style="background:#111111"><\/i><i style="background:#222222"><\/i><\/span><\/a>/);
+  assert.match(html, /title="Obraz &lt;w1&gt; \(uhodnuto 3×\)"/);
+  assert.match(html, /data-collection-toggle aria-expanded="false">Celá sbírka<\/button>$/);
+  const open = collectionHtml({ items, work, open: true });
+  assert.equal(open.match(/class="piece"/g).length, 13, 'a work gone (null) is left out');
+  assert.match(open, /aria-expanded="true">Jen nejnovější<\/button>$/);
+  assert.doesNotMatch(collectionHtml({ items: items.slice(0, 3), work }), /data-collection-toggle/, 'a small collection without the button');
+  assert.match(collectionHtml({ items: [], work }), /^<p class="empty">/);
+});
+
+test('simulatedRounds: every level of every day, kept as rounds keep them, repeatable; a month fills the collection', () => {
+  const levels = [LEVEL, { ...LEVEL, id: 'm' }, { ...LEVEL, id: 'n' }];
+  const prepared = { l: answersOf(6), m: answersOf(6), n: answersOf(6) };
+  const rounds = simulatedRounds({ start: 10, days: 30, levels, prepared, epoch: E, rates: { l: 1, m: 0.5, n: 0 } });
+  assert.equal(Object.keys(rounds).length, 90);
+  assert.deepEqual(rounds['2026-315:l'].puzzle, roundPuzzle(dailyPuzzles({ day: 10, levels, prepared }).l));
+  assert.equal(Object.keys(rounds).filter((k) => k.endsWith(':l')).every((k) => rounds[k].solved), true);
+  assert.equal(Object.keys(rounds).filter((k) => k.endsWith(':n')).some((k) => rounds[k].solved), false);
+  assert.deepEqual(simulatedRounds({ start: 10, days: 30, levels, prepared, epoch: E }), simulatedRounds({ start: 10, days: 30, levels, prepared, epoch: E }));
+  assert.equal(gameCollection({ rounds }).length, 6, 'all six works within a month');
+});
+
+// ---- the plan of the days ----
+const PLAN_LEVELS = [LEVEL, { ...LEVEL, id: 'm' }, { ...LEVEL, id: 'n' }];
+/** Answers of `n` works (ids from `from`), each with `places` close-ups at different places. */
+const placesOf = (n, places = 2, from = 0) => {
+  const ids = Array.from({ length: n }, (_, i) => `w${String(i + from).padStart(2, '0')}`);
+  return Object.fromEntries(ids.map((id) => [id, Array.from({ length: places }, (_, p) => ({
+    crop: { x: 0.2 + p * 0.3, y: 0.5, size: 0.2, colours: [`#00000${p}`] }, ranked: ids.filter((other) => other !== id),
+  }))]));
+};
+const preparedOf = (n, places = 2, from = 0) => Object.fromEntries(PLAN_LEVELS.map((l) => [l.id, placesOf(n, places, from)]));
+const targets = (plan, from, to) => Object.entries(plan.days).filter(([d]) => Number(d) >= from && Number(d) <= to)
+  .flatMap(([d, e]) => PLAN_LEVELS.filter((l) => e[l.id]).map((l) => ({ day: Number(d), id: e[l.id].targetId, detail: e[l.id].detail })));
+
+test('planDetails: every place of a work numbered for good, a new place gets the next number, at most PLAN_MAX_DETAILS', () => {
+  const first = planDetails({}, { l: placesOf(1, 2) }, [LEVEL]);
+  assert.deepEqual(first.w00.map((d) => [d.n, d.level, d.x]), [[1, 'l', 0.2], [2, 'l', 0.5]]);
+  // the analysis now finds the second place a bit moved and a third one: the numbers stay, the new one is 3
+  const moved = { l: { w00: [{ crop: { x: 0.52, y: 0.5, size: 0.2 } }, { crop: { x: 0.8, y: 0.5, size: 0.2 } }] } };
+  assert.deepEqual(planDetails(first, moved, [LEVEL]).w00.map((d) => [d.n, d.x]), [[1, 0.2], [2, 0.5], [3, 0.8]]);
+  assert.equal(planDetailOf(first.w00, 'l', { x: 0.52, y: 0.5, size: 0.2 }).n, 2);
+  assert.equal(planDetailOf(first.w00, 'm', { x: 0.5, y: 0.5, size: 0.2 }), null, 'another level = another detail');
+  const many = { l: { w00: Array.from({ length: PLAN_MAX_DETAILS + 10 }, (_, i) => ({ crop: { x: i / 100, y: 0.1, size: 0.005 } })) } };
+  assert.equal(planDetails({}, many, [LEVEL]).w00.length, PLAN_MAX_DETAILS);
+});
+
+test('extendPlan: the past and tomorrow as computed, two weeks ahead, each day three different works with a detail', () => {
+  const prepared = preparedOf(40);
+  const plan = extendPlan({ prepared, levels: PLAN_LEVELS, today: 10, epoch: '2026-11-01' });
+  assert.deepEqual(Object.keys(plan.days).map(Number), Array.from({ length: 10 + PLAN_HORIZON + 1 }, (_, i) => i));
+  assert.equal(plan.days[0].date, '2026-11-01');
+  const computed = dailyPuzzles({ day: 3, levels: PLAN_LEVELS, prepared });
+  assert.equal(plan.days[3].l.targetId, computed.l.targetId, 'a day before the plan = what the game computed for it');
+  assert.deepEqual(plan.days[3].l.optionIds, computed.l.optionIds);
+  for (const [day, entry] of Object.entries(plan.days)) {
+    const ids = PLAN_LEVELS.map((l) => entry[l.id].targetId);
+    assert.equal(new Set(ids).size, 3, `day ${day}`);
+    for (const l of PLAN_LEVELS) {
+      assert.ok(entry[l.id].optionIds.includes(entry[l.id].targetId));
+      assert.ok(Number.isInteger(entry[l.id].detail), `day ${day} has the number of its detail`);
+      assert.ok(LEVEL.looks.includes(entry[l.id].look));
+    }
+  }
+  assert.deepEqual(extendPlan({ prepared, levels: PLAN_LEVELS, today: 10, epoch: '2026-11-01' }), plan, 'the same input = the same plan');
+});
+
+test('extendPlan: locked days never change, not even with new works; the days after tomorrow are planned again', () => {
+  const old = extendPlan({ prepared: preparedOf(40), levels: PLAN_LEVELS, today: 10, epoch: '2026-11-01' });
+  const more = preparedOf(45);
+  const next = extendPlan({ plan: old, prepared: more, levels: PLAN_LEVELS, today: 10, epoch: '2026-11-01' });
+  for (let day = 0; day <= 11; day++) assert.deepEqual(next.days[day], old.days[day], `day ${day} is locked`);
+  const later = extendPlan({ plan: next, prepared: more, levels: PLAN_LEVELS, today: 17, epoch: '2026-11-01' });
+  for (let day = 0; day <= 18; day++) assert.deepEqual(later.days[day], next.days[day], `day ${day} as planned before`);
+  assert.equal(Math.max(...Object.keys(later.days).map(Number)), 17 + PLAN_HORIZON);
+});
+
+test('extendPlan: a new work comes the day after tomorrow, several new ones one a day', () => {
+  const old = extendPlan({ prepared: preparedOf(40), levels: PLAN_LEVELS, today: 30, epoch: '2026-11-01' });
+  const next = extendPlan({ plan: old, prepared: { ...preparedOf(40), ...Object.fromEntries(PLAN_LEVELS.map((l) => [l.id, { ...preparedOf(40)[l.id], ...placesOf(3, 2, 40) }])) }, levels: PLAN_LEVELS, today: 30, epoch: '2026-11-01' });
+  const fresh = ['w40', 'w41', 'w42'];
+  const firstDay = fresh.map((id) => targets(next, 32, 60).find((t) => t.id === id)?.day);
+  assert.deepEqual([...firstDay].sort(), [32, 33, 34], 'one new work a day from the day after tomorrow');
+  for (let day = 32; day <= 30 + PLAN_HORIZON; day++) {
+    assert.ok(targets(next, day, day).filter((t) => fresh.includes(t.id)).length <= 1, `day ${day}: at most one new work`);
+  }
+});
+
+test('extendPlan: a work comes again after 14 days at least, PLAN_WORK_GAP once all had a turn; its details take turns', () => {
+  let plan = {};
+  for (let today = 0; today <= 120; today += 7) plan = extendPlan({ plan, prepared: preparedOf(80, 3), levels: PLAN_LEVELS, today, epoch: '2026-11-01' });
+  const all = targets(plan, 2, 120);
+  const last = {};
+  const lastDetail = {};
+  for (const t of all) {
+    // never sooner than 14 days; once every work has had a turn (day 40 on), not before PLAN_WORK_GAP
+    if (last[t.id] !== undefined) assert.ok(t.day - last[t.id] >= (t.day >= 40 ? PLAN_WORK_GAP : 14), `${t.id} again on day ${t.day} after ${t.day - last[t.id]} days`);
+    last[t.id] = t.day;
+    const key = `${t.id}#${t.detail}`;
+    if (lastDetail[key] !== undefined) assert.ok(Object.keys(lastDetail).filter((k) => k.startsWith(`${t.id}#`)).length >= 2, `${key} repeated only after the other details of ${t.id}`);
+    lastDetail[key] = t.day;
+  }
+});
+
+test('extendPlan: too few works = the gap gives way, a day is never empty', () => {
+  const plan = extendPlan({ prepared: preparedOf(5), levels: PLAN_LEVELS, today: 3, epoch: '2026-11-01' });
+  for (let day = 5; day <= 3 + PLAN_HORIZON; day++) assert.equal(targets(plan, day, day).length, 3, `day ${day}`);
+});
+
+test('planDay: a detail used within PLAN_DETAIL_GAP waits while the work has another one', () => {
+  const prepared = { l: placesOf(1, 2) };
+  const details = planDetails({}, prepared, [LEVEL]);
+  const days = { 0: { l: { targetId: 'w00', detail: 1, crop: {}, optionIds: ['w00'], look: 'dusk' } } };
+  assert.equal(planDay({ day: 30, days, details, prepared, levels: [LEVEL] }).l.detail, 2);
+  const both = { ...days, 10: { l: { targetId: 'w00', detail: 2, crop: {}, optionIds: ['w00'], look: 'dusk' } } };
+  assert.equal(planDay({ day: 40, days: both, details, prepared, levels: [LEVEL] }).l.detail, 1, 'all used: the one used longest ago');
+  assert.ok(PLAN_DETAIL_GAP >= 365);
+  assert.deepEqual(planUsage(both, 11), { works: { w00: 10 }, details: { 'w00#1': 0, 'w00#2': 10 } });
+  assert.deepEqual(planUsage(both, 5), { works: { w00: 0 }, details: { 'w00#1': 0 } }, 'only the days before');
+});
+
+test('plannedPuzzles: the plan first, a level with a work gone or without a plan computed; the look from the catalogue', () => {
+  const computed = { l: { day: 4, level: 'l', targetId: 'c1', crop: {}, optionIds: ['c1'], look: 'dusk' }, m: null, n: null };
+  const plan = { days: { 4: { date: '2026-11-05', l: { targetId: 'p1', detail: 2, crop: { x: 0.1, y: 0.2, size: 0.3 }, optionIds: ['p1', 'p2'], look: 'morning-mist' } } } };
+  const has = (id) => id !== 'gone';
+  const got = plannedPuzzles({ plan, day: 4, levels: PLAN_LEVELS, hasWork: has, computed });
+  assert.deepEqual(got.l, { day: 4, level: 'l', targetId: 'p1', detail: 2, crop: { x: 0.1, y: 0.2, size: 0.3 }, optionIds: ['p1', 'p2'], look: 'morning-mist', effect: 'mist', colour: null, planned: true });
+  assert.equal(got.m, null);
+  const gone = plannedPuzzles({ plan: { days: { 4: { l: { ...plan.days[4].l, optionIds: ['p1', 'gone'] } } } }, day: 4, levels: PLAN_LEVELS, hasWork: has, computed });
+  assert.equal(gone.l.targetId, 'c1');
+  assert.equal(gone.l.planned, false);
+  assert.equal(plannedPuzzles({ plan: null, day: 4, levels: PLAN_LEVELS, hasWork: has, computed }).l.targetId, 'c1', 'no plan = computed');
+});
+
+test('planYearText and planDetailsText: valid JSON, one line per day / per work, days in order', () => {
+  const plan = extendPlan({ prepared: preparedOf(12), levels: PLAN_LEVELS, today: 2, epoch: '2026-11-01' });
+  const text = planYearText(2026, plan.days);
+  const file = JSON.parse(text);
+  assert.equal(file.version, PLAN_FILE_VERSION);
+  assert.equal(file.year, 2026);
+  assert.deepEqual(Object.keys(file.days), Object.keys(plan.days).map((d) => `2026-${305 + Number(d)}`), 'by the key of the day: 1 Nov 2026 = 2026-305');
+  assert.deepEqual(file.days['2026-305'], JSON.parse(JSON.stringify(plan.days[0])));
+  assert.deepEqual(planYearDays(file.days, '2026-11-01'), JSON.parse(JSON.stringify(plan.days)), 'read back by the day of the game');
+  assert.deepEqual(planYearDays({ ...file.days, 305: {}, 'x-1': {} }, '2026-11-01'), JSON.parse(JSON.stringify(plan.days)), 'what is no key is left out');
+  assert.equal(text.split('\n').filter((l) => /^    "\d{4}-\d+": \{"date"/.test(l)).length, Object.keys(plan.days).length);
+  const late = planYearText(2027, { 61: { date: '2027-01-01' }, 70: { date: '2027-01-10' } });
+  assert.ok(late.indexOf('"2027-1": {') < late.indexOf('"2027-10": {'), 'days by number, not as text');
+  assert.deepEqual(planYearDays(JSON.parse(late).days, '2026-11-01'), { 61: { date: '2027-01-01' }, 70: { date: '2027-01-10' } });
+  const details = planDetailsText(plan.details);
+  assert.deepEqual(JSON.parse(details), { version: 1, details: JSON.parse(JSON.stringify(plan.details)) });
+  assert.equal(details.split('\n').filter((l) => /^    "w\d+": \[/.test(l)).length, 12);
+});
+
+test('the plan by years: the year of a day, the days split by it, this year and the one before shown, an archive merged', () => {
+  assert.equal(planYearOf(0, '2026-11-01'), 2026);
+  assert.equal(planYearOf(61, '2026-11-01'), 2027, '1 Jan 2027');
+  const days = { 0: { date: '2026-11-01' }, 60: { date: '2026-12-31' }, 61: { date: '2027-01-01' } };
+  assert.deepEqual(planDaysByYear(days, '2026-11-01'), { 2026: { 0: days[0], 60: days[60] }, 2027: { 61: days[61] } });
+  assert.deepEqual(planYearsShown(2028), [2027, 2028]);
+  const merged = mergePlanDays({ days: { 61: { date: '2027-01-01' } }, archive: [2026] }, { year: 2026, days: { 0: { date: '2026-11-01' }, 61: { date: 'not this' } } });
+  assert.deepEqual(merged, { days: { 0: { date: '2026-11-01' }, 61: { date: '2027-01-01' } }, archive: [2026] }, 'the days already there stay');
+  assert.equal(pragueDate(new Date('2026-12-31T23:30:00Z')), '2027-01-01');
 });

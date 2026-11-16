@@ -12,9 +12,9 @@
  */
 export function gameLevels() {
   return [
-    { id: 'lehka', label: 'Lehká', size: 0.24, zone: 'center', pick: 'clear', options: 9, reach: 0.4, lastView: 0.85, guesses: 4, hints: true, drops: 1, looks: ['clear', 'black-white', 'old-photo', 'morning-mist', 'mosaic'] },
-    { id: 'stredni', label: 'Střední', size: 0.16, zone: 'any', pick: 'confusing', maxConfusion: 14, options: 9, reach: 0.9, lastView: 0.5, guesses: 4, hints: false, drops: 2, looks: ['curtain', 'water', 'magic-colours', 'dusk', 'puddle'] },
-    { id: 'tezka', label: 'Těžká', size: 0.11, zone: 'edge', pick: 'confusing', maxConfusion: 16, options: 9, reach: 1, lastView: 0.35, guesses: 3, hints: false, drops: 3, looks: ['dream', 'colour-blocks', 'mirage', 'flooded-postcard', 'embroidery'] },
+    { id: 'easy', label: 'Lehká', size: 0.24, zone: 'center', planCentre: 0.25, pick: 'clear', options: 9, reach: 0.4, lastView: 0.85, guesses: 4, hints: true, drops: 1, looks: ['clear', 'black-white', 'old-photo', 'morning-mist', 'mosaic'] },
+    { id: 'medium', label: 'Střední', size: 0.16, zone: 'any', pick: 'confusing', maxConfusion: 14, options: 9, reach: 0.9, lastView: 0.5, guesses: 4, hints: false, drops: 2, looks: ['curtain', 'water', 'magic-colours', 'dusk', 'puddle'] },
+    { id: 'hard', label: 'Těžká', size: 0.11, zone: 'edge', pick: 'confusing', maxConfusion: 16, planConfusion: 18, options: 9, reach: 1, lastView: 0.35, guesses: 3, hints: false, drops: 3, looks: ['dream', 'colour-blocks', 'mirage', 'flooded-postcard', 'embroidery'] },
   ];
 }
 
@@ -24,21 +24,21 @@ export function gameLevels() {
  */
 export function gameLooks() {
   return [
-    { id: 'clear', label: 'Čistý pohled', level: 'lehka', effect: null, colour: null },
-    { id: 'black-white', label: 'Černobílá fotka', level: 'lehka', effect: null, colour: 'gray' },
-    { id: 'old-photo', label: 'Stará fotka', level: 'lehka', effect: null, colour: 'sepia' },
-    { id: 'morning-mist', label: 'Ranní mlha', level: 'lehka', effect: 'mist', colour: null },
-    { id: 'mosaic', label: 'Mozaika', level: 'lehka', effect: 'pixel', colour: null },
-    { id: 'curtain', label: 'Za záclonou', level: 'stredni', effect: 'raster', colour: null },
-    { id: 'water', label: 'Na hladině', level: 'stredni', effect: 'wave', colour: null },
-    { id: 'magic-colours', label: 'Kouzelné barvy', level: 'stredni', effect: null, colour: 'hue' },
-    { id: 'dusk', label: 'Za šera', level: 'stredni', effect: 'mist', colour: 'gray' },
-    { id: 'puddle', label: 'Odraz v kaluži', level: 'stredni', effect: 'wave', colour: 'gray' },
-    { id: 'dream', label: 'Sen', level: 'tezka', effect: 'mist', colour: 'hue' },
-    { id: 'colour-blocks', label: 'Barevné kostky', level: 'tezka', effect: 'pixel', colour: 'hue' },
-    { id: 'mirage', label: 'Fata morgána', level: 'tezka', effect: 'wave', colour: 'hue' },
-    { id: 'flooded-postcard', label: 'Zatopená pohlednice', level: 'tezka', effect: 'wave', colour: 'sepia' },
-    { id: 'embroidery', label: 'Výšivka', level: 'tezka', effect: 'pixel', colour: 'sepia' },
+    { id: 'clear', label: 'Čistý pohled', level: 'easy', effect: null, colour: null },
+    { id: 'black-white', label: 'Černobílá fotka', level: 'easy', effect: null, colour: 'gray' },
+    { id: 'old-photo', label: 'Stará fotka', level: 'easy', effect: null, colour: 'sepia' },
+    { id: 'morning-mist', label: 'Ranní mlha', level: 'easy', effect: 'mist', colour: null },
+    { id: 'mosaic', label: 'Mozaika', level: 'easy', effect: 'pixel', colour: null },
+    { id: 'curtain', label: 'Za záclonou', level: 'medium', effect: 'raster', colour: null },
+    { id: 'water', label: 'Na hladině', level: 'medium', effect: 'wave', colour: null },
+    { id: 'magic-colours', label: 'Kouzelné barvy', level: 'medium', effect: null, colour: 'hue' },
+    { id: 'dusk', label: 'Za šera', level: 'medium', effect: 'mist', colour: 'gray' },
+    { id: 'puddle', label: 'Odraz v kaluži', level: 'medium', effect: 'wave', colour: 'gray' },
+    { id: 'dream', label: 'Sen', level: 'hard', effect: 'mist', colour: 'hue' },
+    { id: 'colour-blocks', label: 'Barevné kostky', level: 'hard', effect: 'pixel', colour: 'hue' },
+    { id: 'mirage', label: 'Fata morgána', level: 'hard', effect: 'wave', colour: 'hue' },
+    { id: 'flooded-postcard', label: 'Zatopená pohlednice', level: 'hard', effect: 'wave', colour: 'sepia' },
+    { id: 'embroidery', label: 'Výšivka', level: 'hard', effect: 'pixel', colour: 'sepia' },
   ];
 }
 
@@ -48,6 +48,8 @@ import { GAME_AFFINITY_SCALE, GAME_AFFINITY_WEIGHTS, techniqueFamily, workDistan
 export const GAME_EPOCH = '2026-11-01';
 /** The longer side of the small picture the analysis reads. */
 export const ANALYSIS_SIZE = 240;
+/** The richest places of a picture its answers come from (the days computed before the plan of the days were made of them). */
+export const ANSWER_CROPS = 8;
 
 /** CIE Lab of an sRGB colour (D65). */
 export function rgbToLab(r, g, b) {
@@ -130,13 +132,14 @@ export function regionEdges({ data, width, channels }, x0, y0, w, h) {
 /**
  * What the game needs to know of a picture (raw pixels `{ data, width, height, channels }`), all inside the margins (the edges
  * of the paper stay out, the bottom one is wider: the title and signature are written there):
- * - `crops`: up to `count` close-ups that do not overlap, the most detailed first, each `{ x, y, size, detail, palette }` (x, y =
+ * - `crops`: up to `count` close-ups that do not overlap, the most detailed first (with `overlap` > 0 followed by those that share
+ *   up to that share of the side with another one, `overlaps: true`, so the ones that share nothing stay the same), each `{ x, y, size, detail, palette }` (x, y =
  *   centre as a share of width and height, size = a share of the shorter side). Places under `minDetail` (blank paper) or under
  *   `minEdges` (a smooth wash) are no close-ups, so a work without any cannot be a puzzle.
  * - `places`: the whole picture in a grid of windows of the same size, each `{ detail, palette }`: what a close-up of another
  *   work is compared with, because a work may look like a close-up in one place only.
  */
-export function analyzePixels(pixels, { size = 0.14, margin = 0.08, bottom = 0.18, count = 8, minDetail = 8, minEdges = 3 } = {}) {
+export function analyzePixels(pixels, { size = 0.14, margin = 0.08, bottom = 0.18, count = 8, minDetail = 8, minEdges = 3, overlap = 0 } = {}) {
   const { width, height } = pixels;
   const side = Math.max(4, Math.round(Math.min(width, height) * size));
   const [mx, my] = [Math.round(width * margin), Math.round(height * margin)];
@@ -156,6 +159,14 @@ export function analyzePixels(pixels, { size = 0.14, margin = 0.08, bottom = 0.1
     place.edges = regionEdges(pixels, place.x, place.y, side, side);
     if (place.edges >= minEdges) picked.push(place);
   }
+  // then the places that share up to `overlap` of the side with another one, after all of those that share nothing
+  const apart = Math.ceil(side * (1 - overlap));
+  for (const place of overlap > 0 ? candidates : []) {
+    if (picked.length === count || place.detail < minDetail) break;
+    if (picked.includes(place) || !picked.every((p) => Math.max(Math.abs(p.x - place.x), Math.abs(p.y - place.y)) >= apart)) continue;
+    place.edges ??= regionEdges(pixels, place.x, place.y, side, side);
+    if (place.edges >= minEdges) picked.push({ ...place, overlaps: true });
+  }
   const share = (v) => Math.round(v * 1000) / 1000;
   const places = [];
   for (let y = my; y + side <= lastY; y += side) {
@@ -172,6 +183,7 @@ export function analyzePixels(pixels, { size = 0.14, margin = 0.08, bottom = 0.1
       detail: Math.round(p.detail),
       edges: Math.round(p.edges * 10) / 10,
       palette: regionPalette(pixels, p.x, p.y, side, side, 3),
+      ...(p.overlaps ? { overlaps: true } : {}),
     })),
   };
 }
@@ -269,10 +281,13 @@ export function chooseDecoys({ ranked, count, reach, random }) {
   return gameShuffle(ranked.slice(0, part), random).slice(0, count);
 }
 
-/** Whether a close-up comes from a part of the picture: center (around the middle), edge (away from it), any. */
-export function inZone(crop, zone) {
+/**
+ * Whether a close-up comes from a part of the picture: center (around the middle: its centre less than `centre` from the middle
+ * of the picture, as a share of its sides), edge (away from it), any.
+ */
+export function inZone(crop, zone, centre = 0.22) {
   const away = Math.max(Math.abs(crop.x - 0.5), Math.abs(crop.y - 0.5));
-  return zone === 'center' ? away < 0.22 : zone === 'edge' ? away > 0.28 : true;
+  return zone === 'center' ? away < centre : zone === 'edge' ? away > 0.28 : true;
 }
 
 /**
@@ -291,23 +306,49 @@ export function confusingCrops({ target, pool, analyses, count }) {
 }
 
 /**
- * What a level can ask (Node, before the page): work id → up to `keep` close-ups `{ crop, ranked }` (crop without the numbers of
- * its colours, ranked = ids of the closest `nearest` other works). A work without a close-up for the level is no answer there,
- * but can be a false thumbnail; so the page needs no pictures analysed and picks a puzzle at once.
+ * How many other works a close-up is compared with at most (rankLookalikes looks at every place of each): with more works on the
+ * site, only the nearest ones by the whole work (candidatePool), so the work grows with the number of works, not with its square.
+ * Over the number of works today (85 in 2026-11): the games prepared so far stay the same.
  */
-export function prepareLevel({ level, works, analyses, keep = 3, nearest = 30 }) {
+export const GAME_CANDIDATES = 120;
+
+/**
+ * The works of `pool` a close-up of `target` is compared with: all of them up to `limit`, otherwise the `limit` nearest by the
+ * whole work (workDistance with the weights of the game: colours, mood, technique, subject), as a false thumbnail far from the work
+ * in all of it never makes it among the closest lookalikes anyway.
+ */
+export function candidatePool(target, pool, limit = GAME_CANDIDATES, weights = GAME_AFFINITY_WEIGHTS) {
+  if (pool.length <= limit) return pool;
+  return pool
+    .map((work) => ({ work, distance: workDistance(target, work, weights) }))
+    .sort((a, b) => a.distance - b.distance || (a.work.id < b.work.id ? -1 : 1))
+    .slice(0, limit)
+    .map(({ work }) => work);
+}
+
+/**
+ * What a level can ask (Node, before the page): work id → up to `keep` close-ups `{ crop, ranked }` (crop without the numbers of
+ * its colours, ranked = ids of the closest `nearest` other works, among the `candidates` nearest ones, candidatePool). A work
+ * without a close-up for the level is no answer there, but can be a false thumbnail; so the page needs no pictures analysed and
+ * picks a puzzle at once. `plan` = the places of the plan of the days (prepareGame with `places`): a level with `planConfusion`
+ * takes close-ups up to that one there and a level with `planCentre` a wider middle (more places); the answers of the days
+ * computed so far keep `maxConfusion` and the middle of inZone.
+ */
+export function prepareLevel({ level, works, analyses, keep = 3, nearest = 30, candidates = GAME_CANDIDATES, plan = false }) {
   const usable = works.filter((w) => analyses[w.id]?.places?.length);
+  const maxConfusion = plan ? level.planConfusion ?? level.maxConfusion : level.maxConfusion;
+  const centre = plan ? level.planCentre : undefined;
   const answers = {};
   for (const target of usable) {
-    const crops = (analyses[target.id].crops ?? []).filter((crop) => inZone(crop, level.zone));
+    const crops = (analyses[target.id].crops ?? []).filter((crop) => inZone(crop, level.zone, centre));
     if (!crops.length) continue;
-    const pool = usable.filter((w) => w.id !== target.id);
+    const pool = candidatePool(target, usable.filter((w) => w.id !== target.id), candidates);
     const single = { ...analyses, [target.id]: { ...analyses[target.id], crops } };
     const count = level.options - 1;
     if (pool.length < count) continue;
     const found = level.pick === 'clear'
       ? [...crops].sort((a, b) => b.detail - a.detail).map((crop) => ({ crop, ranked: rankLookalikes({ target, crop, pool, analyses }) }))
-      : confusingCrops({ target, pool, analyses: single, count }).filter((c) => c.confusion <= level.maxConfusion);
+      : confusingCrops({ target, pool, analyses: single, count }).filter((c) => c.confusion <= maxConfusion);
     if (!found.length) continue;
     answers[target.id] = found.slice(0, keep).map(({ crop, ranked }) => ({
       crop: { x: crop.x, y: crop.y, size: crop.size, colours: crop.palette.map((c) => c.hex) },
@@ -581,14 +622,44 @@ export function gameDate(day, epoch) {
   return new Date(Date.parse(`${epoch}T00:00:00Z`) + day * 86400000).toISOString().slice(0, 10);
 }
 
+/** The year of a date (YYYY-MM-DD) and its number in that year (1 January = 1): `{ year, number }`. */
+export function yearDay(date) {
+  const [year, month, day] = date.split('-').map(Number);
+  return { year, number: Math.round((Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / 86400000) + 1 };
+}
+
 /**
- * The day of the address `?den=<number>` (the number of the day as the page shows it, #1 = day 0): today without it, or when it is
- * not a played day yet (the future, before the first day, not a number).
+ * The key of the day of a date (YYYY-MM-DD): "2026-320" = the year and the number of the day in it. The same everywhere: the key of
+ * the day in the plan file (game/detail-dne/2026.json), the address of a day of the archive (`?den=2026-320`), the events of Google
+ * Analytics and the diagnostics; only the title shows it its own way (dayLabel).
  */
-export function dayFromParam(value, today) {
-  if (value === null || value === undefined || !/^\d+$/.test(String(value))) return today;
-  const day = Number(value) - 1;
-  return day >= 0 && day <= today ? day : today;
+export function dayId(date) {
+  const { year, number } = yearDay(date);
+  return `${year}-${number}`;
+}
+
+/** The day of dayId as the title of the game shows it: "2026#320". */
+export function dayLabel(date) {
+  const { year, number } = yearDay(date);
+  return `${year}#${number}`;
+}
+
+/** The day of the game of a key of dayId ("2026-320"), null when it is no key or the year has no such day. */
+export function dayOfId(id, epoch) {
+  const found = String(id ?? '').match(/^(\d{4})-(\d{1,3})$/);
+  if (!found) return null;
+  const [year, number] = [Number(found[1]), Number(found[2])];
+  const day = Math.round((Date.UTC(year, 0, number) - Date.parse(`${epoch}T00:00:00Z`)) / 86400000);
+  return number >= 1 && yearDay(gameDate(day, epoch)).year === year ? day : null;
+}
+
+/**
+ * The day of the game of the address `?den=<dayId>`: today without it, or when it is not a played day yet (the future, before the
+ * first day, a day the year does not have, anything else).
+ */
+export function dayFromParam(value, today, epoch) {
+  const day = dayOfId(value, epoch);
+  return day !== null && day >= 0 && day <= today ? day : today;
 }
 
 /** The days of the archive, the newest first: every day before `today`, back to the first day. */
@@ -596,17 +667,32 @@ export function archiveDays(today) {
   return Array.from({ length: Math.max(0, today) }, (_, i) => today - 1 - i);
 }
 
-/** How a player did in each level on `day` (`played` of the progress): 'solved', 'lost' or null (not played). */
-export function dayMarks(played, day, levels) {
+/**
+ * The key of a round in the progress of a player (the rounds and `played`): the key of its day (dayId) and the level,
+ * "2026-320:easy", the same as in the plan file; `epoch` = the first day of the game.
+ */
+export function roundKey(day, level, epoch) {
+  const [year, month, date] = new Date(Date.parse(`${epoch}T00:00:00Z`) + day * 86400000).toISOString().slice(0, 10).split('-').map(Number);
+  return `${year}-${Math.round((Date.UTC(year, month - 1, date) - Date.UTC(year, 0, 1)) / 86400000) + 1}:${level}`;
+}
+
+/** The order of a key of roundKey: its year and number in the year as one number (later = bigger), NaN for anything else. */
+export function roundOrder(key) {
+  const found = String(key).match(/^(\d{4})-(\d{1,3}):/);
+  return found ? Number(found[1]) * 1000 + Number(found[2]) : NaN;
+}
+
+/** How a player did in each level on `day` (`played` of the progress, by roundKey): 'solved', 'lost' or null (not played). */
+export function dayMarks(played, day, levels, epoch) {
   return levels.map((level) => {
-    const result = played[`${day}:${level.id}`];
+    const result = played[roundKey(day, level.id, epoch)];
     return result ? (result.solved ? 'solved' : 'lost') : null;
   });
 }
 
 /** The days of the archive before `before` with a level the player has not played, the newest first. */
-export function unplayedDays({ played, levels, before }) {
-  return archiveDays(before).filter((day) => dayMarks(played, day, levels).includes(null));
+export function unplayedDays({ played, levels, before, epoch }) {
+  return archiveDays(before).filter((day) => dayMarks(played, day, levels, epoch).includes(null));
 }
 
 /** A count of days in words, as Czech says it: 1 den, 2–4 dny, 0 and 5 and more dní. */
@@ -631,10 +717,11 @@ export function gameDiagnostics({ day, today, date, level, puzzle, round, work, 
   const misses = tries - (round.solved ? 1 : 0);
   const state = round.over ? (round.solved ? `uhodnuto po ${misses} omylech` : 'neuhodnuto') : `pokus ${tries + 1} z ${level.guesses}`;
   return [
-    ['Den', `#${day + 1} · ${date} · ${day === today ? 'dnes' : 'archiv'}`],
+    ['Den', `${yearDay(date).number}. den roku ${yearDay(date).year} · ${new Date(`${date}T12:00:00Z`).toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })} · ${day === today ? 'dnes' : day > today ? 'budoucí' : 'archiv'}`],
+    ['Klíč dne', `${dayId(date)} (v nadpisu ${dayLabel(date)}) · plán game/detail-dne/${yearDay(date).year}.json, den "${dayId(date)}" · adresa ?den=${dayId(date)} · ${day}. den hry od začátku`],
     ['Úroveň', `${level.label} (${level.id}) · ${level.options} náhledů · ${level.guesses} pokusy · nápovědy ${level.hints ? 'ano' : 'ne'} · kapky ×${level.drops}`],
     ['Výběr výřezu', `velikost ${share(level.size)} · místo ${level.zone} · ${level.pick}${level.maxConfusion ? ` (max. ${level.maxConfusion})` : ''} · podobnost náhledů ${level.reach} · poslední pohled ${share(level.lastView)}`],
-    ['Hádanka', `${kept ? 'uložená v kole hráče' : 'spočítaná pro den'} · vzhledy úrovně ${level.looks.join(', ')}`],
+    ['Hádanka', `${kept ? 'uložená v kole hráče' : puzzle.planned ? `z plánu dnů, detail #${puzzle.detail ?? '?'}` : 'spočítaná pro den'} · vzhledy úrovně ${level.looks.join(', ')}`],
     ['Obraz', `${work.title} (${work.id}) · ${work.technique} · ${work.year} · výška/šířka ${Math.round(work.ratio * 100) / 100}`],
     ['Výřez', `střed ${share(puzzle.crop.x)} × ${share(puzzle.crop.y)} · velikost ${share(puzzle.crop.size)} · barvy ${(puzzle.crop.colours ?? []).join(' ')}`],
     ['Stav', state],
@@ -665,7 +752,7 @@ export function monthGroups(days, epoch, played = null, levels = []) {
     if (groups.at(-1)?.month !== month) groups.push({ month, days: [], waiting: 0 });
     const group = groups.at(-1);
     group.days.push(day);
-    if (played && dayMarks(played, day, levels).includes(null)) group.waiting++;
+    if (played && dayMarks(played, day, levels, epoch).includes(null)) group.waiting++;
   }
   return groups;
 }
@@ -712,21 +799,27 @@ export function gameRank(drops) {
   return { title: ranks[index][1], next: ranks[index + 1]?.[0] ?? null, nextTitle: ranks[index + 1]?.[1] ?? null };
 }
 
-/** What a player collected, before the first game. */
+/**
+ * What a player collected, before the first game. (Stores of older games also have `pigments`, one row of colours of all the
+ * close-ups; the collection takes the colours from the rounds now, gameCollection, and leaves it alone.)
+ */
 export function newProgress() {
-  return { drops: 0, streak: 0, best: 0, lastDay: null, played: {}, collected: [], pigments: [] };
+  return { drops: 0, streak: 0, best: 0, lastDay: null, played: {}, collected: [] };
 }
 
 /**
- * The progress after finishing the puzzle of a `level` on `day`: `{ progress, gained, rankUp }`. Each puzzle counts once. A series
- * is days played in a row (more games on one day count once, a lost game keeps it, a day left out starts a new one); the days of the
- * archive leave it alone. A solved puzzle gives drops, the work into the collection and the colours of the close-up as pigments.
+ * The progress after finishing the puzzle of a `level` on `day`: `{ progress, gained, rankUp }`. Each puzzle counts once (`played`
+ * by roundKey; `lastDay` = the key of the last day of the series, "2026-320"). A series is days played in a row (more games on one
+ * day count once, a lost game keeps it, a day left out starts a new one); the days of the archive leave it alone. A solved puzzle
+ * gives drops and the work into the collection (its colours come from the round, gameCollection).
  */
-export function finishRound(progress, { day, today, level, multiplier = 1, solved, misses, workId, pigments = [] }) {
-  const key = `${day}:${level}`;
+export function finishRound(progress, { day, today, level, epoch, multiplier = 1, solved, misses, workId }) {
+  const key = roundKey(day, level, epoch);
   if (progress.played[key]) return { progress, gained: 0, rankUp: false };
   const archive = day !== today;
-  const streak = archive || progress.lastDay === today ? progress.streak : progress.lastDay === today - 1 ? progress.streak + 1 : 1;
+  // the key of a day (dayId) from the key of its round, so the function stands alone (the prototypes copy it as text)
+  const dayKey = (d) => roundKey(d, '', epoch).slice(0, -1);
+  const streak = archive || progress.lastDay === dayKey(today) ? progress.streak : progress.lastDay === dayKey(today - 1) ? progress.streak + 1 : 1;
   const gained = solved ? dropsFor(misses, streak, archive, multiplier) : 0;
   const drops = progress.drops + gained;
   return {
@@ -736,16 +829,312 @@ export function finishRound(progress, { day, today, level, multiplier = 1, solve
       drops,
       streak,
       best: Math.max(progress.best, streak),
-      lastDay: archive ? progress.lastDay : today,
+      lastDay: archive ? progress.lastDay : dayKey(today),
       played: { ...progress.played, [key]: { solved, misses, drops: gained } },
       collected: solved && !progress.collected.includes(workId) ? [...progress.collected, workId] : progress.collected,
-      pigments: solved ? [...new Set([...progress.pigments, ...pigments])] : progress.pigments,
     },
   };
 }
 
-/** The text to share, without giving the work away: the level and one mark for each guess. */
-export function gameShareText({ day, level, misses, solved, url }) {
+/**
+ * The collection of a player ("Moje sbírka"): every work solved in a round, the newest first, each
+ * `{ id, colours, times }`: the colours of the close-ups it was guessed by (the newest first, at most `maxColours`, each once) and
+ * how many rounds it was solved in. From the rounds (`rounds`, roundKey "2026-320:easy" → `{ solved, puzzle }`, roundPuzzle): the
+ * newest day first, on one day the round played last first. A work in `collected` of the progress without a solved round (kept
+ * before rounds kept their puzzle) comes last, without colours. Only the works still in the game (`hasWork`).
+ */
+export function gameCollection({ rounds = {}, collected = [], hasWork = () => true, maxColours = 6 }) {
+  const solved = Object.entries(rounds)
+    .filter(([, round]) => round?.solved && round.puzzle?.targetId)
+    .map(([key, round]) => ({ day: roundOrder(key), puzzle: round.puzzle }))
+    .reverse()
+    .sort((a, b) => b.day - a.day);
+  const items = new Map();
+  for (const { puzzle } of solved) {
+    const item = items.get(puzzle.targetId) ?? { id: puzzle.targetId, colours: [], times: 0 };
+    item.times += 1;
+    for (const colour of puzzle.crop?.colours ?? []) {
+      if (item.colours.length < maxColours && !item.colours.includes(colour)) item.colours.push(colour);
+    }
+    items.set(item.id, item);
+  }
+  for (const id of [...collected].reverse()) {
+    if (!items.has(id)) items.set(id, { id, colours: [], times: 1 });
+  }
+
+  return [...items.values()].filter((item) => hasWork(item.id));
+}
+
+/**
+ * The HTML of "Moje sbírka": the works of `items` (gameCollection) as small pictures, each with a row of dots in the colours of
+ * its close-ups, and with more than `limit` works only the newest `limit` and a button for the whole collection (`open`: shown
+ * whole, the button folds it again; `data-collection-toggle`). No count of works: the game asks for details, not works, and a work
+ * may have more of them over time. `work(id)`: `{ title, href, src }` of a work, or null (left out). Without a work the line saying
+ * what will come here.
+ */
+export function collectionHtml({ items, work, limit = 12, open = false }) {
+  const escape = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const shown = items.map((item) => ({ ...item, work: work(item.id) })).filter((item) => item.work);
+  if (!shown.length) return '<p class="empty">Každý uhodnutý obraz sem přibude, i s barvami detailu, podle kterého se hádal.</p>';
+  const pieces = (open ? shown : shown.slice(0, limit)).map(({ work: w, colours, times }) => {
+    const title = times > 1 ? `${w.title} (uhodnuto ${times}×)` : w.title;
+    const dots = colours.map((c) => `<i style="background:${escape(c)}"></i>`).join('');
+    return `<a class="piece" href="${escape(w.href)}" title="${escape(title)}"><img src="${escape(w.src)}" alt="${escape(w.title)}" loading="lazy" /><span class="dots" aria-hidden="true">${dots}</span></a>`;
+  }).join('');
+  const toggle = shown.length > limit
+    ? `<button type="button" class="more" data-collection-toggle aria-expanded="${open}">${open ? 'Jen nejnovější' : 'Celá sbírka'}</button>`
+    : '';
+
+  return `<div class="collected">${pieces}</div>${toggle}`;
+}
+
+/**
+ * The rounds of a made-up player for the prototype ("how will the collection look after a month"): every level of each of `days`
+ * days from `start`, solved with the chance `rates[<level>]` (repeatable: by the day and level), kept as a round keeps them.
+ */
+export function simulatedRounds({ start, days, levels, prepared, epoch, rates = { easy: 0.95, medium: 0.8, hard: 0.6 } }) {
+  const rounds = {};
+  for (let day = start; day < start + days; day++) {
+    const puzzles = dailyPuzzles({ day, levels, prepared });
+    for (const level of levels) {
+      const puzzle = puzzles[level.id];
+      if (!puzzle) continue;
+      const solved = gameRandom(gameHash(`simulace:${day}:${level.id}`))() < (rates[level.id] ?? 0.8);
+      rounds[roundKey(day, level.id, epoch)] = { guesses: [], solved, over: true, puzzle: roundPuzzle(puzzle) };
+    }
+  }
+
+  return rounds;
+}
+
+/** The text to share, without giving the work away: the day (`label`, dayLabel: "2026#320"), the level and one mark for each guess. */
+export function gameShareText({ label, level, misses, solved, url }) {
   const marks = '🟨'.repeat(misses) + (solved ? '🟩' : '');
-  return `Detail dne #${day + 1} · ${level} ${marks}\nPoznáš obraz podle detailu?\n${url}`;
+  return `Detail dne ${label} · ${level} ${marks}\nPoznáš obraz podle detailu?\n${url}`;
+}
+
+// ---- The plan of the days (game/detail-dne/, scripts/lib/game-plan.mjs) ----
+// The pipeline keeps a plan of the days in git: every day played so far and two weeks ahead, each level with its whole puzzle
+// (the work, the number of its detail, the close-up, the thumbnails, the look). A day once locked (the past, today, tomorrow)
+// never changes, so new works never reshuffle what players have seen; the days after it are planned again by each run, so a new
+// work is in the game within two days. Without a planned day the game computes it as before (dailyPuzzles).
+
+/** How many days ahead the plan reaches (a spare, should the pipeline not run for a while). */
+export const PLAN_HORIZON = 14;
+/** How many days after today are locked as well (tomorrow may already be today somewhere, or in a page loaded late). */
+export const PLAN_LOCKED = 1;
+/** The days before the same work comes again (any level), while there are enough works. */
+export const PLAN_WORK_GAP = 21;
+/** The days before the same detail comes again, while the work has another one. */
+export const PLAN_DETAIL_GAP = 365;
+/** Most places worth guessing the analysis looks for in one level for the plan (a work rich in detail gets many). */
+export const PLAN_PLACES_PER_LEVEL = 20;
+/**
+ * How much of its side a place may share with another one, in every level (after all places that share nothing): more places,
+ * so a detail lasts a year. Under 0.5, so the centres stay over half a side apart and every place gets its own number (planDetailOf).
+ */
+export const PLACE_OVERLAP = 0.4;
+/** Most details (places worth guessing) one work gets in all levels; the numbers stay, new places only add up to this. */
+export const PLAN_MAX_DETAILS = 60;
+
+/** The details of the works, numbered for good: `{ <work id>: [{ n, level, x, y, size }] }`, a new place gets the next number. */
+export function planDetails(catalogue, prepared, levels, max = PLAN_MAX_DETAILS) {
+  const out = Object.fromEntries(Object.entries(catalogue ?? {}).map(([id, list]) => [id, list.map((d) => ({ ...d }))]));
+  for (const level of levels) {
+    for (const [id, crops] of Object.entries(prepared[level.id] ?? {})) {
+      const list = out[id] ?? (out[id] = []);
+      for (const { crop } of crops) {
+        if (planDetailOf(list, level.id, crop)) continue;
+        if (list.length >= max) continue;
+        list.push({ n: list.reduce((top, d) => Math.max(top, d.n), 0) + 1, level: level.id, x: crop.x, y: crop.y, size: crop.size });
+      }
+    }
+  }
+
+  return out;
+}
+
+/** The detail of a work (its list of planDetails) at the place of `crop` in `level`: the same level, the centre within half its size. */
+export function planDetailOf(details, level, crop) {
+  return (details ?? []).find((d) => d.level === level && Math.hypot(d.x - crop.x, d.y - crop.y) <= crop.size / 2) ?? null;
+}
+
+/** The day of the plan as the game plays it: each level `{ targetId, detail, crop, optionIds, look }` (as roundPuzzle, + detail). */
+function planEntry(puzzle, details) {
+  const detail = planDetailOf(details[puzzle.targetId], puzzle.level, puzzle.crop);
+  return { targetId: puzzle.targetId, detail: detail?.n ?? null, crop: puzzle.crop, optionIds: puzzle.optionIds, look: puzzle.look };
+}
+
+/**
+ * The plan after a run of the pipeline on `today` (a day of the game): the days up to today + `locked` are kept as they are (a
+ * missing one = the puzzle the game computed for it, dailyPuzzles, written down now), the days after them up to today + `horizon`
+ * are planned again (planDay). `plan` = the plan so far (`{ details, days }`, empty at first), `prepared` = the answers of
+ * prepareGame (what the game computed so far), `places` = every place worth guessing (prepareGame with `places`; the answers
+ * without it). The same input gives the same plan (a run without changes changes nothing).
+ */
+export function extendPlan({ plan = {}, prepared, places = prepared, levels, today, epoch, horizon = PLAN_HORIZON, locked = PLAN_LOCKED, seed = 'detail-dne' }) {
+  const details = planDetails(planDetails(plan.details, prepared, levels), places, levels);
+  const days = {};
+  const lockedUntil = today + locked;
+  for (let day = 0; day <= lockedUntil; day++) {
+    const kept = plan.days?.[day];
+    if (kept) { days[day] = kept; continue; }
+    const puzzles = dailyPuzzles({ day, levels, prepared });
+    const entry = { date: gameDate(day, epoch) };
+    for (const level of levels) if (puzzles[level.id]) entry[level.id] = planEntry(puzzles[level.id], details);
+    days[day] = entry;
+  }
+  for (let day = lockedUntil + 1; day <= today + horizon; day++) {
+    days[day] = { date: gameDate(day, epoch), ...planDay({ day, days, details, prepared: places, levels, seed }) };
+  }
+
+  return { version: 1, details, days };
+}
+
+/** When each work and each of its details was last in the game before `day` (`{ works: id → day, details: 'id#n' → day }`). */
+export function planUsage(days, before) {
+  const works = {};
+  const details = {};
+  for (const [key, entry] of Object.entries(days)) {
+    const day = Number(key);
+    if (day >= before) continue;
+    for (const puzzle of Object.values(entry)) {
+      if (!puzzle?.targetId) continue;
+      works[puzzle.targetId] = Math.max(works[puzzle.targetId] ?? -Infinity, day);
+      if (puzzle.detail) details[`${puzzle.targetId}#${puzzle.detail}`] = Math.max(details[`${puzzle.targetId}#${puzzle.detail}`] ?? -Infinity, day);
+    }
+  }
+
+  return { works, details };
+}
+
+/**
+ * The puzzles of one planned day, level by level (each a different work). While works new to the game wait (never in the
+ * plan, with an answer in some level), one level drawn by chance gets one of them: a new work comes the first planned day,
+ * several new ones one a day, so the week stays a mix. The other levels draw from the works not in the game for PLAN_WORK_GAP
+ * days (then 14; then rather more new works; then shorter waits, never an empty level), by chance weighted by how long a work
+ * has waited and by how many details it has (more places = more often), much smaller when its details of the level were all in
+ * the game within PLAN_DETAIL_GAP (it rather comes in another level). Then its detail of the level not used for the longest
+ * time (the year of PLAN_DETAIL_GAP is kept while the work has another one), the thumbnails and the look.
+ */
+export function planDay({ day, days, details, prepared, levels, seed = 'detail-dne' }) {
+  const usage = planUsage(days, day);
+  const isNew = (id) => usage.works[id] === undefined;
+  const dayRandom = gameRandom(gameHash(`${seed}:plan:${day}`));
+  // the level for a new work: one where some new work is an answer, drawn by chance
+  const newLevels = levels.filter((level) => Object.keys(prepared[level.id] ?? {}).some(isNew));
+  const newLevel = newLevels.length ? newLevels[Math.floor(dayRandom() * newLevels.length)].id : null;
+  const out = {};
+  const taken = [];
+  for (const level of levels) {
+    const answers = prepared[level.id] ?? {};
+    const random = gameRandom(gameHash(`${seed}:plan:${level.id}:${day}`));
+    const all = Object.keys(answers).sort().filter((id) => !taken.includes(id));
+    // where to draw from, the first non-empty: the new works (the level for them), works that waited PLAN_WORK_GAP days, 14
+    // days, then rather more new works than a repeat that soon, then shorter waits; never an empty level
+    const waited = (gap) => all.filter((id) => !isNew(id) && day - usage.works[id] >= gap);
+    const tiers = [
+      () => (level.id === newLevel ? all.filter(isNew) : []),
+      () => waited(PLAN_WORK_GAP), () => waited(14), () => all.filter(isNew), () => waited(7), () => waited(3), () => all,
+    ];
+    let pool = [];
+    for (const tier of tiers) {
+      pool = tier();
+      if (pool.length) break;
+    }
+    if (!pool.length) continue;
+    // a work whose every detail of this level was in the game within PLAN_DETAIL_GAP rather waits for another level
+    const hasFresh = (id) => answers[id].some((c) => {
+      const used = usage.details[`${id}#${planDetailOf(details[id], level.id, c.crop)?.n}`];
+      return used === undefined || day - used >= PLAN_DETAIL_GAP;
+    });
+    const weights = pool.map((id) => (isNew(id) ? 1 : Math.min(180, day - usage.works[id])) * Math.sqrt((details[id] ?? []).length || 1) * (hasFresh(id) ? 1 : 0.15) * (0.5 + random()));
+    let pick = random() * weights.reduce((a, b) => a + b, 0);
+    const targetId = pool.find((_, i) => (pick -= weights[i]) < 0) ?? pool[pool.length - 1];
+    taken.push(targetId);
+    // the detail: never used first, then the one used longest ago (a tie by chance)
+    const crops = answers[targetId].map((c) => ({ ...c, detail: planDetailOf(details[targetId], level.id, c.crop), tie: random() }));
+    const lastUse = (c) => usage.details[`${targetId}#${c.detail?.n}`] ?? -Infinity;
+    const choice = [...crops].sort((a, b) => lastUse(a) - lastUse(b) || a.tie - b.tie)[0];
+    const decoys = chooseDecoys({ ranked: choice.ranked, count: level.options - 1, reach: level.reach, random });
+    out[level.id] = {
+      targetId,
+      detail: choice.detail?.n ?? null,
+      crop: choice.crop,
+      optionIds: gameShuffle([targetId, ...decoys], random),
+      look: lookForDay({ level, day, seed }),
+    };
+  }
+
+  return out;
+}
+
+/**
+ * The puzzles of `day` as the game plays them: each level from the plan (`plan.days[day]`) while all its works are still in the game
+ * (`hasWork`), otherwise the computed one (`computed`, dailyPuzzles; null without one). Each with `planned` (true = from the plan).
+ */
+export function plannedPuzzles({ plan, day, levels, hasWork, computed }) {
+  const entry = plan?.days?.[day];
+  return Object.fromEntries(levels.map((level) => {
+    const kept = entry?.[level.id];
+    if (!kept?.targetId || ![kept.targetId, ...kept.optionIds].every(hasWork)) {
+      return [level.id, computed[level.id] ? { ...computed[level.id], planned: false } : null];
+    }
+    const look = gameLooks().find((l) => l.id === kept.look) ?? gameLooks().find((l) => l.id === lookForDay({ level, day })) ?? gameLooks()[0];
+    return [level.id, { day, level: level.id, targetId: kept.targetId, detail: kept.detail, crop: kept.crop, optionIds: kept.optionIds, look: look.id, effect: look.effect, colour: look.colour, planned: true }];
+  }));
+}
+
+/** The date (YYYY-MM-DD) in Prague at `date`: the day of the game the players in the Czech Republic see (GitHub runs in UTC). */
+export function pragueDate(date = new Date()) {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Prague', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}
+
+/** The year (a number) of the day `day` of the game. */
+export function planYearOf(day, epoch) {
+  return Number(gameDate(day, epoch).slice(0, 4));
+}
+
+/** The days of a plan by the year of their date: `{ <year>: { <day>: entry } }`. */
+export function planDaysByYear(days, epoch) {
+  const years = {};
+  for (const [key, entry] of Object.entries(days ?? {})) (years[planYearOf(Number(key), epoch)] ??= {})[key] = entry;
+  return years;
+}
+
+/** The years whose days go into the data of the page: this year and the one before; older ones are archive files. */
+export function planYearsShown(thisYear) {
+  return [thisYear - 1, thisYear];
+}
+
+/** One line per key of `object`, keys sorted by `order`, as the plan files write them (git shows a change line by line). */
+function planLines(object, order) {
+  return Object.entries(object).sort(([a], [b]) => order(a, b)).map(([key, value]) => `    ${JSON.stringify(key)}: ${JSON.stringify(value)}`).join(',\n');
+}
+
+/** The version of the plan file of a year: 2 = its days by their key (dayId, "2026-320"); another version is not read. */
+export const PLAN_FILE_VERSION = 2;
+
+/**
+ * The text of the plan file of a year: `{ version, year, days }`, one line per day, the days in order, each by its key (dayId,
+ * "2026-320"; `days` = the days of the game of that year, each with its `date`).
+ */
+export function planYearText(year, days) {
+  const keyed = Object.fromEntries(Object.values(days).map((entry) => [dayId(entry.date), entry]));
+  return `{\n  "version": ${PLAN_FILE_VERSION},\n  "year": ${year},\n  "days": {\n${planLines(keyed, (a, b) => Number(a.slice(5)) - Number(b.slice(5)))}\n  }\n}\n`;
+}
+
+/** The days of the game of a plan file (its `days` by dayId, planYearText); a key that is none is left out. */
+export function planYearDays(days, epoch) {
+  return Object.fromEntries(Object.entries(days ?? {}).map(([id, entry]) => [dayOfId(id, epoch), entry]).filter(([day]) => day !== null).map(([day, entry]) => [String(day), entry]));
+}
+
+/** The text of the file of the details of the works: `{ version, details }`, one line per work, by id. */
+export function planDetailsText(details) {
+  return `{\n  "version": 1,\n  "details": {\n${planLines(details, (a, b) => a.localeCompare(b))}\n  }\n}\n`;
+}
+
+/** The plan with the days of an archive file (`part.days`, the archive of a year) added; the days already there stay. */
+export function mergePlanDays(plan, part) {
+  return { ...plan, days: { ...(part?.days ?? {}), ...(plan?.days ?? {}) } };
 }

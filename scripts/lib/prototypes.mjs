@@ -4,6 +4,8 @@
 // what the site would. The templates are in scripts/prototypes/*.html, with placeholders filled here.
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { buildSync } from 'esbuild';
 import YAML from 'yaml';
 import { COPIES_DIR } from './site-content.mjs';
 import { formatSizeCm, isOnSale } from './works.mjs';
@@ -19,12 +21,14 @@ import { VIEWER_TEXT_MAX, autoHide } from './work-viewer.mjs';
 import { ownText } from './rich-text.mjs';
 import { summarize } from './seo.mjs';
 import { PALETTES, paletteCss } from './palettes.mjs';
-import { SAMPLE_PICKS, SAMPLE_SIZE, prepareGame } from './detail-game-data.mjs';
+import { SAMPLE_PICKS, SAMPLE_SIZE, gameData, prepareGame } from './detail-game-data.mjs';
+import { gamePageHtml } from './detail-game-page.mjs';
 import { AFFINITY_WEIGHTS, GAME_AFFINITY_SCALE, GAME_AFFINITY_WEIGHTS, techniqueFamily, workDistance } from './affinity.mjs';
 import { COLOUR_ANALYSIS_SIZE, analyseColours, balancePalette, colourBins, colourDistance, colourSettings, familyShares, nearestFamily, oklabToOklch, paletteDistance, paletteMood, paperOf, rgbToOklab, workPalette } from './colors.mjs';
 import {
-  GAME_EPOCH, applyGuess, chooseDecoys, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, frameSource, gameDay, gameFrame, gameHash, gameHint, gameLevels, gameLooks, dropsWord, lookForDay, lookKey, windowHtml,
+  GAME_EPOCH, applyGuess, roundKey, roundOrder, chooseDecoys, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, frameSource, gameDay, gameFrame, gameHash, gameHint, gameLevels, gameLooks, dropsWord, lookForDay, lookKey, windowHtml,
   gameRandom, gameRank, gameShareText, gameShuffle, newProgress, newRound, puzzleForLevel, winTitle,
+  collectionHtml, gameCollection, roundPuzzle, simulatedRounds,
 } from './detail-game.mjs';
 
 
@@ -53,7 +57,9 @@ export const PROTOTYPE_FUNCTIONS = [
   cinemaFromParams, cinemaToParams, captionMode, intervalLabel, shuffledOrder, wrapIndex, dragStep, fitBox, imageWidth, autoHide,
   // the game "Detail dne"
   gameLevels, gameLooks, lookForDay, windowHtml, dropsWord, gameHash, gameRandom, gameShuffle, gameDay, chooseDecoys, puzzleForLevel, dailyPuzzles, effectStrength, effectSettings, effectStyle, waveRipple, lookKey, frameSource, drawPixels, gameFrame, gameHint, newRound, applyGuess,
-  dropsFor, winTitle, gameRank, newProgress, finishRound, gameShareText,
+  dropsFor, winTitle, gameRank, newProgress, roundKey, roundOrder, finishRound, gameShareText,
+  // "Moje sbírka" and a made-up player for it (how it looks after a week, a month, a year)
+  roundPuzzle, gameCollection, collectionHtml, simulatedRounds,
   // the colours of the works (scripts/lib/colors.mjs, a prototype)
   rgbToOklab, oklabToOklch, paperOf, balancePalette, nearestFamily, familyShares, paletteMood, paletteDistance, colourDistance,
   // how alike two works are (scripts/lib/affinity.mjs), always called with its weights (its default is a constant of the module)
@@ -163,9 +169,10 @@ export const publicPath = (outDir, dataRoot) => path.relative(path.resolve(outDi
 
 /**
  * The page of `template` with its placeholders filled: `/*DATA*\/{}` = `data` as JSON (safe inside <script>), and
- * `/*FUNCTIONS*\/` = the source of PROTOTYPE_FUNCTIONS. A missing placeholder is an error (a template out of date).
+ * `/*FUNCTIONS*\/` = the source of PROTOTYPE_FUNCTIONS. A missing placeholder is an error (a template out of date). `parts` = more
+ * placeholders a template may have (name → text, `/*<name>*\/`, gamePrototypeParts); one in the page without its part is an error.
  */
-export function fillTemplate(template, data) {
+export function fillTemplate(template, data, parts = {}) {
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
   const fills = [['/*DATA*/{}', json], ['/*FUNCTIONS*/', PROTOTYPE_FUNCTIONS.map(String).join('\n')]];
   let page = template;
@@ -173,7 +180,44 @@ export function fillTemplate(template, data) {
     if (!page.includes(placeholder)) throw new Error(`prototype template without ${placeholder}`);
     page = page.replace(placeholder, () => value);
   }
+  for (const name of template.match(/\/\*[A-Z][A-Z_]+\*\//g) ?? []) {
+    const key = name.slice(2, -2);
+    if (key === 'DATA' || key === 'FUNCTIONS') continue;
+    if (parts[key] === undefined) throw new Error(`prototype template with ${name} and nothing to fill it with`);
+    page = page.replace(name, () => parts[key]);
+  }
   return page;
+}
+
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+/**
+ * What the prototype of the game Detail dne (detail-dne.html) takes from the site, so it plays the same game: its look
+ * (`GAME_CSS` = src/styles/detail-game.css), its markup (`GAME_HTML` = gamePageHtml) and its script (`GAME_SCRIPT` =
+ * src/lib/detail-game.ts bundled with what it imports, the global `DetailGame` with startGame).
+ */
+export function gamePrototypeParts(root = ROOT) {
+  const { outputFiles } = buildSync({
+    entryPoints: [path.join(root, 'src', 'lib', 'detail-game.ts')], bundle: true, write: false, format: 'iife', globalName: 'DetailGame',
+    platform: 'browser', target: 'es2022', charset: 'utf8', define: { 'import.meta.env.BASE_URL': '"/"' }, logLevel: 'silent',
+    // modules of Node imported by the shared libraries for their other functions: empty in the browser, as Vite does on the site
+    external: ['node:*'], banner: { js: 'var require = () => ({});' },
+  });
+  return {
+    GAME_CSS: fs.readFileSync(path.join(root, 'src', 'styles', 'detail-game.css'), 'utf8'),
+    GAME_HTML: gamePageHtml(),
+    // safe inside <script>: no closing tag of it in the code
+    GAME_SCRIPT: outputFiles[0].text.replace(/<\/script/gi, '<\\/script'),
+  };
+}
+
+/**
+ * The data the game takes on the site (gameData, as /detail-dne/data.json) from `game` (prepareGame of the works of the site, with
+ * the plan of the days `plan` when there is one) and the works of the prototypes: the pages of the works on the site `site`.
+ */
+export function prototypePlay({ works, game, site }) {
+  const withPages = works.map((w) => ({ ...w, url: `${site.replace(/\/$/, '')}/${w.folder}/` }));
+  return gameData({ works: withPages, prepared: game.prepared, site, plan: game.plan ?? null });
 }
 
 /** The settings of a scene the placement of a work (planPlacement) and its 4:5 window (sceneWindow) take. */
@@ -213,17 +257,24 @@ export function prototypeScenes(scenes, outDir) {
 }
 
 
-/** Writes every prototype into `outDir` from the templates in `templatesDir`; returns the written files. */
-export function writePrototypes({ dataRoot, outDir, templatesDir, config, scenes = [], game = { prepared: {}, sample: [] }, colors = {} }) {
+/**
+ * Writes every prototype into `outDir` from the templates in `templatesDir`; returns the written files. `game` = prepareGame of the
+ * works (with `plan`, the plan of the days as the site has it, when there is one).
+ */
+export function writePrototypes({ dataRoot, outDir, templatesDir, config, scenes = [], game = { prepared: {}, sample: [] }, colors = {}, root = ROOT }) {
+  const works = prototypeWorks(dataRoot);
+  const site = config?.site?.url ?? '';
   const data = {
-    works: prototypeWorks(dataRoot), public: publicPath(outDir, dataRoot), config: prototypeConfig(config), scenes: prototypeScenes(scenes, outDir),
-    game: { prepared: game.prepared, sample: game.sample, epoch: GAME_EPOCH, site: config?.site?.url ?? '' },
+    works, public: publicPath(outDir, dataRoot), config: prototypeConfig(config), scenes: prototypeScenes(scenes, outDir),
+    game: { prepared: game.prepared, sample: game.sample, epoch: GAME_EPOCH, site },
+    play: prototypePlay({ works, game, site }),
     colors,
   };
+  const parts = gamePrototypeParts(root);
   fs.mkdirSync(outDir, { recursive: true });
   return Object.entries(PROTOTYPES).map(([name, template]) => {
     const file = path.join(outDir, name);
-    fs.writeFileSync(file, fillTemplate(fs.readFileSync(path.join(templatesDir, template), 'utf8'), data));
+    fs.writeFileSync(file, fillTemplate(fs.readFileSync(path.join(templatesDir, template), 'utf8'), data, parts));
     return file;
   });
 }

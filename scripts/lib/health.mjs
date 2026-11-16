@@ -8,12 +8,14 @@
 //   - every image the pages of the deployed site refer to exists (scripts/lib/site-check.mjs),
 //   - both repositories and the deployed site stay well below the size limits of GitHub (evaluateSizes),
 //   - the minutes of GitHub Actions of private repositories stay within the free minutes of the month (evaluateMinutes),
+//   - the plan of the days of the game Detail dne on the deployed site reaches at least a week ahead (evaluateGamePlan),
 //   - monthly: the settings of both repositories are still those of their stored export (evaluateSettings).
 // Pure functions; the GitHub API calls live in scripts/check-health.mjs.
 // Messages are Czech: they end up on the run page and in an issue e-mailed to the owner. A failed check ends the first
 // line of its message with its code (scripts/lib/codes.mjs, level health), like the messages of a pipeline run.
 
 import { codesOf } from './codes.mjs';
+import { gameDate, gameDay, pragueDate } from './detail-game.mjs';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -121,6 +123,64 @@ Web ukazuje starší verzi.` };
     return { ok: true, message: `Commit ${short} je čerstvý, nasazení se teprve spustí.` };
   }
   return { ok: false, message: `Poslední commit ${short} (${day(commit.date)}) se na web nenasadil, žádný úspěšný běh deploye pro něj není. [nasazeni-chybi]` };
+}
+
+/** How many days ahead the plan of the game on the site should reach at least (it is two weeks after every run). */
+export const GAME_PLAN_MIN_DAYS = 7;
+
+/**
+ * `game`: the data of the game on the deployed site (/detail-dne/data.json: `epoch`, `plan.days`), or null when the site has no
+ * game. Not ok when it has no planned day, or the last one is less than `minDays` after today (in Prague): the pipeline extends
+ * the plan every Monday, so a plan that ends soon means the runs of "Zpracování obsahu" stopped (or their pull requests do not
+ * merge). Without a plan the game still goes on, computing the days as before, but new works reshuffle its archive.
+ */
+export function evaluateGamePlan(game, { now = new Date(), minDays = GAME_PLAN_MIN_DAYS } = {}) {
+  if (game === null) return { ok: true, message: 'Plán hry Detail dne nebyl zkontrolován (web hru nemá).' };
+  const days = Object.keys(game.plan?.days ?? {}).map(Number);
+  const fix = 'Zkontroluj poslední běhy „Zpracování obsahu“ (běží i každé pondělí samo) a pull request „Obsah: aktualizace“ v repu pavla.';
+  if (!days.length) {
+    return { ok: false, message: `Hra Detail dne na webu nemá plán dnů: hádanky počítá postaru a nové obrazy přeskládají její archiv. [plan-hry-chybi]
+${fix}` };
+  }
+  const last = Math.max(...days);
+  const ahead = last - gameDay(pragueDate(now), game.epoch);
+  const until = gameDate(last, game.epoch);
+  if (ahead < minDays) {
+    return { ok: false, message: `Plán dnů hry Detail dne na webu sahá jen do ${until} (ještě ${Math.max(0, ahead)} dní, má aspoň ${minDays}). [plan-hry-dochazi]
+Pak hra počítá dny postaru a nové obrazy přeskládají její archiv. ${fix}` };
+  }
+  return { ok: true, message: `Plán dnů hry Detail dne sahá do ${until} (ještě ${ahead} dní).` };
+}
+
+/**
+ * The kept analyses of the pictures of the game Detail dne (game/detail-dne/analysis/ of the repository of the site, a file a
+ * work, scripts/lib/detail-game-data.mjs): a total over `maxBytes` or an average over `maxAverage` (a change of the analysis that
+ * made it bigger) needs a look before the repository grows with every new picture.
+ */
+export const GAME_ANALYSIS_LIMITS = { maxBytes: 25_000_000, maxAverage: 60_000 };
+
+/**
+ * `files`: the sizes in bytes of the files of the kept analyses (null when they could not be read). Not ok over a limit of
+ * GAME_ANALYSIS_LIMITS; the message always tells the total, the count and the average, to follow how they grow.
+ */
+export function evaluateGameAnalyses(files, limits = GAME_ANALYSIS_LIMITS) {
+  if (files === null) return { ok: true, message: 'Rozbory obrázků hry Detail dne nebyly zkontrolovány.' };
+  if (!files.length) return { ok: true, message: 'Rozbory obrázků hry Detail dne v repu webu zatím nejsou (zapíše je první běh „Zpracování obsahu“).' };
+  const total = files.reduce((sum, bytes) => sum + bytes, 0);
+  const average = Math.round(total / files.length);
+  const kilobytes = (bytes) => `${Math.round(bytes / 1000)} kB`;
+  const told = `${total >= MB ? `${(total / MB).toFixed(1).replace('.', ',')} MB` : kilobytes(total)} (${files.length} obrazů, průměrně ${kilobytes(average)})`;
+  const over = [
+    total > limits.maxBytes && `celkem přes ${megabytes(limits.maxBytes)}`,
+    average > limits.maxAverage && `průměr přes ${kilobytes(limits.maxAverage)} na obraz`,
+  ].filter(Boolean);
+  if (!over.length) return { ok: true, message: `Uložené rozbory obrázků hry Detail dne: ${told}.` };
+  return {
+    ok: false,
+    message: `Uložené rozbory obrázků hry Detail dne jsou velké: ${told}, ${over.join(', ')}. [rozbory-hry-velke]\n`
+      + 'Repo webu s nimi roste s každým novým obrazem. Co s tím: README repa pavla, „Rozbor obrázků“ (méně míst na úroveň, '
+      + 'zaokrouhlit barvy, jen potřebná pole).',
+  };
 }
 
 /**
