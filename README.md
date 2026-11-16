@@ -2571,7 +2571,7 @@ analytics:
   | Doba obrazu | `interval` | Promítání (cinema_open): kolik sekund zůstane každé dílo. |
   | Důvod zavření | `reason` | Promítání (cinema_close): button, esc, back, work = na stránku díla, collection = na kolekci. |
   | Odkud | `source` | share a palette_change: cinema = z promítání, game = výsledek hry Detail dne; prázdné = jinde na webu. |
-  | Úroveň hry | `level` | Detail dne (game_start, game_end, share): easy, medium, hard (id úrovní `gameLevels`; hráč vidí Lehká, Střední, Těžká; do 2026-11-16 lehka, stredni, tezka). |
+  | Úroveň hry | `level` | Detail dne (game_start, game_end, share): easy, medium, hard (Lehká, Střední, Těžká; do 2026-11-16 lehka, stredni, tezka). |
   | Den hry | `day` | Detail dne: klíč dne `2026-320` = rok a pořadí dne v roce (`dayId`, v nadpisu „2026#320“; do 2026-11-16 číslo od prvního dne hry). |
   | Archiv | `archive` | Detail dne: yes = den z archivu (poloviční kapky), no = dnešní hádanka. |
   | Vzhled | `look` | Detail dne: vzhled výřezu dne (gameLooks), např. clear, mosaic, dream. |
