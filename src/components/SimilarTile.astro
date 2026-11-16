@@ -1,18 +1,46 @@
 ---
 // A small picture of "Podobné obrazy" under a work (scripts/lib/similar.mjs): only the picture, linked to its work,
-// its title and the rest in the tooltip (workTooltip), like a tile of the gallery. A click is the statistics event
-// more_click with the method `similar` (MORE_METHODS).
+// its title and the rest in the tooltip (workTooltip), like a tile of the gallery, with the same marks over it: the
+// star of the author's selection and the cart of a work on sale (scripts/lib/tile-marks.mjs, the settings of the
+// gallery, site.config.yaml gallery.tileMarks, as on a medium tile: SIMILAR_TILE_SIZE). A click is the statistics
+// event more_click with the method `similar` (MORE_METHODS).
 import Picture from './Picture.astro';
-import { type Work, workUrl } from '../lib/site';
+import { type Work, marks, workUrl } from '../lib/site';
 import { EVENTS, MORE_METHODS } from '../../scripts/lib/analytics.mjs';
+import { MARK_ICONS, workMarks } from '../../scripts/lib/tile-marks.mjs';
+import { SIMILAR_TILE_SIZE } from '../../scripts/lib/similar.mjs';
+import { isOnSale } from '../../scripts/lib/works.mjs';
 
 interface Props { work: Work }
 const { work } = Astro.props;
+const settings = marks.gallery;
+const shown = workMarks({ featured: Boolean(work.featured), onSale: isOnSale(work.status) }, settings).filter((m) => m.tiles.includes(SIMILAR_TILE_SIZE));
+const style = `--mark-share: ${settings.size}; --mark-min: ${settings.min}px; --mark-max: ${settings.max}px; --mark-opacity: ${settings.opacity / 100}`;
 ---
-<a class="similar-tile" href={workUrl(work)} data-track={EVENTS.more} data-method={MORE_METHODS.similar} data-work-id={work.id} data-work-title={work.title}>
+<a class="similar-tile" href={workUrl(work)} style={style} data-track={EVENTS.more} data-method={MORE_METHODS.similar} data-work-id={work.id} data-work-title={work.title}>
   <Picture work={work} sizes="(max-width: 640px) 33vw, 180px" tooltip />
+  {shown.map((m) => (
+    <span class:list={['mark', m.corner, { beside: m.beside }]} data-mark={m.kind} aria-hidden="true">
+      <svg viewBox="0 0 24 24" set:html={MARK_ICONS[m.icon]} />
+    </span>
+  ))}
 </a>
 <style>
-  .similar-tile { display: block; text-decoration: none; }
+  .similar-tile { display: block; position: relative; text-decoration: none; container-type: inline-size; }
   .similar-tile :global(img) { display: block; width: 100%; height: auto; }
+  /* the marks as on the tiles of the gallery (WorkCard.astro): a share of the tile width within a minimum and maximum,
+     in the ink colour with a rim of the paper colour */
+  .mark {
+    --size: clamp(var(--mark-min), calc(var(--mark-share) * 1cqi), var(--mark-max));
+    --inset: max(4px, calc(var(--size) * 0.35));
+    position: absolute; width: var(--size); height: var(--size); color: var(--ink);
+    opacity: var(--mark-opacity); pointer-events: none;
+  }
+  .mark svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 1px var(--paper)) drop-shadow(0 0 1.5px var(--paper)) drop-shadow(0 0 3px var(--paper)); }
+  .mark.tl { top: var(--inset); left: var(--inset); }
+  .mark.tr { top: var(--inset); right: var(--inset); }
+  .mark.bl { bottom: var(--inset); left: var(--inset); }
+  .mark.br { bottom: var(--inset); right: var(--inset); }
+  .mark.tl.beside, .mark.bl.beside { left: calc(var(--inset) + var(--size) * 1.35); }
+  .mark.tr.beside, .mark.br.beside { right: calc(var(--inset) + var(--size) * 1.35); }
 </style>

@@ -12,6 +12,12 @@ import { galleryLinkTitle, filtersToParams, matchesFilters } from './gallery-fil
 /** How many similar works the page shows (one row of small pictures on a computer, twice the columns of the related). */
 export const SIMILAR_COUNT = 6;
 
+/**
+ * The size of tile of the gallery the small pictures of the similar works count as (they are about as wide as a
+ * medium tile): the marks over them are those of that size (site.config.yaml gallery.tileMarks, SimilarTile.astro).
+ */
+export const SIMILAR_TILE_SIZE = 'm';
+
 /** An empty filter of the gallery (gallery-filter.mjs stateFromParams without any value). */
 const EMPTY = { tag: [], technique: '', year: '', collection: '', status: '', featured: '', q: '' };
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SIMILAR_COUNT, galleryStatePath, similarLabel, similarLinkTitle, similarWorks, worksCount } from './similar.mjs';
+import { SIMILAR_COUNT, SIMILAR_TILE_SIZE, galleryStatePath, similarLabel, similarLinkTitle, similarWorks, worksCount } from './similar.mjs';
 
 const w = (id, technique, tags, collection = '') => ({ id, technique, tags, collection, year: 2026, status: 'not-for-sale' });
 // newest first, as getWorks
@@ -63,4 +63,9 @@ test('similarWorks: six by default (one row of small pictures), a broader filter
   assert.equal(r.state.technique, 'akvarel');
   assert.deepEqual(r.state.tag, []);
   assert.deepEqual(r.works.map((x) => x.id), ['a0002', 'a0003', 'a0004', 'a0005', 'a0007']);
+});
+
+test('SIMILAR_TILE_SIZE: a size of the tiles of the gallery', async () => {
+  const { TILE_SIZES } = await import('./gallery-filter.mjs');
+  assert.ok(TILE_SIZES.includes(SIMILAR_TILE_SIZE));
 });

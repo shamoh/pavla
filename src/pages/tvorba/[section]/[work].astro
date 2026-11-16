@@ -532,7 +532,10 @@ const story = textHtml(work.text);
     position: absolute; left: 0; right: 0; bottom: 0; text-align: left; font-size: 1.05rem;
     padding: 40px max(16px, 3vw) calc(12px + env(safe-area-inset-bottom));
     background: linear-gradient(to top, color-mix(in srgb, var(--paper) 70%, transparent) 45%, transparent);
+    /* the caption on the left, "1 / 5" at the right edge of the screen */
+    display: flex; align-items: baseline; justify-content: space-between; gap: 24px;
   }
+  .viewer.full figcaption .muted { margin-left: 0; flex: none; }
   .viewer button {
     position: fixed; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
     color: var(--ink); background: color-mix(in srgb, var(--paper) 75%, transparent); border: 1px solid var(--line);
