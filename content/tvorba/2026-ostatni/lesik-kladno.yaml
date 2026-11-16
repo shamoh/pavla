@@ -6,6 +6,9 @@ details:
 featured: false
 mockups: false
 price: 500
+related:
+  - fqp4q
+  - fmmdb
 size_cm:
   - 20
   - 20
@@ -19,4 +22,4 @@ technique: akvarel
 text: |
   Podzimní stromy na discgolfu Lesík Kladno.
 title: Lesík Kladno
-derived_modified: 2026-11-10
+derived_modified: 2026-11-16
