@@ -3,6 +3,8 @@ id: v39nd
 date: 2026-09-26
 featured: false
 mockups: false
+related:
+  - rum35
 size_cm:
   - 42
   - 30
@@ -15,4 +17,4 @@ technique: akvarel
 text: |
   Tři zvědavé ovce z pastviny u Filipovy Huti.
 title: Ovečky
-derived_modified: 2026-10-29
+derived_modified: 2026-11-16

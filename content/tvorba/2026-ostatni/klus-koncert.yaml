@@ -3,6 +3,8 @@ id: nym29
 date: 2026-09-11
 featured: false
 mockups: false
+related:
+  - aktae
 size_cm:
   - 21
   - 30
@@ -16,4 +18,4 @@ text: >
   Tomáš Klus s kapelou na pódiu, ponořený do kouře a noci, koncert Racek
   unplugged na letní scéně muzea Kampa.
 title: Koncert Tomáše Kluse
-derived_modified: 2026-10-30
+derived_modified: 2026-11-16
