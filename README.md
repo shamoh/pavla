@@ -172,7 +172,12 @@ na ně odkazuje, a skončí kódem 1. Navíc ověří, že každá postavená st
 A u každé stránky bez `noindex` texty a strukturovaná data (`pageProblems` v `scripts/lib/page-check.mjs`):
 titulek i popis (`<meta name="description">`) má a žádná jiná stránka nemá stejný, popis má nejvýš 160 znaků
 (`DESCRIPTION_MAX`), JSON-LD je platný JSON s `@context` schema.org a každý uzel (v `@graph`) má `@type`. Problémy
-vypíše po stránkách a skončí kódem 1.
+vypíše po stránkách a skončí kódem 1. A odkazy na stránky webu (`href`) vždy s lomítkem na konci (`slashlessLinks`
+v `scripts/lib/page-links.mjs`): `/tvorba/`, `/tvorba/kolekce/`, `/kontakt/?…`, ne `/tvorba` (GitHub Pages by ji
+přesměroval, dev server ji obslouží tak, jak je, a stránka pak neví, že je v sekci Tvorba); soubory (`/sitemap.xml`,
+obrázky) beze změny. Odkaz bez lomítka vypíše se stránkou a skončí kódem 1. V kódu adresu stránky piš s lomítkem;
+odkazy v textech (`[text](/tvorba)`) dostanou lomítko samy (`withTrailingSlash` v `richTextHtml` a `richTextMarkdown`),
+takže kvůli nim kontrola nikdy neselže.
 Běží i v „Kontrole kódu“ po stavbě webu (pull request s chybějícím obrázkem, stránkou mimo mapu nebo vadnými
 texty se nesloučí). Texty a strukturovaná data nasazeného webu kontroluje stejně i týdenní kontrola (níže).
 Testovací web: `SITE_DATA_DIR=.demo/site npm run check:images` po
@@ -215,6 +220,17 @@ vede odkaz na výpis bez filtrů.
   jen když je karta zobrazená (na zobrazené stránce, u přehledu ve vybraném roce). Použije se jednou.
 - Vyzkoušet: `npm run demo`, v `/tvorba/` vybrat štítek a stranu 2, otevřít dílo, „← Tvorba“ vrátí stejný výběr
   a posune se na kartu díla; z kolekce „← Kolekce“ na kartu kolekce na přehledu; přes „Úvod“ a zpět na dílo vede „← Tvorba“ na galerii bez filtrů.
+
+**Otevření pod hlavičkou** (`scripts/lib/skip-header.mjs`, vložený skript `skipHeaderScript` za patičkou v `Base.astro`,
+jen na stránkách v `RETURN_SCOPE`): každá stránka sekce Tvorba (galerie, rok, přehled kolekcí, kolekce, dílo) se otevře
+posunutá za hlavičku webu (jméno, podtitul, menu): nahoře je nadpis stránky („Tvorba“, rok, „Kolekce“) nebo odkaz
+zpět („← Tvorba · 2025“, „← Kolekce“), nad ním `SKIP_HEADER_ROOM` (16 px) volného místa; hlavička je o kus výš.
+Platí i pro adresu sekce bez lomítka (`/tvorba`, `insideScope`; odkazy webu ji tak nepíšou, viz *Kontrola obrázků
+postaveného webu*). Jen při běžném otevření (odkaz, zadaná adresa; typ navigace `navigate`, `skipsHeader`): Zpět / Vpřed a obnovení
+stránky nechají místo, které obnoví prohlížeč, adresa s kotvou (`#…`) jde na kotvu. Krátká stránka se posune jen
+o tolik, kolik dovolí. Bez JavaScriptu se stránka otevře nahoře. Návrat na kartu díla (`revealReturned`) běží až po
+něm. Vyzkoušet: `npm run demo`, z úvodu „Tvorba“ v menu (nahoře nadpis „Tvorba“), klik na dílo (nahoře
+„← Tvorba“), F5 nechá místo, Zpět vrátí galerii, kde byla; `/kontakt/` se otevře nahoře.
 
 **Roky na jeden řádek** (`scripts/lib/year-row.mjs`, v prohlížeči `src/lib/year-row.ts`, `fitYearRow`): řádek roků
 nad galerií (odkazy na stránky roků) i čipy roků na přehledu kolekcí zůstanou na jednom řádku, od nejnovějšího roku.

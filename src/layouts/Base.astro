@@ -10,6 +10,8 @@ import { contactLink, pageContext } from '../../scripts/lib/messages.mjs';
 import { PALETTES, paletteCss, paletteScript } from '../../scripts/lib/palettes.mjs';
 import PalettePicker from '../components/PalettePicker.astro';
 import NameShades from '../components/NameShades.astro';
+import { RETURN_SCOPE, insideScope } from '../../scripts/lib/page-return.mjs';
+import { skipHeaderScript } from '../../scripts/lib/skip-header.mjs';
 
 /**
  * `type`: og:type ('article' for a work); `noindex`: a page search engines should leave out (404), without canonical;
@@ -26,9 +28,9 @@ const description = summarize(own || `${site.author} — ${site.tagline.toLowerC
 const fullTitle = title ? `${title} · ${site.title}` : `${site.title} — ${site.tagline}`;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const nav = [
-  { href: '/tvorba', label: 'Tvorba' },
-  { href: '/o-mne', label: 'O mně' },
-  { href: '/kontakt', label: 'Kontakt' },
+  { href: '/tvorba/', label: 'Tvorba' },
+  { href: '/o-mne/', label: 'O mně' },
+  { href: '/kontakt/', label: 'Kontakt' },
 ];
 const ogImage = image ? new URL(image.src, site.url).href : undefined;
 const canonical = new URL(Astro.url.pathname, site.url).href;
@@ -38,6 +40,8 @@ const withMessages = Boolean(messages.mode) && messagePanel;
 const onSale = hasWorksOnSale();
 const featured = hasFeaturedWorks();
 const messageContext = Astro.props.message !== undefined ? Astro.props.message : pageContext(Astro.url.pathname, title ?? site.title);
+// Pages of the Tvorba section open scrolled past the header (scripts/lib/skip-header.mjs).
+const skipsHeader = insideScope(Astro.url.pathname, import.meta.env.BASE_URL);
 ---
 <!doctype html>
 <html lang="cs">
@@ -95,7 +99,7 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
         <!-- "#": open a work by its code, e.g. from Instagram (src/components/CodeJump.astro) -->
         <CodeJump />
         {nav.map((n) => (
-          <a href={url(n.href)} aria-current={path.startsWith(n.href) ? 'page' : undefined}>{n.label}</a>
+          <a href={url(n.href)} aria-current={`${path}/`.startsWith(n.href) ? 'page' : undefined}>{n.label}</a>
         ))}
       </nav>
     </header>
@@ -116,6 +120,7 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
         {withMessages && <a href={url(contactLink(messageContext))} data-message-open="">Napsat k této stránce</a>}
       </span>
     </footer>
+    {skipsHeader && <script is:inline set:html={skipHeaderScript(url(RETURN_SCOPE))} />}
     {withMessages && <MessagePanel context={messageContext} />}
   </body>
 </html>

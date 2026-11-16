@@ -2,11 +2,13 @@
 // Checks a built site (after `npm run build`) the same way the weekly health check checks the deployed one: every
 // image its pages refer to exists (scripts/lib/site-check.mjs), from the home page, the sitemap and their links.
 // Also every built page search engines may index is in the sitemap (unlistedPages: a page forgotten in STATIC_PAGES),
-// and has its own title and description and valid structured data (pageProblems, scripts/lib/page-check.mjs).
+// and has its own title and description and valid structured data (pageProblems, scripts/lib/page-check.mjs),
+// and every link to a page ends with a slash (slashlessLinks, scripts/lib/page-links.mjs).
 // Usage:  npm run check:images                     dist/ of this repo
 //         SITE_DATA_DIR=.demo/site npm run check:images   the site built from the test data (npm run demo:build)
 //         npm run check:images -- <folder>          any other built site
-// Exit code 1 when an image or a page is missing, a page is missing in the sitemap or has a problem in its texts.
+// Exit code 1 when an image or a page is missing, a page is missing in the sitemap or has a problem in its texts,
+// or a link to a page lacks its trailing slash.
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -15,6 +17,7 @@ import YAML from 'yaml';
 import { checkSiteImages, distFetch, evaluateSiteImages } from './lib/site-check.mjs';
 import { isNoindex, sitemapUrls, unlistedPages } from './lib/sitemap.mjs';
 import { pageProblems, problemText } from './lib/page-check.mjs';
+import { slashlessLinks } from './lib/page-links.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = path.resolve(process.argv[2] ?? (process.env.SITE_DATA_DIR ? path.join(process.env.SITE_DATA_DIR, 'dist') : path.join(root, 'dist')));
@@ -54,3 +57,11 @@ if (textProblems.length) {
   textProblems.forEach((p) => console.log(`  ${p.path}: ${problemText(p)} [${p.code}]`));
   process.exitCode = 1;
 } else console.log(`✓ ${indexable.length} indexable pages: own titles and descriptions, valid structured data.`);
+
+// Links to pages always with the trailing slash (scripts/lib/page-links.mjs): without it GitHub Pages redirects.
+const slashless = slashlessLinks(pages);
+if (slashless.length) {
+  console.log(`✗ Links to pages without the trailing slash (${slashless.length}; write them with withTrailingSlash or as "/…/"):`);
+  slashless.forEach((l) => console.log(`  ${l.path}: ${l.href}`));
+  process.exitCode = 1;
+} else console.log('✓ Every link to a page ends with a slash.');

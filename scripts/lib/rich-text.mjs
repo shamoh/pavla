@@ -17,6 +17,7 @@
 
 import { keepTogetherHtml } from './typography.mjs';
 import { isValidId, workShortPath } from './works.mjs';
+import { withTrailingSlash } from './page-links.mjs';
 
 const LINK = /\[([^\]\n]+)\]\(([^)\s]+)\)/g;
 const BOLD = /\*\*(?=\S)(.+?)(?<=\S)\*\*/g;
@@ -88,7 +89,7 @@ export function richTextHtml(text, { url = (p) => p, work = (id) => url(workShor
       const page = work(href);
       return page ? `<a href="${escapeHtml(page)}">${emphasis(escapeHtml(label))}</a>` : emphasis(escapeHtml(label));
     }
-    const target = isInternalHref(href) ? url(href) : href;
+    const target = isInternalHref(href) ? url(withTrailingSlash(href)) : href;
     const rel = isInternalHref(href) ? '' : ' rel="noopener"';
     return `<a href="${escapeHtml(target)}"${rel}>${emphasis(escapeHtml(label))}</a>`;
   }));
@@ -119,7 +120,7 @@ export function richTextMarkdown(text, { url = (p) => p } = {}) {
     const { whole, label, href } = links[Number(i)];
     if (!isAllowedHref(href)) return escapeMarkdown(whole);
     if (isWorkHref(href)) return `[${markdownEmphasis(label)}](${url(workShortPath(href))})`;
-    return `[${markdownEmphasis(label)}](${isInternalHref(href) ? url(href) : href})`;
+    return `[${markdownEmphasis(label)}](${isInternalHref(href) ? url(withTrailingSlash(href)) : href})`;
   });
 }
 

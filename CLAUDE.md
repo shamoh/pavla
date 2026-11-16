@@ -393,6 +393,10 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Mockupy musí držet reálné měřítko podle `size_cm`.
 - Před commitem: `npm test`, `npm run build` a `npm run demo:build` musí projít; `npm run check:images` (a pro testovací
   web `SITE_DATA_DIR=.demo/site npm run check:images`) ověří, že žádný obrázek, na který stránky odkazují, nechybí.
+- Odkazy na stránky webu vždy s lomítkem na konci (`/tvorba/`, `/tvorba/kolekce/?…`; GitHub Pages jinak přesměruje, dev server
+  stránku obslouží bez něj): v kódu psát s lomítkem, texty obsahu přes `withTrailingSlash` (`scripts/lib/page-links.mjs`),
+  `check:images` (`slashlessLinks`) odkaz bez lomítka odmítne. Stránky Tvorby se otevřou pod hlavičkou (`skipHeaderScript`,
+  `scripts/lib/skip-header.mjs`, jen běžné otevření bez kotvy).
 - Mapa webu `/sitemap.xml` (`scripts/lib/sitemap.mjs`): nová stránka v `src/pages` bez dat za sebou = do `STATIC_PAGES`
   (jinak `check:images` selže; stránka, která do mapy nepatří, musí mít `noindex`).
 - Řádky roků (nad galerií, na přehledu kolekcí) vždy na jeden řádek přes `fitYearRow` (`src/lib/year-row.ts`), roky

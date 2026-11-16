@@ -48,6 +48,8 @@ test('insideScope: the Tvorba section of the site, with or without a base path',
   assert.equal(insideScope('/tvorba/'), true);
   assert.equal(insideScope('/tvorba/2026/jez-k3f9a/'), true);
   assert.equal(insideScope('/tvorba/kolekce/'), true);
+  assert.equal(insideScope('/tvorba'), true, 'the section without its slash (dev server)');
+  assert.equal(insideScope('/pavla/tvorba', '/pavla/'), true);
   assert.equal(insideScope('/'), false);
   assert.equal(insideScope('/o-mne/'), false);
   assert.equal(insideScope('/tvorbaxyz/'), false);

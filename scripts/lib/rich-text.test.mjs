@@ -107,3 +107,10 @@ test('richTextHtml: a link to a work by its id, to its page or plain text while 
   assert.deepEqual(workLinkIds('[a](chqmf) [b](/x/) [c](xua65) [d](chqmf)'), ['chqmf', 'xua65']);
   assert.deepEqual(workLinkIds(null), []);
 });
+
+test('links to pages of the site get their trailing slash (as written by hand without it)', () => {
+  assert.equal(richTextHtml('Viz [kolekce](/tvorba/kolekce) nebo [prodej](/tvorba?status=unsold).', base),
+    'Viz <a href="/base/tvorba/kolekce/">kolekce</a> nebo <a href="/base/tvorba/?status=unsold">prodej</a>.');
+  assert.equal(richTextHtml('[mapa](/sitemap.xml)', base), '<a href="/base/sitemap.xml">mapa</a>', 'a file stays as written');
+  assert.equal(richTextMarkdown('[O mně](/o-mne)', { url: (p) => `https://pavla.example${p}` }), '[O mně](https://pavla.example/o-mne/)');
+});

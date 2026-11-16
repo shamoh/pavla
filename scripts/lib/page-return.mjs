@@ -21,8 +21,11 @@ export const RETURN_FOCUS_KEY = 'pavla.return.focus';
 /** The section (path under the site base) in which the memory holds. */
 export const RETURN_SCOPE = '/tvorba/';
 
-/** True when `pathname` lies in RETURN_SCOPE of a site with base path `base` ('/' or '/pavla/'). */
-export const insideScope = (pathname, base = '/') => pathname.startsWith(`${base.replace(/\/$/, '')}${RETURN_SCOPE}`);
+/**
+ * True when `pathname` lies in RETURN_SCOPE of a site with base path `base` ('/' or '/pavla/'), also the section itself
+ * without its slash ('/tvorba': the dev server serves it as it is).
+ */
+export const insideScope = (pathname, base = '/') => `${pathname}/`.startsWith(`${base.replace(/\/$/, '')}${RETURN_SCOPE}`);
 
 /** The remembered card to scroll to (a work id or a collection slug), when it looks like one; otherwise ''. */
 export const focusToken = (stored) => (isValidId(stored) || isValidSlug(stored) ? stored : '');

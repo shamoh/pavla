@@ -38,7 +38,7 @@ const jsonLd = graphLd(websiteLd(site), personLd(site, { image: photoImageUrl('p
         <h1>{home.heading.map((line, i) => <>{i > 0 && <br />}{keepTogether(line)}</>)}</h1>
         {home.paragraphs.map((p) => <p class="muted desc" set:html={p} />)}
         <p class="actions">
-          <a class="btn" href={url('/tvorba')}>{home.button}</a>
+          <a class="btn" href={url('/tvorba/')}>{home.button}</a>
           {home.showButton && hasFeaturedWorks() && (
             <a class="btn ghost" href={url(featuredShowPath('home'))} title="Obrazy z mého výběru jeden po druhém přes celou obrazovku">{home.showButton}</a>
           )}
@@ -58,7 +58,7 @@ const jsonLd = graphLd(websiteLd(site), personLd(site, { image: photoImageUrl('p
       <div class="section-head">
         <h2>Nejnovější</h2>
         <ViewSwitch {...start} />
-        <a href={url('/tvorba')}>Celá tvorba →</a>
+        <a href={url('/tvorba/')}>Celá tvorba →</a>
       </div>
       <WorkGrid works={recent} place="home" {...start} hidden={recentHidden} id="recent" data-view={JSON.stringify(homeSetup(counts, coverId, columnsFor(config, 'home')))} />
       <script is:inline set:html={homeScript} />
