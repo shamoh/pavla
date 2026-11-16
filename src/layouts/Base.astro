@@ -101,13 +101,13 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
     </header>
     <main><slot /></main>
     <footer class:list={['site-footer', { 'with-launcher': withMessages }]}>
-      <span>
-        © {new Date().getFullYear()} <NameShades text={site.author} />
+      <span class="meta">
+        <span>© {new Date().getFullYear()} <NameShades text={site.author} />
         <!-- Build version: calendar versioning, the version is the build time (YY.MMDD.HHMM, Prague time). -->
-        <span class="version">· <time datetime={version.iso} title={version.title}>{version.label}</time></span>
+        <span class="version">· <time datetime={version.iso} title={version.title}>{version.label}</time></span></span>
+        <PalettePicker />
       </span>
       <span class="links">
-        <PalettePicker />
         {onSale && <a href={url(saleShowPath('footer'))} title="Obrazy na prodej jeden po druhém přes celou obrazovku">Obrazy na prodej</a>}
         {featured && <a href={url(featuredShowPath('footer'))} title="Obrazy z mého výběru jeden po druhém přes celou obrazovku">Moje nejmilejší</a>}
         {site.instagram && <a href={`https://www.instagram.com/${site.instagram}/`} rel="me">Instagram</a>}
@@ -200,11 +200,19 @@ const messageContext = Astro.props.message !== undefined ? Astro.props.message :
     border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
     font-size: 0.85rem; color: var(--ink-soft);
   }
+  .site-footer .meta { display: flex; gap: 8px 20px; flex-wrap: wrap; align-items: center; }
   .site-footer .links { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
   /* Room under the footer for the floating "Napište mi" launcher, so it never covers the footer links. */
   .site-footer.with-launcher { padding-bottom: 88px; }
   .site-footer .version { opacity: 0.6; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
   .site-footer .version time { cursor: help; }
+  /* On a phone the footer is one column aligned left: the © and version, the colour dots on a row of their own,
+     then the links under a thin line (still wrapped in rows, spaced like the left part). */
+  @media (max-width: 640px) {
+    .site-footer { flex-direction: column; align-items: flex-start; }
+    .site-footer .meta { flex-direction: column; align-items: flex-start; }
+    .site-footer .links { gap: 8px 20px; align-self: stretch; padding-top: 16px; border-top: 1px solid var(--line); }
+  }
 
   .badge {
     display: inline-block; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;

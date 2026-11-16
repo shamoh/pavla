@@ -1962,7 +1962,7 @@ Návštěvník si v patičce vybere barvy webu: **Automaticky** (podle světléh
 - **Bez probliknutí**: CSS všech palet a malý skript (`paletteScript`) jsou vložené v `<head>` (`Base.astro`) před
   vykreslením; skript nastaví `data-palette` (zobrazená paleta) a `data-palette-choice` (volba) na `<html>`
   a barvu lišty prohlížeče (`theme-color`). Bez JavaScriptu rozhoduje systém a přepínač se neukáže.
-- **Přepínač**: `src/components/PalettePicker.astro` v patičce („Barvy“ a kroužky v barvě papíru palety, Automaticky
+- **Přepínač**: `src/components/PalettePicker.astro` v levé části patičky za © a verzí (na telefonu do 640 px na vlastním řádku pod nimi), vpravo zůstávají odkazy (na telefonu celá patička v jednom sloupci zarovnaném doleva, odkazy pod kroužky oddělené tenkou čarou) („Barvy“ a kroužky v barvě papíru palety, Automaticky
   napůl světlý a tmavý), popisek při najetí myší; změna pošle událost `palette_change` (viz *Návštěvnost*).
 - **Bílé okraje fotky do barvy papíru** (`--paper-blend`, `paperBlend`): na světlé paletě `multiply` (bílá převezme
   barvu papíru), na tmavé `normal` (beze změny). Používá ho `<Photo … blendEdge={10} />` (viz *Ostatní fotky*),
