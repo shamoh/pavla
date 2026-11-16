@@ -20,6 +20,7 @@ import { ownText } from './rich-text.mjs';
 import { summarize } from './seo.mjs';
 import { PALETTES, paletteCss } from './palettes.mjs';
 import { SAMPLE_PICKS, SAMPLE_SIZE, prepareGame } from './detail-game-data.mjs';
+import { AFFINITY_WEIGHTS, GAME_AFFINITY_SCALE, GAME_AFFINITY_WEIGHTS, techniqueFamily, workDistance } from './affinity.mjs';
 import { COLOUR_ANALYSIS_SIZE, analyseColours, balancePalette, colourBins, colourDistance, colourSettings, familyShares, nearestFamily, oklabToOklch, paletteDistance, paletteMood, paperOf, rgbToOklab, workPalette } from './colors.mjs';
 import {
   GAME_EPOCH, applyGuess, chooseDecoys, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, frameSource, gameDay, gameFrame, gameHash, gameHint, gameLevels, gameLooks, dropsWord, lookForDay, lookKey, windowHtml,
@@ -55,6 +56,8 @@ export const PROTOTYPE_FUNCTIONS = [
   dropsFor, winTitle, gameRank, newProgress, finishRound, gameShareText,
   // the colours of the works (scripts/lib/colors.mjs, a prototype)
   rgbToOklab, oklabToOklch, paperOf, balancePalette, nearestFamily, familyShares, paletteMood, paletteDistance, colourDistance,
+  // how alike two works are (scripts/lib/affinity.mjs), always called with its weights (its default is a constant of the module)
+  techniqueFamily, workDistance,
 ];
 
 /**
@@ -150,6 +153,8 @@ export function prototypeConfig(config) {
     palettes: PALETTES.map((p) => ({ id: p.id, label: p.label })),
     // the colours of the filter „Barva“ (site.config.yaml gallery.colors, a prototype so far)
     colours: colourSettings(config),
+    // the weights of how alike two works are: the similar works and the game (scripts/lib/affinity.mjs)
+    affinity: { similar: AFFINITY_WEIGHTS, game: GAME_AFFINITY_WEIGHTS, gameScale: GAME_AFFINITY_SCALE },
   };
 }
 

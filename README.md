@@ -687,8 +687,10 @@ pro Instagram z `mockups/instagram/` (`prototypeScenes`), takže prototyp ukazuj
   (`nearestFamily`: odstín, méně světlost; šedé k žádné), takže seznam jde měnit bez kódu. Záložka „Filtr Barva“: jedna barva
   (rozbalovací seznam jako ostatní výběry galerie a pro srovnání kolečka), počty u voleb. „Podobné obrazy“: klik na obraz ukáže
   nejbližší jen podle barev (`colourDistance`: rozdíl podílů barev a nálady `paletteMood` teplé / studené, světlé / tmavé,
-  syté / pastelové) a podle barev, techniky a štítků s nastavitelnými vahami (zkouška společné funkce podobnosti pro Podobné
-  obrazy a Detail dne). „Všechny obrazy“: každý obraz s paletou, barvami a náladou.
+  syté / pastelové) a podle společné funkce `workDistance` (`scripts/lib/affinity.mjs`, stejná jako na webu, vložená jako text)
+  s posuvníky vah (barvy, nálada, kresba × malba, jiná malba, jiný námět); „váhy: Podobné obrazy / Detail dne“ je nastaví na
+  `AFFINITY_WEIGHTS` / `GAME_AFFINITY_WEIGHTS` (hra navíc s pravidlem štítků `anyTag`, bez podobnosti výřezu). Na rozdíl od webu
+  řadí všechna díla, ne jen díla filtru Podobných obrazů. „Všechny obrazy“: každý obraz s paletou, barvami a náladou.
 - `znacky-dlazdic.html`: všechna díla v dlaždicích S, M a L, paleta, styl značky (web = silueta s lemem), ikona na
   prodej, roh a velikosti dlaždic každé značky, velikost, minimum, maximum, krytí; nastavení úvodní stránky nebo galerie.
 - `kamera-scen.html`: tři scény ateliéru pro Instagram pod sebou s vybraným dílem (díla s `size_cm`) ve skutečné

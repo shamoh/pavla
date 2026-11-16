@@ -85,20 +85,27 @@
   </section>
 
   <section id="similar" hidden>
-    <p class="note">Klikni na obraz dole (nebo v kterékoli mřížce): nahoře se ukážou nejbližší obrazy. Podobnost barev = rozdíl podílů
-      barev malované plochy + rozdíl nálady (teplé / studené, světlé / tmavé, syté / pastelové); 0 = stejné, 1 = nic společného.
-      K tomu postih za jinou techniku a za žádný společný štítek. Váhami zkoušíme budoucí společnou funkci „jak moc jsou si dva
-      obrazy podobné“ pro Podobné obrazy i hru Detail dne.</p>
+    <p class="note">Klikni na obraz dole (nebo v kterékoli mřížce): nahoře se ukážou nejbližší obrazy podle společné funkce
+      <code>workDistance</code> (scripts/lib/affinity.mjs), kterou počítá web: barvy (rozdíl podílů barev malované plochy) a nálada
+      (teplé / studené, světlé / tmavé, syté / pastelové), technika (kresba × malba, jiná malba) a námět (štítky). Váhy začínají
+      na hodnotách webu: „Podobné obrazy“ = <code>AFFINITY_WEIGHTS</code>, „Detail dne“ = <code>GAME_AFFINITY_WEIGHTS</code>
+      (hra k tomu přičítá podobnost výřezu, tady není; jeden společný štítek = stejný námět). Změněné váhy přepiš do
+      <code>affinity.mjs</code>.</p>
     <div class="row">
-      <label>váha barev <input type="range" id="wColour" min="0" max="3" step="0.1" value="1" /><output id="wColourOut"></output></label>
-      <label>nálada váží <input type="range" id="wMood" min="0" max="2" step="0.1" value="0.5" /><output id="wMoodOut"></output></label>
-      <label>jiná technika + <input type="range" id="wTechnique" min="0" max="0.6" step="0.01" value="0.15" /><output id="wTechniqueOut"></output></label>
-      <label>bez společného štítku + <input type="range" id="wTags" min="0" max="0.6" step="0.01" value="0.08" /><output id="wTagsOut"></output></label>
+      <span class="tabs" id="presets">váhy:
+        <button data-preset="similar" aria-pressed="true">Podobné obrazy</button>
+        <button data-preset="game" aria-pressed="false">Detail dne</button>
+      </span>
+      <label>barvy <input type="range" id="wColour" min="0" max="3" step="0.05" /><output id="wColourOut"></output></label>
+      <label>nálada <input type="range" id="wMood" min="0" max="2" step="0.1" /><output id="wMoodOut"></output></label>
+      <label>kresba × malba + <input type="range" id="wTechnique" min="0" max="0.6" step="0.01" /><output id="wTechniqueOut"></output></label>
+      <label>jiná malba + <input type="range" id="wSameFamily" min="0" max="0.3" step="0.01" /><output id="wSameFamilyOut"></output></label>
+      <label>jiný námět + <input type="range" id="wTags" min="0" max="0.6" step="0.01" /><output id="wTagsOut"></output></label>
     </div>
     <div class="pick" id="pick"></div>
     <div class="cols">
       <div><h2>Nejbližší jen podle barev</h2><div class="grid small" id="byColour"></div></div>
-      <div><h2>Barvy + technika + štítky</h2><div class="grid small" id="byAll"></div></div>
+      <div><h2>workDistance (jako web)</h2><div class="grid small" id="byAll"></div></div>
     </div>
     <h2>Všechny obrazy (klikni pro výběr)</h2>
     <div class="grid small" id="chooser"></div>
@@ -190,11 +197,27 @@
     $('results').replaceChildren(...shown.map((w) => card(w, { meta: `<b>${w.title}</b><br>${colourText(w)}`, onClick: () => { pick(w.id); show('similar'); } })));
   }
 
+  /** The weights of workDistance from the sliders; the game's tag rule (anyTag) with its preset. */
+  const AFFINITY = DATA.config.affinity;
+  let preset = 'similar';
+  const weights = () => ({
+    colour: val('wColour'), mood: val('wMood'), technique: val('wTechnique'), sameFamily: val('wSameFamily'), tags: val('wTags'),
+    anyTag: Boolean(AFFINITY[preset].anyTag),
+  });
+  /** The sliders on the weights of a preset (similar works or the game). */
+  function setPreset(name) {
+    preset = name;
+    const w = AFFINITY[name];
+    for (const [id, key] of [['wColour', 'colour'], ['wMood', 'mood'], ['wTechnique', 'technique'], ['wSameFamily', 'sameFamily'], ['wTags', 'tags']]) $(id).value = w[key];
+    for (const b of $('presets').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.preset === name));
+  }
+  setPreset('similar');
+  /** A work as workDistance takes it: its colour profile from the bins of the page (the paper and grey borders of the sliders). */
+  const profiled = (w) => ({ ...w, colourProfile: { shares: shares(w), mood: mood(w), analysed: true } });
   function score(a, b) {
-    const colour = colourDistance({ shares: shares(a), mood: mood(a) }, { shares: shares(b), mood: mood(b) }, { moodWeight: val('wMood') });
-    const technique = a.technique === b.technique ? 0 : val('wTechnique');
-    const tags = !a.tags.length || a.tags.some((t) => b.tags.includes(t)) ? 0 : val('wTags');
-    return { colour, total: val('wColour') * colour + technique + tags };
+    const w = weights();
+    const colour = colourDistance(profiled(a).colourProfile, profiled(b).colourProfile, { moodWeight: w.mood });
+    return { colour, total: workDistance(profiled(a), profiled(b), w) };
   }
   function renderSimilar() {
     const target = WORKS.find((w) => w.id === state.picked) ?? WORKS[0];
@@ -222,7 +245,7 @@
     render();
   }
   function render() {
-    for (const id of ['chroma', 'paper', 'share', 'wColour', 'wMood', 'wTechnique', 'wTags']) {
+    for (const id of ['chroma', 'paper', 'share', 'wColour', 'wMood', 'wTechnique', 'wSameFamily', 'wTags']) {
       $(`${id}Out`).textContent = id === 'share' ? `${Math.round(val(id) * 100)} %` : val(id);
     }
     if (tab === 'filter') renderFilter();
@@ -230,6 +253,7 @@
     else renderAll();
   }
   $('tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) show(b.dataset.tab); });
+  $('presets').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { setPreset(b.dataset.preset); render(); } });
   $('colour').addEventListener('change', () => { state.colour = $('colour').value; renderFilter(); });
   $('night').addEventListener('click', () => {
     const on = $('night').getAttribute('aria-pressed') !== 'true';
