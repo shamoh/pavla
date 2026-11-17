@@ -824,11 +824,147 @@ export function winTitle(misses) {
   return ['Mistrovské oko!', 'Bystré oko!', 'Trefa!', 'Na poslední chvíli!'][misses] ?? 'Trefa!';
 }
 
-/** The rank for the drops collected and how many drops the next one needs (`next` null at the top). */
+/**
+ * The ranks `[from, title]`: the drops a player who solves every level of every day at the first guess (90 drops a day once the
+ * series is full) has at the end of day 1, 3, 6, 10, 15, 22, 32, 46, 66, 96, 136, 196, 286, 406, 586 and then every 180 days, so
+ * a rank comes after days at first, then weeks, then months, never later than half a year (gameRank goes on past the last one).
+ */
+export function gameRanks() {
+  return [
+    [0, 'Vylitý kelímek'], [60, 'Mokrý štětec'], [190, 'Kapka na papíře'], [450, 'Čistá voda'], [810, 'První skica'],
+    [1250, 'Barevná paleta'], [1850, 'Mokré do mokrého'], [2750, 'Lazura'], [4050, 'Bystré oko'], [5850, 'Skicář'],
+    [8550, 'Plenérista'], [12100, 'Lovec světla'], [17500, 'Strážce odstínů'], [25600, 'Znalec papíru'], [36400, 'Mistr lazury'],
+    [52600, 'Mistr akvarelu'], [68800, 'Velmistr akvarelu'], [85000, 'Znalec díla'], [101200, 'Strážce galerie'],
+    [117400, 'Čestný člen ateliéru'], [133600, 'Legenda ateliéru'], [149800, 'Druhé oko autorky'],
+  ];
+}
+
+/**
+ * The rank for the drops collected: `{ index, title, next, nextTitle }` (`next` = the drops the next one needs). Past the last rank
+ * of gameRanks a star every 16 200 drops (half a year of perfect days): "Druhé oko autorky ★2", ★3…, so the scale never ends.
+ */
 export function gameRank(drops) {
-  const ranks = [[0, 'Vylitý kelímek'], [20, 'Mokrý štětec'], [60, 'Kapka na papíře'], [130, 'Plenérista'], [250, 'Mistr akvarelu']];
+  const ranks = gameRanks();
+  const step = 16200;
+  const [top, topTitle] = ranks[ranks.length - 1];
+  const starred = (stars) => (stars > 1 ? `${topTitle} ★${stars}` : topTitle);
+  if (drops >= top) {
+    const stars = 1 + Math.floor((drops - top) / step);
+    return { index: ranks.length - 2 + stars, title: starred(stars), next: top + stars * step, nextTitle: starred(stars + 1) };
+  }
   const index = ranks.reduce((found, [from], i) => (drops >= from ? i : found), 0);
-  return { title: ranks[index][1], next: ranks[index + 1]?.[0] ?? null, nextTitle: ranks[index + 1]?.[1] ?? null };
+  return { index, title: ranks[index][1], next: ranks[index + 1][0], nextTitle: ranks[index + 1][1] };
+}
+
+/**
+ * The drops the archive may still give today (`today` = the day of the game now): `{ cap, used, left }`. The days of the archive
+ * count into the rank only up to `cap` drops a day, so a new player cannot leap many ranks by playing a year of the archive at once;
+ * over it the rounds give no drops (the works still go into the collection).
+ */
+export function archiveRoom(progress, today, epoch) {
+  const cap = 30;
+  const todayKey = roundKey(today, '', epoch).slice(0, -1);
+  const used = progress.archiveDay === todayKey ? progress.archiveDrops ?? 0 : 0;
+  return { cap, used, left: Math.max(0, cap - used) };
+}
+
+/**
+ * A number of drops for the player: thousands apart by a non-breaking space ("16 100"), so big numbers read at a glance and never
+ * break over two lines (self-contained, the same in every browser, unlike toLocaleString).
+ */
+export function groupDigits(number) {
+  return String(number).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+}
+
+/**
+ * The rank in the top line of the game, the longest first, each shorter than the one before (the game shows the first one that fits
+ * in the line by the title, the whole in the bubble, statsTitle): `[number, title, the drops to the next one]` as HTML.
+ */
+export function rankForms(drops) {
+  const rank = gameRank(drops);
+  const number = `#${rank.index + 1}`;
+  const next = ` · další za ${groupDigits(rank.next - drops)} 💧`;
+  return [`Hodnost ${number} <b>${rank.title}</b>${next}`, `${number} <b>${rank.title}</b>${next}`, `${number} <b>${rank.title}</b>`, `Hodnost <b>${number}</b>`, `<b>${number}</b>`];
+}
+
+/**
+ * The bubble over the drops, the series and the rank at the top of the game: a short block for each with a blank line between them
+ * (the player's numbers, then what they mean), the cap of the archive, and where the whole rules are (rulesHtml; the line is a link
+ * to them). `progress` = { drops, streak }.
+ */
+export function statsTitle({ drops, streak }) {
+  const rank = gameRank(drops);
+  const days = streak === 1 ? 'den' : streak >= 2 && streak <= 4 ? 'dny' : 'dní';
+  const word = drops === 1 ? 'kapka' : drops >= 2 && drops <= 4 ? 'kapky' : 'kapek';
+  return [
+    `💧 ${groupDigits(drops)} ${word}`,
+    'Za každý uhodnutý detail. Čím dřív a čím těžší úroveň, tím víc.',
+    '',
+    `🔥 Série ${streak} (${streak} ${days} v řadě)`,
+    'Kolik dní po sobě hraješ. Každý další den přidá bonus, vynechaný den začne sérii znovu.',
+    '',
+    `🏅 Hodnost #${rank.index + 1} ${rank.title}`,
+    `Do #${rank.index + 2} ${rank.nextTitle} zbývá ${groupDigits(rank.next - drops)} 💧.`,
+    '',
+    '📅 Archiv',
+    `Za poloviční kapky, do hodnosti nejvýš ${archiveRoom({}, 0, '2026-01-01').cap} 💧 za den.`,
+    '',
+    'Celá pravidla najdeš pod hrou, stačí kliknout.',
+  ].join('\n');
+}
+
+/**
+ * The bubble over the cap of the archive in the bar of an archive day: what it means for the player (`left` of `cap` drops the
+ * archive still gives today, archiveRoom).
+ */
+export function archiveRoomTitle({ cap, left }) {
+  return left
+    ? `Z archivu se za den započte nejvýš ${cap} 💧, dnes ještě ${left}. Pak můžeš hrát dál a obrazy přibývají do sbírky, jen už bez kapek.`
+    : `Dnešních ${cap} 💧 z archivu už máš. Hrát můžeš dál a uhodnuté obrazy přibývají do sbírky, ale nové kapky z archivu dnes už nedostaneš. Zítra zase až ${cap} 💧.`;
+}
+
+/**
+ * The line in the card of the result when the cap of the archive took drops away (`gained` counted of `gained + capped`, finishRound):
+ * short, the whole meaning is in its bubble (archiveRoomTitle).
+ */
+export function cappedText({ gained, capped }) {
+  return gained ? `Strop archivu: započteno ${gained} z ${groupDigits(gained + capped)} 💧.` : 'Strop archivu: dnes už bez kapek, další zítra.';
+}
+
+/**
+ * The section "Jak se hraje" under the game (built with the page, gamePageHtml): short blocks with an icon each (the day, the drops
+ * with their table from gameLevels and dropsFor, the series, the archive and its cap, the ranks with the whole list folded, the
+ * collection). The script of the game marks the player's rank in the list (`data-rank` = gameRank index).
+ */
+export function rulesHtml() {
+  const levels = gameLevels();
+  const cap = archiveRoom({}, 0, '2026-01-01').cap;
+  const most = Math.max(...levels.map((l) => l.guesses));
+  const ordinal = ['Napoprvé', 'Na 2. pokus', 'Na 3. pokus', 'Na 4. pokus', 'Na 5. pokus'];
+  const rows = Array.from({ length: most }, (_, m) => `<tr><th scope="row">${ordinal[m]}</th>${levels.map((l) => `<td>${m < l.guesses ? dropsFor(m, 1, false, l.drops) : '–'}</td>`).join('')}</tr>`).join('');
+  const series = levels.map((l) => `+${5 * l.drops}`).join(' / ');
+  const ranks = gameRanks();
+  const list = ranks.map(([from, title], i) => `<li data-rank="${i}"><span>${title}</span> <span class="from">${groupDigits(from)} 💧</span></li>`).join('');
+  return `<section class="shelf rules" id="pravidla">
+    <h2>Jak se hraje</h2>
+    <div class="rule-grid">
+      <div class="rule"><h3><span aria-hidden="true">🔍</span> Tři detaily denně</h3>
+        <p>Každý den tři výřezy z obrazů, v lehké, střední a těžké úrovni. Najdi mezi náhledy ten, ze kterého je. Po omylu se detail oddálí, v lehké úrovni přijde i nápověda.</p></div>
+      <div class="rule"><h3><span aria-hidden="true">💧</span> Kapky</h3>
+        <p>Za každý uhodnutý detail. Čím dřív a čím těžší úroveň, tím víc:</p>
+        <table class="drops"><thead><tr><th></th>${levels.map((l) => `<th scope="col">${l.label}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="rule"><h3><span aria-hidden="true">🔥</span> Série</h3>
+        <p>Hraj den po dni: každý další den v řadě přidá k zisku bonus, od šestého dne plný (${series} 💧 podle úrovně). Prohra sérii nepřeruší, vynechaný den ano.</p></div>
+      <div class="rule"><h3><span aria-hidden="true">📅</span> Archiv</h3>
+        <p>Zmeškané dny dohraješ kdykoli, za poloviční kapky a bez bonusu série. Z archivu se ale za den započte <b>nejvýš ${cap} 💧</b>, co je navíc, propadne. Obraz do sbírky přibude vždycky.</p></div>
+      <div class="rule"><h3><span aria-hidden="true">🏅</span> Hodnosti</h3>
+        <p>Kapky tě posouvají v hodnostech. Ze začátku přicházejí po dnech, pak po týdnech a nakonec po měsících, nejdéle za půl roku. Za poslední přibývají hvězdičky.</p>
+        <details><summary>Všech ${ranks.length} hodností</summary><ol class="ranks">${list}</ol></details></div>
+      <div class="rule"><h3><span aria-hidden="true">🖼️</span> Sbírka</h3>
+        <p>Každý uhodnutý obraz se uloží do tvé sbírky, s tečkami barev detailů, podle kterých se hádal.</p></div>
+    </div>
+    <p class="note">Kapky, série, hodnost i sbírka se ukládají jen v tomto prohlížeči.</p>
+  </section>`;
 }
 
 /**
@@ -836,13 +972,14 @@ export function gameRank(drops) {
  * close-ups; the collection takes the colours from the rounds now, gameCollection, and leaves it alone.)
  */
 export function newProgress() {
-  return { drops: 0, streak: 0, best: 0, lastDay: null, played: {}, collected: [] };
+  return { drops: 0, streak: 0, best: 0, lastDay: null, archiveDay: null, archiveDrops: 0, played: {}, collected: [] };
 }
 
 /**
  * The progress after finishing the puzzle of a `level` on `day`: `{ progress, gained, rankUp }`. Each puzzle counts once (`played`
  * by roundKey; `lastDay` = the key of the last day of the series, "2026-320"). A series is days played in a row (more games on one
- * day count once, a lost game keeps it, a day left out starts a new one); the days of the archive leave it alone. A solved puzzle
+ * day count once, a lost game keeps it, a day left out starts a new one); the days of the archive leave it alone and give drops only
+ * up to the cap of today (archiveRoom; `archiveDay` + `archiveDrops`, the round keeps `capped` = the drops left out). A solved puzzle
  * gives drops and the work into the collection (its colours come from the round, gameCollection).
  */
 export function finishRound(progress, { day, today, level, epoch, multiplier = 1, solved, misses, workId }) {
@@ -852,7 +989,9 @@ export function finishRound(progress, { day, today, level, epoch, multiplier = 1
   // the key of a day (dayId) from the key of its round, so the function stands alone (the prototypes copy it as text)
   const dayKey = (d) => roundKey(d, '', epoch).slice(0, -1);
   const streak = archive || progress.lastDay === dayKey(today) ? progress.streak : progress.lastDay === dayKey(today - 1) ? progress.streak + 1 : 1;
-  const gained = solved ? dropsFor(misses, streak, archive, multiplier) : 0;
+  const full = solved ? dropsFor(misses, streak, archive, multiplier) : 0;
+  const room = archive ? archiveRoom(progress, today, epoch) : null;
+  const gained = room ? Math.min(full, room.left) : full;
   const drops = progress.drops + gained;
   return {
     gained,
@@ -862,7 +1001,9 @@ export function finishRound(progress, { day, today, level, epoch, multiplier = 1
       streak,
       best: Math.max(progress.best, streak),
       lastDay: archive ? progress.lastDay : dayKey(today),
-      played: { ...progress.played, [key]: { solved, misses, drops: gained } },
+      archiveDay: room ? dayKey(today) : progress.archiveDay ?? null,
+      archiveDrops: room ? room.used + gained : progress.archiveDrops ?? 0,
+      played: { ...progress.played, [key]: { solved, misses, drops: gained, ...(full > gained ? { capped: full - gained } : {}) } },
       collected: solved && !progress.collected.includes(workId) ? [...progress.collected, workId] : progress.collected,
     },
   };

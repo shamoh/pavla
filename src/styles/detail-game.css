@@ -11,6 +11,15 @@
 .detail-game .stats { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: .88rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .detail-game .stats b { color: var(--ink); font-weight: 500; }
 .detail-game .stats span { white-space: nowrap; }
+/* The stats are a link down to the rules (#pravidla), with the rules in a few lines in its bubble (statsTitle). */
+.detail-game a.stats { text-decoration: none; cursor: help; }
+/* Always one line by the title: the stats take what the title leaves and the rank gets shorter until it fits (fitRank). */
+@media (min-width: 800px) {
+  .detail-game .game-head { flex-wrap: nowrap; }
+  .detail-game h1 { flex: none; }
+  .detail-game .stats { flex-wrap: nowrap; min-width: 0; overflow: hidden; }
+}
+.detail-game a.stats:hover b { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 .detail-game .levels { display: flex; gap: 6px; margin-bottom: 12px; }
 .detail-game .level { flex: 1; background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 7px 8px; font-size: .9rem; white-space: nowrap; }
 .detail-game .level small { color: var(--ink-soft); font-size: .78rem; }
@@ -25,6 +34,17 @@
 .detail-game .archive-bar[hidden] { display: none; }
 .detail-game .archive-bar .which { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
 .detail-game .archive-bar .half { color: var(--accent); }
+/* The cap of the archive today (archiveRoom): quiet while there is room, yellow when half is gone, red when it is used up. */
+.detail-game .room.near { background: var(--todo); padding: 0 6px; border-radius: 99px; color: var(--ink); }
+.detail-game .room.full { color: var(--error); font-weight: 500; }
+.detail-game .archive-bar .when::after { content: ' ·'; }
+/* A phone: the cap on a line of its own under the day, never cut. */
+@media (max-width: 559px) {
+  .detail-game .archive-bar .which { white-space: normal; line-height: 1.25; }
+  .detail-game .archive-bar .when::after { content: ''; }
+  .detail-game .archive-bar .room { display: table; margin: 1px auto 0; }
+}
+.detail-game .note .room.near { background: none; padding: 0; color: var(--ink); font-weight: 500; }
 .detail-game .archive-bar .step, .detail-game .archive-bar .today { background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; line-height: 1.3; }
 .detail-game .archive-bar .step:disabled { opacity: .35; cursor: default; }
 /* The archive: a tile a day (the date, the day of the week, a dot for each level), as many in a row as fit. */
@@ -41,12 +61,13 @@
 .detail-game .game { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 /* Side by side on a big screen and on a phone on its side (TWO_COLUMNS in src/lib/detail-game.ts). */
 @media (min-width: 800px), (orientation: landscape) and (min-width: 560px) { .detail-game .game { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; } }
-/* On a phone one line: the title, the drops and the series; the rank waits for a bigger screen. */
+/* On a phone one line: the title, the drops, the series and as much of the rank as fits, at least its number (fitRank). */
 @media (max-width: 799px) {
   .detail-game .game-head { flex-wrap: nowrap; align-items: center; margin-bottom: 8px; }
-  .detail-game h1 { font-size: 1.45rem; }
-  .detail-game .stats { font-size: .8rem; flex-wrap: nowrap; }
-  .detail-game .stats .rank { display: none; }
+  .detail-game h1 { font-size: 1.45rem; flex: none; }
+  .detail-game .stats { font-size: .8rem; flex-wrap: nowrap; gap: 0 10px; min-width: 0; overflow: hidden; }
+  /* Not enough room: the drops without their word, so the number of the rank fits (fitRank). */
+  .detail-game .stats.tight .word { display: none; }
   .detail-game .levels { margin-bottom: 10px; }
   .detail-game .level { padding: 5px 6px; }
 }
@@ -133,6 +154,7 @@
 .detail-game .to-level { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; cursor: pointer; }
 .detail-game .to-archive:hover, .detail-game .to-level:hover { text-decoration-color: currentColor; }
 .detail-game .result .text { font-size: .94rem; margin: 0 0 12px; }
+.detail-game .result .capped { color: var(--error); font-size: .92rem; margin: -4px 0 8px; }
 .detail-game .rankup { color: var(--accent); font-weight: 500; margin: -4px 0 8px; }
 /* Always one line: short words, the full ones in the bubble. */
 .detail-game .actions { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; }
@@ -149,6 +171,19 @@
 .detail-game .piece .dots i { width: 9px; height: 9px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--line); }
 .detail-game .collection .more { background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 3px 12px; font: inherit; font-size: .85rem; color: var(--ink); cursor: pointer; margin-bottom: 10px; }
 .detail-game .diagnostics .copy { margin-bottom: 10px; }
+/* "Jak se hraje" (rulesHtml): short blocks side by side, one under another on a phone. */
+.detail-game .rule-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 28px; margin-bottom: 12px; }
+.detail-game .rule h3 { font-family: var(--serif); font-size: 1.2rem; font-weight: 500; margin: 0 0 4px; }
+.detail-game .rule p { font-size: .92rem; margin: 0 0 6px; }
+.detail-game .rule table.drops { border-collapse: collapse; font-size: .86rem; font-variant-numeric: tabular-nums; }
+.detail-game .rule table.drops th, .detail-game .rule table.drops td { padding: 2px 10px 2px 0; text-align: right; font-weight: 400; }
+.detail-game .rule table.drops thead th { color: var(--ink-soft); }
+.detail-game .rule table.drops tbody th { text-align: left; color: var(--ink-soft); }
+.detail-game .rule details summary { cursor: pointer; font-size: .9rem; color: var(--ink); }
+.detail-game .rule .ranks { margin: 6px 0 0; padding-left: 1.6em; font-size: .86rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.detail-game .rule .ranks .from { color: var(--ink-soft); }
+.detail-game .rule .ranks .current { font-weight: 600; }
+.detail-game .rule .ranks .current::after { content: ' ← ty'; color: var(--accent); font-weight: 500; }
 /* A month of a long archive folds: its name and how many days still wait. */
 .detail-game .month { margin: 0 0 6px; border-bottom: 1px solid var(--line); }
 .detail-game .month summary { display: flex; align-items: baseline; gap: 10px; padding: 8px 0; cursor: pointer; list-style: none; }
@@ -168,7 +203,7 @@
 /* A narrow phone (last: over the sizes above): the title of the day ("Detail dne 2026#320") with the drops and the question still in one line each. */
 @media (max-width: 379px) {
   .detail-game h1 { font-size: 1.22rem; }
-  .detail-game .stats { font-size: .74rem; gap: 2px 10px; }
+  .detail-game .stats { font-size: .74rem; gap: 0 8px; }
   .detail-game .ask { font-size: 1.04rem; }
 }
-@media (max-width: 339px) { .detail-game .ask { font-size: .95rem; } }
+@media (max-width: 339px) { .detail-game .ask { font-size: .95rem; } .detail-game h1 { font-size: 1.12rem; } }

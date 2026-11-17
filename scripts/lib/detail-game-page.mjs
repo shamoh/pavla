@@ -2,6 +2,8 @@
 // (scripts/prototypes/detail-game.html, scripts/lib/prototypes.mjs): the script (src/lib/detail-game.ts, startGame) fills its
 // [data-…] places, the look is src/styles/detail-game.css.
 
+import { rulesHtml } from './detail-game.mjs';
+
 /** The whole game: `src` = the address of its data (data-src; the prototype gives the data to startGame instead). */
 export function gamePageHtml({ src = '' } = {}) {
   const attr = (text) => String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
@@ -10,7 +12,7 @@ export function gamePageHtml({ src = '' } = {}) {
   <div class="top">
     <header class="game-head">
       <h1>Detail dne <span data-number></span></h1>
-      <div class="stats" data-stats></div>
+      <a class="stats" href="#pravidla" data-stats></a>
     </header>
     <div class="archive-bar" data-archive-bar hidden></div>
     <div class="levels" data-levels></div>
@@ -18,7 +20,7 @@ export function gamePageHtml({ src = '' } = {}) {
   <div data-content><p class="empty">Připravuji dnešní detail…</p></div>
   <section class="shelf" id="archiv">
     <h2>Archiv</h2>
-    <p class="note">Starší dny můžeš dohrát kdykoli, za poloviční kapky a bez vlivu na sérii.</p>
+    <p class="note">Starší dny můžeš dohrát kdykoli, za poloviční kapky a bez vlivu na sérii. <span data-archive-room></span></p>
     <div data-archive></div>
   </section>
   <section class="shelf">
@@ -26,8 +28,8 @@ export function gamePageHtml({ src = '' } = {}) {
     <p class="note">Každý uhodnutý obraz sem přibude, nejnovější první. Tečky pod ním jsou barvy detailů, podle kterých se hádal
       (z každého až tři, uhodnutý víckrát jich má víc).</p>
     <div class="collection" data-collection></div>
-    <p class="note">Kapky, série i sbírka se ukládají jen v tomto prohlížeči.</p>
   </section>
+  ${rulesHtml()}
   <section class="shelf diagnostics">
     <h2>Diagnostika</h2>
     <p class="note">Jen na zkoušku hry: co je teď na obrazovce, aby šlo napsat, která hádanka a který krok je moc snadný nebo složitý.</p>

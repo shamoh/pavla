@@ -27,7 +27,7 @@ import { AFFINITY_WEIGHTS, GAME_AFFINITY_SCALE, GAME_AFFINITY_WEIGHTS, technique
 import { COLOUR_ANALYSIS_SIZE, analyseColours, balancePalette, colourBins, colourDistance, colourSettings, familyShares, nearestFamily, oklabToOklch, paletteDistance, paletteMood, paperOf, rgbToOklab, workPalette } from './colors.mjs';
 import {
   GAME_EPOCH, applyGuess, roundKey, roundOrder, chooseDecoys, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, frameSource, gameDay, gameFrame, gameHash, gameHint, gameLevels, gameLooks, dropsWord, lookForDay, lookKey, windowHtml,
-  gameRandom, gameRank, gameShareText, gameShuffle, newProgress, newRound, puzzleForLevel, winTitle,
+  gameRandom, gameRank, gameRanks, archiveRoom, gameShareText, gameShuffle, newProgress, newRound, puzzleForLevel, winTitle,
   collectionHtml, gameCollection, roundPuzzle, simulatedRounds,
 } from './detail-game.mjs';
 
@@ -57,7 +57,7 @@ export const PROTOTYPE_FUNCTIONS = [
   cinemaFromParams, cinemaToParams, captionMode, intervalLabel, shuffledOrder, wrapIndex, dragStep, fitBox, imageWidth, autoHide,
   // the game "Detail dne"
   gameLevels, gameLooks, lookForDay, windowHtml, dropsWord, gameHash, gameRandom, gameShuffle, gameDay, chooseDecoys, puzzleForLevel, dailyPuzzles, effectStrength, effectSettings, effectStyle, waveRipple, lookKey, frameSource, drawPixels, gameFrame, gameHint, newRound, applyGuess,
-  dropsFor, winTitle, gameRank, newProgress, roundKey, roundOrder, finishRound, gameShareText,
+  dropsFor, winTitle, gameRanks, gameRank, archiveRoom, newProgress, roundKey, roundOrder, finishRound, gameShareText,
   // "Moje sbírka" and a made-up player for it (how it looks after a week, a month, a year)
   roundPuzzle, gameCollection, collectionHtml, simulatedRounds,
   // the colours of the works (scripts/lib/colors.mjs, a prototype)

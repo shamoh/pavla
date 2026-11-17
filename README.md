@@ -717,9 +717,33 @@ stránka je `src/pages/detail-dne/index.astro`, hra v prohlížeči `src/lib/det
   parametr `day` událostí GA, Diagnostika, postup hráče (kola a `played` pod `roundKey` „2026-320:easy“, poslední den série `lastDay`
   „2026-320“). Hráč ho vidí jako „Detail dne 2026#320“ (`dayLabel`): v nadpisu, bublině dlaždice archivu, kartě konce dne („Den 2026#310
   máš za sebou.“) a sdílení. Uvnitř hra počítá dny od začátku hry (`GAME_EPOCH`, série, archiv, měsíce); klíč dne jen na hranici.
-  Nad úrovněmi řádek „‹ Archiv · 3. listopadu · poloviční kapky › Dnes“ (jen v archivu, přepnutí dne
+  Nad úrovněmi řádek „‹ Archiv · 3. listopadu · zbývá 10 z 30 💧 › Dnes“ (jen v archivu, přepnutí dne
   je navigace, během kola se nic nehne). Za den archivu poloviční kapky bez bonusu série a série ani poslední den se nemění
   (`finishRound`, `dropsFor`). Sdílení z archivu posílá adresu s `?den=`.
+- **Strop archivu** (`archiveRoom`): z archivu se za jeden skutečný den započte nejvýš 30 💧 (aby nový hráč nepřeskočil desítky
+  hodností dohráním roku archivu najednou); co je navíc, propadne, obraz do sbírky přibude vždy. Postup si drží `archiveDay`
+  (klíč dne, kdy se kapky z archivu braly) a `archiveDrops`, kolo nad stropem má v `played` i `capped` (kolik kapek propadlo).
+  Hráč strop vidí: v řádku archivu „zbývá 30 z 30 💧“ (tlumeně), od poloviny žlutě, vyčerpaný červeně „strop 30 💧 dnes vyčerpán“
+  (na telefonu pod datem na vlastním řádku, nikdy se neusekne), v bublině co to znamená (`archiveRoomTitle`: hrát může dál,
+  obrazy přibývají do sbírky, kapky z archivu dnes už ne, zítra zase); v řádku pokusů „za 10 💧 (strop)“, když strop dá míň, než by kolo
+  dalo; na konci „+10 💧 (strop archivu)“ a v kartě výsledku červeně „Strop archivu: započteno 10 z 15 💧.“, s nulou
+  „Strop archivu: dnes už bez kapek, další zítra.“ (`cappedText`, v bublině `archiveRoomTitle`; s nulou bez „+0 💧“ u verdiktu); v poznámce sekce Archiv „Z archivu se za den započte nejvýš 30 💧, dnes ještě 20.“, vyčerpaný červeně „Dnešních 30 💧 z archivu už máš, další až zítra.“ (krátké, aby se vešly do jednoho řádku odstavce, `p` má `max-width: 62ch`; bublina jako v řádku archivu).
+- **Hodnosti** (`gameRanks`, `gameRank`): 22 hodností od „Vylitý kelímek“ (0) po „Druhé oko autorky“ (149 800 💧). Prahy = kapky
+  hráče, který každý den uhodne všechny tři úrovně napoprvé (od 6. dne série 90 💧 denně), na konci dne 1, 3, 6, 10, 15, 22, 32, 46,
+  66, 96, 136, 196, 286, 406, 586 a pak každých 180 dní (test to přepočítává): ze začátku po dnech, pak po týdnech, pak po měsících,
+  nikdy déle než půl roku. Za poslední přibývá každých 16 200 💧 hvězdička („Druhé oko autorky ★2“, ★3…), stupnice nikdy nekončí.
+- **Horní řádek** vedle nadpisu: „💧 130 kapek · Série 2 · Hodnost #2 Mokrý štětec · další za 60 💧“ (série = kolik dní po sobě
+  hráč hraje; číslo hodnosti = pořadí v seznamu pravidel, za poslední pokračuje). Od 800 px vždy jeden řádek s nadpisem: hodnost
+  se zkracuje, dokud se nevejde (`rankForms`, `fitRank`, i po změně šířky okna): „#2 Mokrý štětec · další za 60 💧“, „#2 Mokrý
+  štětec“, „Hodnost #2“, „#2“. Na telefonu (pod 800 px) totéž v řádku s nadpisem: aspoň číslo hodnosti, kvůli němu ustoupí slovo
+  „kapek“ za číslem (`.tight`); když se nevejde ani číslo, hodnost chybí (na telefonu na ležato vždy). Ověřeno 320–1400 px
+  s nejdelšími názvy, 6místnými kapkami i 3místnou sérií („#33 Druhé oko autorky ★12“), nic se neořízne. Velká čísla kapek všude
+  s tvrdou mezerou po tisících (`groupDigits`: „16 100 💧“; řádek, bublina, seznam hodností).
+- **Pravidla:** horní řádek je odkaz dolů na sekci „Jak se hraje“ (`#pravidla`) a v bublině má po blocích oddělených prázdným
+  řádkem kapky, sérii (kolik dní v řadě), hodnost s číslem a kolik zbývá do další, strop archivu a kde jsou pravidla (`statsTitle`). Sekce „Jak se hraje“ pod sbírkou (`rulesHtml`, sestavená
+  s markupem stránky z `gameLevels`, `dropsFor`, `archiveRoom`, `gameRanks`, takže čísla nikdy neutečou): bloky vedle sebe
+  (na telefonu pod sebou) Tři detaily denně, Kapky (tabulka úroveň × pokus), Série, Archiv (strop), Hodnosti (sbalený seznam
+  všech, hráčova hodnost tučně „← ty“) a Sbírka, pod nimi „ukládá se jen v tomto prohlížeči“.
 - **Diagnostika** (jen po dobu zkoušky v rodině): sekce „Diagnostika“ na konci stránky (pod sbírkou, nad patičkou) vypíše, co je právě na obrazovce (`gameDiagnostics`):
   den (pořadí v roce, rok, datum se dnem v týdnu, dnes / archiv / budoucí), klíč dne (`2026-320`, nadpis, soubor plánu, adresa, den hry od začátku),
   úroveň a její nastavení, odkud hádanka je (spočítaná pro den / uložená v kole), obraz a výřez, stav kola, pohled tohoto
@@ -727,7 +751,7 @@ stránka je `src/pages/detail-dne/index.astro`, hra v prohlížeči `src/lib/det
   tipy, vyřazené nápovědou, obrazovku (rozměr, sloupce, velikost výřezu) a data (začátek, počet děl a odpovědí úrovní). Obnovuje se
   s každým tahem a změnou velikosti okna. Tlačítko „Zkopírovat diagnostiku“ dá do schránky adresu stránky a pod ni řádky
   „popis: hodnota“ (`diagnosticsText`), aby šla poslat jedním vložením. Před zveřejněním hry ji odebrat.
-- **Postup hráče** jen v tomto prohlížeči: `localStorage` klíč `pavla.detailDne.v2` (`GAME_STORE`; kapky, série, hodnost, odehraná kola,
+- **Postup hráče** jen v tomto prohlížeči: `localStorage` klíč `pavla.detailDne.v2` (`GAME_STORE`; kapky, série, hodnost, kapky z archivu dnes, odehraná kola,
   sbírka, kola všech dnů; kola a odehrané pod `roundKey` „2026-320:easy“, poslední den série `lastDay` „2026-320“, takže jde postup
   porovnat přímo se souborem plánu; `v1` z doby pilotu 2026-11-15/16 měl čísla dnů od začátku hry a nečte se). Každé kolo si od prvního tipu pamatuje svou hádanku (`roundPuzzle`: obraz, výřez, náhledy,
   vzhled), takže rozehraný a odehraný den vypadá stejně i po přeskládání pořadí; dokud jsou všechna jeho díla na webu (`keptPuzzle`),

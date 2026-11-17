@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  analyzePixels, applyGuess, archiveDays, gameDiagnostics, diagnosticsText, monthGroups, unplayedDays, daysWord, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
+  analyzePixels, applyGuess, archiveDays, gameDiagnostics, diagnosticsText, monthGroups, unplayedDays, daysWord, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, archiveRoom, archiveRoomTitle, cappedText, groupDigits, rankForms, gameRanks, statsTitle, rulesHtml, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
   collectionHtml, gameCollection, simulatedRounds,
   PLAN_DETAIL_GAP, PLAN_HORIZON, PLAN_MAX_DETAILS, PLAN_WORK_GAP, extendPlan, planDay, planDetailOf, planDetails, planDaysByYear, planDetailsText, planUsage, planYearOf, planYearText, planYearsShown, plannedPuzzles, mergePlanDays, pragueDate, gameDiagnostics as diagnosticsOf,
   lookalikeDistance, newProgress, newRound, paletteDistance, rankLookalikes, regionDetail, regionEdges, regionPalette, rgbToLab, winTitle,
@@ -573,11 +573,26 @@ test('dropsFor, winTitle: fewer misses = more; a series adds up to 5; the archiv
   assert.equal(winTitle(9), 'Trefa!');
 });
 
-test('gameRank: by the drops, with the next one; none above the top', () => {
-  assert.deepEqual(gameRank(0), { title: 'Vylitý kelímek', next: 20, nextTitle: 'Mokrý štětec' });
-  assert.equal(gameRank(19).title, 'Vylitý kelímek');
-  assert.equal(gameRank(20).title, 'Mokrý štětec');
-  assert.deepEqual(gameRank(999), { title: 'Mistr akvarelu', next: null, nextTitle: null });
+test('gameRank: by the drops, with the next one; stars past the last rank, never an end', () => {
+  assert.deepEqual(gameRank(0), { index: 0, title: 'Vylitý kelímek', next: 60, nextTitle: 'Mokrý štětec' });
+  assert.equal(gameRank(59).title, 'Vylitý kelímek');
+  assert.equal(gameRank(60).title, 'Mokrý štětec');
+  assert.deepEqual(gameRank(149799), { index: 20, title: 'Legenda ateliéru', next: 149800, nextTitle: 'Druhé oko autorky' });
+  assert.deepEqual(gameRank(149800), { index: 21, title: 'Druhé oko autorky', next: 166000, nextTitle: 'Druhé oko autorky ★2' });
+  assert.deepEqual(gameRank(166000 + 16200 * 3), { index: 25, title: 'Druhé oko autorky ★5', next: 166000 + 16200 * 4, nextTitle: 'Druhé oko autorky ★6' });
+});
+
+test('gameRanks: a perfect player reaches each after days, then weeks, then months, never more than half a year apart', () => {
+  const ranks = gameRanks();
+  assert.equal(new Set(ranks.map(([, t]) => t)).size, ranks.length, 'unique titles');
+  // the drops of a player who solves all three levels at the first guess every day (the series full from day 6)
+  const perDay = (d) => gameLevels().reduce((sum, l) => sum + dropsFor(0, d, false, l.drops), 0);
+  const dayOf = (drops) => { let total = 0; let d = 0; while (total < drops) total += perDay(++d); return d; };
+  const days = ranks.slice(1).map(([from]) => dayOf(from));
+  assert.deepEqual(days, [1, 3, 6, 10, 15, 22, 32, 46, 66, 96, 136, 196, 286, 406, 586, 766, 946, 1126, 1306, 1486, 1666]);
+  const gaps = days.map((d, i) => d - (days[i - 1] ?? 0));
+  assert.ok(gaps.every((g, i) => g <= 180 && (i === 0 || g >= gaps[i - 1])), 'the gaps grow, at most half a year');
+  assert.equal(perDay(6) * 180, 16200, 'a star past the last one = half a year too');
 });
 
 /** The first day of the game in the tests of the progress: day 0 = 2026-305, the key of a day = 2026-(305 + day). */
@@ -625,7 +640,7 @@ test('finishRound: the series goes on day by day, survives a lost game, restarts
 });
 
 test('finishRound: says when a new rank is reached', () => {
-  const near = { ...newProgress(), drops: 15 };
+  const near = { ...newProgress(), drops: 55 };
   assert.equal(finishRound(near, { day: 1, today: 1, level: 'l', epoch: E, solved: true, misses: 0, workId: 'w' }).rankUp, true);
   assert.equal(finishRound(near, { day: 1, today: 1, level: 'l', epoch: E, solved: false, misses: 4, workId: 'w' }).rankUp, false);
 });
@@ -797,6 +812,90 @@ test('gameDiagnostics: the day, the level, the work, the view of this try and th
   assert.equal(rows({ ...newRound(), guesses: ['b', 'c', 'x', 'y'], over: true }, true)['Stav'], 'neuhodnuto');
   assert.equal(rows(newRound(), false)['Den'].endsWith('archiv'), true);
   assert.equal(Object.fromEntries(gameDiagnostics({ day: 5, today: 5, date: '2026-11-06', level, puzzle, round: newRound(), work }))['Den'], '310. den roku 2026 · pátek 6. listopadu 2026 · dnes');
+});
+
+test('finishRound: the archive counts at most 30 drops a day, the rest is left out (capped), tomorrow again', () => {
+  const today = 10;
+  const win = (progress, day, level = 'hard', multiplier = 3, at = today) => finishRound(progress, { day, today: at, level, epoch: E, multiplier, solved: true, misses: 0, workId: `w${day}` });
+  let step = win(newProgress(), 1);
+  assert.equal(step.gained, 15);
+  assert.deepEqual(archiveRoom(step.progress, today, E), { cap: 30, used: 15, left: 15 });
+  step = win(step.progress, 2);
+  assert.equal(step.gained, 15);
+  step = win(step.progress, 3, 'easy', 1);
+  assert.equal(step.gained, 0, 'the cap is reached');
+  assert.deepEqual(step.progress.played['2026-308:easy'], { solved: true, misses: 0, drops: 0, capped: 5 });
+  assert.deepEqual(step.progress.collected, ['w1', 'w2', 'w3'], 'the work goes into the collection all the same');
+  assert.equal(step.progress.drops, 30);
+  const partial = win({ ...step.progress, archiveDrops: 20 }, 4);
+  assert.deepEqual([partial.gained, partial.progress.played['2026-309:hard'].capped], [10, 5], 'only what is left of the cap');
+  assert.deepEqual(archiveRoom(step.progress, today + 1, E), { cap: 30, used: 0, left: 30 }, 'a new day, a new cap');
+  const tomorrow = win(step.progress, 5, 'hard', 3, today + 1);
+  assert.equal(tomorrow.gained, 15);
+  const live = finishRound(step.progress, { day: today, today, level: 'hard', epoch: E, multiplier: 3, solved: true, misses: 0, workId: 'x' });
+  assert.equal(live.gained, 30, 'today has no cap');
+  assert.equal(live.progress.archiveDrops, 30, 'and leaves the cap alone');
+  assert.deepEqual(archiveRoom({ drops: 5, played: {} }, today, E).left, 30, 'an older store without the fields');
+});
+
+test('statsTitle: a block for the drops, the series, the rank and the archive, blank lines between', () => {
+  const text = statsTitle({ drops: 110, streak: 2 });
+  const blocks = text.split('\n\n');
+  assert.equal(blocks.length, 5);
+  assert.equal(blocks[0].split('\n')[0], '💧 110 kapek');
+  assert.equal(blocks[1].split('\n')[0], '🔥 Série 2 (2 dny v řadě)');
+  assert.equal(blocks[2], '🏅 Hodnost #2 Mokrý štětec\nDo #3 Kapka na papíře zbývá 80 💧.');
+  assert.match(blocks[3], /nejvýš 30 💧 za den/);
+  assert.match(statsTitle({ drops: 1, streak: 5 }), /💧 1 kapka[\s\S]*Série 5 \(5 dní v řadě\)/);
+  assert.match(statsTitle({ drops: 0, streak: 1 }), /Série 1 \(1 den v řadě\)/);
+});
+
+test('rankForms: the rank in the top line, from the whole one to the number alone, each shorter', () => {
+  const forms = rankForms(130);
+  assert.equal(forms[0], 'Hodnost #2 <b>Mokrý štětec</b> · další za 60 💧');
+  assert.equal(forms[forms.length - 1], '<b>#2</b>');
+  const text = (html) => html.replace(/<[^>]+>/g, '');
+  assert.ok(forms.every((f, i) => i === 0 || text(f).length < text(forms[i - 1]).length));
+  assert.equal(rankForms(166000)[2], '#23 <b>Druhé oko autorky ★2</b>', 'the stars go on counting');
+  assert.equal(rankForms(0)[4], '<b>#1</b>', 'the number as in the list of the rules');
+  assert.equal(rankForms(1000)[1], '#5 <b>První skica</b> · další za 250 💧');
+  assert.equal(rankForms(100)[0], 'Hodnost #2 <b>Mokrý štětec</b> · další za 90 💧');
+  assert.match(rankForms(133600)[0], /další za 16\u00a0200 💧/, 'big numbers grouped by thousands');
+});
+
+test('cappedText: what the cap of the archive took, short', () => {
+  assert.equal(cappedText({ gained: 10, capped: 5 }), 'Strop archivu: započteno 10 z 15 💧.');
+  assert.equal(cappedText({ gained: 0, capped: 15 }), 'Strop archivu: dnes už bez kapek, další zítra.');
+});
+
+test('groupDigits: thousands apart by a non-breaking space, small numbers as they are', () => {
+  assert.equal(groupDigits(0), '0');
+  assert.equal(groupDigits(810), '810');
+  assert.equal(groupDigits(1250), '1\u00a0250');
+  assert.equal(groupDigits(16100), '16\u00a0100');
+  assert.equal(groupDigits(149800), '149\u00a0800');
+  assert.equal(groupDigits(1234567), '1\u00a0234\u00a0567');
+});
+
+test('statsTitle and rulesHtml: big numbers grouped by thousands', () => {
+  assert.match(statsTitle({ drops: 16100, streak: 3 }), /💧 16\u00a0100 kapek/);
+  assert.match(rulesHtml(), /149\u00a0800 💧/);
+});
+
+test('archiveRoomTitle: what the cap means for the player', () => {
+  assert.match(archiveRoomTitle({ cap: 30, left: 20 }), /dnes ještě 20/);
+  assert.match(archiveRoomTitle({ cap: 30, left: 0 }), /Hrát můžeš dál.*nové kapky z archivu dnes už nedostaneš/);
+});
+
+test('rulesHtml: the drops of each level and try, the series, the cap of the archive, every rank to mark', () => {
+  const html = rulesHtml();
+  assert.match(html, /id="pravidla"/);
+  assert.match(html, /<th scope="row">Napoprvé<\/th><td>10<\/td><td>20<\/td><td>30<\/td>/);
+  assert.match(html, /<th scope="row">Na 4. pokus<\/th><td>1<\/td><td>2<\/td><td>–<\/td>/, 'the hard level has 3 tries');
+  assert.match(html, /\+5 \/ \+10 \/ \+15 💧/);
+  assert.match(html, /nejvýš 30 💧/);
+  assert.equal((html.match(/data-rank="/g) ?? []).length, gameRanks().length);
+  assert.match(html, /<li data-rank="2"><span>Kapka na papíře<\/span> <span class="from">190 💧<\/span><\/li>/);
 });
 
 test('finishRound: a day of the archive gives half the drops, keeps the series and the last day', () => {

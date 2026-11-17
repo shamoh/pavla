@@ -11,8 +11,8 @@
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, gameEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
 import { SKIP_HEADER_ROOM, skipHeaderScope, skipsHeader } from '../../scripts/lib/skip-header.mjs';
 import {
-  applyGuess, archiveDays, dailyPuzzles, dayId, dayLabel, nextStepsHtml, perfectDay, PERFECT_DAY_TEXT, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
-  collectionHtml, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
+  applyGuess, archiveDays, cappedText, groupDigits, dailyPuzzles, dayId, dayLabel, nextStepsHtml, perfectDay, PERFECT_DAY_TEXT, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
+  collectionHtml, archiveRoom, archiveRoomTitle, rankForms, statsTitle, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
 } from '../../scripts/lib/detail-game.mjs';
 
 /** Where the progress of a player is kept; a new format of it = a new key. */
@@ -249,8 +249,49 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
   function renderStats() {
     const { progress } = store;
     const rank = gameRank(progress.drops);
-    const toNext = rank.next === null ? '' : ` · do další hodnosti ${rank.next - progress.drops} 💧`;
-    $('stats').innerHTML = `<span>💧 <b>${progress.drops}</b> ${dropsWord(progress.drops)}</span><span>Série <b>${progress.streak}</b></span><span class="rank"><b>${rank.title}</b>${toNext}</span>`;
+    $('stats').innerHTML = `<span>💧 <b>${groupDigits(progress.drops)}</b><span class="word"> ${dropsWord(progress.drops)}</span></span><span>Série <b>${progress.streak}</b></span><span class="rank"></span>`;
+    fitRank();
+    // the rules in a few lines in the bubble (a link down to the whole rules), the player's rank marked in their list
+    $('stats').title = statsTitle(progress);
+    const ranks = root.querySelectorAll<HTMLElement>('[data-rank]');
+    ranks.forEach((li) => li.classList.toggle('current', Number(li.dataset.rank) === Math.min(rank.index, ranks.length - 1)));
+    $('archive-room').innerHTML = roomText(false);
+  }
+
+  /**
+   * The rank always in the top line by the title: the longest of its forms (rankForms) with which the line of the stats does not
+   * overflow (CSS keeps it one line next to the title, `.stats` overflow hidden); the whole in the bubble. On a narrow phone at least
+   * the number ("#2"), for which the word "kapek" after the drops gives way (`.tight`); when not even that fits, no rank, and the
+   * word only as long as the drops and the series fit with it. Hidden by CSS on a phone on its side (offsetParent null).
+   */
+  function fitRank() {
+    const stats = $('stats');
+    const rank = stats.querySelector('.rank') as HTMLElement | null;
+    if (!rank) return;
+    const fits = () => stats.scrollWidth <= stats.clientWidth;
+    stats.classList.remove('tight');
+    rank.hidden = false;
+    const forms = rankForms(store.progress.drops);
+    for (const form of forms) {
+      rank.innerHTML = form;
+      if (!rank.offsetParent || fits()) return;
+    }
+    stats.classList.add('tight');
+    if (fits()) return;
+    rank.hidden = true;
+    stats.classList.remove('tight');
+    if (!fits()) stats.classList.add('tight');
+  }
+
+  /** The drops the archive still gives today (archiveRoom). */
+  const room = () => archiveRoom(store.progress, today, data.epoch);
+  /** The cap of the archive in words, short for the bar over the levels, a sentence for the note of the archive (one line), what it means in the bubble of both. */
+  function roomText(short: boolean) {
+    const { cap, left } = room();
+    const title = ` title="${escapeHtml(archiveRoomTitle({ cap, left }))}"`;
+    if (!left) return `<span class="room full"${title}>${short ? `strop ${cap} 💧 dnes vyčerpán` : `Dnešních ${cap} 💧 z archivu už máš, další až zítra.`}</span>`;
+    const near = left <= cap / 2 ? ' near' : '';
+    return `<span class="room${near}"${title}>${short ? `zbývá ${left} z ${cap} 💧` : `Z archivu se za den započte nejvýš ${cap} 💧, dnes ještě ${left}.`}</span>`;
   }
 
   function renderLevels() {
@@ -286,6 +327,14 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
    * The status over the thumbnails, always the same lines: the question (the verdict at the end), the look with the guess and the drops
    * (what was won), and in a level with hints the last hint (a line waiting for it before the first miss, the title at the end).
    */
+  /** What a hit at this try gives: on a day of the archive no more than the archive still gives today, "(strop)" when less. */
+  function worth(misses: number, level: any) {
+    const full = dropsFor(misses, 1, archive(), level.drops);
+    if (!archive()) return `${full} 💧`;
+    const left = room().left;
+    return left < full ? `${left} 💧 (strop)` : `${full} 💧`;
+  }
+
   function statusHtml(round: any, level: any, outcome?: any) {
     const played = store.progress.played[roundKey(store.level)];
     const drops = outcome?.gained ?? played?.drops ?? 0;
@@ -297,8 +346,8 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     }).join('');
     const tried = `<span class="pips" aria-hidden="true">${pips}</span>`;
     const tries = round.over
-      ? `${tried}${round.solved ? `+${drops} 💧 a obraz do tvé sbírky` : archive() ? 'Zkus jiný den z archivu.' : 'Zítra je tu nový detail.'}`
-      : `${tried}<b>Pokus ${round.guesses.length + 1} z ${level.guesses}</b> · za ${dropsFor(round.guesses.length, 1, archive(), level.drops)} 💧 · ${escapeHtml(lookNow().label)}`;
+      ? `${tried}${round.solved ? `+${drops} 💧${played?.capped ? ' (strop archivu)' : ''} a obraz do tvé sbírky` : archive() ? 'Zkus jiný den z archivu.' : 'Zítra je tu nový detail.'}`
+      : `${tried}<b>Pokus ${round.guesses.length + 1} z ${level.guesses}</b> · za ${worth(round.guesses.length, level)} · ${escapeHtml(lookNow().label)}`;
     const lastHint = round.hints[round.hints.length - 1];
     const hint = !level.hints ? ''
       : round.over ? `<p class="hint"><b>${escapeHtml(byId.get(puzzle.targetId)!.title)}</b></p>`
@@ -321,8 +370,11 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     const drops = outcome?.gained ?? played?.drops ?? 0;
     const rank = gameRank(store.progress.drops);
     const rankUp = outcome?.rankUp ? `<p class="rankup">Nová hodnost: ${escapeHtml(rank.title)}!</p>` : '';
+    // a day of the archive over the cap of today: what was left out and when the archive gives drops again
+    const capped = round.solved && played?.capped
+      ? `<p class="capped" title="${escapeHtml(archiveRoomTitle(room()))}">${cappedText({ gained: drops, capped: played.capped })}</p>` : '';
     const verdict = round.solved
-      ? `<p class="verdict"><span class="sign" aria-hidden="true">✓</span> ${winTitle(missesOf(round))} <span class="gain">+${drops} 💧</span></p>`
+      ? `<p class="verdict"><span class="sign" aria-hidden="true">✓</span> ${winTitle(missesOf(round))} ${drops || !played?.capped ? `<span class="gain">+${drops} 💧</span>` : ''}</p>`
       : `<p class="verdict"><span class="sign" aria-hidden="true">✗</span> Tentokrát ne <span class="gain">byl to tenhle obraz</span></p>`;
     const text = work.text ? `<p class="text">${escapeHtml(work.text)}</p>` : '';
     const collection = work.collection
@@ -336,6 +388,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
       ? `<p class="perfect"><span aria-hidden="true">🎉</span> ${PERFECT_DAY_TEXT}</p>` : '';
     return `<div class="result ${round.solved ? 'won' : 'lost'}">
       ${verdict}
+      ${capped}
       ${rankUp}
       <h2>${escapeHtml(work.title)}</h2>
       <p class="sub">${escapeHtml(work.sub)}${work.year ? ` · ${work.year}` : ''}</p>
@@ -360,7 +413,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     bar.hidden = !archive();
     if (!archive()) return;
     bar.innerHTML = `<button class="step" type="button" data-day="${day - 1}" aria-label="Starší den"${day > 0 ? '' : ' disabled'}>‹</button>
-      <span class="which">Archiv · ${dateWords(day)} · <span class="half">poloviční kapky</span></span>
+      <span class="which"><span class="when">Archiv · ${dateWords(day)}</span> ${roomText(true)}</span>
       <button class="step" type="button" data-day="${day + 1}" aria-label="Novější den"${day < lastDay ? '' : ' disabled'}>›</button>
       <button class="today" type="button" data-day="${today}">Dnes</button>`;
   }
@@ -617,6 +670,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     scrollTo({ top, behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
   }
   addEventListener('resize', () => {
+    fitRank();
     fitStage();
     placePicture(currentRound());
     renderDiagnostics();
