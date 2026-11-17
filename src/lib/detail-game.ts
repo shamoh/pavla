@@ -11,7 +11,7 @@
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, gameEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
 import { SKIP_HEADER_ROOM, skipHeaderScope, skipsHeader } from '../../scripts/lib/skip-header.mjs';
 import {
-  applyGuess, archiveDays, dailyPuzzles, dayId, dayLabel, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
+  applyGuess, archiveDays, dailyPuzzles, dayId, dayLabel, nextStepsHtml, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
   collectionHtml, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
 } from '../../scripts/lib/detail-game.mjs';
 
@@ -327,14 +327,10 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     const text = work.text ? `<p class="text">${escapeHtml(work.text)}</p>` : '';
     const collection = work.collection
       ? `<a class="action quiet" href="${base}/tvorba/kolekce/${work.collection}/" title="Kolekce ${escapeHtml(work.collectionTitle)}">Kolekce</a>` : '';
-    const dayDone = LEVELS.every((l) => !puzzleOf(l.id) || store.progress.played[roundKey(l.id)]);
-    // the whole day done: what else waits, with a way down to the archive
-    const waiting = dayDone ? unplayedDays({ played: store.progress.played, levels: LEVELS, before: today + 1, epoch: data.epoch }).filter((d) => d !== day) : [];
-    const finished = archive() ? `Den ${labelOf(day)} máš za sebou.` : 'Všechny dnešní detaily máš za sebou. Zítra přijdou nové.';
-    const more = waiting.length
-      ? ` <a class="to-archive" href="#archiv" data-to-archive>V archivu na tebe čeká ještě ${waiting.length} ${daysWord(waiting.length)} ↓</a>${archive() ? '' : ' <span class="half">za poloviční kapky</span>'}`
-      : archive() ? ' Archiv máš celý dohraný.' : '';
-    const done = dayDone ? `${finished}${more}` : '';
+    // always: the levels of the day still to play, or (the day done) the way down to the archive
+    const left = LEVELS.filter((l) => puzzleOf(l.id) && !store.progress.played[roundKey(l.id)]);
+    const waiting = left.length ? 0 : unplayedDays({ played: store.progress.played, levels: LEVELS, before: today + 1, epoch: data.epoch }).filter((d) => d !== day).length;
+    const done = nextStepsHtml({ left, label: labelOf(day), archive: archive(), waiting });
     return `<div class="result ${round.solved ? 'won' : 'lost'}">
       ${verdict}
       ${rankUp}
@@ -346,7 +342,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
         ${collection}
         <button class="action quiet" type="button" data-share>Sdílet</button>
       </div>
-      ${done ? `<p class="done">${done}</p>` : ''}
+      <p class="done">${done}</p>
     </div>`;
   }
 
@@ -567,13 +563,15 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
       history.replaceState(history.state, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`);
     } catch { /* a page opened from the disk may not change its address */ }
     render();
-    root.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    toGame(true);
   }
 
+  /** Another level (the levels over the game, a level in the box of the end): the game from its top, ready to play. */
   function openLevel(id: string) {
     store.level = levelOf(id).id;
     save();
     render();
+    toGame(true);
   }
 
   // a month of the archive opened or closed by hand stays so after the archive is drawn again
@@ -603,12 +601,15 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     }
   });
   /**
-   * The game is the screen of a phone: its top at the top, so the stage and all thumbnails fit (fitStage measures from there). On a
-   * phone upright and on any low screen (a phone on its side).
+   * Where the game starts on the screen: its title at the top. On a phone upright and on any low screen (a phone on its side) right at
+   * the top, so the stage and all thumbnails fit (fitStage measures from there); otherwise SKIP_HEADER_ROOM under it, as the pages of
+   * Tvorba open (scripts/lib/skip-header.mjs).
    */
-  const snapToGame = () => {
-    if (!matchMedia(TWO_COLUMNS).matches || innerHeight < 700) root.scrollIntoView({ block: 'start' });
-  };
+  const phoneLike = () => !matchMedia(TWO_COLUMNS).matches || innerHeight < 700;
+  function toGame(smooth = false) {
+    const top = Math.max(0, root.getBoundingClientRect().top + scrollY - (phoneLike() ? 0 : SKIP_HEADER_ROOM));
+    scrollTo({ top, behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+  }
   addEventListener('resize', () => {
     fitStage();
     placePicture(currentRound());
@@ -618,7 +619,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
   matchMedia('(orientation: landscape)').addEventListener('change', () => requestAnimationFrame(() => {
     fitStage();
     placePicture(currentRound());
-    snapToGame();
+    if (phoneLike()) toGame();
   }));
   await ensureDay(day);
   render();
@@ -626,8 +627,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
   // of the game on top (as the pages of Tvorba, scripts/lib/skip-header.mjs; the script of the layout comes too early for it).
   const entry = performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined;
   const page = { path: location.pathname, scope: skipHeaderScope(location.pathname, BASE || '/'), hash: location.hash, navigation: entry?.type ?? '' };
-  if (skipsHeader(page)) scrollTo(0, Math.max(0, root.getBoundingClientRect().top + scrollY - SKIP_HEADER_ROOM));
-  snapToGame();
+  if (skipsHeader(page) || phoneLike()) toGame();
 
   return {
     render,

@@ -695,6 +695,27 @@ export function unplayedDays({ played, levels, before, epoch }) {
   return archiveDays(before).filter((day) => dayMarks(played, day, levels, epoch).includes(null));
 }
 
+/**
+ * The box under the result of a round, always two lines (each short enough for one line on a phone): what is left of the day and
+ * where to go on. Levels of the day still to play (`left`, `{ id, label }`): their names as buttons (`data-level`: the page switches to
+ * the level and goes up to the game). The whole day done: the archive (`waiting` days of it with a level not played, `data-to-archive`)
+ * or what comes next. `label` = the day as the title names it (dayLabel), `archive` = a day of the archive.
+ */
+export function nextStepsHtml({ left, label, archive, waiting }) {
+  const escape = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const line = (text) => `<span class="line">${text}</span>`;
+  if (left.length) {
+    const buttons = left.map((l) => `<button class="to-level" type="button" data-level="${escape(l.id)}">${escape(l.label)}</button>`);
+    const names = buttons.length === 1 ? buttons[0] : `${buttons.slice(0, -1).join(', ')} nebo ${buttons.at(-1)}`;
+    return line(left.length === 1 ? 'Ještě ti zbývá jedna obtížnost:' : 'Ještě můžeš hrát obtížnosti:') + line(names);
+  }
+  const days = waiting === 1 ? 'den' : waiting >= 2 && waiting <= 4 ? 'dny' : 'dní';
+  const next = waiting
+    ? `<a class="to-archive" href="#archiv" data-to-archive>V archivu čeká ještě ${waiting} ${days} ↓</a>`
+    : archive ? 'Archiv máš celý dohraný.' : 'Zítra přijdou nové detaily.';
+  return line(archive ? `Den ${escape(label)} máš za sebou.` : 'Dnešní detaily máš za sebou.') + line(next);
+}
+
 /** A count of days in words, as Czech says it: 1 den, 2–4 dny, 0 and 5 and more dní. */
 export function daysWord(count) {
   const n = Math.abs(count);

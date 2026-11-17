@@ -124,10 +124,12 @@
 .detail-game .lost .verdict .gain { color: var(--ink-soft); font-weight: 400; }
 .detail-game .result h2 { font-size: 1.35rem; margin: 0; }
 .detail-game .result .sub { font-size: .88rem; color: var(--ink-soft); margin: 2px 0 8px; }
-/* The whole day done: what still waits, with a way down to the archive. */
-.detail-game .result .done { margin: 12px 0 0; padding: 8px 10px; background: var(--todo); border-radius: 6px; font-size: .9rem; line-height: 1.4; }
-.detail-game .to-archive { color: var(--ink); font-weight: 600; }
-.detail-game .done .half { color: var(--ink-soft); }
+/* Always under the result: what is left of the day and where to go on (nextStepsHtml), two lines, each one line also on a phone. */
+.detail-game .result .done { margin: 12px 0 0; padding: 8px 10px; background: var(--todo); border-radius: 6px; font-size: .9rem; line-height: 1.45; }
+.detail-game .done .line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.detail-game .to-archive, .detail-game .to-level { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.detail-game .to-level { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; cursor: pointer; }
+.detail-game .to-archive:hover, .detail-game .to-level:hover { text-decoration-color: currentColor; }
 .detail-game .result .text { font-size: .94rem; margin: 0 0 12px; }
 .detail-game .rankup { color: var(--accent); font-weight: 500; margin: -4px 0 8px; }
 /* Always one line: short words, the full ones in the bubble. */

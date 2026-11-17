@@ -5,7 +5,7 @@ import {
   collectionHtml, gameCollection, simulatedRounds,
   PLAN_DETAIL_GAP, PLAN_HORIZON, PLAN_MAX_DETAILS, PLAN_WORK_GAP, extendPlan, planDay, planDetailOf, planDetails, planDaysByYear, planDetailsText, planUsage, planYearOf, planYearText, planYearsShown, plannedPuzzles, mergePlanDays, pragueDate, gameDiagnostics as diagnosticsOf,
   lookalikeDistance, newProgress, newRound, paletteDistance, rankLookalikes, regionDetail, regionEdges, regionPalette, rgbToLab, winTitle,
-  PLACE_OVERLAP, GAME_CANDIDATES, candidatePool, roundKey, roundOrder, yearDay, dayId, dayLabel, dayOfId, PLAN_FILE_VERSION, planYearDays,
+  PLACE_OVERLAP, GAME_CANDIDATES, candidatePool, nextStepsHtml, roundKey, roundOrder, yearDay, dayId, dayLabel, dayOfId, PLAN_FILE_VERSION, planYearDays,
 } from './detail-game.mjs';
 
 /** Raw pixels of `width` × `height` coloured by `paint(x, y)` = [r, g, b]. */
@@ -709,6 +709,27 @@ test('unplayedDays / daysWord: the days of the archive still waiting, the newest
   assert.deepEqual(unplayedDays({ played, levels, before: 4, epoch: E }), [3, 2, 0]);
   assert.deepEqual(unplayedDays({ played, levels, before: 0, epoch: E }), []);
   assert.deepEqual([0, 1, 2, 4, 5, 11].map(daysWord), ['dní', 'den', 'dny', 'dny', 'dní', 'dní']);
+});
+
+test('nextStepsHtml: always two lines, the levels left as buttons, then the archive or what comes next', () => {
+  const easy = { id: 'easy', label: 'Lehká' };
+  const medium = { id: 'medium', label: 'Střední' };
+  const hard = { id: 'hard', label: 'Těžká' };
+  const lines = (html) => html.match(/<span class="line">/g).length;
+  const two = nextStepsHtml({ left: [medium, hard], label: '2026#320', archive: false, waiting: 0 });
+  assert.equal(two, '<span class="line">Ještě můžeš hrát obtížnosti:</span><span class="line"><button class="to-level" type="button" data-level="medium">Střední</button> nebo <button class="to-level" type="button" data-level="hard">Těžká</button></span>');
+  const one = nextStepsHtml({ left: [hard], label: '2026#320', archive: true, waiting: 5 });
+  assert.equal(one, '<span class="line">Ještě ti zbývá jedna obtížnost:</span><span class="line"><button class="to-level" type="button" data-level="hard">Těžká</button></span>', 'levels first, the archive waits');
+  assert.match(nextStepsHtml({ left: [easy, medium, hard], label: 'x', archive: false, waiting: 0 }), />Lehká<\/button>, <button[^>]*>Střední<\/button> nebo <button[^>]*>Těžká</);
+  assert.equal(nextStepsHtml({ left: [], label: '2026#320', archive: false, waiting: 16 }), '<span class="line">Dnešní detaily máš za sebou.</span><span class="line"><a class="to-archive" href="#archiv" data-to-archive>V archivu čeká ještě 16 dní ↓</a></span>');
+  assert.match(nextStepsHtml({ left: [], label: '2026#310', archive: true, waiting: 1 }), /^<span class="line">Den 2026#310 máš za sebou\.<\/span>.*ještě 1 den ↓/);
+  assert.match(nextStepsHtml({ left: [], label: 'x', archive: false, waiting: 3 }), /ještě 3 dny ↓/);
+  assert.match(nextStepsHtml({ left: [], label: 'x', archive: false, waiting: 0 }), /Zítra přijdou nové detaily\./);
+  assert.match(nextStepsHtml({ left: [], label: '2026#310', archive: true, waiting: 0 }), /Archiv máš celý dohraný\./);
+  for (const html of [two, one, nextStepsHtml({ left: [], label: '2026#999', archive: true, waiting: 365 })]) {
+    assert.equal(lines(html), 2);
+    for (const text of html.split('<span class="line">').slice(1).map((l) => l.replace(/<[^>]+>/g, ''))) assert.ok(text.length <= 32, `short enough for a phone: ${text}`);
+  }
 });
 
 test('diagnosticsText: the address, then a row a line', () => {

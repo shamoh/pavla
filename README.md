@@ -623,10 +623,16 @@ stránka je `src/pages/detail-dne/index.astro`, hra v prohlížeči `src/lib/det
 - **Konec kola:** verdikt ve stavovém bloku dostane barvu (zelená uhádnuto, červená ne; velikost stejná, nic se neposune) a celý
   odhalený obraz ve výřezu je odkazem na stránku díla. Karta výsledku pod náhledy: nahoře velký verdikt v barvě a s pruhem
   („✓ Trefa! +3 💧“ / „✗ Tentokrát ne, byl to tenhle obraz“), případně nová hodnost, pak název, technika · rozměr · rok a text díla
-  a jeden řádek tichých tlačítek „Obraz“, „Kolekce“ (celý název v bublině), „Sdílet“ (nikdy se nezalomí). Další úroveň ani den karta
-  nenabízí (úrovně jsou nad výřezem, archiv pod hrou). Po posledním kole dne žlutý řádek „Všechny dnešní detaily máš za sebou…“ (v archivu
-  „Den 2026#307 máš za sebou.“) a, zbývá-li v archivu nedohraný den (`unplayedDays`), odkaz „V archivu na tebe čeká ještě 13 dní ↓“
-  (`daysWord`), který stránku plynule posune k archivu (`#archiv`, adresa se nemění).
+  a jeden řádek tichých tlačítek „Obraz“, „Kolekce“ (celý název v bublině), „Sdílet“ (nikdy se nezalomí). Pod nimi vždy žlutý box
+  o dvou řádcích (`nextStepsHtml`; každý řádek i na telefonu 320 px na jeden řádek, delší by se zkrátil „…“): zbývají-li úrovně dne,
+  „Ještě můžeš hrát obtížnosti:“ / „Střední nebo Těžká“, resp. „Ještě ti zbývá jedna obtížnost:“ / „Těžká“ (tlačítka `data-level`:
+  přepnou úroveň a posunou stránku nahoru ke hře); po celém dni „Dnešní detaily máš za sebou.“ (v archivu „Den 2026#307 máš za sebou.“)
+  a odkaz „V archivu čeká ještě 13 dní ↓“ (`unplayedDays`; plynule k archivu, `#archiv`, adresa se nemění), jinak „Zítra přijdou nové
+  detaily.“ / „Archiv máš celý dohraný.“.
+- **Posun ke hře** (`toGame`): přepnutí úrovně (záložky nad hrou i tlačítka v boxu), jiný den, běžné otevření stránky a otočení
+  telefonu posune stránku tak, aby nahoře byl nadpis „Detail dne …“ (na telefonu a nízké obrazovce úplně nahoře, aby se vešel výřez
+  i náhledy; jinak 16 px pod okrajem jako stránky Tvorby). Řádek s adresou na telefonu stránka schovat neumí (prohlížeč ho schová,
+  jen když stránku posune prstem sám hráč).
 - **Plán dnů** (složka `game/detail-dne/` v tomto repu, `scripts/lib/game-plan.mjs`, logika `extendPlan` v `scripts/lib/detail-game.mjs`):
   den = počet dní od `GAME_EPOCH` podle data v telefonu hráče (`gameDay`). Každý plný běh `npm run images` (a `npm run demo` do
   `.demo/site/game/`) plán prodlouží: dny do zítřka (`PLAN_LOCKED`, pražský čas `pragueDate`) zůstanou, jak jsou, dny po nich až
