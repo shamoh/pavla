@@ -3,7 +3,7 @@
 // Short addresses of works (/tvorba/<id>/, redirects) and the 404 page are left out.
 
 /** Pages that are not made from the content. A new page in src/pages without data behind it belongs here. */
-export const STATIC_PAGES = ['/', '/tvorba/', '/tvorba/kolekce/', '/o-mne/', '/kontakt/'];
+export const STATIC_PAGES = ['/', '/tvorba/', '/tvorba/kolekce/', '/detail-dne/', '/o-mne/', '/kontakt/'];
 /** Static pages that list works: their lastmod is the newest change of all works. */
 const LISTS_ALL = new Set(['/', '/tvorba/', '/tvorba/kolekce/']);
 

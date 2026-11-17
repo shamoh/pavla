@@ -1,14 +1,24 @@
 ---
 // The game Detail dne: three daily puzzles "from which work is this close-up?" (src/lib/detail-game.ts, rules
-// scripts/lib/detail-game.mjs, data /detail-dne/data.json). For now a pilot: no link leads here, search engines leave it out
-// (noindex, not in the sitemap), the progress stays in the browser of the player. The markup (gamePageHtml) and the look
-// (src/styles/detail-game.css) are shared with the prototype of the game (.prototypes/detail-dne.html).
+// scripts/lib/detail-game.mjs, data /detail-dne/data.json). In the menu of the site and on the home page (GameTeaser.astro),
+// in the sitemap; the progress stays in the browser of the player. Its share image: three close-ups (gameShareImage). The markup
+// (gamePageHtml) and the look (src/styles/detail-game.css) are shared with the prototype of the game (.prototypes/detail-dne.html).
 import Base from '../../layouts/Base.astro';
-import { url } from '../../lib/site';
+import { site, url } from '../../lib/site';
+import { gameShareImage } from '../../lib/detail-game-works';
 import { gamePageHtml } from '../../../scripts/lib/detail-game-page.mjs';
+import { breadcrumbLd, gamePageLd, graphLd } from '../../../scripts/lib/seo.mjs';
 import '../../styles/detail-game.css';
+
+const description = 'Denní hra z mých obrazů: ze kterého obrazu je tento detail? Každý den tři nové, od lehkého po těžký.';
+const share = gameShareImage();
+const image = share ? { src: share.src, width: share.width, height: share.height } : undefined;
+const jsonLd = graphLd(
+  gamePageLd(site, { path: '/detail-dne/', name: 'Detail dne', description }),
+  breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Detail dne', path: '/detail-dne/' }]),
+);
 ---
-<Base title="Detail dne" description="Denní hádanka z mých obrazů: ze kterého obrazu je tento detail? Tři úrovně každý den." noindex messagePanel={false}>
+<Base title="Detail dne" description={description} image={image} jsonLd={jsonLd} messagePanel={false}>
   <Fragment set:html={gamePageHtml({ src: url('/detail-dne/data.json') })} />
 </Base>
 <script>

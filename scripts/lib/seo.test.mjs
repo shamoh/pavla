@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  artform, artworkLd, workPageLd, authorId, imageObjectLd, breadcrumbLd, collectionPageLd, graphLd, jsonLdText, personLd, robotsTxt, summarize,
+  artform, artworkLd, workPageLd, gamePageLd, authorId, imageObjectLd, breadcrumbLd, collectionPageLd, graphLd, jsonLdText, personLd, robotsTxt, summarize,
   tagKeywords, verificationMeta, websiteLd, workDescription, workPageDescription, workPageTitle,
 } from './seo.mjs';
 
@@ -167,6 +167,15 @@ test('artworkLd: the picture is an ImageObject with the author as creator, credi
   assert.ok(!('license' in ld.image) && !('acquireLicensePage' in ld.image), 'the author sells originals, never licences');
   assert.equal(imageObjectLd('https://web.test/a.jpg', { date: '2025-03-01' }, site).copyrightNotice, '© 2025 Pavla Kramolišová');
   assert.equal('image' in artworkLd(work, site, { path: '/x/' }), false);
+});
+
+test('gamePageLd: a WebPage of the site by the author', () => {
+  const ld = gamePageLd(site, { path: '/detail-dne/', name: 'Detail dne', description: 'Hra.' });
+  assert.equal(ld['@type'], 'WebPage');
+  assert.equal(ld.name, 'Detail dne');
+  assert.equal(ld.description, 'Hra.');
+  assert.ok(ld.url.endsWith('/detail-dne/'));
+  assert.ok(ld.isPartOf['@id'] && ld.author['@id']);
 });
 
 test('workPageLd: an ItemPage about the work, relatedLink only with related works', () => {

@@ -28,6 +28,7 @@ const fullTitle = title ? `${title} · ${site.title}` : `${site.title} — ${sit
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const nav = [
   { href: '/tvorba/', label: 'Tvorba' },
+  { href: '/detail-dne/', label: 'Detail dne' },
   { href: '/o-mne/', label: 'O mně' },
   { href: '/kontakt/', label: 'Kontakt' },
 ];
@@ -196,7 +197,12 @@ const skipScope = skipHeaderScope(Astro.url.pathname, import.meta.env.BASE_URL);
   .brand-name { font-family: var(--serif); font-size: 1.9rem; line-height: 1; }
   .brand-tag { font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); margin-top: 6px; }
   .site-header nav { display: flex; gap: 28px; }
-  .site-header nav a { text-decoration: none; font-size: 0.95rem; padding-bottom: 3px; border-bottom: 1px solid transparent; }
+  .site-header nav a { text-decoration: none; font-size: 0.95rem; padding-bottom: 3px; border-bottom: 1px solid transparent; white-space: nowrap; }
+  /* Four items on a narrow phone too: closer together and a little smaller, each on one line. */
+  @media (max-width: 480px) {
+    .site-header nav { gap: clamp(8px, 3.6vw, 20px); }
+    .site-header nav a { font-size: 0.9rem; }
+  }
   .site-header nav a[aria-current='page'], .site-header nav a:hover { border-color: var(--ink); }
 
   .site-footer {

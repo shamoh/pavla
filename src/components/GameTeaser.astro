@@ -1,0 +1,82 @@
+---
+// The game Detail dne on the home page, between the cover and "Nejnovější": its name, a sentence about it and today's three
+// close-ups, each a link into its level (src/lib/game-teaser.ts, scripts/lib/detail-teaser.mjs). Built as a sentence and a link,
+// the script draws the day for the progress of this browser; a day played through shrinks to one line.
+import { url } from '../lib/site';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<section class="game-teaser" data-teaser data-src={url('/detail-dne/dnes.json')} data-game={url('/detail-dne/')} data-pictures={base}>
+  <svg width="0" height="0" class="teaser-filters" aria-hidden="true" data-teaser-filters></svg>
+  <div class="teaser-head">
+    <h2><a href={url('/detail-dne/')}>Detail dne</a></h2>
+    <span class="streak" data-teaser-streak></span>
+    <a class="play" href={url('/detail-dne/')}>Hrát →</a>
+  </div>
+  <div class="teaser-body">
+  <p class="muted teaser-text">Denní hra z mých obrazů: poznáš, ze kterého je tenhle detail? Každý den tři nové, od lehkého po těžký.<span class="hint"> Klikni na detail a hraj.</span></p>
+  <div class="teaser-tiles" data-teaser-tiles></div>
+  </div>
+</section>
+<script>
+  import { startTeaser } from '../lib/game-teaser';
+  const root = document.querySelector('[data-teaser]') as HTMLElement | null;
+  if (root) startTeaser(root);
+</script>
+<style is:global>
+  /* The section: as the head of "Nejnovější" (a line above, the name, things on the right). */
+  .game-teaser { --teaser-zoom: 0.5; margin-bottom: 72px; }
+  .game-teaser .teaser-filters { position: absolute; }
+  .game-teaser .teaser-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 20px; border-top: 1px solid var(--line); padding-top: 24px; }
+  .game-teaser h2 { margin: 0 auto 0 0; }
+  .game-teaser h2 a { text-decoration: none; }
+  .game-teaser .streak { font-size: .9rem; color: var(--ink-soft); }
+  .game-teaser .streak:empty { display: none; }
+  .game-teaser .teaser-text { margin: 10px 0 18px; }
+  .game-teaser .hint { display: none; }
+  .game-teaser.live .hint { display: inline; }
+  .game-teaser.live .play { display: none; }
+  /* Three tiles side by side at every width: the window of the game (360 px, windowHtml) scaled to the tile. */
+  .game-teaser .teaser-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(10px, 2.5vw, 28px); }
+  .game-teaser .teaser-tiles:empty { display: none; }
+  /* A big screen: the sentence on the left (a third), the tiles on the right (two thirds), both from the top. */
+  @media (min-width: 900px) {
+    .game-teaser.live:not(.done) .teaser-body { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: clamp(24px, 4vw, 56px); align-items: start; margin-top: 18px; }
+    .game-teaser.live:not(.done) .teaser-text { margin: 0; }
+  }
+  .game-teaser .teaser-tile { display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: inherit; min-width: 0; }
+  .game-teaser .teaser-window { position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: var(--paper-2); border: 1px solid var(--line); transition: border-color .2s; }
+  .game-teaser .teaser-tile:hover .teaser-window, .game-teaser .teaser-tile:focus-visible .teaser-window { border-color: var(--ink-soft); }
+  .game-teaser .tile { --zoom: var(--teaser-zoom); width: calc(360px * var(--zoom)); height: calc(360px * var(--zoom)); overflow: hidden; }
+  .game-teaser .window { position: relative; width: 360px; height: 360px; transform: scale(var(--zoom)); transform-origin: 0 0; overflow: hidden; }
+  /* The picture reaches 30 px beyond the window as on the stage of the game: a wave or a mist never tears its edge. */
+  .game-teaser .clip { position: absolute; inset: 0; overflow: hidden; }
+  .game-teaser .view { position: absolute; inset: -30px; overflow: hidden; }
+  .game-teaser .view canvas { position: absolute; left: 30px; top: 30px; width: 360px; height: 360px; image-rendering: pixelated; }
+  .game-teaser .view img { position: absolute; left: 30px; top: 30px; width: 360px; height: auto; max-width: none; transform-origin: 0 0; }
+  /* A played level: its whole work. */
+  .game-teaser .teaser-window.whole img { position: absolute; inset: 6%; width: 88%; height: 88%; object-fit: contain; }
+  .game-teaser .teaser-label { font-size: .9rem; line-height: 1.35; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .game-teaser .teaser-label b { color: var(--ink); font-weight: 500; }
+  .game-teaser .sign { font-weight: 600; }
+  .game-teaser .solved .sign, .game-teaser .sign.solved { color: var(--ok); }
+  .game-teaser .lost .sign, .game-teaser .sign.lost { color: var(--error); }
+  /* A day played through: one line. */
+  .game-teaser.done { margin-bottom: 56px; }
+  .game-teaser.done .teaser-text { display: none; }
+  .game-teaser.done .teaser-tiles { display: block; max-width: none; }
+  .game-teaser .teaser-done { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; max-width: none; margin: 14px 0 0; font-size: .95rem; }
+  .game-teaser .signs { display: inline-flex; gap: 4px; margin-left: 4px; }
+  .game-teaser .minis { display: inline-flex; gap: 8px; }
+  .game-teaser .mini { display: block; width: 44px; height: 44px; border: 1px solid var(--line); background: var(--paper-2); }
+  .game-teaser .mini img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .game-teaser .next { color: var(--ink-soft); }
+  @media (max-width: 559px) {
+    .game-teaser { margin-bottom: 48px; }
+    .game-teaser .teaser-label { font-size: .78rem; }
+  }
+  /* A narrow phone: the level names only, the drops are in the game. */
+  @media (max-width: 379px) {
+    .game-teaser .open .note { display: none; }
+  }
+</style>

@@ -10,13 +10,13 @@
 // options (GameOptions): the data inside the page, its own memory, a look or a collection chosen by its tuning, days to come.
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, gameEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
 import { SKIP_HEADER_ROOM, skipHeaderScope, skipsHeader } from '../../scripts/lib/skip-header.mjs';
+import { levelFromParam } from '../../scripts/lib/detail-teaser.mjs';
 import {
   applyGuess, archiveDays, cappedText, magicWord, tapBurst, groupDigits, dailyPuzzles, dayId, dayLabel, nextStepsHtml, perfectDay, PERFECT_DAY_TEXT, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
-  collectionHtml, archiveRoom, archiveRoomTitle, rankForms, statsTitle, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
+  GAME_STORE, collectionHtml, archiveRoom, archiveRoomTitle, rankForms, statsTitle, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
 } from '../../scripts/lib/detail-game.mjs';
 
-/** Where the progress of a player is kept; a new format of it = a new key. */
-export const GAME_STORE = 'pavla.detailDne.v2';
+export { GAME_STORE };
 
 type GameWork = {
   id: string; title: string; sub: string; year: number; technique: string; collection: string; collectionTitle: string;
@@ -127,6 +127,18 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     try { return JSON.parse(localStorage.getItem(storeKey) ?? 'null') ?? {}; } catch { return {}; }
   };
   const store = { progress: newProgress(), rounds: {} as Record<string, any>, level: LEVELS[0].id, ...load() };
+  // a level asked for by the address (?uroven=lehka, the close-ups of the home page): opened, and the address without it again, so a
+  // reload or a shared link keeps the player's own choice
+  const asked = levelFromParam(new URLSearchParams(location.search).get('uroven'), LEVELS);
+  if (asked) {
+    store.level = asked.id;
+    const params = new URLSearchParams(location.search);
+    params.delete('uroven');
+    const query = params.toString();
+    try {
+      history.replaceState(history.state, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`);
+    } catch { /* a page opened from the disk may not change its address */ }
+  }
   const save = () => {
     try { localStorage.setItem(storeKey, JSON.stringify(store)); } catch { /* the game goes on without memory */ }
   };

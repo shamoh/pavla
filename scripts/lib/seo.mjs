@@ -211,6 +211,23 @@ export function workPageLd(site, { path, name, relatedPaths = [] }) {
 }
 
 /**
+ * The page of the game Detail dne: a WebPage of the site written by the author, about a game made of her works (schema.org has a
+ * Game, but no type for a page to play it in the browser that search engines use; the page itself says what it is).
+ */
+export function gamePageLd(site, { path, name, description }) {
+  return {
+    '@type': 'WebPage',
+    '@id': absolute(site, path),
+    url: absolute(site, path),
+    name,
+    description,
+    inLanguage: 'cs',
+    isPartOf: { '@id': siteId(site) },
+    author: { '@id': authorId(site) },
+  };
+}
+
+/**
  * A page listing works or collections (all works, a year, a collection, the collections): `items` in order as an
  * ItemList, each { title, tags }, its page from `itemPath(item)`; the tags of the works are its keywords.
  */

@@ -10,6 +10,9 @@
  * `lastView` = how far the last miss zooms out, `guesses`, `hints`, `drops` = what the drops are multiplied by, `looks` =
  * ids of the looks of gameLooks that may cover the close-up, one picked for each day; every miss clears it a little.
  */
+/** Where the game keeps the progress of a player in localStorage (the game and the home page read it); a new format = a new key. */
+export const GAME_STORE = 'pavla.detailDne.v2';
+
 export function gameLevels() {
   return [
     { id: 'easy', label: 'Lehká', size: 0.24, zone: 'center', planCentre: 0.25, pick: 'clear', options: 9, reach: 0.4, lastView: 0.85, guesses: 4, hints: true, drops: 1, looks: ['clear', 'black-white', 'old-photo', 'morning-mist', 'mosaic'] },

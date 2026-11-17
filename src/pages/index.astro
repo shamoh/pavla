@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import WorkGrid from '../components/WorkGrid.astro';
 import ViewSwitch from '../components/ViewSwitch.astro';
 import Cover from '../components/Cover.astro';
+import GameTeaser from '../components/GameTeaser.astro';
 import { config, coverShareImage, coverWorkId, getHome, getWorks, hasFeaturedWorks, photoImageUrl, site, url } from '../lib/site';
 import { featuredShowPath } from '../../scripts/lib/cinema.mjs';
 import { graphLd, personLd, websiteLd } from '../../scripts/lib/seo.mjs';
@@ -53,12 +54,15 @@ const jsonLd = graphLd(websiteLd(site), personLd(site, { image: photoImageUrl('p
     </section>
   )}
 
+  {/* The game Detail dne: today's three close-ups, each a link into its level (GameTeaser.astro). */}
+  {works.length > 0 && <GameTeaser />}
+
   {recentHidden.some((h) => !h) && (
     <section>
       <div class="section-head">
         <h2>Nejnovější</h2>
         <ViewSwitch {...start} />
-        <a href={url('/tvorba/')}>Celá tvorba →</a>
+        <a class="all" href={url('/tvorba/')}>Celá tvorba →</a>
       </div>
       <WorkGrid works={recent} place="home" {...start} hidden={recentHidden} id="recent" data-view={JSON.stringify(homeSetup(counts, coverId, columnsFor(config, 'home')))} />
       <script is:inline set:html={homeScript} />
@@ -128,6 +132,12 @@ const jsonLd = graphLd(websiteLd(site), personLd(site, { image: photoImageUrl('p
   .section-head { display: flex; align-items: baseline; gap: 12px 20px; border-top: 1px solid var(--line); padding-top: 24px; margin-bottom: 28px; }
   .section-head h2 { margin: 0 auto 0 0; }
   .section-head :global(.views) { align-self: center; }
+  .section-head .all { white-space: nowrap; }
+  /* A narrow phone: the name and the view switch on the first line, "Celá tvorba →" on its own line under them on the right. */
+  @media (max-width: 479px) {
+    .section-head { flex-wrap: wrap; row-gap: 6px; }
+    .section-head .all { flex-basis: 100%; text-align: right; }
+  }
   .empty { max-width: 36rem; padding: 48px 0 96px; }
   .empty p:not(.eyebrow):not(.muted) { font-family: var(--serif); font-size: 1.8rem; margin: 0.2em 0; }
   @media (max-width: 900px) { .hero { grid-template-columns: 1fr; margin-bottom: 64px; } }
