@@ -924,6 +924,25 @@ export function archiveRoomTitle({ cap, left }) {
 }
 
 /**
+ * The hidden switch of the diagnostics on a keyboard: `word` typed anywhere on the page. `recent` = the last characters typed so far,
+ * `key` = KeyboardEvent.key; keys that type nothing (Shift, arrows) leave `recent` as it is. Returns `{ recent, matched }`.
+ */
+export function magicWord(recent, key, word) {
+  if ([...key].length !== 1) return { recent, matched: false };
+  const next = (recent + key.toLowerCase()).slice(-word.length);
+  return { recent: next, matched: next === word };
+}
+
+/**
+ * The hidden switch of the diagnostics on a phone: `count` taps within `within` ms (`taps` = the times of the taps so far, `now` = this
+ * one). Returns `{ taps, matched }`; a match starts counting again.
+ */
+export function tapBurst(taps, now, count = 5, within = 3000) {
+  const recent = [...taps, now].filter((time) => now - time <= within);
+  return recent.length >= count ? { taps: [], matched: true } : { taps: recent, matched: false };
+}
+
+/**
  * The line in the card of the result when the cap of the archive took drops away (`gained` counted of `gained + capped`, finishRound):
  * short, the whole meaning is in its bubble (archiveRoomTitle).
  */

@@ -73,6 +73,7 @@ const game = await DetailGame.startGame(document.querySelector('.detail-game'), 
   look: () => (tuning.look === 'auto' ? null : tuning.look),
   collectionRounds: () => simulated,
   lastDay: Infinity,
+  diagnostics: true,
 });
 
 const label = () => {

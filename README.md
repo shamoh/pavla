@@ -751,6 +751,10 @@ stránka je `src/pages/detail-dne/index.astro`, hra v prohlížeči `src/lib/det
   tipy, vyřazené nápovědou, obrazovku (rozměr, sloupce, velikost výřezu) a data (začátek, počet děl a odpovědí úrovní). Obnovuje se
   s každým tahem a změnou velikosti okna. Tlačítko „Zkopírovat diagnostiku“ dá do schránky adresu stránky a pod ni řádky
   „popis: hodnota“ (`diagnosticsText`), aby šla poslat jedním vložením. Před zveřejněním hry ji odebrat.
+  Výchozí je skrytá (`hidden`); zapne i vypne ji napsané slovo `diag` kdekoli na stránce (mimo pole formuláře, bez Ctrl/Cmd/Alt,
+  `magicWord`) nebo na telefonu pět ťuknutí na nadpis „Detail dne …“ do 3 s (`tapBurst`). Zapnutá se posune do zorného pole
+  a prohlížeč si ji pamatuje (`localStorage` `pavla.detailDne.v2.diagnostics`), takže ji tester zapne jen jednou. Prototyp
+  `detail-dne.html` ji má vždy (`GameOptions.diagnostics`).
 - **Postup hráče** jen v tomto prohlížeči: `localStorage` klíč `pavla.detailDne.v2` (`GAME_STORE`; kapky, série, hodnost, kapky z archivu dnes, odehraná kola,
   sbírka, kola všech dnů; kola a odehrané pod `roundKey` „2026-320:easy“, poslední den série `lastDay` „2026-320“, takže jde postup
   porovnat přímo se souborem plánu; `v1` z doby pilotu 2026-11-15/16 měl čísla dnů od začátku hry a nečte se). Každé kolo si od prvního tipu pamatuje svou hádanku (`roundPuzzle`: obraz, výřez, náhledy,

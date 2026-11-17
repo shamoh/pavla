@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  analyzePixels, applyGuess, archiveDays, gameDiagnostics, diagnosticsText, monthGroups, unplayedDays, daysWord, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, archiveRoom, archiveRoomTitle, cappedText, groupDigits, rankForms, gameRanks, statsTitle, rulesHtml, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
+  analyzePixels, applyGuess, archiveDays, gameDiagnostics, diagnosticsText, monthGroups, unplayedDays, daysWord, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, archiveRoom, archiveRoomTitle, cappedText, magicWord, tapBurst, groupDigits, rankForms, gameRanks, statsTitle, rulesHtml, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
   collectionHtml, gameCollection, simulatedRounds,
   PLAN_DETAIL_GAP, PLAN_HORIZON, PLAN_MAX_DETAILS, PLAN_WORK_GAP, extendPlan, planDay, planDetailOf, planDetails, planDaysByYear, planDetailsText, planUsage, planYearOf, planYearText, planYearsShown, plannedPuzzles, mergePlanDays, pragueDate, gameDiagnostics as diagnosticsOf,
   lookalikeDistance, newProgress, newRound, paletteDistance, rankLookalikes, regionDetail, regionEdges, regionPalette, rgbToLab, winTitle,
@@ -863,6 +863,31 @@ test('rankForms: the rank in the top line, from the whole one to the number alon
   assert.match(rankForms(133600)[0], /další za 16\u00a0200 💧/, 'big numbers grouped by thousands');
 });
 
+test('magicWord: the word typed in a row switches, keys that type nothing do not break it', () => {
+  let state = { recent: '', matched: false };
+  const type = (keys) => { for (const key of keys) state = magicWord(state.recent, key, 'diag'); return state; };
+  assert.equal(type(['d', 'i', 'a']).matched, false);
+  assert.equal(type(['g']).matched, true);
+  state = { recent: '' };
+  assert.equal(type(['x', 'D', 'Shift', 'I', 'A', 'ArrowLeft', 'G']).matched, true, 'capitals and Shift as well');
+  state = { recent: '' };
+  assert.equal(type(['d', 'i', 'x', 'a', 'g']).matched, false, 'another key in between breaks the word');
+  assert.equal(type(['d', 'i', 'a', 'g', 'd']).matched, false, 'only once per word');
+  assert.equal(magicWord('', 'Enter', 'diag').recent, '');
+});
+
+test('tapBurst: five taps within three seconds, then counting again', () => {
+  let state = { taps: [] };
+  const tap = (now) => { state = tapBurst(state.taps, now); return state.matched; };
+  assert.deepEqual([0, 500, 1000, 1500].map(tap), [false, false, false, false]);
+  assert.equal(tap(2000), true);
+  assert.deepEqual(state.taps, []);
+  assert.deepEqual([0, 1000, 2000, 3000].map(tap), [false, false, false, false]);
+  assert.equal(tap(4000), false, 'the first tap is too old by now');
+  assert.equal(tap(4100), false, 'still only four within three seconds');
+  assert.equal(tap(4200), true);
+});
+
 test('cappedText: what the cap of the archive took, short', () => {
   assert.equal(cappedText({ gained: 10, capped: 5 }), 'Strop archivu: započteno 10 z 15 💧.');
   assert.equal(cappedText({ gained: 0, capped: 15 }), 'Strop archivu: dnes už bez kapek, další zítra.');
@@ -885,6 +910,11 @@ test('statsTitle and rulesHtml: big numbers grouped by thousands', () => {
 test('archiveRoomTitle: what the cap means for the player', () => {
   assert.match(archiveRoomTitle({ cap: 30, left: 20 }), /dnes ještě 20/);
   assert.match(archiveRoomTitle({ cap: 30, left: 0 }), /Hrát můžeš dál.*nové kapky z archivu dnes už nedostaneš/);
+});
+
+test('gamePageHtml: the diagnostics hidden until switched on', async () => {
+  const { gamePageHtml } = await import('./detail-game-page.mjs');
+  assert.match(gamePageHtml({}), /<section class="shelf diagnostics" data-diagnostics-section hidden>/);
 });
 
 test('rulesHtml: the drops of each level and try, the series, the cap of the archive, every rank to mark', () => {

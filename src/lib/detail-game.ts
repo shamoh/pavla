@@ -11,7 +11,7 @@
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, gameEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
 import { SKIP_HEADER_ROOM, skipHeaderScope, skipsHeader } from '../../scripts/lib/skip-header.mjs';
 import {
-  applyGuess, archiveDays, cappedText, groupDigits, dailyPuzzles, dayId, dayLabel, nextStepsHtml, perfectDay, PERFECT_DAY_TEXT, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
+  applyGuess, archiveDays, cappedText, magicWord, tapBurst, groupDigits, dailyPuzzles, dayId, dayLabel, nextStepsHtml, perfectDay, PERFECT_DAY_TEXT, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
   collectionHtml, archiveRoom, archiveRoomTitle, rankForms, statsTitle, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
 } from '../../scripts/lib/detail-game.mjs';
 
@@ -37,6 +37,8 @@ const localDate = () => {
 const TWO_COLUMNS = '(min-width: 800px), (orientation: landscape) and (min-width: 560px)';
 /** How many days the archive shows before "Starší dny". */
 const ARCHIVE_SHOWN = 14;
+/** The word typed anywhere on the page (not in a field) that shows or hides the diagnostics; on a phone five taps on the title. */
+const DIAGNOSTICS_WORD = 'diag';
 const MARK_WORDS: Record<string, string> = { solved: 'uhodnuto', lost: 'neuhodnuto', open: 'čeká' };
 
 /** What the page of the site leaves as it is and the prototype sets its own way. */
@@ -55,6 +57,8 @@ export type GameOptions = {
   collectionRounds?: () => Record<string, any> | null;
   /** The last day that can be opened (today; the prototype goes on into the days to come). */
   lastDay?: number;
+  /** The diagnostics always shown (the prototype); otherwise hidden until switched on (DIAGNOSTICS_WORD, five taps on the title). */
+  diagnostics?: boolean;
 };
 
 /** What the page of the game can be told from outside (the tuning of the prototype). */
@@ -453,9 +457,45 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
 
   /** The diagnostics under the game (only while the family tests it): what is on the screen now, so a remark can name it. */
   let diagnostics: [string, string][] = [];
+  /**
+   * Hidden unless switched on: DIAGNOSTICS_WORD typed or five taps on the title switch it on and off; the browser remembers it
+   * (`<store>.diagnostics`), so a tester switches it on once. Always on in the prototype (options.diagnostics).
+   */
+  const diagnosticsKey = `${storeKey}.diagnostics`;
+  const diagnosticsOn = () => {
+    if (options.diagnostics) return true;
+    try { return localStorage.getItem(diagnosticsKey) === '1'; } catch { return false; }
+  };
+  function showDiagnostics(on: boolean, scroll = false) {
+    const section = $('diagnostics-section');
+    if (!section) return;
+    section.hidden = !on;
+    if (!on) return;
+    renderDiagnostics();
+    if (scroll) section.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+  function toggleDiagnostics() {
+    const on = !diagnosticsOn();
+    try { if (on) localStorage.setItem(diagnosticsKey, '1'); else localStorage.removeItem(diagnosticsKey); } catch { /* only for this visit */ }
+    showDiagnostics(on, on);
+  }
+  let typed = '';
+  addEventListener('keydown', (event) => {
+    const target = event.target as HTMLElement;
+    if (event.ctrlKey || event.metaKey || event.altKey || target.closest?.('input, textarea, select, [contenteditable]')) return;
+    const next = magicWord(typed, event.key, DIAGNOSTICS_WORD);
+    typed = next.recent;
+    if (next.matched) toggleDiagnostics();
+  });
+  let taps: number[] = [];
+  root.querySelector('.game-head h1')?.addEventListener('click', () => {
+    const next = tapBurst(taps, Date.now());
+    taps = next.taps;
+    if (next.matched) toggleDiagnostics();
+  });
   function renderDiagnostics() {
     const box = $('diagnostics');
-    if (!box) return;
+    if (!box || $('diagnostics-section')?.hidden) return;
     if (!puzzle) {
       diagnostics = [['Den', `${idOf(day)} (${labelOf(day)}) · ${gameDate(day, data.epoch)}`], ['Úroveň', `${store.level} bez hádanky`]];
       box.innerHTML = '<p class="empty">Žádná hádanka.</p>';
@@ -683,6 +723,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
   }));
   await ensureDay(day);
   render();
+  showDiagnostics(diagnosticsOn());
   // only once it is drawn: before that the page is too short to scroll. A fresh visit opens past the header of the site, the title
   // of the game on top (as the pages of Tvorba, scripts/lib/skip-header.mjs; the script of the layout comes too early for it).
   const entry = performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined;

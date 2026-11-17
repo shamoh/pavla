@@ -30,7 +30,7 @@ export function gamePageHtml({ src = '' } = {}) {
     <div class="collection" data-collection></div>
   </section>
   ${rulesHtml()}
-  <section class="shelf diagnostics">
+  <section class="shelf diagnostics" data-diagnostics-section hidden>
     <h2>Diagnostika</h2>
     <p class="note">Jen na zkoušku hry: co je teď na obrazovce, aby šlo napsat, která hádanka a který krok je moc snadný nebo složitý.</p>
     <button class="action quiet copy" type="button" data-copy-diagnostics>Zkopírovat diagnostiku</button>
