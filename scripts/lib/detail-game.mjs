@@ -696,6 +696,17 @@ export function unplayedDays({ played, levels, before, epoch }) {
 }
 
 /**
+ * Whether a day went perfectly: `results` = what the player did in each level of the day that has a puzzle (`played` of the progress,
+ * undefined for a level not played yet); every level solved at the first guess.
+ */
+export function perfectDay(results) {
+  return results.length > 0 && results.every((r) => r?.solved === true && r.misses === 0);
+}
+
+/** The congratulation of a perfect day (perfectDay), over the box of the end. */
+export const PERFECT_DAY_TEXT = 'Všechny tři napoprvé! Gratuluji, ty jsi snad sama autorka, nebo výborný znalec jejího díla!';
+
+/**
  * The box under the result of a round, always two lines (each short enough for one line on a phone): what is left of the day and
  * where to go on. Levels of the day still to play (`left`, `{ id, label }`): their names as buttons (`data-level`: the page switches to
  * the level and goes up to the game). The whole day done: the archive (`waiting` days of it with a level not played, `data-to-archive`)
@@ -928,10 +939,19 @@ export function simulatedRounds({ start, days, levels, prepared, epoch, rates = 
   return rounds;
 }
 
-/** The text to share, without giving the work away: the day (`label`, dayLabel: "2026#320"), the level and one mark for each guess. */
-export function gameShareText({ label, level, misses, solved, url }) {
+/**
+ * The text to share, without giving the work away: the day (`label`, dayLabel: "2026#320"), the level and one mark for each guess,
+ * a few words on how it went (by the misses of `guesses` tries; `perfect` = the whole day at the first guess, perfectDay) and the
+ * invitation. The words say nothing of who shares it (no gender).
+ */
+export function gameShareText({ label, level, misses, solved, guesses = 4, perfect = false, url }) {
   const marks = '🟨'.repeat(misses) + (solved ? '🟩' : '');
-  return `Detail dne ${label} · ${level} ${marks}\nPoznáš obraz podle detailu?\n${url}`;
+  const words = !solved ? 'Tentokrát vyhrál obraz.'
+    : perfect ? 'Všechny tři obtížnosti napoprvé! 🎉'
+      : misses === 0 ? 'Hned napoprvé!'
+        : misses >= guesses - 1 ? 'Až na poslední pokus, uf!'
+          : misses === 1 ? 'Na druhý pokus.' : 'Na třetí pokus, bylo to těsné.';
+  return `Detail dne ${label} · ${level} ${marks}\n${words}\nPoznáš obraz podle detailu?\n${url}`;
 }
 
 // ---- The plan of the days (game/detail-dne/, scripts/lib/game-plan.mjs) ----

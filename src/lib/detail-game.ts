@@ -11,7 +11,7 @@
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, gameEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
 import { SKIP_HEADER_ROOM, skipHeaderScope, skipsHeader } from '../../scripts/lib/skip-header.mjs';
 import {
-  applyGuess, archiveDays, dailyPuzzles, dayId, dayLabel, nextStepsHtml, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
+  applyGuess, archiveDays, dailyPuzzles, dayId, dayLabel, nextStepsHtml, perfectDay, PERFECT_DAY_TEXT, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
   collectionHtml, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
 } from '../../scripts/lib/detail-game.mjs';
 
@@ -331,6 +331,9 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     const left = LEVELS.filter((l) => puzzleOf(l.id) && !store.progress.played[roundKey(l.id)]);
     const waiting = left.length ? 0 : unplayedDays({ played: store.progress.played, levels: LEVELS, before: today + 1, epoch: data.epoch }).filter((d) => d !== day).length;
     const done = nextStepsHtml({ left, label: labelOf(day), archive: archive(), waiting });
+    // every level of the day solved at the first guess
+    const perfect = perfectDay(LEVELS.filter((l) => puzzleOf(l.id)).map((l) => store.progress.played[roundKey(l.id)]))
+      ? `<p class="perfect"><span aria-hidden="true">🎉</span> ${PERFECT_DAY_TEXT}</p>` : '';
     return `<div class="result ${round.solved ? 'won' : 'lost'}">
       ${verdict}
       ${rankUp}
@@ -342,6 +345,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
         ${collection}
         <button class="action quiet" type="button" data-share>Sdílet</button>
       </div>
+      ${perfect}
       <p class="done">${done}</p>
     </div>`;
   }
@@ -523,7 +527,9 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
   async function share(button: HTMLElement) {
     const round = currentRound();
     const url = `${data.site.replace(/\/$/, '')}/detail-dne/${archive() ? `?den=${idOf(day)}` : ''}`;
-    const text = gameShareText({ label: labelOf(day), level: levelOf(store.level).label, misses: missesOf(round), solved: round.solved, url });
+    const level = levelOf(store.level);
+    const perfect = perfectDay(LEVELS.filter((l) => puzzleOf(l.id)).map((l) => store.progress.played[roundKey(l.id)]));
+    const text = gameShareText({ label: labelOf(day), level: level.label, misses: missesOf(round), solved: round.solved, guesses: level.guesses, perfect, url });
     const params = { source: 'game', ...gameEventParams({ level: store.level, day, today, id: idOf(day), look: puzzle.look }) };
     try {
       if (navigator.share) {

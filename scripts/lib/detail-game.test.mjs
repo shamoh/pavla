@@ -5,7 +5,7 @@ import {
   collectionHtml, gameCollection, simulatedRounds,
   PLAN_DETAIL_GAP, PLAN_HORIZON, PLAN_MAX_DETAILS, PLAN_WORK_GAP, extendPlan, planDay, planDetailOf, planDetails, planDaysByYear, planDetailsText, planUsage, planYearOf, planYearText, planYearsShown, plannedPuzzles, mergePlanDays, pragueDate, gameDiagnostics as diagnosticsOf,
   lookalikeDistance, newProgress, newRound, paletteDistance, rankLookalikes, regionDetail, regionEdges, regionPalette, rgbToLab, winTitle,
-  PLACE_OVERLAP, GAME_CANDIDATES, candidatePool, nextStepsHtml, roundKey, roundOrder, yearDay, dayId, dayLabel, dayOfId, PLAN_FILE_VERSION, planYearDays,
+  PLACE_OVERLAP, GAME_CANDIDATES, candidatePool, nextStepsHtml, perfectDay, PERFECT_DAY_TEXT, roundKey, roundOrder, yearDay, dayId, dayLabel, dayOfId, PLAN_FILE_VERSION, planYearDays,
 } from './detail-game.mjs';
 
 /** Raw pixels of `width` × `height` coloured by `paint(x, y)` = [r, g, b]. */
@@ -630,8 +630,16 @@ test('finishRound: says when a new rank is reached', () => {
   assert.equal(finishRound(near, { day: 1, today: 1, level: 'l', epoch: E, solved: false, misses: 4, workId: 'w' }).rankUp, false);
 });
 
-test('gameShareText: the level and a mark for each guess, no name of the work', () => {
-  assert.equal(gameShareText({ label: '2026#316', level: 'Těžká', misses: 2, solved: true, url: 'https://x.cz' }), 'Detail dne 2026#316 · Těžká 🟨🟨🟩\nPoznáš obraz podle detailu?\nhttps://x.cz');
+test('gameShareText: the day, the level, a mark for each guess and a few words on how it went, no name of the work', () => {
+  assert.equal(gameShareText({ label: '2026#316', level: 'Těžká', misses: 1, solved: true, guesses: 3, url: 'https://x.cz' }), 'Detail dne 2026#316 · Těžká 🟨🟩\nNa druhý pokus.\nPoznáš obraz podle detailu?\nhttps://x.cz');
+  const words = (o) => gameShareText({ label: 'x', level: 'Lehká', guesses: 4, url: 'u', ...o }).split('\n')[1];
+  assert.equal(words({ misses: 0, solved: true }), 'Hned napoprvé!');
+  assert.equal(words({ misses: 1, solved: true }), 'Na druhý pokus.');
+  assert.equal(words({ misses: 2, solved: true }), 'Na třetí pokus, bylo to těsné.');
+  assert.equal(words({ misses: 3, solved: true }), 'Až na poslední pokus, uf!');
+  assert.equal(words({ misses: 2, solved: true, guesses: 3 }), 'Až na poslední pokus, uf!', 'the hard level has three tries');
+  assert.equal(words({ misses: 4, solved: false }), 'Tentokrát vyhrál obraz.');
+  assert.equal(words({ misses: 0, solved: true, perfect: true }), 'Všechny tři obtížnosti napoprvé! 🎉');
   assert.match(gameShareText({ label: '2026#305', level: 'Lehká', misses: 4, solved: false, url: 'u' }), /^Detail dne 2026#305 · Lehká 🟨🟨🟨🟨\n/);
 });
 
@@ -709,6 +717,16 @@ test('unplayedDays / daysWord: the days of the archive still waiting, the newest
   assert.deepEqual(unplayedDays({ played, levels, before: 4, epoch: E }), [3, 2, 0]);
   assert.deepEqual(unplayedDays({ played, levels, before: 0, epoch: E }), []);
   assert.deepEqual([0, 1, 2, 4, 5, 11].map(daysWord), ['dní', 'den', 'dny', 'dny', 'dní', 'dní']);
+});
+
+test('perfectDay: every level of the day solved at the first guess', () => {
+  const first = { solved: true, misses: 0, drops: 10 };
+  assert.equal(perfectDay([first, first, first]), true);
+  assert.equal(perfectDay([first, first, { solved: true, misses: 1 }]), false, 'one miss');
+  assert.equal(perfectDay([first, first, { solved: false, misses: 3 }]), false, 'one lost');
+  assert.equal(perfectDay([first, first, undefined]), false, 'a level not played yet');
+  assert.equal(perfectDay([]), false);
+  assert.match(PERFECT_DAY_TEXT, /autorka, nebo výborný znalec jejího díla!$/);
 });
 
 test('nextStepsHtml: always two lines, the levels left as buttons, then the archive or what comes next', () => {

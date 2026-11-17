@@ -126,6 +126,8 @@
 .detail-game .result .sub { font-size: .88rem; color: var(--ink-soft); margin: 2px 0 8px; }
 /* Always under the result: what is left of the day and where to go on (nextStepsHtml), two lines, each one line also on a phone. */
 .detail-game .result .done { margin: 12px 0 0; padding: 8px 10px; background: var(--todo); border-radius: 6px; font-size: .9rem; line-height: 1.45; }
+/* A perfect day (perfectDay): the congratulation over the box, in the serif of the verdict. */
+.detail-game .result .perfect { margin: 14px 0 0; font-family: var(--serif); font-size: 1.3rem; font-weight: 500; line-height: 1.25; color: var(--ok); }
 .detail-game .done .line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .detail-game .to-archive, .detail-game .to-level { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 .detail-game .to-level { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; cursor: pointer; }

@@ -623,7 +623,9 @@ stránka je `src/pages/detail-dne/index.astro`, hra v prohlížeči `src/lib/det
 - **Konec kola:** verdikt ve stavovém bloku dostane barvu (zelená uhádnuto, červená ne; velikost stejná, nic se neposune) a celý
   odhalený obraz ve výřezu je odkazem na stránku díla. Karta výsledku pod náhledy: nahoře velký verdikt v barvě a s pruhem
   („✓ Trefa! +3 💧“ / „✗ Tentokrát ne, byl to tenhle obraz“), případně nová hodnost, pak název, technika · rozměr · rok a text díla
-  a jeden řádek tichých tlačítek „Obraz“, „Kolekce“ (celý název v bublině), „Sdílet“ (nikdy se nezalomí). Pod nimi vždy žlutý box
+  a jeden řádek tichých tlačítek „Obraz“, „Kolekce“ (celý název v bublině), „Sdílet“ (nikdy se nezalomí). Uhodl-li hráč všechny úrovně
+  dne napoprvé (`perfectDay`), pod tlačítky zeleně „🎉 Všechny tři napoprvé! Gratuluji, ty jsi snad sama autorka, nebo výborný znalec
+  jejího díla!“ (`PERFECT_DAY_TEXT`; u každého výsledku toho dne, i v archivu). Pod nimi vždy žlutý box
   o dvou řádcích (`nextStepsHtml`; každý řádek i na telefonu 320 px na jeden řádek, delší by se zkrátil „…“): zbývají-li úrovně dne,
   „Ještě můžeš hrát obtížnosti:“ / „Střední nebo Těžká“, resp. „Ještě ti zbývá jedna obtížnost:“ / „Těžká“ (tlačítka `data-level`:
   přepnou úroveň a posunou stránku nahoru ke hře); po celém dni „Dnešní detaily máš za sebou.“ (v archivu „Den 2026#307 máš za sebou.“)
@@ -742,7 +744,10 @@ stránka je `src/pages/detail-dne/index.astro`, hra v prohlížeči `src/lib/det
   Jak poroste (85 děl ve hře, 2026-11; každá úroveň projde všechna svá díla v pevném pořadí, den po dni): kdo hraje denně všechny tři
   úrovně, má po týdnu kolem 15 obrazů, po měsíci kolem 50, za 2–3 měsíce skoro všechny, po roce má skoro každý obraz plných 6 teček.
   Vyzkoušet bez hraní: prototyp `detail-dne.html`, „Ladění prototypu“ → Sbírka po týdnu / měsíci / čtvrt roce / roce (`simulatedRounds`).
-- **Sdílení výsledku** bez názvu obrazu (`gameShareText`) s adresou hry; telefon nabídne sdílení, jinak se text zkopíruje.
+- **Sdílení výsledku** bez názvu obrazu (`gameShareText`) s adresou hry; telefon nabídne sdílení, jinak se text zkopíruje. Text:
+  „Detail dne 2026#320 · Těžká 🟨🟩“, pak pár slov podle výsledku (bez rodu toho, kdo sdílí): „Hned napoprvé!“, „Na druhý pokus.“,
+  „Na třetí pokus, bylo to těsné.“, „Až na poslední pokus, uf!“ (poslední podle pokusů úrovně), „Tentokrát vyhrál obraz.“, celý den
+  napoprvé (`perfectDay`) „Všechny tři obtížnosti napoprvé! 🎉“; pak „Poznáš obraz podle detailu?“ a adresa.
 - **Google Analytics** (viz *Návštěvnost*): `game_start` při prvním tipu kola, `game_end` na jeho konci (`gameEventParams`), `share`
   se `source: game` po sdílení výsledku.
 
