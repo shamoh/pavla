@@ -35,6 +35,14 @@ test('gtag: loader URL and the config from the installation guide (the page is r
   assert.match(script, /window\.dataLayer = window\.dataLayer \|\| \[\];/);
   assert.match(script, /gtag\('config', 'G-HPZNHYZ2MQ'\);$/);
   assert.doesNotMatch(script, /page_location/);
+  assert.match(script, /gtag\('set', \{ display_mode: .*'app' : 'browser' \}\);\ngtag\('config'/, 'every event says app or browser, page_view too');
+  const mode = (standalone, iosStandalone) => {
+    const set = [];
+    const gtag = (...a) => set.push(a);
+    new Function('matchMedia', 'navigator', 'gtag', script.split('\n').find((l) => l.startsWith("gtag('set'")))(() => ({ matches: standalone }), { standalone: iosStandalone }, gtag);
+    return set[0][1].display_mode;
+  };
+  assert.deepEqual([mode(true, undefined), mode(false, true), mode(false, undefined)], ['app', 'app', 'browser']);
   assert.throws(() => gtagConfigScript("G-X');alert(1);//"), /invalid measurement ID/);
 });
 

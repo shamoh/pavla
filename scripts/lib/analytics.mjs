@@ -22,6 +22,11 @@ export function measurementIdFor(analytics, { production, demo }) {
   return production && !demo ? id : null;
 }
 
+/** `display_mode` of every event: the installed app (standalone window, iOS home screen) or a browser tab. */
+export const DISPLAY_MODES = { app: 'app', browser: 'browser' };
+/** The same test as standalone() of src/lib/app-install.ts, as text for the inline config of gtag. */
+const DISPLAY_MODE_EXPRESSION = `(matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) ? '${DISPLAY_MODES.app}' : '${DISPLAY_MODES.browser}'`;
+
 /** URL of the gtag.js loader. */
 export const gtagSrc = (id) => `https://www.googletagmanager.com/gtag/js?id=${id}`;
 
@@ -29,6 +34,7 @@ export const gtagSrc = (id) => `https://www.googletagmanager.com/gtag/js?id=${id
  * Inline script that configures gtag, as in the Google Analytics installation guide. The page is reported with
  * its query string, so gallery filters and paging (?status=…&page=2) can be told apart in the reports
  * ("Page path + query string"), while "Page path and screen class" adds them up per page.
+ * Every event (page_view too) carries `display_mode` (DISPLAY_MODES): the site opened as the installed app or in a browser.
  */
 export function gtagConfigScript(id) {
   if (!isMeasurementId(id)) throw new Error(`invalid measurement ID ${JSON.stringify(id)}`);
@@ -36,6 +42,7 @@ export function gtagConfigScript(id) {
     'window.dataLayer = window.dataLayer || [];',
     'function gtag(){dataLayer.push(arguments);}',
     "gtag('js', new Date());",
+    `gtag('set', { display_mode: ${DISPLAY_MODE_EXPRESSION} });`,
     `gtag('config', '${id}');`,
   ].join('\n');
 }

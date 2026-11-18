@@ -2648,6 +2648,7 @@ analytics:
   | Archiv | `archive` | Detail dne: yes = den z archivu (poloviční kapky), no = dnešní hádanka. |
   | Vzhled | `look` | Detail dne: vzhled výřezu dne (gameLooks), např. clear, mosaic, dream. |
   | Uhádnuto | `solved` | Detail dne (game_end): yes = obraz uhádnutý, no = došly pokusy. |
+  | Režim zobrazení | `display_mode` | U každé události: app = web otevřený jako nainstalovaná aplikace (z plochy), browser = v prohlížeči. |
   | Druh obrázku | `image_kind` | Druh obrázku v prohlížeči fotek (image_view): main = celý obraz, detail = detailní fotka, mockup = vizualizace v interiéru. |
 
   A *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru, jednotka Standardní, popis: „Kolik děl (na přehledu
