@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import fs from 'node:fs';
 import {
-  APPLE_SIZE, ICO_SIZES, MANIFEST_SHORTCUTS, MANIFEST_SIZES, SHORTCUT_ICON_SIZE, makeFavicons, manifestIconFile, packIco, renderIcon,
+  APPLE_SIZE, ICO_SIZES, MANIFEST_SHORTCUTS, screenshotSize, MANIFEST_SIZES, SHORTCUT_ICON_SIZE, makeFavicons, manifestIconFile, packIco, renderIcon,
   shortcutIconFile, webManifest,
 } from './favicons.mjs';
 
@@ -64,7 +64,8 @@ test('webManifest: name, short name under the icon, colours, relative addresses,
   assert.equal(m.name, 'Pavla Kramolišová');
   assert.equal(m.short_name, 'Pavla');
   assert.equal(m.description, 'Akvarely pro radost');
-  assert.deepEqual([m.start_url, m.scope, m.display, m.lang], ['./', './', 'minimal-ui', 'cs']);
+  assert.deepEqual([m.id, m.start_url, m.scope, m.display, m.orientation, m.lang], ['./', './', './', 'standalone', 'any', 'cs']);
+  assert.equal(m.prefer_related_applications, false);
   assert.deepEqual([m.background_color, m.theme_color], ['#f7f4ee', '#f7f4ee']);
   assert.deepEqual(m.icons.map((i) => `${i.src} ${i.sizes} ${i.purpose}`), ['icon-192.png 192x192 any', 'icon-512.png 512x512 any', 'icon-512.png 512x512 maskable']);
   assert.deepEqual(m.shortcuts.map((x) => `${x.name} ${x.url}`), ['Detail dne detail-dne/', 'Tvorba tvorba/'], 'no selection, no show');
@@ -91,3 +92,17 @@ test('favicon.svg: the sheet of paper turns dark in the dark mode of the browser
   assert.match(favicon, /@media \(prefers-color-scheme: dark\)\{\.sheet\{/);
   assert.match(favicon, /<rect class="sheet"/);
 });
+
+test('webManifest: screenshots for the install dialog, phones and a computer, sizes within what Chrome accepts', () => {
+  const m = webManifest({ title: 'Pavla Kramolišová' }, '#f7f4ee');
+  assert.deepEqual(m.screenshots.map((s) => `${s.src} ${s.sizes} ${s.form_factor}`), [
+    'app-screenshot-home.webp 1080x2400 narrow', 'app-screenshot-gallery.webp 1080x2400 narrow',
+    'app-screenshot-game.webp 1080x2400 narrow', 'app-screenshot-wide.webp 1920x1200 wide',
+  ]);
+  assert.ok(m.screenshots.every((s) => s.label && s.type === 'image/webp'));
+  for (const form of ['narrow', 'wide']) {
+    const [w, h] = screenshotSize(form).split('x').map(Number);
+    assert.ok(Math.max(w, h) <= 3840 && Math.min(w, h) >= 320 && Math.max(w, h) / Math.min(w, h) <= 2.3, form);
+  }
+});
+

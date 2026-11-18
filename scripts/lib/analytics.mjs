@@ -67,6 +67,7 @@ export const EVENTS = {
   gameStart: 'game_start', // the first guess of a round of Detail dne: level, day, archive, look (gameEventParams)
   gameEnd: 'game_end', // a round of Detail dne over: level, day, archive, look, solved, misses, drops, streak, work_id, work_title
   code: 'code_open', // a work opened by its code in the header (CodeJump.astro): work_id, method (CODE_METHODS)
+  appInstall: 'app_install', // "Nainstalovat aplikaci" in the footer and the app installed: method (INSTALL_METHODS of app-install.mjs)
   more: 'more_click', // a click under a work: the clicked work_id, work_title; method (MORE_METHODS); the page = the work it was under
 };
 

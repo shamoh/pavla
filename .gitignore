@@ -15,3 +15,5 @@ dist/
 /public/_og/
 /public/og.jpg
 AGENTS.md
+# screenshots of the site for the install dialog: taken by the deploy once a week (npm run app-screenshots)
+/.app-screenshots/

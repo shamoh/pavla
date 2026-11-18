@@ -28,7 +28,7 @@ try {
   process.exit(1);
 }
 const config = YAML.parse(await fs.readFile(path.join(root, 'site.config.yaml'), 'utf8'));
-const result = evaluateSiteImages(await checkSiteImages(config.site.url, distFetch(distDir)));
+const result = evaluateSiteImages(await checkSiteImages(config.site.url, distFetch(distDir), { screenshots: false }));
 console.log(`${result.ok ? '✓' : '✗'} ${result.message}`);
 if (!result.ok) process.exitCode = 1;
 

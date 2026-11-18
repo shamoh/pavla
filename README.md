@@ -2062,7 +2062,8 @@ telefonu nezmenšil (mimo `public/`, nenasazuje se).
 
 Manifest `/site.webmanifest` (`src/pages/site.webmanifest.ts`, `webManifest`) staví web z `site.config.yaml`: `name` = `site.title`,
 pod ikonou `short_name` = jeho první slovo, `description` = `site.tagline`, barvy `background_color` a `theme_color` = papír první
-palety, `display: minimal-ui` (stránka si nechá Zpět a Obnovit, je to galerie, ne aplikace), adresy relativně k manifestu.
+palety, `display: standalone` (aplikace bez lišty prohlížeče, viz „Web jako aplikace“), `id` = úvodní stránka,
+`orientation: any`, adresy relativně k manifestu.
 Ikony 192 a 512 px jako `any`, 512 px i jako `maskable` (obrázek přes celou plochu, slunce i kopce jsou v bezpečném kruhu).
 Zkratky po dlouhém stisku ikony na Androidu (`shortcuts`, `MANIFEST_SHORTCUTS`, každá s vlastní ikonou): „Detail dne“ (`/detail-dne/`),
 „Tvorba“ (`/tvorba/`) a „Promítat“ = promítání výběru autorky (`featuredShowPath('shortcut')`, jen s `hasFeaturedWorks`; v události
@@ -2073,6 +2074,79 @@ Po každé změně kteréhokoli SVG spusť `npm run favicons` a commitni výsled
 Vyzkoušení: `npm run build`, v `dist/` jsou `favicon.*`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `shortcut-*.png` a `site.webmanifest`;
 v Chrome DevTools → Application → Manifest se ukáže název, barvy, ikony (i náhled `maskable` v kruhu) a zkratky.
 Tmavá ikona: přepnout systém (nebo DevTools → Rendering → `prefers-color-scheme: dark`) a otevřít `/favicon.svg`.
+
+## Web jako aplikace (instalace, bez připojení)
+
+Web se dá nainstalovat do telefonu, tabletu i počítače a otevírá se pak z plochy jako aplikace: vlastní okno bez lišty
+prohlížeče, ikona, jméno „Pavla“, zkratky (viz „Ikona webu“). Všechno je v `scripts/lib/app-install.mjs`
+(logika s testy), `src/lib/app-install.ts` (prohlížeč, spouští ho `Base.astro` na každé stránce) a `src/pages/sw.js.ts`.
+
+- **Instalace:** tlačítko „Nainstalovat aplikaci“ na konci odkazů v patičce, jen kde dává smysl (`installMode`):
+  - Android, Chrome, Edge (prohlížeč nabídl instalaci událostí `beforeinstallprompt`) = vlastní dialog prohlížeče;
+    lištu instalace prohlížeče web nepotlačuje,
+  - iPhone a iPad (`isIos`; každý prohlížeč tam instaluje přes Sdílet) = okno s návodem „Sdílet → Přidat na plochu“
+    (`INSTALL_HELP.ios`),
+  - jiný prohlížeč v telefonu bez nabídky (Firefox, Samsung; dotyková obrazovka) = návod přes nabídku prohlížeče
+    (`INSTALL_HELP.menu`),
+  - v nainstalované aplikaci a na počítači bez nabídky prohlížeče tlačítko není.
+  Pro iOS jsou v hlavičce i `apple-mobile-web-app-capable`, `apple-mobile-web-app-title` (= `short_name`) a
+  `apple-mobile-web-app-status-bar-style`.
+- **V nainstalované aplikaci** (`display-mode: standalone`, na iOS `navigator.standalone`) je v hlavičce před jménem
+  tlačítko „←“ (iPhone tam žádné Zpět nemá): zpět v historii, když návštěvník přišel ze stránky webu, jinak na úvodní
+  stránku (aplikace otevřená rovnou na stránce, třeba zkratkou; `backTarget`); na úvodní stránce není.
+- **Bez připojení:** service worker `/sw.js` (generuje ho build, `swScript`, verze = verze buildu z patičky) ukládá,
+  co návštěvník viděl (`requestStrategy`):
+  - stránky napřed ze sítě, bez připojení poslední uložená kopie (jedna na adresu bez parametrů: `/tvorba/?tag=voda`
+    i `/tvorba/` je tatáž stránka, filtry si stránka přečte sama, `pageKey`), nejvýš `PAGE_CACHE_LIMIT` stránek;
+    neviděná stránka bez připojení = `/offline/` (`src/pages/offline.astro`, `noindex`, „Zkusit znovu“),
+  - data (`.json`, kanály) napřed ze sítě, bez připojení uložená,
+  - soubory buildu `/_astro/` (jméno s otiskem) z mezipaměti napořád,
+  - obrázky a písma Google hned z mezipaměti a na pozadí obnovené; obrázků nejvýš `IMAGE_CACHE_LIMIT` (nejstarší pryč),
+  - cizí adresy (statistiky, formulář zpráv) a jiné než GET nikdy.
+  Obrázky tedy jen ty, které se návštěvníkovi už ukázaly (v té velikosti, kterou prohlížeč vybral), nikdy celá galerie.
+  Při instalaci uloží úvodní stránku, `/offline/`, manifest a ikony (`precacheFiles`). Nový build = nová verze:
+  smaže naše stránky a soubory starších buildů (předpona `pavla-`, `appCaches`), obrázky a písma nechá, a hned
+  převezme otevřené stránky. Registruje se jen v produkčním buildu; dev server případný service worker z náhledu
+  na stejné adrese odregistruje.
+- **Detail dne bez připojení:** jednou denně (`GAME_OFFLINE_KEY`, den `isoDay`) v nainstalované aplikaci nebo na stránce
+  hry nechá `src/lib/app-install.ts` projít service workerem stránku hry s jejími soubory buildu (`buildAssets`: skripty,
+  styly a moduly, které skripty importují), `data.json`, `dnes.json` a obrázky dnešních a zítřejších hádanek všech úrovní
+  (`gameOfflineFiles`: výřez v největší šířce, nabízené obrazy v nejmenší, z plánu dnů); tři sekundy po načtení stránky,
+  při chybě zkusí znovu na další stránce. Hra pak jde dohrát i bez internetu; archiv jen ze dnů, které se už ukázaly.
+- **Úvodní obrazovka na iPhonu a iPadu** (`scripts/lib/splash.mjs`): iOS jinak spouští aplikaci z bílé plochy. Build
+  nakreslí `/splash/apple-splash-<light|dark>-<š>x<v>.png` (`src/pages/splash/[file].ts`, `renderSplash`: papír palety,
+  ikona z plochy se zaoblením, jméno `site.title` kurzívou a `site.tagline` písmy webu z `fonts/`) pro každou velikost
+  z `SPLASH_DEVICES` (iPhony na výšku, iPady i na šířku), světlou (paleta Papír) i tmavou (Noc); `Base.astro` na ně
+  odkazuje `apple-touch-startup-image` s `media` podle zařízení (`splashScreens`). Nový iPhone nebo iPad = řádek
+  v `SPLASH_DEVICES` (velikost v CSS bodech na výšku a poměr pixelů), jinak se mu ukáže jen plocha barvy stránky.
+  Build tím trvá asi o 15 s déle (62 obrázků, 1,5 MB).
+- **Snímky obrazovky v manifestu** (`screenshots`, `APP_SCREENSHOTS` ve `scripts/lib/favicons.mjs`): Android a Chrome
+  s nimi ukážou při instalaci bohatší dialog. Tři z telefonu (úvod, Tvorba, Detail dne; 1080 × 2400, `narrow`) a jeden
+  z počítače (úvod; 1920 × 1200, `wide`), soubory `app-screenshot-<jméno>.webp` vedle manifestu. **Nejsou v gitu**
+  (úvodní obraz se losuje, každý týden by přibyly nové binárky): nasazení (`.github/workflows/deploy.yml`) je po buildu
+  jednou týdně vyfotí z náhledu hotového webu a uloží do mezipaměti GitHub Actions pod klíčem týdne
+  (`app-screenshots-<rok>-W<týden>`, `actions/cache`), každé další nasazení toho týdne je odtud jen zkopíruje do `dist/`.
+  Když focení selže, nasazení pokračuje bez nich (varování v běhu) a týdenní kontrola ohlásí chybějící obrázky manifestu.
+  Ručně: `npm run build`, `npx astro preview` a v druhém terminálu `npm run app-screenshots -- <adresa náhledu> [--out <složka>]`
+  (`scripts/app-screenshots.mjs`, výchozí `.app-screenshots/` mimo git: Chrome bez okna přes DevTools protokol, telefon jako
+  v *Device toolbar*, statistiky odříznuté, „Napište mi“ skryté; jiný Chrome přes `CHROME=`, v CI bez sandboxu Chrome).
+- **Nouzové vypnutí:** kdyby service worker škodil, nasadit `/sw.js`, který v `install` zavolá `self.skipWaiting()`,
+  v `activate` smaže všechny mezipaměti s předponou `pavla-` a `self.registration.unregister()`; prohlížeče si ho
+  stáhnou při další návštěvě.
+- **Omezení iOS:** nainstalovaná aplikace má na iPhonu vlastní úložiště, oddělené od Safari: postup ve hře Detail dne,
+  zvolené barvy a další paměť z prohlížeče do aplikace nepřejdou (a naopak).
+- Událost GA `app_install` (`method` = `INSTALL_METHODS`): `accepted` / `dismissed` = odpověď na dialog instalace,
+  `help_ios` / `help_menu` = ukázaný návod, `installed` = aplikace nainstalovaná (i lištou prohlížeče).
+  Každá událost (i zobrazení stránky) nese `display_mode` (`DISPLAY_MODES`): `app` = nainstalovaná aplikace, `browser` =
+  prohlížeč (`gtag('set', …)` v `gtagConfigScript`).
+- **Vyzkoušení:** `npm run demo:build`, pak `SITE_DATA_DIR=.demo/site npx astro preview` (testovací data, bez statistik).
+  V Chrome: v patičce je „Nainstalovat aplikaci“, DevTools → *Application* → *Manifest* (instalovatelnost, ikony, zkratky)
+  a *Service workers* (`/sw.js` aktivní), *Cache storage* (`pavla-pages-…`, `pavla-files-…`, `pavla-images`). Prohlédnout
+  `/tvorba/`, pak *Network* → *Offline*: `/tvorba/?tag=voda` se otevře s filtrem, neviděná `/o-mne/` ukáže „Bez připojení“.
+  Tlačítko „←“ a návod pro iPhone: DevTools → *Rendering* → emulace `display-mode: standalone`, resp. zařízení iPhone
+  v *Device toolbar* (návod se ukáže po kliknutí). Detail dne offline: emulace `display-mode: standalone` nebo otevřít
+  `/detail-dne/`, po pár sekundách je v *Cache storage* → `pavla-images` výřez a nabídka dneška i zítřka, pak *Offline*
+  a hra jde dohrát. Úvodní obrazovky: `.demo/site/dist/splash/`. Po zkoušení v *Application* → *Storage* → *Clear site data*.
 
 ## Zprávy od návštěvníků (formulář, „Napište mi“)
 
@@ -2414,7 +2488,8 @@ nepovinný), `CHECK_TOKEN` (spotřeba minut Actions a nastavení rep, nepovinný
   u děl, která tam jdou, `stitek-bez-prekladu`; bez `CONTENT_DIR` se přeskočí),
 - že na nasazeném webu existuje každý obrázek, na který jeho stránky odkazují (`scripts/lib/site-check.mjs`):
   projde web od úvodní stránky a od všech stránek mapy webu (`/sitemap.xml`) po vlastních odkazech, z `src`, `srcset`, `href`
-  a `og:image` posbírá obrázky a na každý se zeptá (`HEAD`); obrázek, který neprojde, zkusí ještě dvakrát po 3 s
+  a `og:image` posbírá obrázky, k nim piny kanálu `/pinterest.xml` a obrázky manifestu `/site.webmanifest` (ikony, ikony
+  zkratek a snímky obrazovky, `manifestImages`; `npm run check:images` snímky přeskočí, ty přidává až nasazení), a na každý se zeptá (`HEAD`); obrázek, který neprojde, zkusí ještě dvakrát po 3 s
   (`retries`, `retryDelayMs`; chvilkový výpadek GitHub Pages není chybějící obrázek, `npm run check:images` nad vyrobeným
   webem neopakuje); vypíše chybějící obrázky se stránkou, která na ně odkazuje, a stavem (`HTTP 404`, `bez odpovědi`),
   a nedostupné stránky. Adresa webu je `site.url` ze `site.config.yaml`, `--site-url <adresa>` ji
@@ -2612,6 +2687,7 @@ analytics:
   | `game_start` | první tip v kole hry Detail dne (otevření stránky měří zobrazení stránky; `gameEventParams`) | `level` (`easy`, `medium`, `hard`; do 2026-11-16 `lehka`, `stredni`, `tezka`), `day` (klíč dne `2026-320`, `dayId`; do 2026-11-16 číslo od prvního dne, např. `15`), `archive` (`yes` = den z archivu, `no` = dnešek), `look` (vzhled dne z `gameLooks`, např. `mosaic`) |
   | `game_end` | kolo hry Detail dne skončilo (uhádnuté nebo po posledním pokusu) | jako `game_start` a `solved` (`yes` / `no`), `misses` (omyly), `drops` (získané kapky), `streak` (série dnů po kole), `work_id`, `work_title` (hádaný obraz) |
   | `code_open` | obraz otevřený podle kódu z pole `#` v hlavičce (`codeEvent`, jen když obraz existuje) | `work_id`, `method` (`CODE_METHODS`: `paste` = vložený kód otevřel obraz hned, `enter` = potvrzený Enterem / „Přejít“) |
+  | `app_install` | tlačítko „Nainstalovat aplikaci“ v patičce a nainstalovaná aplikace (`src/lib/app-install.ts`) | `method` (`INSTALL_METHODS`: `accepted` / `dismissed` odpověď na dialog instalace, `help_ios` / `help_menu` ukázaný návod, `installed` aplikace nainstalovaná) |
   | `more_click` | klik pod dílem: na kartu v „Související obrazy“ nebo „Podobné obrazy“, nebo na odkaz „Podobných obrazů“ do galerie (stránka události = dílo, pod kterým byl) | `work_id`, `work_title` (kliknuté dílo, u odkazu nic), `method` (`MORE_METHODS`: `related`, `similar`, `similar_filter`) |
   | `image_view` | každý obrázek ukázaný v prohlížeči fotek na stránce díla (`imageEventParams`): otevření i každé listování; Zpět/Vpřed jen při jiném obrázku | `work_id`, `work_title`, `image` (kotva obrázku: `obraz`, `detail-<jméno>`, `mockup-<scéna>`), `image_kind` (`main`, `detail`, `mockup`), `method` (`IMAGE_METHODS`: `open` klik na stránce, `arrow` šipka prohlížeče, `swipe` tah, `key` klávesa ←/→, `link` stránka otevřená s kotvou, `history` Zpět/Vpřed) |
 
@@ -2634,7 +2710,7 @@ analytics:
   | Hledání | `q` | Text hledání v galerii nebo v přehledu kolekcí (gallery_filter). |
   | ID díla | `work_id` | Trvalý kód díla (např. g4psg) u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek, kód. |
   | Název díla | `work_title` | Název díla u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek. |
-  | Způsob | `method` | Jak: share, image_view, cinema_open, code_open (paste, enter), more_click (related, similar, similar_filter); hodnoty v README webu. |
+  | Způsob | `method` | Jak: share, image_view, cinema_open, code_open, more_click, app_install (accepted, dismissed, help_ios, installed…); hodnoty v README webu. |
   | Typ zprávy | `message_type` | Typ odeslané zprávy (message_sent): greeting, work, purchase, collaboration, bug, other. |
   | Barvy webu | `palette` | Barvy zvolené v patičce (palette_change): papir, pergamen, noc, auto. |
   | Výpis | `listing` | Kde: view_change home = úvodní stránka, gallery = galerie; cinema_open/close gallery, year, collection. |

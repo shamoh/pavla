@@ -1,0 +1,31 @@
+---
+// Shown by the service worker when a page is opened offline and was never seen before (scripts/lib/app-install.mjs).
+// Search engines leave it out (noindex), so it is not in the sitemap.
+import Base from '../layouts/Base.astro';
+import { url } from '../lib/site';
+---
+<Base title="Bez připojení" description="Stránka, kterou web ukáže bez připojení k internetu." noindex messagePanel={false}>
+  <section class="offline">
+    <p class="eyebrow">Bez připojení</p>
+    <h1>Tahle stránka ještě čeká na&nbsp;internet</h1>
+    <p>Vypadá to, že teď nejste připojeni. Stránky a&nbsp;obrazy, které jste si u&nbsp;mě už prohlédli, se otevřou i&nbsp;tak,
+      tahle se ukáže, až se připojení vrátí.</p>
+    <p class="actions">
+      <button type="button" class="retry" data-offline-retry="">Zkusit znovu</button>
+      <a href={url('/')}>Úvod</a>
+      <a href={url('/tvorba/')}>Tvorba</a>
+    </p>
+  </section>
+</Base>
+<style>
+  .offline { max-width: 38rem; padding: 32px 0 56px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; margin-top: 28px; }
+  .retry {
+    font: inherit; color: var(--paper); background: var(--ink); border: 0; border-radius: 999px; padding: 10px 22px; cursor: pointer;
+  }
+  .retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+</style>
+<script>
+  // The page itself stays where it was opened (the service worker answered its address), so reloading tries it again.
+  document.querySelector('[data-offline-retry]')?.addEventListener('click', () => location.reload());
+</script>

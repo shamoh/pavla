@@ -16,6 +16,7 @@
     "demo:build": "node scripts/demo.mjs && SITE_DATA_DIR=.demo/site astro build",
     "straighten": "node scripts/straighten.mjs",
     "favicons": "node scripts/favicons.mjs",
+    "app-screenshots": "node scripts/app-screenshots.mjs",
     "prototypes": "node scripts/prototypes.mjs"
   },
   "dependencies": {

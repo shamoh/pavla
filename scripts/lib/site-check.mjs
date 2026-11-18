@@ -59,9 +59,10 @@ export function pageReferences(html, pageUrl, origin) {
  * `fetchFn(url, { method })` like fetch; images are asked for with HEAD, `concurrency` at a time; an image that fails
  * (any status but ok, or no answer = status 0) is asked again up to `retries` times after `retryDelayMs`, and only
  * then counts as missing (the deployed site: a short hiccup of the host is no missing image; a built site needs none). A page listed in the sitemap counts as linked from "sitemap.xml", an image
- * of the feed for Pinterest (/pinterest.xml) from "pinterest.xml".
+ * of the feed for Pinterest (/pinterest.xml) from "pinterest.xml", an icon or screenshot of the manifest (/site.webmanifest)
+ * from "site.webmanifest" (`screenshots`: false leaves its screenshots out: a build has none, the deploy adds them, manifestImages).
  */
-export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concurrency = 8, retries = 0, retryDelayMs = 3000 } = {}) {
+export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concurrency = 8, retries = 0, retryDelayMs = 3000, screenshots = true } = {}) {
   const origin = new URL(siteUrl).origin;
   const queue = [pageKey(new URL('/', siteUrl).href)];
   const map = await fetchFn(new URL('/sitemap.xml', siteUrl).href, { method: 'GET' });
@@ -73,6 +74,14 @@ export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concu
   const feed = await fetchFn(new URL('/pinterest.xml', siteUrl).href, { method: 'GET' });
   if (feed.ok) {
     for (const i of feedImages(await feed.text())) if (new URL(i).origin === origin && !imageFrom.has(i)) imageFrom.set(i, 'pinterest.xml');
+  }
+  // the icons, the icons of the shortcuts and the screenshots of the manifest (installing the site as an app)
+  const manifestUrl = new URL('/site.webmanifest', siteUrl).href;
+  const manifest = await fetchFn(manifestUrl, { method: 'GET' });
+  if (manifest.ok) {
+    let parsed = null;
+    try { parsed = JSON.parse(await manifest.text()); } catch { /* not JSON: nothing to check */ }
+    for (const i of manifestImages(parsed, manifestUrl, { screenshots })) if (new URL(i).origin === origin && !imageFrom.has(i)) imageFrom.set(i, 'site.webmanifest');
   }
   const brokenPages = [];
   const html = [];
@@ -109,6 +118,20 @@ export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concu
   }
   missing.sort((a, b) => a.image.localeCompare(b.image));
   return { pages: seen.size - brokenPages.length, images: all.length, sitemap: listed.length, missing, brokenPages, html };
+}
+
+/**
+ * Images a web app manifest refers to, as absolute URLs (relative to the manifest at `manifestUrl`): its icons, the icons of
+ * its shortcuts and, unless `screenshots` is false, its screenshots.
+ */
+export function manifestImages(manifest, manifestUrl, { screenshots = true } = {}) {
+  if (!manifest || typeof manifest !== 'object') return [];
+  const sources = [
+    ...(manifest.icons ?? []),
+    ...(manifest.shortcuts ?? []).flatMap((s) => s.icons ?? []),
+    ...(screenshots ? manifest.screenshots ?? [] : []),
+  ].map((i) => i?.src).filter(Boolean);
+  return [...new Set(sources.map((src) => new URL(src, manifestUrl).href))];
 }
 
 /**

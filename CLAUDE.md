@@ -343,7 +343,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   + do `STATIC_PAGES` (mapa webu). `robots.txt` a 404 (`noindex`) generuje web; ověřovací kódy `site.verification`.
 - Návštěvnost: Google Analytics 4 (`analytics.googleMeasurementId` v `site.config.yaml`, `scripts/lib/analytics.mjs`,
   značka v `Base.astro`), jen produkční build skutečného webu, nikdy dev ani testovací data; URL i s parametry filtrů.
-  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `share`, `email_click`, `message_sent`, `palette_change`, `view_change`, `image_view`, `cinema_open`, `cinema_close`, `game_start`, `game_end`, `code_open`, `more_click`); nový parametr události = zapsat do README
+  Vlastní události (`EVENTS`: `gallery_filter`, `fler_click`, `instagram_click`, `share`, `email_click`, `message_sent`, `palette_change`, `view_change`, `image_view`, `cinema_open`, `cinema_close`, `game_start`, `game_end`, `code_open`, `more_click`, `app_install`); nový parametr události = zapsat do README
   (tabulka událostí + seznam vlastních dimenzí k registraci v GA).
 - Zprávy od návštěvníků: Web3Forms (`messages.accessKey` v `site.config.yaml`, jedna adresa, předmět `[pavla-web] <typ>: …`),
   formulář na Kontaktu a panel „Napište mi“ na ostatních stránkách (`scripts/lib/messages.mjs`, `message-draft.mjs`,
@@ -355,6 +355,16 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Obraz podle kódu: `#` v hlavičce (`CodeJump.astro`, `scripts/lib/code-jump.mjs` `codeFromInput`), vložený kód nebo řádek
   z Instagramu otevře krátký odkaz `/tvorba/<id>/` (ověřený `HEAD`, neznámý kód = hláška pod polem); klávesa `#`
   (`opensCodeJump`), na telefonu „Přejít“ a lišta schránky (`isBulkInput`), událost `code_open`.
+- Web jako aplikace (`scripts/lib/app-install.mjs`, `src/lib/app-install.ts`): manifest `display: standalone`, service worker
+  `/sw.js` (`src/pages/sw.js.ts`, `swScript`, verze = verze buildu; stránky a data napřed ze sítě, `/_astro/` z mezipaměti,
+  obrázky a písma stale-while-revalidate, cizí adresy nikdy; neviděná stránka offline = `/offline/` s `noindex`), jen
+  v produkčním buildu (dev ho odregistruje); „Nainstalovat aplikaci“ v patičce podle `installMode` (dialog prohlížeče / návod
+  iOS / návod nabídkou), „←“ v hlavičce nainstalované aplikace (`backTarget`), událost `app_install`. Změna strategie
+  mezipamětí = test v `app-install.test.mjs` (service worker běží v testu v `vm` s falešnými `caches`). Detail dne offline
+  jednou denně (`gameOfflineFiles`, `buildAssets`); každá událost GA nese `display_mode` (`app`/`browser`). Úvodní obrazovky iOS
+  kreslí build (`scripts/lib/splash.mjs`, `SPLASH_DEVICES`, světlé i tmavé), snímky pro dialog instalace `APP_SCREENSHOTS`
+  (`npm run app-screenshots`; nejsou v gitu: deploy je fotí jednou týdně do mezipaměti Actions a kopíruje do `dist/`;
+  týdenní kontrola hlídá obrázky manifestu `manifestImages`). Přehled vzhledů hry pro autorku: `npm run game-overview`.
 - Patička nese verzi buildu `vRR.MMDD.HHMM` (pražský čas) s bublinou (datum, commit): `scripts/lib/build-version.mjs`.
 - „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` jen `npm test` + `npm run build`
   + `npm run check:images` (obrázky, úplnost mapy webu `unlistedPages`, unikátní titulky a popisy a platné JSON-LD

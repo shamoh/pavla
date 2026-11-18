@@ -89,11 +89,34 @@ export const MANIFEST_SHORTCUTS = [
 ];
 
 /**
- * site.webmanifest (Android "Add to home screen"): the name of the site, the first word of it under the icon, the paper
- * of the first palette while the page opens, `minimal-ui` (the page keeps Back and Reload: a gallery, not an app).
+ * Screenshots of the site in the manifest (Android and Chrome show them in a richer install dialog): <file> next to the
+ * manifest, not in git: the deploy takes them from the built site once a week (`npm run app-screenshots`,
+ * scripts/app-screenshots.mjs, Chrome without a window; kept in the cache of GitHub Actions) and copies them into dist/.
+ * `narrow` = a phone (360 × 800 CSS px, ratio 3), `wide` = a computer (1280 × 800, ratio 1.5); `path` = the page shown.
+ */
+export const SCREENSHOT_FORMS = {
+  narrow: { width: 360, height: 800, ratio: 3 },
+  wide: { width: 1280, height: 800, ratio: 1.5 },
+};
+export const APP_SCREENSHOTS = [
+  { file: 'app-screenshot-home.webp', path: '/', form: 'narrow', label: 'Úvodní stránka s nejnovějšími obrazy' },
+  { file: 'app-screenshot-gallery.webp', path: '/tvorba/', form: 'narrow', label: 'Galerie všech obrazů s filtry' },
+  { file: 'app-screenshot-game.webp', path: '/detail-dne/', form: 'narrow', label: 'Detail dne: poznej obraz podle výřezu' },
+  { file: 'app-screenshot-wide.webp', path: '/', form: 'wide', label: 'Úvodní stránka na počítači' },
+];
+/** Pixel size of a screenshot of the `form`, as the manifest gives it ("1080x2400"). */
+export function screenshotSize(form) {
+  const f = SCREENSHOT_FORMS[form];
+  return `${Math.round(f.width * f.ratio)}x${Math.round(f.height * f.ratio)}`;
+}
+
+/**
+ * site.webmanifest (installing the site as an app: Android, Chrome, Edge; iOS reads it too): the name of the site, the
+ * first word of it under the icon, the paper of the first palette while the app opens, `standalone` (an app window
+ * without the bar of the browser; the header then has its own "←", scripts/lib/app-install.mjs), `id` = the start page.
  * Addresses relative to the manifest, so the site may live under a base path. The full-bleed icons keep the little
  * painting inside the safe circle of a maskable icon, so the largest one is offered as `maskable` too. Shortcuts:
- * MANIFEST_SHORTCUTS (`hasFeatured` = the site has works of the author's selection).
+ * MANIFEST_SHORTCUTS (`hasFeatured` = the site has works of the author's selection), screenshots APP_SCREENSHOTS.
  */
 export function webManifest({ title, tagline }, paper, { hasFeatured = false } = {}) {
   const icons = MANIFEST_SIZES.map((size) => ({ src: manifestIconFile(size), sizes: `${size}x${size}`, type: 'image/png', purpose: 'any' }));
@@ -104,12 +127,16 @@ export function webManifest({ title, tagline }, paper, { hasFeatured = false } =
     short_name: title.split(/\s+/)[0],
     ...(tagline ? { description: tagline } : {}),
     lang: 'cs',
+    id: './',
     start_url: './',
     scope: './',
-    display: 'minimal-ui',
+    display: 'standalone',
+    orientation: 'any',
+    prefer_related_applications: false,
     background_color: paper,
     theme_color: paper,
     icons,
+    screenshots: APP_SCREENSHOTS.map((s) => ({ src: s.file, sizes: screenshotSize(s.form), type: 'image/webp', form_factor: s.form, label: s.label })),
     shortcuts: MANIFEST_SHORTCUTS.filter((s) => !s.featured || hasFeatured).map(({ id, name, description, url }) => ({
       name, short_name: name, description, url,
       icons: [{ src: shortcutIconFile(id), sizes: `${SHORTCUT_ICON_SIZE}x${SHORTCUT_ICON_SIZE}`, type: 'image/png' }],

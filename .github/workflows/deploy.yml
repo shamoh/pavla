@@ -34,6 +34,36 @@ jobs:
       - name: Images of the site
         run: node scripts/binary.mjs unpack
       - run: npm run build
+      # Screenshots of the site for the install dialog (site.webmanifest, scripts/app-screenshots.mjs): not in git; taken
+      # from the built site once a week and kept in the cache of Actions under the week, every other deploy of that week
+      # only copies them. A failure never stops the deploy: the site goes out without them and the weekly health check
+      # of the content repository reports the missing images of the manifest.
+      - name: Week of the screenshots
+        id: week
+        run: echo "key=app-screenshots-$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+      - name: Screenshots of this week, if already taken
+        id: shots
+        uses: actions/cache/restore@v6
+        with:
+          path: .app-screenshots
+          key: ${{ steps.week.outputs.key }}
+      - name: Take the screenshots of this week
+        id: take
+        if: steps.shots.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          npx astro preview --host 127.0.0.1 --port 4321 > /tmp/preview.log 2>&1 &
+          for _ in $(seq 60); do curl -sf http://127.0.0.1:4321/ > /dev/null && break; sleep 1; done
+          CHROME="$(command -v google-chrome)" npm run app-screenshots -- http://127.0.0.1:4321 --out .app-screenshots
+      - name: Keep them for the rest of the week
+        if: steps.take.outcome == 'success'
+        uses: actions/cache/save@v6
+        with:
+          path: .app-screenshots
+          key: ${{ steps.week.outputs.key }}
+      - name: Screenshots into the site
+        run: |
+          if compgen -G ".app-screenshots/*.webp" > /dev/null; then cp .app-screenshots/*.webp dist/; else echo "::warning::No screenshots for the install dialog this time"; fi
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist

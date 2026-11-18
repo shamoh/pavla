@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { checkSiteImages, distFetch, evaluateSiteImages, pageReferences } from './site-check.mjs';
+import { checkSiteImages, distFetch, evaluateSiteImages, manifestImages, pageReferences } from './site-check.mjs';
 
 const ORIGIN = 'https://web.test';
 
@@ -129,6 +129,29 @@ test('checkSiteImages: the pins of the feed for Pinterest are checked too (only 
   const r = await checkSiteImages(`${ORIGIN}/`, fetchFn);
   assert.equal(r.images, 3);
   assert.deepEqual(r.missing.map((m) => [m.image, m.page]), [[`${ORIGIN}/tvorba/2026/pryc-a1b2c/pin.jpg`, 'pinterest.xml']]);
+});
+
+test('manifestImages: icons, icons of the shortcuts and screenshots, relative to the manifest, each once', () => {
+  const m = {
+    icons: [{ src: 'icon-192.png' }, { src: 'icon-512.png' }, { src: 'icon-512.png' }],
+    shortcuts: [{ name: 'Tvorba', icons: [{ src: 'shortcut-tvorba.png' }] }, { name: 'Bez ikony' }],
+    screenshots: [{ src: 'app-screenshot-home.webp' }],
+  };
+  const at = `${ORIGIN}/site.webmanifest`;
+  assert.deepEqual(manifestImages(m, at), [`${ORIGIN}/icon-192.png`, `${ORIGIN}/icon-512.png`, `${ORIGIN}/shortcut-tvorba.png`, `${ORIGIN}/app-screenshot-home.webp`]);
+  assert.equal(manifestImages(m, at, { screenshots: false }).length, 3, 'a build has no screenshots: the deploy adds them');
+  assert.deepEqual(manifestImages(null, at), []);
+});
+
+test('checkSiteImages: the images of the manifest are checked too, its screenshots only when asked', async () => {
+  const manifest = JSON.stringify({ icons: [{ src: 'icon-192.png' }], screenshots: [{ src: 'app-screenshot-home.webp' }] });
+  const { fetchFn } = fakeSite({ '/': '<img src="/a.jpg">', '/site.webmanifest': manifest }, ['/a.jpg']);
+  const deployed = await checkSiteImages(`${ORIGIN}/`, fetchFn);
+  assert.deepEqual(deployed.missing.map((m) => [m.image, m.page]), [
+    [`${ORIGIN}/app-screenshot-home.webp`, 'site.webmanifest'], [`${ORIGIN}/icon-192.png`, 'site.webmanifest'],
+  ]);
+  const built = await checkSiteImages(`${ORIGIN}/`, fetchFn, { screenshots: false });
+  assert.deepEqual(built.missing.map((m) => m.image), [`${ORIGIN}/icon-192.png`]);
 });
 
 test('checkSiteImages: a site without a sitemap is walked from its home page', async () => {
