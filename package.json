@@ -18,6 +18,7 @@
     "favicons": "node scripts/favicons.mjs",
     "app-screenshots": "node scripts/app-screenshots.mjs",
     "game-overview": "node scripts/game-overview.mjs",
+    "game-export": "node --env-file-if-exists=.env scripts/game-export.mjs",
     "prototypes": "node scripts/prototypes.mjs"
   },
   "dependencies": {

@@ -97,6 +97,8 @@ import {
 import { addedDates, lineDates } from './lib/git-dates.mjs';
 import { formatLaps, stopwatch } from './lib/timing.mjs';
 import { updateGamePlan } from './lib/game-plan.mjs';
+import { SKIP_KEY, contentExclusions, exclusionProblems } from './lib/game-exclusions.mjs';
+import { photoRegion, writeGameExport } from './lib/game-export.mjs';
 import { ANALYSIS_DIR } from './lib/detail-game-data.mjs';
 import {
   EXPORT_FILES, PUBLIC_WORK_FIELDS, expectedExports, exportFileName, exportFolder, exportPattern, instagramGrid, isInstagramUrl, isOnSale, makesFlerExports, makesInstagramExports, wantsFler, wantsInstagram, wantsMockups,
@@ -553,6 +555,13 @@ export async function run({
   const corners = await prepareCorners(contentDir, works, { search: edges.search, suspicious: edges.suspicious });
   corners.detected.forEach((p) => log(`+ corners of the sheet: ${p}`));
   cornersOf = new Map(works.filter((w) => w.masterPath).map((w) => [w.masterPath, w.data.meta_corners]));
+  // The places kept out of the game Detail dne (meta_game_skip): checked like the corners, in the pixels of the photo.
+  const gameExclusionProblems = [];
+  for (const w of works) {
+    if (!w.masterPath || w.data[SKIP_KEY] === undefined) continue;
+    const { width, height } = await masterSize(w.masterPath);
+    gameExclusionProblems.push(...exclusionProblems(w.data[SKIP_KEY], width, height, w.yamlPath));
+  }
   const home = await prepareHome(contentDir, { instagram: config.site?.instagram ?? '' });
   created.push(...home.created);
   updated.push(...home.updated);
@@ -593,7 +602,7 @@ export async function run({
   const commentedOut = commentedOutReview(yamls);
   commentedOut.forEach((p) => log(`! commented-out attribute: ${p}`));
   const problems = [
-    ...scanProblems, ...corners.problems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems, ...home.problems, ...pages.problems, ...uncollected.problems,
+    ...scanProblems, ...corners.problems, ...gameExclusionProblems, ...validateWorks(works), ...photos.problems, ...collections.problems, ...years.problems, ...home.problems, ...pages.problems, ...uncollected.problems,
     ...years.years.flatMap((y) => coverProblems({
       where: y.yamlPath, data: y.data, photoPath: y.coverPath, works, inScope: (w) => w.year === y.year, scope: y.year,
     })),
@@ -1191,9 +1200,15 @@ export async function run({
   // The plan of the days of the game Detail dne: the days up to tomorrow stay, the next two weeks from the works of now.
   if (!only.length && gamePlan) {
     try {
-      const plan = await updateGamePlan({ siteDir, config, date: today ?? new Date() });
+      // the places kept out of the game in shares of the web picture: the photo cut by its corners as the web images are
+      const exclusions = await contentExclusions(works, (w) => photoRegion(w.masterPath, w.data.meta_corners, edges));
+      const plan = await updateGamePlan({ siteDir, config, date: today ?? new Date(), exclusions });
       const planFiles = plan.changed.filter((file) => !file.startsWith(ANALYSIS_DIR));
       log(`Detail dne: plan ${planFiles.length ? `updated (${planFiles.join(', ')})` : 'unchanged'}, ${plan.days} days up to ${plan.ahead}; pictures analysed ${plan.analysis.written.length}, kept ${plan.analysis.reused}, removed ${plan.analysis.removed.length}`);
+      // export/detail-dne/: the details of every work in the game over its picture (scripts/lib/game-export.mjs)
+      pruned.push(...await writeGameExport({
+        works, exclusions, plan: plan.plan, collectionTitles: draftTitles, siteDir, exportRoot, edges, siteUrl: overviewSite, log,
+      }));
     } catch (error) {
       log(`! Detail dne: the plan of the days was not updated: ${error.message}`);
     }

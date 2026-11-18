@@ -4,7 +4,7 @@
 // every midnight: the build writes the puzzles of the days around it (teaserData, /detail-dne/dnes.json) and the browser picks today.
 import {
   dailyPuzzles, dayId, dayLabel, dropsFor, effectSettings, effectStrength, effectStyle, gameDate, gameFrame, gameLevels, gameLooks,
-  plannedPuzzles, roundKey, unplayedDays, waveRipple, windowHtml,
+  lastViewOf, plannedPuzzles, roundKey, unplayedDays, waveRipple, windowHtml,
 } from './detail-game.mjs';
 
 /** The days dnes.json holds around the day of the build: one before (a time zone, a late build) and three weeks ahead. */
@@ -35,7 +35,7 @@ export function teaserData({ data, from, to }) {
     const puzzles = plannedPuzzles({ plan: data.plan, day, levels, hasWork, computed: dailyPuzzles({ day, levels, prepared: data.prepared }) });
     days[day] = Object.fromEntries(levels.map((level) => {
       const p = puzzles[level.id];
-      return [level.id, p ? { targetId: p.targetId, crop: p.crop, look: p.look } : null];
+      return [level.id, p ? { targetId: p.targetId, crop: p.crop, look: p.look, ...(p.view ? { view: p.view } : {}) } : null];
     }));
   }
   const used = new Set(Object.values(days).flatMap((day) => Object.values(day).filter(Boolean).map((p) => p.targetId)));
@@ -109,7 +109,7 @@ export function teaserTilesHtml(state, { works, game, pictures, waves = new Set(
     const look = looks.get(tile.puzzle.look) ?? gameLooks()[0];
     const style = effectStyle(look.effect, look.colour, effectStrength(tile.misses, level.guesses), effectSettings(), 360);
     if (style.wave) waves.add(style.wave);
-    const frame = gameFrame(tile.puzzle.crop, tile.misses, level.guesses - 1, work.ratio, level.lastView);
+    const frame = gameFrame(tile.puzzle.crop, tile.misses, level.guesses - 1, work.ratio, lastViewOf(tile.puzzle, level));
     const src = `${pictures}/${work.folder}/${Math.max(...work.widths)}.webp`;
     const window = windowHtml({ src, ratio: work.ratio, frame, style, zoom: 'var(--teaser-zoom)', waveId: `teaser-wave-${style.wave}` });
     const note = tile.state === 'started' ? 'rozehráno' : `<span class="drops">až ${tile.drops} 💧</span>`;

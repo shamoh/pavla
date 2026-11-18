@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Rohy obrazů</title>
+<title>Rohy obrazů a vynechaná místa</title>
 <style>
   /* A local tool (npm run corners), not a page of the site: its own neutral dark colours. */
   :root { --bg: #1b1b1d; --panel: #252528; --line: #3a3a3f; --ink: #ecebe8; --ink-soft: #a3a19c; --accent: #4fc3f7; --warn: #ff6b6b; --ok: #7cdb8a; --c0: #ffe600; --c1: #00e5ff; --c2: #ff4fd8; --c3: #7cff7c; }
@@ -29,7 +29,7 @@
   .stage { position: relative; flex: 1; min-height: 0; overflow: hidden; cursor: crosshair; }
   #canvas { position: absolute; inset: 0; }
   #lens { position: absolute; pointer-events: none; }
-  #hint { padding: 6px 10px; border-top: 1px solid var(--line); color: var(--ink-soft); }
+  #hint, #hint-skip { padding: 6px 10px; border-top: 1px solid var(--line); color: var(--ink-soft); }
   #keys { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 0; max-width: min(860px, 94vw); }
   /* the padding is inside: a click on the dialog itself is a click on the backdrop */
   #keys > div { padding: 16px 20px; }
@@ -68,19 +68,31 @@
   #message.error { color: var(--warn); }
   #message.ok { color: var(--ok); }
   kbd { border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font-size: 11px; }
+  /* the two modes of the right panel: the corners of the sheet, the places the game keeps out */
+  .modes { display: flex; gap: 4px; margin-bottom: 8px; }
+  .modes button { flex: 1; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 6px; cursor: pointer; }
+  .modes button[aria-pressed='true'] { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .skip-row { display: grid; grid-template-columns: 1.6em repeat(4, 1fr) 1.8em; gap: 3px; align-items: center; margin-bottom: 3px; }
+  .skip-row input { width: 100%; font: inherit; font-variant-numeric: tabular-nums; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 2px 3px; }
+  .skip-row.selected b { color: var(--warn); }
+  .skip-row button { font: inherit; color: var(--ink-soft); background: none; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; }
+  .skip-head { display: grid; grid-template-columns: 1.6em repeat(4, 1fr) 1.8em; gap: 3px; color: var(--ink-soft); font-size: 11px; }
 </style>
 </head>
 <body>
 <aside>
-  <h1>Rohy obrazů</h1>
+  <h1>Rohy obrazů a vynechaná místa</h1>
   <label><input type="checkbox" id="drafts" checked /> jen rozpracované</label>
+  <label id="with-skips-label" hidden title="díla s meta_game_skip nebo meta_game: false, i zveřejněná"><input type="checkbox" id="with-skips" /> jen s vynechanými místy / mimo hru</label>
   <ul id="works"></ul>
 </aside>
 <main id="view">
   <div id="bar"><div><span id="status"></span><span id="target"></span></div><div id="square"></div><div id="crossed"></div></div>
   <div class="stage"><canvas id="canvas"></canvas><canvas id="lens" hidden></canvas></div>
-  <div id="hint">Klik = přesune nejbližší roh (<kbd>Shift</kbd> vybraný) a vybere ho · tažení bodu = posun rohu, jinde = posun fotky · kolečko = zoom ·
+  <div id="hint" data-mode="corners">Klik = přesune nejbližší roh (<kbd>Shift</kbd> vybraný) a vybere ho · tažení bodu = posun rohu, jinde = posun fotky · kolečko = zoom ·
     držet <kbd>Ctrl</kbd>/<kbd>⌘</kbd> = lupa u kurzoru · <kbd>?</kbd> všechny klávesy</div>
+  <div id="hint-skip" hidden>Tažení = nové vynechané místo · klik do místa = vybrat, tažení = posun, za roh = velikost · <kbd>Delete</kbd> smaže vybrané ·
+    šipky posunou vybrané o 1 px (<kbd>Shift</kbd> 10) · <kbd>Alt</kbd>/<kbd>⌥</kbd> + tažení = posun fotky · kolečko = zoom</div>
 </main>
 <dialog id="keys"><div>
   <h1>Klávesy <button id="keys-close">Zavřít (Esc)</button></h1>
@@ -127,11 +139,37 @@
         <tr><td><kbd>Esc</kbd></td><td>zavře přehled</td></tr>
       </table>
     </div>
+    <div>
+      <h2>Vynechaná místa (hra Detail dne)</h2>
+      <table>
+        <tr><td>tažení</td><td>nakreslí nové místo, ze kterého hra nevezme výřez (kroužková vazba, hřbet, páska)</td></tr>
+        <tr><td>klik do místa</td><td>vybere ho; tažením se posune, za roh se mění velikost</td></tr>
+        <tr><td><kbd>Delete</kbd> / <kbd>Backspace</kbd></td><td>smaže vybrané místo</td></tr>
+        <tr><td>šipky (<kbd>Shift</kbd>)</td><td>posunou vybrané místo o 1 (10) px fotky</td></tr>
+        <tr><td><kbd>Alt</kbd>/<kbd>⌥</kbd> + tažení</td><td>posune fotku</td></tr>
+      </table>
+    </div>
   </div>
   <p>Česká klávesnice: číslice fungují i bez Shiftu (<kbd>é</kbd> = 0, <kbd>ě</kbd> <kbd>š</kbd> <kbd>č</kbd> = 2–4); klávesa 1 je
     <kbd>+</kbd> (zoom), roh tl je <kbd>Shift</kbd> <kbd>1</kbd>; <kbd>-</kbd> je vpravo od tečky.</p>
 </div></dialog>
 <section>
+  <div class="modes"><button id="mode-corners" aria-pressed="true">Rohy listu</button><button id="mode-skip" aria-pressed="false">Hra: vynechaná místa</button></div>
+  <div id="skip-panel" hidden>
+    <label title="meta_game: true / false"><input type="checkbox" id="game" checked /> obraz patří do hry Detail dne</label>
+    <h2>Vynechaná místa (px fotky)</h2>
+    <div class="skip-head"><span>#</span><span>zleva</span><span>shora</span><span>šířka</span><span>výška</span><span></span></div>
+    <div id="skips"></div>
+    <pre id="skip-yaml"></pre>
+    <div class="buttons">
+      <button id="skip-copy" class="primary">Kopírovat</button>
+      <button id="skip-write">Zapsat do yaml…</button>
+      <button id="skip-reset">Vrátit z yaml</button>
+    </div>
+    <div id="skip-confirm" style="display:none;margin-top:6px;padding:6px;border:1px solid var(--accent);border-radius:4px"><div id="skip-confirm-text"></div>
+      <div class="buttons" style="margin-top:6px"><button id="skip-confirm-yes" class="primary">Zapsat</button><button id="skip-confirm-no">Zrušit</button></div></div>
+  </div>
+  <div id="corners-panel">
   <h2>Rohy zblízka <select id="zoom"><option value="2" selected>2×</option><option value="4">4×</option><option value="8">8×</option></select></h2>
   <div class="loupes" id="loupes"></div>
   <h2>Ořez (% fotky)</h2>
@@ -146,6 +184,7 @@
   </div>
   <div id="confirm"><div id="confirm-text"></div>
     <div class="buttons" style="margin-top:6px"><button id="confirm-yes" class="primary">Zapsat</button><button id="confirm-no">Zrušit</button></div></div>
+  </div>
   <div id="message"></div>
 </section>
 <script>
@@ -170,6 +209,11 @@ let lens = false;            // Ctrl / Cmd held: the loupe at the cursor
 let shiftHeld = false;       // Shift held: a click moves the chosen corner, not the nearest one
 let guides = true;           // the guides from the corners (G)
 const edits = new Map();     // key → points changed and not written yet
+let mode = 'corners';        // the right panel and the mouse: 'corners' (meta_corners) or 'skip' (meta_game_skip, meta_game)
+let skips = [];              // the places of the work shown, [left, top, width, height] in pixels of the photo
+let game = true;             // meta_game of the work shown
+let selected = -1;           // the place selected (arrows, Delete), -1 = none
+const skipEdits = new Map(); // key → { skips, game } changed and not written yet
 
 const size = () => [image.naturalWidth, image.naturalHeight];
 const value = () => pointsToCorners(points, size());
@@ -190,7 +234,12 @@ async function loadWorks() {
   if (first) open(first);
 }
 
-const listed = () => works.filter((w) => !$('drafts').checked || w.draft || w === current);
+// in the mode of the game the second box lists only the works with places kept out or out of the game (published too),
+// with the ones changed and not written yet and the one shown
+const withSkips = (w) => w.skip.length > 0 || !w.game || skipEdits.has(w.key);
+const listed = () => (mode === 'skip' && $('with-skips').checked
+  ? works.filter((w) => withSkips(w) || w === current)
+  : works.filter((w) => !$('drafts').checked || w.draft || w === current));
 
 function renderList() {
   $('works').replaceChildren(...listed().map((w) => {
@@ -202,7 +251,10 @@ function renderList() {
     b.querySelector('.mark').textContent = mark;
     b.querySelector('.mark').title = { '•': 'neuložená změna', '–': 'meta_corners: false', '✓': 'má meta_corners', '?': 'bez meta_corners' }[mark];
     b.querySelector('.t').textContent = w.title;
-    b.querySelector('small').textContent = [w.key.replace(/^tvorba\//, ''), w.draft ? null : 'zveřejněné'].filter(Boolean).join(' · ');
+    b.querySelector('small').textContent = [
+      w.key.replace(/^tvorba\//, ''), w.draft ? null : 'zveřejněné', w.game ? null : 'mimo hru',
+      w.skip.length ? `${w.skip.length} vynech.` : null, skipEdits.has(w.key) ? 'neuložená místa' : null,
+    ].filter(Boolean).join(' · ');
     b.onclick = () => open(w);
     li.append(b);
     return li;
@@ -230,6 +282,10 @@ async function open(work) {
     if (work.corners && work.corners.photo) message(`meta_corners patří fotce ${work.corners.photo.join(' × ')}, fotka má ${w} × ${h}: hledám znovu.`, 'error');
     await detect(false);
   }
+  const kept = skipEdits.get(work.key);
+  skips = (kept ? kept.skips : work.skip).map((r) => [...r]);
+  game = kept ? kept.game : work.game;
+  selected = -1;
   fit();
   update();
 }
@@ -292,8 +348,38 @@ function draw() {
     ctx.arc(p[0], p[1], i === active ? 8 : 6, 0, 2 * Math.PI);
     ctx.strokeStyle = COLOURS[i]; ctx.lineWidth = i === active ? 3 : 2; ctx.stroke();
   });
-  drawHover(s);
+  drawSkips();
+  if (mode === 'corners') drawHover(s);
+  else $('target').textContent = '';
   drawLens();
+}
+
+// the places kept out of the game: hatched red with their number; faint in the corners mode, with handles when selected
+function drawSkips() {
+  skips.forEach((r, i) => {
+    const [x, y] = toScreen([r[0], r[1]]);
+    const w = r[2] * view.scale, h = r[3] * view.scale;
+    ctx.save();
+    ctx.globalAlpha = mode === 'skip' ? 1 : 0.45;
+    ctx.fillStyle = 'rgba(255, 60, 60, .22)'; ctx.fillRect(x, y, w, h);
+    ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.strokeStyle = 'rgba(255, 80, 80, .7)'; ctx.lineWidth = 1;
+    for (let d = -h; d < w; d += 12) { ctx.beginPath(); ctx.moveTo(x + d, y + h); ctx.lineTo(x + d + h, y); ctx.stroke(); }
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = mode === 'skip' ? 1 : 0.45;
+    ctx.strokeStyle = i === selected ? '#fff' : WARN; ctx.lineWidth = i === selected ? 2 : 1.5;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = WARN; ctx.fillRect(x, y, 18, 16);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px system-ui'; ctx.fillText(String(i + 1), x + 5, y + 12);
+    if (mode === 'skip' && i === selected) [[x, y], [x + w, y], [x + w, y + h], [x, y + h]].forEach(([u, v]) => { ctx.fillStyle = '#fff'; ctx.fillRect(u - 4, v - 4, 8, 8); });
+    ctx.restore();
+  });
+  if (skipDrag?.draft) {
+    const r = skipDrag.draft;
+    const [x, y] = toScreen([r[0], r[1]]);
+    ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y, r[2] * view.scale, r[3] * view.scale); ctx.restore();
+  }
 }
 
 // the corner under the mouse (a press drags it), screen px of the main view; -1 = none
@@ -416,6 +502,7 @@ function drawLoupe(i) {
 }
 
 function update() {
+  updateSkipPanel();
   draw();
   KEYS.forEach((_, i) => drawLoupe(i));
   const crossed = crossedCorners(points);
@@ -449,6 +536,53 @@ function update() {
   $('status').textContent = `${current.title} · ${w} × ${h} px · roh ${KEYS[active]} (${NAMES[KEYS[active]]})${edits.has(current.key) ? ' · neuloženo' : ''}`;
 }
 
+// the panel of the places: a row for each (editable numbers), the YAML, the state of meta_game
+function updateSkipPanel() {
+  $('game').checked = game;
+  $('skips').replaceChildren(...skips.map((r, i) => {
+    const row = document.createElement('div');
+    row.className = `skip-row${i === selected ? ' selected' : ''}`;
+    row.innerHTML = '<b></b><input type="number" min="0" /><input type="number" min="0" /><input type="number" min="1" /><input type="number" min="1" /><button title="smazat">✕</button>';
+    row.querySelector('b').textContent = i + 1;
+    row.querySelectorAll('input').forEach((input, k) => {
+      input.value = r[k];
+      input.onfocus = () => { selected = i; draw(); };
+      input.onchange = () => {
+        const next = [...skips[i]]; next[k] = Math.max(k < 2 ? 0 : 1, Math.round(Number(input.value) || 0));
+        const [w, h] = size();
+        const fixed = rectFromDrag([next[0], next[1]], [next[0] + next[2], next[1] + next[3]], [w, h]);
+        if (fixed) { skips[i] = fixed; skipEdited(); update(); }
+      };
+    });
+    row.querySelector('button').onclick = () => { skips.splice(i, 1); selected = -1; skipEdited(); update(); };
+    return row;
+  }));
+  $('skip-yaml').textContent = `${game ? '' : 'meta_game: false\n'}${skipYaml(skips)}`;
+  $('skip-write').disabled = !current.yaml;
+}
+
+function skipEdited() {
+  const same = JSON.stringify(skips) === JSON.stringify(current.skip) && game === current.game;
+  if (same) skipEdits.delete(current.key);
+  else skipEdits.set(current.key, { skips: skips.map((r) => [...r]), game });
+  renderList();
+}
+
+function setMode(next) {
+  mode = next;
+  $('mode-corners').setAttribute('aria-pressed', String(mode === 'corners'));
+  $('mode-skip').setAttribute('aria-pressed', String(mode === 'skip'));
+  $('corners-panel').hidden = mode !== 'corners';
+  $('skip-panel').hidden = mode !== 'skip';
+  $('hint').hidden = mode !== 'corners';
+  $('hint-skip').hidden = mode !== 'skip';
+  $('with-skips-label').hidden = mode !== 'skip';
+  $('drafts').disabled = mode === 'skip' && $('with-skips').checked;
+  renderList();
+  canvas.parentElement.style.cursor = mode === 'skip' ? 'cell' : 'crosshair';
+  if (image) update();
+}
+
 function setPoint(i, p) {
   points = points.map((q, j) => (j === i ? clampPoint(p) : q));
   edited();
@@ -457,14 +591,34 @@ function setPoint(i, p) {
 
 // the main view: click places the active corner, dragging a corner moves it, dragging elsewhere moves the photo
 let drag = null;
+let skipDrag = null;         // the skip mode: { start (photo point), hit (hitRect or null), rect (before), draft, pan, view, moved }
 canvas.addEventListener('pointerdown', (e) => {
   if (!image) return;
   canvas.setPointerCapture(e.pointerId);
+  if (mode === 'skip') {
+    const p = toPhoto(e.offsetX, e.offsetY);
+    const hit = e.altKey ? null : hitRect(skips, p, 8 / view.scale);
+    skipDrag = { start: p, x: e.offsetX, y: e.offsetY, hit, rect: hit ? [...skips[hit.index]] : null, draft: null, pan: e.altKey, view: { ...view }, moved: false };
+    if (hit) { selected = hit.index; update(); }
+    return;
+  }
   const hit = hitCorner(e.offsetX, e.offsetY);
   drag = { x: e.offsetX, y: e.offsetY, view: { ...view }, corner: hit, moved: false };
   if (hit >= 0) { active = hit; update(); }
 });
 canvas.addEventListener('pointermove', (e) => {
+  if (skipDrag) {
+    if (Math.hypot(e.offsetX - skipDrag.x, e.offsetY - skipDrag.y) > 3) skipDrag.moved = true;
+    if (!skipDrag.moved) return;
+    const p = toPhoto(e.offsetX, e.offsetY);
+    if (skipDrag.pan) { view.x = skipDrag.view.x + e.offsetX - skipDrag.x; view.y = skipDrag.view.y + e.offsetY - skipDrag.y; draw(); return; }
+    if (skipDrag.hit) {
+      const next = moveRect(skipDrag.rect, skipDrag.hit.handle, [p[0] - skipDrag.start[0], p[1] - skipDrag.start[1]], size());
+      if (next) { skips[skipDrag.hit.index] = next; updateSkipPanel(); }
+    } else skipDrag.draft = rectFromDrag(skipDrag.start, p, size());
+    scheduleDraw();
+    return;
+  }
   if (!drag) return;
   if (Math.hypot(e.offsetX - drag.x, e.offsetY - drag.y) > 4) drag.moved = true;
   if (!drag.moved) return;
@@ -476,6 +630,15 @@ canvas.addEventListener('pointermove', (e) => {
   else { view.x = drag.view.x + e.offsetX - drag.x; view.y = drag.view.y + e.offsetY - drag.y; draw(); }
 });
 canvas.addEventListener('pointerup', (e) => {
+  if (skipDrag) {
+    const d = skipDrag;
+    skipDrag = null;
+    if (d.draft && d.draft[2] * view.scale >= 4 && d.draft[3] * view.scale >= 4) { skips.push(d.draft); selected = skips.length - 1; skipEdited(); }
+    else if (d.hit && d.moved) skipEdited();
+    else if (!d.hit && !d.moved && !d.pan) selected = -1;
+    update();
+    return;
+  }
   if (drag && !drag.moved && drag.corner < 0) {
     // a click moves the nearest corner there (with Shift the chosen one) and chooses it (arrows, loupes and 1–4 work with it)
     const p = toPhoto(e.offsetX, e.offsetY);
@@ -528,6 +691,12 @@ KEYS.forEach((k, i) => {
 });
 
 document.addEventListener('keydown', (e) => {
+  if (mode === 'skip' && (e.key === 'Delete' || e.key === 'Backspace') && selected >= 0 && e.target.tagName !== 'INPUT') {
+    e.preventDefault();
+    skips.splice(selected, 1); selected = -1; skipEdited(); update();
+    return;
+  }
+  if (e.target.tagName === 'INPUT' && e.target.type === 'number') return;
   if (e.key === 'Control' || e.key === 'Meta') { lens = true; drawLens(); return; }
   if (e.key === 'Shift') { shiftHeld = true; if (image) scheduleDraw(); return; }
   if (e.target.tagName === 'SELECT') return;
@@ -535,6 +704,14 @@ document.addEventListener('keydown', (e) => {
   if (!a) return;
   if (a.help) { e.preventDefault(); toggleKeys(); return; }
   if ($('keys').open || !image) return;
+  if (mode === 'skip' && (a.move || a.corner !== undefined)) {
+    e.preventDefault();
+    if (a.move && selected >= 0) {
+      const next = moveRect(skips[selected], 'move', a.move, size());
+      if (next) { skips[selected] = next; skipEdited(); update(); }
+    }
+    return;
+  }
   e.preventDefault();
   if (a.move) setPoint(active, [points[active][0] + a.move[0], points[active][1] + a.move[1]]);
   else if (a.pan) { view = { ...view, x: view.x + a.pan[0], y: view.y + a.pan[1] }; draw(); }
@@ -561,6 +738,12 @@ $('keys').addEventListener('click', (e) => { if (e.target === $('keys')) $('keys
 
 $('zoom').onchange = update;
 $('drafts').onchange = renderList;
+$('with-skips').onchange = () => {
+  $('drafts').disabled = $('with-skips').checked;
+  renderList();
+  // the work shown is not among them: the first one that is
+  if ($('with-skips').checked && !withSkips(current)) { const first = listed().find((w) => w !== current); if (first) open(first); }
+};
 addEventListener('resize', () => image && update());
 $('copy').onclick = async () => {
   try { await navigator.clipboard.writeText(editorYaml(value())); message('Zkopírováno do schránky.', 'ok'); }
@@ -591,6 +774,34 @@ $('confirm-yes').onclick = async () => {
   renderList();
   update();
   message(`Zapsáno do ${body.written}.`, 'ok');
+};
+
+$('mode-corners').onclick = () => setMode('corners');
+$('mode-skip').onclick = () => setMode('skip');
+$('game').onchange = () => { game = $('game').checked; skipEdited(); update(); };
+$('skip-copy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('skip-yaml').textContent); message('Zkopírováno do schránky.', 'ok'); }
+  catch { message('Schránka nejde, zkopíruj text nad tlačítky ručně.', 'error'); }
+};
+$('skip-reset').onclick = () => { skipEdits.delete(current.key); skips = current.skip.map((r) => [...r]); game = current.game; selected = -1; renderList(); update(); };
+$('skip-write').onclick = () => {
+  $('skip-confirm-text').textContent = `Zapsat do ${current.yaml} meta_game: ${game} a ${skips.length ? `${skips.length} vynechaných míst (meta_game_skip)` : 'žádné vynechané místo (meta_game_skip se zakomentuje)'}? Nic jiného v souboru se nezmění.`;
+  $('skip-confirm').style.display = 'block';
+};
+$('skip-confirm-no').onclick = () => { $('skip-confirm').style.display = 'none'; };
+$('skip-confirm-yes').onclick = async () => {
+  $('skip-confirm').style.display = 'none';
+  for (const [path, value] of [['/api/game', game], ['/api/skip', skips]]) {
+    const r = await fetch(path, { method: 'POST', body: JSON.stringify({ key: current.key, value }) });
+    const body = await r.json();
+    if (!r.ok) { message(body.error, 'error'); return; }
+  }
+  current.skip = skips.map((r) => [...r]);
+  current.game = game;
+  skipEdits.delete(current.key);
+  renderList();
+  update();
+  message(`Zapsáno do ${current.yaml}.`, 'ok');
 };
 
 loadWorks();

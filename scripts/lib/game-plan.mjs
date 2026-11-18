@@ -14,9 +14,10 @@ import path from 'node:path';
 import { colourProfile } from './affinity.mjs';
 import { colourSettings } from './colors.mjs';
 import {
-  GAME_EPOCH, PLAN_FILE_VERSION, extendPlan, gameDay, gameLevels, planDaysByYear, planDetailsText, planYearDays, planYearText, planYearsShown, pragueDate,
+  GAME_EPOCH, PLAN_FILE_VERSION, PLAN_LOCKED, extendPlan, gameDay, gameLevels, planDaysByYear, planDetailsText, planYearDays, planYearText, planYearsShown, pragueDate,
 } from './detail-game.mjs';
 import { prepareGame } from './detail-game-data.mjs';
+import { excludePrepared, planViews } from './game-exclusions.mjs';
 import { prototypeWorks } from './prototypes.mjs';
 
 export { pragueDate };
@@ -116,15 +117,24 @@ export async function planWorks(siteDir, config) {
 /**
  * Extends the plan of `siteDir` on `date` (a Date; the day in Prague) and writes the files that changed:
  * `{ changed (paths, with the analyses of pictures written or removed), days (in the plan), ahead (the date of the last planned
- * day), analysis (prepareGame: written, removed, reused) }`.
+ * day), analysis (prepareGame: written, removed, reused), plan ({ details, days }) }`. `exclusions` = what the author keeps out
+ * (scripts/lib/game-exclusions.mjs, contentExclusions): applied to the days planned again, with the `view` of their puzzles.
  */
-export async function updateGamePlan({ siteDir, config, date = new Date() }) {
+export async function updateGamePlan({ siteDir, config, date = new Date(), exclusions = {} }) {
   const works = await planWorks(siteDir, config);
   // the analysis of a picture is kept (game/detail-dne/analysis/), made again only for a new or changed picture
-  const { prepared, places, analysis } = await prepareGame(works, siteDir, undefined, undefined, { places: true, save: true });
-  const plan = extendPlan({ plan: await readPlan(siteDir), prepared, places, levels: gameLevels(), today: gameDay(pragueDate(date), GAME_EPOCH), epoch: GAME_EPOCH });
+  const game = await prepareGame(works, siteDir, undefined, undefined, { places: true, save: true });
+  const { analysis } = game;
+  // what the author keeps out of the game (meta_game, meta_game_skip; scripts/lib/game-exclusions.mjs): only the days planned again
+  // change, the analyses stay as they are
+  const prepared = excludePrepared(game.prepared, exclusions);
+  const places = excludePrepared(game.places, exclusions);
+  const levels = gameLevels();
+  const today = gameDay(pragueDate(date), GAME_EPOCH);
+  const extended = extendPlan({ plan: await readPlan(siteDir), prepared, places, levels, today, epoch: GAME_EPOCH });
+  const plan = { ...extended, days: planViews(extended.days, { exclusions, levels, from: today + PLAN_LOCKED + 1 }) };
   const changed = [...analysis.written, ...analysis.removed, ...await writePlan(siteDir, plan)];
   const keys = Object.keys(plan.days).map(Number);
 
-  return { changed, days: keys.length, ahead: plan.days[Math.max(...keys)]?.date ?? null, analysis };
+  return { changed, days: keys.length, ahead: plan.days[Math.max(...keys)]?.date ?? null, analysis, plan };
 }

@@ -6,7 +6,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
 import {
-  EDITOR_FUNCTIONS, clickTarget, guideStyle, rectangleDeviation, snapPoint, cornersToPoints, editorPage, editorWorks, crossedCorners, editorYaml, keyAction, nearestCorner, nextZoom, pointsToCorners, zoomView, replaceCorners, route, trustedRequest,
+  EDITOR_FUNCTIONS, clickTarget, hitRect, moveRect, rectFromDrag, replaceAttribute, skipYaml, guideStyle, rectangleDeviation, snapPoint, cornersToPoints, editorPage, editorWorks, crossedCorners, editorYaml, keyAction, nearestCorner, nextZoom, pointsToCorners, zoomView, replaceCorners, route, trustedRequest,
 } from './corner-editor.mjs';
 import { cornersYaml } from './corners.mjs';
 import { skeleton } from './metadata-yaml.mjs';
@@ -215,8 +215,8 @@ test('editorWorks: master photos with their description, drafts marked, details 
   await photo('tvorba/plener/vecer.jpg');
   const works = await editorWorks(tmp);
   assert.deepEqual(works, [
-    { key: 'tvorba/plener/vecer.jpg', yaml: null, title: 'vecer', id: null, draft: true, corners: null },
-    { key: 'tvorba/rano.jpg', yaml: 'tvorba/rano.yaml', title: 'Ráno', id: 'k3f9a', draft: false, corners: null },
+    { key: 'tvorba/plener/vecer.jpg', yaml: null, title: 'vecer', id: null, draft: true, corners: null, skip: [], game: true },
+    { key: 'tvorba/rano.jpg', yaml: 'tvorba/rano.yaml', title: 'Ráno', id: 'k3f9a', draft: false, corners: null, skip: [], game: true },
   ]);
 });
 
@@ -281,4 +281,55 @@ test('the page: the loupes of the corners open at 2×, with 4× and 8× to switc
   const select = html.match(/<select id="zoom">(.*?)<\/select>/)[1];
   assert.deepEqual([...select.matchAll(/value="(\d+)"/g)].map((m) => m[1]), ['2', '4', '8']);
   assert.deepEqual([...select.matchAll(/value="(\d+)" selected/g)].map((m) => m[1]), ['2']);
+});
+
+test('rectFromDrag: a place from a drag either way, whole pixels inside the photo, none without area', () => {
+  assert.deepEqual(rectFromDrag([100.4, 50], [20, 300.6], [400, 300]), [20, 50, 80, 250]);
+  assert.deepEqual(rectFromDrag([-10, -5], [50, 40], [400, 300]), [0, 0, 50, 40], 'clipped at the photo');
+  assert.equal(rectFromDrag([10, 10], [10, 80], [400, 300]), null);
+});
+
+test('hitRect and moveRect: a corner resizes (the opposite one stays), inside moves within the photo', () => {
+  const rects = [[10, 10, 100, 100], [50, 50, 20, 20]];
+  assert.deepEqual(hitRect(rects, [55, 55], 4), { index: 1, handle: 'move' }, 'the top one first');
+  assert.deepEqual(hitRect(rects, [112, 108], 4), { index: 0, handle: 'br' });
+  assert.equal(hitRect(rects, [300, 300], 4), null);
+  assert.deepEqual(moveRect([10, 10, 100, 100], 'br', [20, -10], [400, 300]), [10, 10, 120, 90]);
+  assert.deepEqual(moveRect([10, 10, 100, 100], 'tl', [-30, 5], [400, 300]), [0, 15, 110, 95]);
+  assert.deepEqual(moveRect([10, 10, 100, 100], 'move', [350, 0], [400, 300]), [300, 10, 100, 100], 'stays inside');
+});
+
+test('skipYaml: one place a line, a comment without any', () => {
+  assert.equal(skipYaml([[1, 2, 3, 4], [5, 6, 7, 8]]), 'meta_game_skip:\n  - [1, 2, 3, 4]\n  - [5, 6, 7, 8]');
+  assert.match(skipYaml([]), /^# meta_game_skip: žádné místo/);
+  assert.ok(EDITOR_FUNCTIONS.includes(rectFromDrag) && EDITOR_FUNCTIONS.includes(hitRect) && EDITOR_FUNCTIONS.includes(moveRect) && EDITOR_FUNCTIONS.includes(skipYaml));
+});
+
+test('replaceAttribute: places one a line in the schema order, none = commented out, meta_game false and back', () => {
+  const text = 'meta_draft: false\nid: k3f9a\ntitle: Ráno\n';
+  const set = replaceAttribute(text, 'meta_game_skip', [[1, 2, 3, 4]]);
+  assert.equal(set.problem, null);
+  assert.match(set.text, /\nmeta_game_skip:\n  - \[1, 2, 3, 4\]\n/);
+  assert.equal(YAML.parse(set.text).title, 'Ráno', 'nothing else changes');
+  assert.match(replaceAttribute(set.text, 'meta_game_skip', null).text, /\n# meta_game_skip: \[\[1840, 0, 260, 3000\]\]\n/);
+  const out = replaceAttribute(text, 'meta_game', false).text;
+  assert.equal(YAML.parse(out).meta_game, false);
+  assert.equal(YAML.parse(replaceAttribute(out, 'meta_game', true).text).meta_game, true);
+  assert.deepEqual(replaceAttribute('a: [', 'meta_game', false), { text: 'a: [', problem: 'popis nejde přečíst (chyba v YAML)' });
+});
+
+test('route: writes meta_game_skip checked like the pipeline (outside the photo refused) and meta_game', async () => {
+  await photo('tvorba/rano.jpg');
+  await fs.writeFile(path.join(tmp, 'tvorba/rano.yaml'), 'meta_draft: false\nid: k3f9a\ntitle: Ráno\n');
+  const post = (p, value) => route(tmp, '', 'POST', p, JSON.stringify({ key: 'tvorba/rano.jpg', value }));
+  assert.equal((await post('/api/skip', [[350, 0, 100, 300]])).status, 400, 'beyond the 400 px of the photo');
+  assert.equal((await post('/api/skip', [[150, 0, 100, 300]])).status, 200);
+  assert.equal((await post('/api/game', false)).status, 200);
+  const data = YAML.parse(await fs.readFile(path.join(tmp, 'tvorba/rano.yaml'), 'utf8'));
+  assert.deepEqual([data.meta_game_skip, data.meta_game], [[[150, 0, 100, 300]], false]);
+  const works = JSON.parse((await route(tmp, '', 'GET', '/api/works')).body);
+  assert.deepEqual([works[0].skip, works[0].game], [[[150, 0, 100, 300]], false]);
+  assert.equal((await post('/api/skip', [])).status, 200);
+  assert.equal(YAML.parse(await fs.readFile(path.join(tmp, 'tvorba/rano.yaml'), 'utf8')).meta_game_skip, undefined, 'no place: commented out');
+  assert.equal((await post('/api/game', 'ne')).status, 400);
 });

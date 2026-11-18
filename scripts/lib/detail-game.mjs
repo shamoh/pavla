@@ -614,8 +614,14 @@ export function gameHint(target, remaining, most = 2) {
 
 /** What a player's round keeps of its puzzle, so a played day stays the same after new works change the order of the days. */
 export function roundPuzzle(puzzle) {
-  return { targetId: puzzle.targetId, crop: puzzle.crop, optionIds: puzzle.optionIds, look: puzzle.look };
+  return { targetId: puzzle.targetId, crop: puzzle.crop, optionIds: puzzle.optionIds, look: puzzle.look, ...(puzzle.view ? { view: puzzle.view } : {}) };
 }
+
+/**
+ * How far a puzzle zooms out at its last try (share of the shorter side): its own `view` when the plan gave it one (a work with
+ * places the author keeps out of the game, puzzleView of scripts/lib/game-exclusions.mjs), otherwise its level's.
+ */
+export const lastViewOf = (puzzle, level) => puzzle?.view ?? level.lastView;
 
 /**
  * The puzzle a player sees: the one their round kept (`round.puzzle`, roundPuzzle) while all its works are still on the site
@@ -756,7 +762,7 @@ export function gameDiagnostics({ day, today, date, level, puzzle, round, work, 
   const tries = round.guesses.length;
   const strength = effectStrength(tries, level.guesses, round.over);
   const style = effectStyle(look.effect, look.colour, strength, effectSettings(), size);
-  const view = round.over ? null : gameFrame(puzzle.crop, tries, level.guesses - 1, work.ratio, level.lastView);
+  const view = round.over ? null : gameFrame(puzzle.crop, tries, level.guesses - 1, work.ratio, lastViewOf(puzzle, level));
   const misses = tries - (round.solved ? 1 : 0);
   const state = round.over ? (round.solved ? `uhodnuto po ${misses} omylech` : 'neuhodnuto') : `pokus ${tries + 1} z ${level.guesses}`;
   return [
@@ -1310,7 +1316,7 @@ export function plannedPuzzles({ plan, day, levels, hasWork, computed }) {
       return [level.id, computed[level.id] ? { ...computed[level.id], planned: false } : null];
     }
     const look = gameLooks().find((l) => l.id === kept.look) ?? gameLooks().find((l) => l.id === lookForDay({ level, day })) ?? gameLooks()[0];
-    return [level.id, { day, level: level.id, targetId: kept.targetId, detail: kept.detail, crop: kept.crop, optionIds: kept.optionIds, look: look.id, effect: look.effect, colour: look.colour, planned: true }];
+    return [level.id, { day, level: level.id, targetId: kept.targetId, detail: kept.detail, crop: kept.crop, optionIds: kept.optionIds, look: look.id, effect: look.effect, colour: look.colour, ...(kept.view ? { view: kept.view } : {}), planned: true }];
   }));
 }
 

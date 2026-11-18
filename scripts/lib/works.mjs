@@ -285,6 +285,8 @@ export const EXPORT_FILES = {
   fler: /^(?:(?:original|mockup-[a-z0-9-]+)\.jpg|README\.md)$/,
   // cut previews of drafts (export/draft/, scripts/lib/export-readme.mjs#draftReadme)
   draft: /^(?:(?:backgrounds|cut|frames|frames-(?:tl|tr|br|bl))\.jpg|README\.md)$/,
+  // the details of the game Detail dne of every work (export/detail-dne/, scripts/lib/game-export.mjs)
+  'detail-dne': /^(?:detaily\.jpg|README\.md)$/,
 };
 
 /**

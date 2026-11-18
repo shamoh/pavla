@@ -1,5 +1,6 @@
 // The corner editor (npm run corners, scripts/corners.mjs): a local page for clicking the corners of the sheet in the
-// master photos of the content repository and writing them into `meta_corners` of their descriptions. Everything
+// master photos of the content repository and writing them into `meta_corners` of their descriptions; in its second mode
+// the places the game Detail dne keeps out (`meta_game_skip`, rectangles drawn over the photo) and `meta_game`. Everything
 // here is the server's side without the socket (`route` answers one request), so it can be tested; the page is
 // scripts/corners.html with the functions of EDITOR_FUNCTIONS copied in as source text, like the prototypes.
 
@@ -10,6 +11,9 @@ import YAML from 'yaml';
 import { detectFile, masterSize, withCorners } from './corners.mjs';
 import { EDGE_DEFAULTS, cornersProblems } from './edges.mjs';
 import { slugify, splitExt } from './works.mjs';
+import { GAME_KEY, SKIP_KEY, exclusionProblems } from './game-exclusions.mjs';
+import { normalizeMetadata } from './metadata-yaml.mjs';
+import { WORK_SCHEMA } from './schema.mjs';
 import { listMasters } from '../preview.mjs';
 
 /** Pixel points [x, y] of the corners in the photo (tl, tr, br, bl) → a `meta_corners` value (px in from each corner). */
@@ -146,7 +150,60 @@ export function crossedCorners(points) {
 }
 
 /** Functions of this module the page calculates with, copied into it as source text (self-contained ones). */
-export const EDITOR_FUNCTIONS = [pointsToCorners, cornersToPoints, editorYaml, nextZoom, crossedCorners, zoomView, keyAction, nearestCorner, clickTarget, rectangleDeviation, guideStyle, snapPoint];
+/**
+ * A place to keep out of the game from a drag between two points of the photo (either order): [left, top, width, height]
+ * in whole pixels, inside the photo of `[width, height]`; null when it has no area.
+ */
+export function rectFromDrag([x0, y0], [x1, y1], [width, height]) {
+  const clamp = (v, max) => Math.max(0, Math.min(max, Math.round(v)));
+  const left = clamp(Math.min(x0, x1), width);
+  const top = clamp(Math.min(y0, y1), height);
+  const w = clamp(Math.max(x0, x1), width) - left;
+  const h = clamp(Math.max(y0, y1), height) - top;
+  return w > 0 && h > 0 ? [left, top, w, h] : null;
+}
+
+/**
+ * What a press at photo point `[x, y]` grabs among the places `rects` (the last drawn on top): `{ index, handle }` with
+ * handle tl / tr / br / bl (a corner within `tolerance` px of the photo: resizes) or move (inside: moves); null = nothing.
+ */
+export function hitRect(rects, [x, y], tolerance) {
+  for (let i = rects.length - 1; i >= 0; i--) {
+    const [l, t, w, h] = rects[i];
+    const corners = { tl: [l, t], tr: [l + w, t], br: [l + w, t + h], bl: [l, t + h] };
+    for (const [handle, [cx, cy]] of Object.entries(corners)) {
+      if (Math.abs(x - cx) <= tolerance && Math.abs(y - cy) <= tolerance) return { index: i, handle };
+    }
+  }
+  for (let i = rects.length - 1; i >= 0; i--) {
+    const [l, t, w, h] = rects[i];
+    if (x >= l && x <= l + w && y >= t && y <= t + h) return { index: i, handle: 'move' };
+  }
+  return null;
+}
+
+/**
+ * A place `rect` after its `handle` (hitRect) moved by `[dx, dy]` px of the photo, inside the photo of `[width, height]`:
+ * move keeps its size, a corner moves only itself (the opposite one stays; it may flip over it). Null without area.
+ */
+export function moveRect([l, t, w, h], handle, [dx, dy], [width, height]) {
+  if (handle === 'move') {
+    const left = Math.max(0, Math.min(width - w, Math.round(l + dx)));
+    const top = Math.max(0, Math.min(height - h, Math.round(t + dy)));
+    return [left, top, w, h];
+  }
+  const fixed = { tl: [l + w, t + h], tr: [l, t + h], br: [l, t], bl: [l + w, t] }[handle];
+  const moving = { tl: [l, t], tr: [l + w, t], br: [l + w, t + h], bl: [l, t + h] }[handle];
+  return rectFromDrag(fixed, [moving[0] + dx, moving[1] + dy], [width, height]);
+}
+
+/** The places as the YAML lines of the description (`meta_game_skip:` with one place a line), a comment without any. */
+export function skipYaml(rects) {
+  if (!rects.length) return '# meta_game_skip: žádné místo (v popisu bude zakomentované)';
+  return ['meta_game_skip:', ...rects.map((r) => `  - [${r.join(', ')}]`)].join('\n');
+}
+
+export const EDITOR_FUNCTIONS = [rectFromDrag, hitRect, moveRect, skipYaml, pointsToCorners, cornersToPoints, editorYaml, nextZoom, crossedCorners, zoomView, keyAction, nearestCorner, clickTarget, rectangleDeviation, guideStyle, snapPoint];
 
 /**
  * The page of the editor from its `template` (scripts/corners.html) with its settings (`edges`, images.edges) and
@@ -174,9 +231,24 @@ export function replaceCorners(text, value) {
 }
 
 /**
+ * The text of a description with the attribute `key` set to `value` (null = left out: an optional one is then commented out),
+ * a list of places one a line in flow style; everything in the schema order with its technical comments, nothing else changes.
+ * Returns { text, problem }; with a problem the text is the original.
+ */
+export function replaceAttribute(text, key, value) {
+  const doc = YAML.parseDocument(text);
+  if (doc.errors.length) return { text, problem: 'popis nejde přečíst (chyba v YAML)' };
+  const node = doc.createNode(value);
+  if (YAML.isSeq(node)) for (const item of node.items) if (YAML.isSeq(item)) item.flow = true;
+  doc.set(key, node);
+  const r = normalizeMetadata(doc.toString(), WORK_SCHEMA);
+  return r.problem ? { text, problem: r.problem } : { text: r.text, problem: null };
+}
+
+/**
  * The works of the content repository `contentDir` with a master photo, for the list of the page: { key (the
  * photo's path relative to contentDir, also its address in the editor), title, id, draft, corners (the value of
- * meta_corners, null without it) }; sorted by path. A photo without a description is listed too (it cannot be written).
+ * meta_corners, null without it), skip (the places of meta_game_skip, [] without), game (false = meta_game: false) }; sorted by path. A photo without a description is listed too (it cannot be written).
  */
 export async function editorWorks(contentDir) {
   const root = path.join(contentDir, 'tvorba');
@@ -193,6 +265,8 @@ export async function editorWorks(contentDir) {
       id: data?.id ?? null,
       draft: data?.meta_draft !== false,
       corners: data?.meta_corners ?? null,
+      skip: Array.isArray(data?.[SKIP_KEY]) ? data[SKIP_KEY] : [],
+      game: data?.[GAME_KEY] !== false,
     };
   }));
 }
@@ -218,6 +292,8 @@ const json = (status, body) => ({ status, type: 'application/json; charset=utf-8
  *   GET  /api/photo?key=…       the master turned by its EXIF, in its full size (JPEG)
  *   GET  /api/detect?key=…      corners detected like the pipeline does ({ value })
  *   POST /api/corners {key, value}  writes meta_corners into the description ({ written, yaml } or { error })
+ *   POST /api/skip {key, value}     writes meta_game_skip (a list of places; [] = commented out), checked as the pipeline does
+ *   POST /api/game {key, value}     writes meta_game (true / false)
  */
 export async function route(contentDir, page, method, url, body = '', { search = EDGE_DEFAULTS.search } = {}) {
   const u = new URL(url, 'http://localhost');
@@ -244,6 +320,26 @@ export async function route(contentDir, page, method, url, body = '', { search =
     if (r.problem) return json(400, { error: `${work.yaml}: ${r.problem}` });
     await fs.writeFile(yamlFile, r.text);
     return json(200, { written: work.yaml, yaml: editorYaml(value) });
+  }
+  if (method === 'POST' && (u.pathname === '/api/skip' || u.pathname === '/api/game')) {
+    if (!work.yaml) return json(400, { error: 'the photo has no description yet (npm run images creates it)' });
+    const { value } = safeJson(body) ?? {};
+    let key, stored;
+    if (u.pathname === '/api/skip') {
+      if (!Array.isArray(value)) return json(400, { error: `${SKIP_KEY} musí být seznam míst` });
+      const { width, height } = await masterSize(file);
+      const problems = exclusionProblems(value.length ? value : null, width, height, work.yaml);
+      if (problems.length) return json(400, { error: problems[0] });
+      [key, stored] = [SKIP_KEY, value.length ? value : null];
+    } else {
+      if (typeof value !== 'boolean') return json(400, { error: `${GAME_KEY} musí být true nebo false` });
+      [key, stored] = [GAME_KEY, value];
+    }
+    const yamlFile = path.join(contentDir, work.yaml);
+    const r = replaceAttribute(await fs.readFile(yamlFile, 'utf8'), key, stored);
+    if (r.problem) return json(400, { error: `${work.yaml}: ${r.problem}` });
+    await fs.writeFile(yamlFile, r.text);
+    return json(200, { written: work.yaml });
   }
   return json(404, { error: 'not found' });
 }

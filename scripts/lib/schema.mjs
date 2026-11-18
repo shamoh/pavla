@@ -520,6 +520,29 @@ export const WORK_SCHEMA = {
       value: false,
     },
     {
+      key: 'meta_game',
+      settled: true,
+      options: [true, false],
+      doc: [
+        'Obraz ve hře Detail dne, možnosti:',
+        '- true - hra z něj může brát výřezy a nabízet ho mezi obrazy k hádání',
+        '- false - do hry nepatří (např. akt), ani jako hádanka, ani v nabídce',
+      ],
+      value: true,
+      missing: true,
+    },
+    {
+      key: 'meta_game_skip',
+      commented: true,
+      example: '[[1840, 0, 260, 3000]]',
+      doc: [
+        'Místa obrazu, ze kterých hra Detail dne nikdy nevezme výřez a kam ani neoddálí pohled (kroužková vazba skicáku,',
+        'hřbet, páska, klip): každé na řádku jako [zleva, shora, šířka, výška] v pixelech fotky (jako meta_corners),',
+        'např. - [1840, 0, 260, 3000]. Nejlíp v editoru npm run corners; kde jsou, ukazuje export/detail-dne/.',
+      ],
+      value: null,
+    },
+    {
       key: 'meta_instagram',
       settled: true,
       options: [true, false],

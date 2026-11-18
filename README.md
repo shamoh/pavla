@@ -671,6 +671,30 @@ stránka je `src/pages/detail-dne/index.astro`, hra v prohlížeči `src/lib/det
     / `planYearDays` je převede na dny hry od `GAME_EPOCH`, soubor jiné verze se nečte) a `game/detail-dne/details.json` = očíslované detaily děl (`{ version, details }`, `planDetailsText`); jeden
     řádek na den a na dílo, git ukáže změnu den po dni. Skončený rok se už nikdy nezmění (zapisuje se jen soubor, který se změnil,
     `writePlan`); `readPlan` je všechny spojí. `game/detail-dne/analysis/<id>.json` = uložený rozbor obrázku díla (viz Rozbor obrázků).
+  - **Co autorka ze hry vyřadí** (v popisu díla obsahového repa, `scripts/lib/game-exclusions.mjs`; do tohoto repa se
+    nekopíruje): `meta_game: false` (`GAME_KEY`, možnosti `true` / `false`, výchozí `true`) = dílo ve hře vůbec není (ani hádanka, ani náhled v nabídce, `excludePrepared` ho vyřadí
+    i ze seznamů podobných děl; má přednost), `meta_game_skip` (`SKIP_KEY`, nepovinné) = seznam `[zleva, shora, šířka, výška]` v pixelech fotky (jako `meta_corners`) = místa, ze kterých
+    hra nevezme výřez. Pipeline je převede na podíly webového obrázku (`areasInImage`; fotka oříznutá rohy jako webové obrázky,
+    posun `offset`), vyřadí z odpovědí a míst plánu výřezy, které do nich zasahují (`cropRect`, `touches`), a hádance takového
+    díla dá vlastní nejvzdálenější pohled `view` (`puzzleView`: největší ≤ `lastView` úrovně, při kterém se žádný pohled kola
+    míst nedotkne; `planViews`, jen dny plánované znovu). Hra, teaser i diagnostika berou `lastViewOf(puzzle, level)`, kolo si
+    `view` pamatuje (`roundPuzzle`). Rozbory obrázků zůstávají, mění se jen dny od pozítří. Kontrola hodnoty `exclusionProblems`
+    (kód `spatne-vynechane-misto`). Vyřazení platí pro plán; dny bez plánu (záloha `dailyPuzzles`) o něm nevědí.
+  - **Přehled pro autorku** `export/detail-dne/` obsahového repa (`scripts/lib/game-export.mjs`, `EXPORT_FILES['detail-dne']`):
+    u každého zveřejněného díla ve hře (složka jako v `tvorba/`, `exportFolder`) `detaily.jpg` = webový obrázek (nejvýš 1600 px,
+    kreslený na `GAME_EXPORT_WIDTH`) s očíslovanými detaily plánu (`details.json`, čtverec v barvě úrovně `LEVEL_COLOURS`, číslo
+    v rohu), vynechaná místa šrafovaná, detail zasahující do nich čárkovaný a přeškrtnutý (`gameDetailsSvg`), a `README.md`
+    (`gameWorkReadme`: tabulka detailů s daty ve hře a v plánu `detailUses`); `README.md` celé složky (`gameIndexReadme`) podle
+    kolekcí a na konci díla mimo hru. Obrázek se kreslí jen při změně otisku (`gameExportFingerprint`: obrázek, detaily, vynechaná
+    místa, oblast fotky, `GAME_EXPORT_VERSION`; v README díla), úklid `planFolderPrune`. Píše ho plný běh po plánu dnů
+    (`writeGameExport`). Nahoře a vlevo **měřítko v pixelech fotky** obsahového repa a čárkovaná mřížka (`rulerSvg`, krok
+    `rulerStep`: 10–20 popisků), od posunu webového obrázku ve fotce (`photoRegion`: celá fotka, nebo část, kterou nechají
+    rohy `meta_corners`, oříznutá jako webové obrázky), takže nové vynechané místo jde odečíst přímo z obrázku.
+  - **Vyzkoušení na lokále** (`npm run game-export`, `scripts/game-export.mjs`): přehled sám, bez pipeline. Obsahové repo jen
+    čte (žádné kostry, id, rohy ani srovnání popisů), plán dnů tohoto repa nemění; potřebuje webové obrázky v `public/`
+    (`npm run binary:pull`) a `CONTENT_DIR` v `.env`. Zapíše jen `export/detail-dne/` obsahového repa (tam mimo git), nebo
+    `--out <složka>`; `--force` vše nakreslí znovu. Chybný `meta_game_skip` vypíše a skončí. Vynechaná místa kreslí nad
+    současné detaily plánu; z plánu je vyřadí až další běh pipeline. Poprvé kreslí všechna díla (asi 2 minuty), pak jen změněná.
   - **Rozbor obrázků** (`prepareGame`, `scripts/lib/detail-game-data.mjs`): každý obrázek se rozebere jen jednou. Rozbor (`analyzePixels`
     všech úrovní: mřížka míst s barvami a všechna místa k hádání) se uloží do `game/detail-dne/analysis/<id>.json` s otiskem
     obrázku (`image` = SHA-256 nejmenšího JPEGu, `imageFingerprint`) a nastavení (`settings` = `analysisSettings`: `ANALYSIS_VERSION`,
@@ -1247,6 +1271,8 @@ Atributy díla v pořadí, v jakém je pipeline v souboru drží (úplné zněn�
 | `meta_draft` | `true` = rozpracované: do tohoto repa se nedostane nic (popis, obrázky), ani exporty; do veřejné kopie se nekopíruje |
 | `meta_edge` | hrana díla ve scénách ateliéru pro Instagram (`EDGE_KINDS` v `scripts/lib/instagram.mjs`): `deckle` (výchozí) = papír s roztřepenou hranou (`edge` scény), `cut` = papír s čistou rovnou hranou, oba tenké (`paper.thicknessMm`), zvlněné, se zvednutými rohy; `canvas` = plátno na rámu: čistá zaoblená hrana, tlusté 2 cm, rovné, bez podkladového listu. Bok díla (tloušťka) opakuje barvu jeho okraje (papír; u plátna rozostřenou malbu), osvětlenou podle natočení ke světlu scény; v otisku díla |
 | `meta_fler` | `true` = exporty pro Fler u díla na prodej, dokud nemá odkaz `fler` (výchozí `false`) |
+| `meta_game` | `false` = dílo do hry Detail dne nepatří (výchozí `true`, viz *Plán dnů*) |
+| `meta_game_skip` | nepovinné: místa `[zleva, shora, šířka, výška]` v pixelech fotky, ze kterých hra Detail dne nevezme výřez (viz *Plán dnů*) |
 | `meta_instagram` | `true` = exporty pro Instagram, dokud dílo nemá odkaz `instagram` (výchozí `false`) |
 | `meta_instagram_grid` | nepovinné (v kostře zakomentované `# meta_instagram_grid: 3x3`): mřížka na profilu Instagramu jako `<sloupce>x<řádky>`, od `1x1` do `5x5` (`parseGrid`, např. `3x3`, `2x1`, `3x1`, `1x2`, `3x4`; i `×` nebo `X`), jiná hodnota = chyba; bez hodnoty žádná; jen s `meta_instagram: true`, jen pro aplikaci (viz *Exporty*, Mřížka na profilu) |
 | `meta_pinterest` | `true` = pin pro Pinterest: pin (`pin-<otisk>.jpg`) na webu a položka kanálu `/pinterest.xml` (výchozí `false`, viz *Pinterest*) |
@@ -1474,6 +1500,8 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | ořez pozadí: list na světlé zdi (zeď s pozvolným úbytkem světla a stínem kolem listu) | Na zdi (recept `wall` v `demo-content/images.yaml`; rohy najde pipeline jako světlé pozadí) |
 | ořez pozadí: rohy zadané ručně | Bouřka nad polem (`meta_corners` v `demo-content/`) |
 | ořez pozadí vypnutý (`meta_corners: false`) | Lípa u kaple |
+| dílo mimo hru Detail dne (`meta_game: false`) | Kočka na plotu: v plánu od pozítří ani jako hádanka, ani v nabídce; `.demo/content/export/detail-dne/README.md` ji má v „Mimo hru“ |
+| vynechané místo hry (`meta_game_skip: [[1150, 0, 100, 1800]]`, svislý pruh uprostřed) | Jablka na stole: výřez č. 2 v `.demo/content/export/detail-dne/demo-kresby-2025-2026/demo-jablka-na-stole/` přeškrtnutý, „vynecháno“; jeho hádanky v plánu od pozítří mají `view` (oddálení jen do 28 %) |
 | náhled ořezu rozpracovaného díla | Rozpracovaný obraz (`.demo/site/.previews/` v plné velikosti, `.demo/content/export/draft/` zmenšený s `README.md` a přehledem), zveřejněná díla náhled nemají |
 | rohy bez podlahy (všechny nuly, nic se neořezává; i obraz s barvou až do kraje) | ostatní díla |
 | soukromá poznámka | Ráno u rybníka, Jablka na stole, kolekce Plenér Šumava 2026 |
@@ -3029,7 +3057,7 @@ npm run preview -- ../obsah/tvorba --only-suspicious            # jen fotky s po
 naklikat myší. Příkaz spustí lokální server (jen `127.0.0.1`, výchozí port 4327, jiný `--port <číslo>`) nad obsahovým
 repem z `CONTENT_DIR` v `.env` (nebo `npm run corners -- <obsahové repo>`) a vypíše adresu, kterou otevřeš v prohlížeči
 (`http://127.0.0.1:4327/`). Bez nových závislostí; stránka je `scripts/corners.html`, logika serveru
-`scripts/lib/corner-editor.mjs` (`route`, testovaná bez socketu).
+`scripts/lib/corner-editor.mjs` (`route`, testovaná bez socketu; `POST /api/corners`, `/api/skip`, `/api/game`).
 
 - **Vlevo seznam děl** (fotky děl jako u `npm run preview`, `listMasters`), výchozí jen rozpracované (`meta_draft` není
   `false`), zaškrtávátkem všechna. Značka: `✓` má `meta_corners`, `?` nemá, `–` `meta_corners: false`, `•` neuložená
@@ -3069,6 +3097,18 @@ repem z `CONTENT_DIR` v `.env` (nebo `npm run corners -- <obsahové repo>`) a vy
   fotku bez popisu (ten založí `npm run images`). Fotky a popisy bere jen ze seznamu děl, nikdy cestu z požadavku;
   odpovídá jen na adresu `127.0.0.1`/`localhost` svého portu a zápis přijme jen ze své stránky (`Origin`,
   `trustedRequest`), aby ho nemohla zavolat jiná stránka otevřená v prohlížeči.
+- **Druhý režim „Hra: vynechaná místa“** (přepínač nahoře v pravém panelu, `setMode`): místa, ze kterých hra Detail dne
+  nevezme výřez (`meta_game_skip`, viz *Plán dnů*), jako šrafované červené obdélníky s číslem přes fotku (v režimu rohů
+  slabě). Tažení nakreslí nové místo (`rectFromDrag`: celé pixely uvnitř fotky), klik do místa ho vybere, tažení ho
+  posune, tažení za roh mění velikost (protilehlý roh stojí, `hitRect`, `moveRect`); `Delete` / `Backspace` vybrané smaže,
+  šipky ho posunou o 1 px (`Shift` o 10), `Alt`/`⌥` + tažení posune fotku, kolečko zoomuje. Vpravo zaškrtávátko „obraz
+  patří do hry“ (`meta_game`), seznam míst s čísly k přesné úpravě (✕ smaže), náhled yaml (`skipYaml`) a *Kopírovat*,
+  *Zapsat do yaml…* (po potvrzení zapíše `meta_game` i `meta_game_skip`, bez míst ho zakomentuje; `replaceAttribute`
+  přes `normalizeMetadata`, nic jiného v souboru nezmění; server místa zkontroluje jako pipeline, `exclusionProblems`)
+  a *Vrátit z yaml*. Seznam děl ukazuje „mimo hru“, počet vynechaných míst a neuložená místa; v tomto režimu zaškrtávátko
+  „jen s vynechanými místy / mimo hru“ nechá v seznamu jen díla s `meta_game_skip` nebo `meta_game: false` (i zveřejněná, filtr
+  rozpracovaných se vypne; `withSkips`) a otevře první z nich. Hotová místa si ověříš
+  v přehledu `npm run game-export`.
 - Zapisuje do obsahového repa v té větvi, která je zrovna checkoutnutá; změnu pak commitni jako ruční úpravu.
   Náhledy ořezu se obnoví při dalším `npm run images` (nebo `npm run preview`).
 

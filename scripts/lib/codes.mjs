@@ -64,6 +64,7 @@ export const CODES = {
   'cover-bez-detailu': { level: 'error', text: 'cover míří na neexistující detail' },
   'vic-uvodnich-fotek': { level: 'error', text: 'víc úvodních fotek' },
   'spatne-rohy': { level: 'error', text: 'chybné meta_corners' },
+  'spatne-vynechane-misto': { level: 'error', text: 'chybné meta_game_skip' },
   'testovaci-data': { level: 'error', text: 'testovací data ve skutečném obsahu (nebo naopak)' },
   'demo-jmeno': { level: 'error', text: 'jméno testovacího díla nezačíná demo-' },
   // to check: the run goes on, but someone should look

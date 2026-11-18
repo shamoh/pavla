@@ -13,7 +13,7 @@ import { SKIP_HEADER_ROOM, skipHeaderScope, skipsHeader } from '../../scripts/li
 import { levelFromParam } from '../../scripts/lib/detail-teaser.mjs';
 import {
   applyGuess, archiveDays, cappedText, magicWord, tapBurst, groupDigits, dailyPuzzles, dayId, dayLabel, nextStepsHtml, perfectDay, PERFECT_DAY_TEXT, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
-  GAME_STORE, collectionHtml, archiveRoom, archiveRoomTitle, rankForms, rulesMine, statsTitle, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
+  GAME_STORE, collectionHtml, archiveRoom, archiveRoomTitle, lastViewOf, rankForms, rulesMine, statsTitle, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
 } from '../../scripts/lib/detail-game.mjs';
 
 export { GAME_STORE };
@@ -186,7 +186,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     canvas.hidden = !look.pixels;
     if (look.pixels) {
       const work = byId.get(puzzle.targetId)!;
-      const frame = gameFrame(puzzle.crop, round.guesses.length, level.guesses - 1, work.ratio, level.lastView);
+      const frame = gameFrame(puzzle.crop, round.guesses.length, level.guesses - 1, work.ratio, lastViewOf(puzzle, level));
       if (img.complete) drawPixels(canvas, img, frame, look.pixels);
       else img.addEventListener('load', () => drawPixels(canvas, img, frame, look.pixels), { once: true });
     }
@@ -241,7 +241,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     const work = byId.get(puzzle.targetId)!;
     const level = levelOf(store.level);
     if (round.over) showWhole(img, work);
-    else showFrame(img, work, gameFrame(puzzle.crop, round.guesses.length, level.guesses - 1, work.ratio, level.lastView));
+    else showFrame(img, work, gameFrame(puzzle.crop, round.guesses.length, level.guesses - 1, work.ratio, lastViewOf(puzzle, level)));
     showCover(round);
   }
 
@@ -578,7 +578,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     view.style.transition = 'none';
     // a finished round opened again shows the whole work; only the moment of the end moves
     if (outcome) {
-      showFrame(img, work, gameFrame(puzzle.crop, round.guesses.length - 1, level.guesses - 1, work.ratio, level.lastView));
+      showFrame(img, work, gameFrame(puzzle.crop, round.guesses.length - 1, level.guesses - 1, work.ratio, lastViewOf(puzzle, level)));
       showCover({ ...round, over: false, guesses: round.guesses.slice(0, -1) });
     } else placePicture(round);
     img.getBoundingClientRect();

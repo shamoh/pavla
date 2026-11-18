@@ -1161,3 +1161,15 @@ test('gameLooks: every level within LOOK_COUNTS, about the same count, a harder 
   }
   assert.ok(Math.max(...counts) - Math.min(...counts) <= LOOK_COUNTS.spread, `counts ${counts.join(', ')}`);
 });
+
+test('lastViewOf, roundPuzzle, plannedPuzzles: a planned view (excluded places) is how far the puzzle zooms out, kept by the round', async () => {
+  const { lastViewOf: viewOf } = await import('./detail-game.mjs');
+  const level = gameLevels()[0];
+  assert.equal(viewOf({}, level), level.lastView);
+  assert.equal(viewOf({ view: 0.4 }, level), 0.4);
+  const planned = { targetId: 'a', crop: { x: 0.2, y: 0.3, size: 0.24 }, optionIds: ['a', 'b'], look: 'clear', view: 0.4 };
+  assert.equal(roundPuzzle(planned).view, 0.4);
+  assert.equal('view' in roundPuzzle({ ...planned, view: undefined }), false);
+  const out = plannedPuzzles({ plan: { days: { 3: { easy: planned } } }, day: 3, levels: [level], hasWork: () => true, computed: {} });
+  assert.equal(out.easy.view, 0.4);
+});
