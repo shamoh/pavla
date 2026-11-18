@@ -2,6 +2,7 @@
 id: azge9
 date: 2021-10-17
 featured: true
+game: true
 mockups: true
 size_cm:
   - 30
@@ -13,4 +14,4 @@ technique: akvarel
 text: |
   Správně vidíme jen srdcem!
 title: Malý princ
-derived_modified: 2026-10-22
+derived_modified: 2026-11-18

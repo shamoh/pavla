@@ -2,6 +2,7 @@
 id: fmmdb
 date: 2026-04-04
 featured: false
+game: true
 mockups: false
 size_cm:
   - 11
@@ -17,4 +18,4 @@ technique: brush pen a pero
 text: |
   Kmeny stromů na kladenském discgolfovém hřišti Lesík.
 title: Kladno Lesík – stromy
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18

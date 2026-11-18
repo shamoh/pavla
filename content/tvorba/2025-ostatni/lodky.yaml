@@ -2,6 +2,7 @@
 id: rw7ac
 date: 2025-11-30
 featured: false
+game: true
 mockups: true
 size_cm:
   - 29
@@ -15,4 +16,4 @@ technique: akvarel
 text: |
   Dvě loďky na břehu jezera, malováno při on-line kurzu.
 title: Loďky
-derived_modified: 2026-10-29
+derived_modified: 2026-11-18

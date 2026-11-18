@@ -4,6 +4,7 @@ date: 2026-07-06
 details:
   slunecnice-foto: Kytice slunečnic ve váze, malováno na malířském stojanu na terase.
 featured: false
+game: true
 mockups: true
 price: 1000
 size_cm:
@@ -18,4 +19,4 @@ technique: akvarel
 text: |
   Slunečnice, na jedné z nich sedí čmelák, wabi-sabi.
 title: Slunečnice
-derived_modified: 2026-10-29
+derived_modified: 2026-11-18

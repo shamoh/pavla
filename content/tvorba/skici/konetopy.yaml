@@ -2,6 +2,7 @@
 id: r2n29
 date: 2021-09-04
 featured: false
+game: true
 mockups: false
 size_cm:
   - 21
@@ -17,4 +18,4 @@ technique: akvarel
 text: |
   Vrba nad Novou pískovnou v Konětopech.
 title: Nová pískovna Konětopy
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18

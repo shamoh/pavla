@@ -2,6 +2,7 @@
 id: s5t2g
 date: 2026-07-09
 featured: true
+game: true
 mockups: false
 price: 500
 size_cm:
@@ -18,4 +19,4 @@ technique: akvarel
 text: >
   Skryjská jezírka a světlo prosvítající korunami stromů v odpoledním letním dni.
 title: Skryjská jezírka
-derived_modified: 2026-11-16
+derived_modified: 2026-11-18

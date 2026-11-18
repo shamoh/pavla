@@ -2,6 +2,7 @@
 id: s2e2q
 date: 2026-08-24
 featured: false
+game: true
 mockups: false
 size_cm:
   - 15
@@ -17,4 +18,4 @@ technique: kresba fixem
 text: |
   Guerézy pláštíkové v rezervaci Dja v pražské zoo, rychlá skica.
 title: Gueréza pláštíková
-derived_modified: 2026-11-06
+derived_modified: 2026-11-18

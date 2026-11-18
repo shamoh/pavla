@@ -2,6 +2,7 @@
 id: b29ck
 date: 2026-08-29
 featured: true
+game: true
 mockups: true
 related:
   - r2n29
@@ -18,4 +19,4 @@ technique: akvarel
 text: |
   Paddleboard na břehu pískovny Las Vegas v Konětopech.
 title: Konětopy – paddleboard
-derived_modified: 2026-11-16
+derived_modified: 2026-11-18

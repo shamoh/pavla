@@ -2,6 +2,7 @@
 id: h6ajn
 date: 2026-07-01
 featured: false
+game: true
 mockups: false
 size_cm:
   - 21
@@ -15,4 +16,4 @@ technique: akvarel
 text: |
   Moldoveanu, nejvyšší hora Rumunska, malováno podle synovy fotky do skicáku.
 title: Moldoveanu
-derived_modified: 2026-10-30
+derived_modified: 2026-11-18

@@ -2,6 +2,7 @@
 id: rum35
 date: 2026-09-26
 featured: false
+game: true
 mockups: false
 size_cm:
   - 21
@@ -15,4 +16,4 @@ technique: brush pen
 text: |
   Rychlá skica ovce brush penem – kreslit se musí rychle, než se modelka pohne.
 title: Ovce (skica)
-derived_modified: 2026-10-29
+derived_modified: 2026-11-18

@@ -2,6 +2,7 @@
 id: xfyds
 date: 2026-05-01
 featured: false
+game: true
 mockups: true
 price: 500
 size_cm:
@@ -18,4 +19,4 @@ text: >
   Dřevěné molo na slepém rameni Otavy ve Štěkni, schované ve stínu jarních
   stromů.
 title: Otava – boční rameno
-derived_modified: 2026-10-22
+derived_modified: 2026-11-18

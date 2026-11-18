@@ -4,6 +4,7 @@ date: 2026-09-27
 details:
   matrice: Tisková deska, obraz je na ní zrcadlově.
 featured: false
+game: true
 mockups: false
 size_cm:
   - 16.5
@@ -16,4 +17,4 @@ technique: tisk z výšky
 text: |
   Tisk z výšky na památku plenéru: hory, smrk a nápis Šumava 2026.
 title: Šumava 2026
-derived_modified: 2026-10-29
+derived_modified: 2026-11-18

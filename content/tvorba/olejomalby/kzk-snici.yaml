@@ -5,6 +5,7 @@ details:
   snici-kzk-fotka: Jak obraz vznikal.
   snici-kzk-paleta-fotka: Malířská paleta s barvami.
 featured: true
+game: true
 mockups: false
 size_cm:
   - 70
@@ -20,4 +21,4 @@ technique: olej
 text: |
   Dívka sedí na pláži a sní o surfování na vlnách.
 title: KZK snící
-derived_modified: 2026-11-03
+derived_modified: 2026-11-18

@@ -2,6 +2,7 @@
 id: mvttj
 date: 2025-10-19
 featured: false
+game: true
 mockups: false
 size_cm:
   - 21
@@ -16,4 +17,4 @@ technique: brush pen
 text: |
   Brána zámeckého parku ve Štěkni, kreslená brush penem za babího léta.
 title: Zámek Štěkeň – brána
-derived_modified: 2026-10-29
+derived_modified: 2026-11-18

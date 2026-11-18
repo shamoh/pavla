@@ -2,6 +2,7 @@
 id: spn84
 date: 2026-07-18
 featured: false
+game: true
 mockups: true
 price: 500
 size_cm:
@@ -19,4 +20,4 @@ technique: akvarel
 text: |
   Stropnický vodopád stéká po tmavé skále.
 title: Stropnický vodopád
-derived_modified: 2026-10-30
+derived_modified: 2026-11-18

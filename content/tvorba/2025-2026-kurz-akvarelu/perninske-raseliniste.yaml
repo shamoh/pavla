@@ -5,6 +5,7 @@ details:
   briza: Bříza zblízka.
   raseliniste: Bližší pohled na rašeliniště.
 featured: true
+game: true
 mockups: true
 price: 1500
 size_cm:
@@ -20,4 +21,4 @@ technique: akvarel
 text: |
   Perninské rašeliniště, malováno podle vlastní fotky.
 title: Perninské rašeliniště
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18

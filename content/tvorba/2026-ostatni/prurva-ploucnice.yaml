@@ -2,6 +2,7 @@
 id: zu3jg
 date: 2026-07-25
 featured: false
+game: true
 mockups: true
 price: 500
 size_cm:
@@ -18,4 +19,4 @@ technique: akvarel
 text: |
   Řeka Ploučnice vytéká z pískovcové průrvy, malováno v poledním slunci.
 title: Průrva Ploučnice
-derived_modified: 2026-10-30
+derived_modified: 2026-11-18

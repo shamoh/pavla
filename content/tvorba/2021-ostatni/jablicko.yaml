@@ -2,6 +2,7 @@
 id: t79gu
 date: 2021-09-26
 featured: false
+game: true
 mockups: true
 price: 500
 size_cm:
@@ -17,4 +18,4 @@ text: >
   Malováno podle skutečné předlohy na zahrádce v Rožnově pod Radhoštěm, ve
   čtvrti Kramolišov.
 title: Jablíčko
-derived_modified: 2026-10-29
+derived_modified: 2026-11-18

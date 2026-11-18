@@ -4,6 +4,7 @@ date: 2026-04-04
 details:
   kladno-lesik-ll-foto: Skicák, cestovní paleta a plnicí brush peny.
 featured: false
+game: true
 mockups: false
 related:
   - fmmdb
@@ -21,4 +22,4 @@ technique: akvarel a brush pen
 text: |
   Stromy na kopečku discgolfového hřiště v Kladně.
 title: Kladno Lesík
-derived_modified: 2026-11-16
+derived_modified: 2026-11-18

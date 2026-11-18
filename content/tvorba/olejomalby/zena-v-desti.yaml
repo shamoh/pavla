@@ -4,6 +4,7 @@ date: 2020-02-01
 details:
   zena-v-desti-skica: Přípravná skica.
 featured: false
+game: true
 mockups: false
 size_cm:
   - 25
@@ -17,4 +18,4 @@ technique: olej
 text: |
   Žena s deštníkem kráčí deštivou ulicí.
 title: Žena v dešti
-derived_modified: 2026-10-29
+derived_modified: 2026-11-18

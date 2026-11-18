@@ -2,6 +2,7 @@
 id: sceuv
 date: 2026-03-13
 featured: false
+game: true
 mockups: false
 size_cm:
   - 14
@@ -16,4 +17,4 @@ technique: akvarel a tužka
 text: |
   Zámek Chambord ve Francii, malováno za deště v kavárně s výhledem.
 title: Chambord
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18

@@ -2,6 +2,7 @@
 id: pss44
 date: 2026-04-19
 featured: false
+game: true
 mockups: false
 size_cm:
   - 11
@@ -14,4 +15,4 @@ technique: akvarel
 text: |
   Narcis, malováno neteři na památku.
 title: Narcis
-derived_modified: 2026-10-30
+derived_modified: 2026-11-18

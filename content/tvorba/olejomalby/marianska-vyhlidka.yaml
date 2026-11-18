@@ -2,6 +2,7 @@
 id: gx2jy
 date: 2016-01-01
 featured: true
+game: true
 mockups: false
 size_cm:
   - 50
@@ -20,4 +21,4 @@ text: >
 
   nedokonalosti.
 title: Mariánská vyhlídka
-derived_modified: 2026-10-29
+derived_modified: 2026-11-18

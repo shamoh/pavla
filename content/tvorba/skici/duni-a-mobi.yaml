@@ -2,6 +2,7 @@
 id: h6w26
 date: 2026-08-24
 featured: false
+game: true
 mockups: false
 size_cm:
   - 15
@@ -19,4 +20,4 @@ text: >
   Gorila Duni chrání své mládě Mobi a mazlí se s ním v pražské zoo, rychlá
   kresba perem.
 title: Duni a Mobi
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18
