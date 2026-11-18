@@ -113,14 +113,13 @@ test('CINEMA_RANDOM / cinemaFirst / saleShowPath / featuredShowPath: ?cinema=ran
   assert.equal(cinemaFirst('a1b2c'), 'a1b2c');
   assert.equal(cinemaFirst(null), null);
   assert.equal(saleShowPath('footer'), '/tvorba/?status=unsold&cinema=random&from=footer');
-  assert.equal(saleShowPath('contact'), '/tvorba/?status=unsold&cinema=random&from=contact');
+  assert.throws(() => saleShowPath('contact'), /unknown link of the show: contact/, 'the contact page has no show');
   assert.throws(() => saleShowPath(), /unknown link of the show: undefined/);
   const params = new URLSearchParams(saleShowPath('footer').split('?')[1]);
   assert.equal(cinemaFromParams(params, settings).id, CINEMA_RANDOM, 'opens the show');
   assert.equal(cinemaToParams(new URLSearchParams('status=unsold'), { id: CINEMA_RANDOM, interval: 15 }, settings).toString(), 'status=unsold&cinema=random');
   assert.equal(featuredShowPath('home'), '/tvorba/?featured=1&cinema=random&from=home');
   assert.equal(featuredShowPath('footer'), '/tvorba/?featured=1&cinema=random&from=footer');
-  assert.equal(featuredShowPath('contact'), '/tvorba/?featured=1&cinema=random&from=contact');
   assert.throws(() => featuredShowPath('menu'), /unknown link of the show: menu/);
   const featured = new URLSearchParams(featuredShowPath('home').split('?')[1]);
   assert.equal(featured.get(CINEMA_FROM), 'home');

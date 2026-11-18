@@ -4,8 +4,7 @@ import Photo from '../components/Photo.astro';
 import TextBlocks from '../components/TextBlocks.astro';
 import MessageForm from '../components/MessageForm.astro';
 import NameShades from '../components/NameShades.astro';
-import { getPage, hasFeaturedWorks, hasWorksOnSale, messages, site, url } from '../lib/site';
-import { featuredShowPath, saleShowPath } from '../../scripts/lib/cinema.mjs';
+import { getPage, messages, site } from '../lib/site';
 import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
 import { EVENTS } from '../../scripts/lib/analytics.mjs';
 import { mailtoLink } from '../../scripts/lib/messages.mjs';
@@ -24,12 +23,6 @@ const links = [
   },
   site.fler && { label: 'Obchůdek', href: site.fler, text: 'Fler', title: 'Můj obchůdek na Fleru' },
 ].filter(Boolean) as { label: string; href: string; text: string; title: string; rel?: string; track?: string }[];
-// Then "Promítnout": the works shown one after another (the cinema of the gallery), each show while it has works.
-const SHOW_TITLE = 'jeden po druhém přes celou obrazovku';
-const shows = [
-  hasWorksOnSale() && { text: 'Obrazy na prodej', href: url(saleShowPath('contact')), title: `Obrazy na prodej ${SHOW_TITLE}` },
-  hasFeaturedWorks() && { text: 'Moje nejmilejší', href: url(featuredShowPath('contact')), title: `Obrazy z mého výběru ${SHOW_TITLE}` },
-].filter(Boolean) as { text: string; href: string; title: string }[];
 // The texts are in stranky/kontakt.yaml of the content repository.
 const { description, blocks, locationLabel } = getPage('kontakt')!;
 // For search engines: the contact page of the author.
@@ -47,7 +40,6 @@ const jsonLd = graphLd(
       {!messages.mode && (
         <ul class="contact">
           {links.map((l) => <li><span class="eyebrow">{l.label}</span><a href={l.href} title={l.title} rel={l.rel} data-track={l.track}><NameShades text={l.text} /></a></li>)}
-          {shows.length > 0 && <li><span class="eyebrow">Promítnout</span><span class="shows">{shows.map((s) => <a href={s.href} title={s.title}>{s.text}</a>)}</span></li>}
           {site.location && <li><span class="eyebrow">{locationLabel}</span><span class="value">{site.location}</span></li>}
         </ul>
       )}
@@ -60,7 +52,6 @@ const jsonLd = graphLd(
       <div class="contact-row">
         <ul class="contact compact">
           {links.map((l) => <li><span class="eyebrow">{l.label}</span><a href={l.href} title={l.title} rel={l.rel} data-track={l.track}><NameShades text={l.text} /></a></li>)}
-          {shows.length > 0 && <li><span class="eyebrow">Promítnout</span><span class="shows">{shows.map((s) => <a href={s.href} title={s.title}>{s.text}</a>)}</span></li>}
         </ul>
         {site.location && <p class="where"><span class="eyebrow">{locationLabel}</span><span class="value">{site.location}</span></p>}
       </div>
@@ -85,7 +76,4 @@ const jsonLd = graphLd(
   @media (max-width: 800px) { .where { text-align: left; } }
   .contact a, .contact .value, .where .value { font-family: var(--serif); font-size: 1.7rem; text-decoration: none; }
   .contact.compact a, .contact-row .value { font-size: 1.25rem; }
-  /* The shows side by side under one "Promítnout", parted by a quiet dot (wrapping on a narrow screen). */
-  .shows { display: flex; flex-wrap: wrap; gap: 0 0.5em; }
-  .shows a + a::before { content: '·'; margin-right: 0.5em; color: var(--ink-soft); }
 </style>
