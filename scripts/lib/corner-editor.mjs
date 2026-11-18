@@ -1,6 +1,6 @@
 // The corner editor (npm run corners, scripts/corners.mjs): a local page for clicking the corners of the sheet in the
 // master photos of the content repository and writing them into `meta_corners` of their descriptions; in its second mode
-// the places the game Detail dne keeps out (`meta_game_skip`, rectangles drawn over the photo) and `meta_game`. Everything
+// the places the game Detail dne keeps out (`meta_game_skip`, rectangles drawn over the photo) and `game`. Everything
 // here is the server's side without the socket (`route` answers one request), so it can be tested; the page is
 // scripts/corners.html with the functions of EDITOR_FUNCTIONS copied in as source text, like the prototypes.
 
@@ -248,7 +248,7 @@ export function replaceAttribute(text, key, value) {
 /**
  * The works of the content repository `contentDir` with a master photo, for the list of the page: { key (the
  * photo's path relative to contentDir, also its address in the editor), title, id, draft, corners (the value of
- * meta_corners, null without it), skip (the places of meta_game_skip, [] without), game (false = meta_game: false) }; sorted by path. A photo without a description is listed too (it cannot be written).
+ * meta_corners, null without it), skip (the places of meta_game_skip, [] without), game (false = game: false) }; sorted by path. A photo without a description is listed too (it cannot be written).
  */
 export async function editorWorks(contentDir) {
   const root = path.join(contentDir, 'tvorba');
@@ -293,7 +293,7 @@ const json = (status, body) => ({ status, type: 'application/json; charset=utf-8
  *   GET  /api/detect?key=…      corners detected like the pipeline does ({ value })
  *   POST /api/corners {key, value}  writes meta_corners into the description ({ written, yaml } or { error })
  *   POST /api/skip {key, value}     writes meta_game_skip (a list of places; [] = commented out), checked as the pipeline does
- *   POST /api/game {key, value}     writes meta_game (true / false)
+ *   POST /api/game {key, value}     writes game (true / false)
  */
 export async function route(contentDir, page, method, url, body = '', { search = EDGE_DEFAULTS.search } = {}) {
   const u = new URL(url, 'http://localhost');

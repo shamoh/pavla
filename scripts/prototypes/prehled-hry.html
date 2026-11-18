@@ -72,6 +72,7 @@
   .level-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 26px 0 12px; }
   .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 22px; }
   .card { border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 10px; align-content: start; background: var(--paper); }
+  .card .look-note { margin: 2px 0 6px; font-style: italic; }
   .card .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
   .card .combo { font-size: .84rem; color: var(--ink-soft); }
   .pics { display: grid; grid-template-columns: 1fr 34%; gap: 10px; align-items: start; }
@@ -505,6 +506,7 @@ function renderCounts() {
       card.className = 'card';
       card.innerHTML = `<div class="top"><h3>${look.label}</h3><span class="tag ${level.id}">${level.label}</span></div>
         <div class="combo">${EFFECTS[look.effect || '']} + ${COLOURS[look.colour || '']}</div>
+        <p class="look-note">${look.note ?? ''}</p>
         <div class="pics"><div data-w></div><div data-whole></div></div>
         <div class="tries" role="group" aria-label="Pokus">${Array.from({ length: level.guesses }, (_, m) => `<button type="button" data-try="${m}" aria-pressed="${m === 0}">${m + 1}. pokus</button>`).join('')}</div>
         <p class="state" data-state></p>

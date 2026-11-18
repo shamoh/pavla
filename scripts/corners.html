@@ -83,7 +83,7 @@
 <aside>
   <h1>Rohy obrazů a vynechaná místa</h1>
   <label><input type="checkbox" id="drafts" checked /> jen rozpracované</label>
-  <label id="with-skips-label" hidden title="díla s meta_game_skip nebo meta_game: false, i zveřejněná"><input type="checkbox" id="with-skips" /> jen s vynechanými místy / mimo hru</label>
+  <label id="with-skips-label" hidden title="díla s meta_game_skip nebo game: false, i zveřejněná"><input type="checkbox" id="with-skips" /> jen s vynechanými místy / mimo hru</label>
   <ul id="works"></ul>
 </aside>
 <main id="view">
@@ -156,7 +156,7 @@
 <section>
   <div class="modes"><button id="mode-corners" aria-pressed="true">Rohy listu</button><button id="mode-skip" aria-pressed="false">Hra: vynechaná místa</button></div>
   <div id="skip-panel" hidden>
-    <label title="meta_game: true / false"><input type="checkbox" id="game" checked /> obraz patří do hry Detail dne</label>
+    <label title="game: true / false"><input type="checkbox" id="game" checked /> obraz patří do hry Detail dne</label>
     <h2>Vynechaná místa (px fotky)</h2>
     <div class="skip-head"><span>#</span><span>zleva</span><span>shora</span><span>šířka</span><span>výška</span><span></span></div>
     <div id="skips"></div>
@@ -209,9 +209,9 @@ let lens = false;            // Ctrl / Cmd held: the loupe at the cursor
 let shiftHeld = false;       // Shift held: a click moves the chosen corner, not the nearest one
 let guides = true;           // the guides from the corners (G)
 const edits = new Map();     // key → points changed and not written yet
-let mode = 'corners';        // the right panel and the mouse: 'corners' (meta_corners) or 'skip' (meta_game_skip, meta_game)
+let mode = 'corners';        // the right panel and the mouse: 'corners' (meta_corners) or 'skip' (meta_game_skip, game)
 let skips = [];              // the places of the work shown, [left, top, width, height] in pixels of the photo
-let game = true;             // meta_game of the work shown
+let game = true;             // game of the work shown
 let selected = -1;           // the place selected (arrows, Delete), -1 = none
 const skipEdits = new Map(); // key → { skips, game } changed and not written yet
 
@@ -536,7 +536,7 @@ function update() {
   $('status').textContent = `${current.title} · ${w} × ${h} px · roh ${KEYS[active]} (${NAMES[KEYS[active]]})${edits.has(current.key) ? ' · neuloženo' : ''}`;
 }
 
-// the panel of the places: a row for each (editable numbers), the YAML, the state of meta_game
+// the panel of the places: a row for each (editable numbers), the YAML, the state of game
 function updateSkipPanel() {
   $('game').checked = game;
   $('skips').replaceChildren(...skips.map((r, i) => {
@@ -557,7 +557,7 @@ function updateSkipPanel() {
     row.querySelector('button').onclick = () => { skips.splice(i, 1); selected = -1; skipEdited(); update(); };
     return row;
   }));
-  $('skip-yaml').textContent = `${game ? '' : 'meta_game: false\n'}${skipYaml(skips)}`;
+  $('skip-yaml').textContent = `${game ? '' : 'game: false\n'}${skipYaml(skips)}`;
   $('skip-write').disabled = !current.yaml;
 }
 
@@ -785,7 +785,7 @@ $('skip-copy').onclick = async () => {
 };
 $('skip-reset').onclick = () => { skipEdits.delete(current.key); skips = current.skip.map((r) => [...r]); game = current.game; selected = -1; renderList(); update(); };
 $('skip-write').onclick = () => {
-  $('skip-confirm-text').textContent = `Zapsat do ${current.yaml} meta_game: ${game} a ${skips.length ? `${skips.length} vynechaných míst (meta_game_skip)` : 'žádné vynechané místo (meta_game_skip se zakomentuje)'}? Nic jiného v souboru se nezmění.`;
+  $('skip-confirm-text').textContent = `Zapsat do ${current.yaml} game: ${game} a ${skips.length ? `${skips.length} vynechaných míst (meta_game_skip)` : 'žádné vynechané místo (meta_game_skip se zakomentuje)'}? Nic jiného v souboru se nezmění.`;
   $('skip-confirm').style.display = 'block';
 };
 $('skip-confirm-no').onclick = () => { $('skip-confirm').style.display = 'none'; };

@@ -305,20 +305,20 @@ test('skipYaml: one place a line, a comment without any', () => {
   assert.ok(EDITOR_FUNCTIONS.includes(rectFromDrag) && EDITOR_FUNCTIONS.includes(hitRect) && EDITOR_FUNCTIONS.includes(moveRect) && EDITOR_FUNCTIONS.includes(skipYaml));
 });
 
-test('replaceAttribute: places one a line in the schema order, none = commented out, meta_game false and back', () => {
+test('replaceAttribute: places one a line in the schema order, none = commented out, game false and back', () => {
   const text = 'meta_draft: false\nid: k3f9a\ntitle: Ráno\n';
   const set = replaceAttribute(text, 'meta_game_skip', [[1, 2, 3, 4]]);
   assert.equal(set.problem, null);
   assert.match(set.text, /\nmeta_game_skip:\n  - \[1, 2, 3, 4\]\n/);
   assert.equal(YAML.parse(set.text).title, 'Ráno', 'nothing else changes');
   assert.match(replaceAttribute(set.text, 'meta_game_skip', null).text, /\n# meta_game_skip: \[\[1840, 0, 260, 3000\]\]\n/);
-  const out = replaceAttribute(text, 'meta_game', false).text;
-  assert.equal(YAML.parse(out).meta_game, false);
-  assert.equal(YAML.parse(replaceAttribute(out, 'meta_game', true).text).meta_game, true);
-  assert.deepEqual(replaceAttribute('a: [', 'meta_game', false), { text: 'a: [', problem: 'popis nejde přečíst (chyba v YAML)' });
+  const out = replaceAttribute(text, 'game', false).text;
+  assert.equal(YAML.parse(out).game, false);
+  assert.equal(YAML.parse(replaceAttribute(out, 'game', true).text).game, true);
+  assert.deepEqual(replaceAttribute('a: [', 'game', false), { text: 'a: [', problem: 'popis nejde přečíst (chyba v YAML)' });
 });
 
-test('route: writes meta_game_skip checked like the pipeline (outside the photo refused) and meta_game', async () => {
+test('route: writes meta_game_skip checked like the pipeline (outside the photo refused) and game', async () => {
   await photo('tvorba/rano.jpg');
   await fs.writeFile(path.join(tmp, 'tvorba/rano.yaml'), 'meta_draft: false\nid: k3f9a\ntitle: Ráno\n');
   const post = (p, value) => route(tmp, '', 'POST', p, JSON.stringify({ key: 'tvorba/rano.jpg', value }));
@@ -326,7 +326,7 @@ test('route: writes meta_game_skip checked like the pipeline (outside the photo 
   assert.equal((await post('/api/skip', [[150, 0, 100, 300]])).status, 200);
   assert.equal((await post('/api/game', false)).status, 200);
   const data = YAML.parse(await fs.readFile(path.join(tmp, 'tvorba/rano.yaml'), 'utf8'));
-  assert.deepEqual([data.meta_game_skip, data.meta_game], [[[150, 0, 100, 300]], false]);
+  assert.deepEqual([data.meta_game_skip, data.game], [[[150, 0, 100, 300]], false]);
   const works = JSON.parse((await route(tmp, '', 'GET', '/api/works')).body);
   assert.deepEqual([works[0].skip, works[0].game], [[[150, 0, 100, 300]], false]);
   assert.equal((await post('/api/skip', [])).status, 200);

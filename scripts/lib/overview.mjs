@@ -7,6 +7,7 @@
 
 import { CODES, LEVELS, LEVEL_LABELS, coded, codesOf, withoutCodes } from './codes.mjs';
 import { groupProblems } from './summary.mjs';
+import { GAME_PAGE_PLACES, QUIZ_LINES } from './schema.mjs';
 import { NO_COLLECTION_TITLE } from './gallery-filter.mjs';
 import { DEFAULT_PHOTO_SIDE, paragraphs, photoMarker, richTextMarkdown } from './rich-text.mjs';
 
@@ -295,7 +296,17 @@ const PAGE_LABELS = {
   kontakt: { label: 'Kontakt', path: '/kontakt/' },
   kurzy: { label: 'Kurzy', path: '/kurzy/' },
   404: { label: 'Stránka nenalezena (404)', path: null },
+  'detail-dne': { label: 'Detail dne', path: '/detail-dne/' },
 };
+/** The texts of stranky/detail-dne.yaml in the overview, by page (as in the file): [key, label, rich]. */
+const pageOfLine = (key) => GAME_PAGE_PLACES[key.split('_')[0]].split(' (')[0];
+const linesOf = (prefix) => QUIZ_LINES.filter(([key]) => key.startsWith(prefix)).map(([key, what]) => [key, `${pageOfLine(key)}, ${what}`, false]);
+const GAME_PAGE_LINES = [
+  ['editor_text', 'Editor kvízu, text', true], ...linesOf('editor_'), ['editor_description', 'Editor kvízu, náhled odkazu', false],
+  ['quiz_text', 'Kvíz bez odkazu', true], ['quiz_drops_text', 'Kvíz, konec kola', true], ...linesOf('quiz_'),
+  ['quiz_description', 'Kvíz, náhled odkazu', false],
+  ...linesOf('work_'),
+];
 
 /** A one-line text of a description, escaped for Markdown ('' for anything else or an empty one). */
 const plainLine = (value) => (typeof value === 'string' && value.trim() ? escText(value) : '');
@@ -332,7 +343,7 @@ export function pagesReadme({ pages = [], home = null, years = [], siteUrl = '' 
   const section = (level, title, yamlPath, path, lines) => [`${level} ${title}`, '', `[${escText(yamlPath.split('/').pop())}](${link(yamlPath)})${web(path)}`, '', ...lines.flatMap((l) => [l, ''])];
   const part = (title, sections) => (sections.length ? ['---', '', `## ${title}`, '', ...sections] : []);
   // an array, not the keys of PAGE_LABELS: JavaScript puts the key 404 first
-  const known = ['o-mne', 'kontakt', 'kurzy', '404'];
+  const known = ['o-mne', 'kontakt', 'kurzy', 'detail-dne', '404'];
   const sorted = [...pages].sort((a, b) => known.indexOf(a.name) - known.indexOf(b.name));
   return `${[
     '# Texty stránek',
@@ -345,7 +356,11 @@ export function pagesReadme({ pages = [], home = null, years = [], siteUrl = '' 
     ...part('Stránky', sorted.flatMap((p) => {
       const { label, path } = PAGE_LABELS[p.name] ?? { label: p.name, path: `/${p.name}/` };
       const title = p.name === 'kurzy' && typeof p.data?.title === 'string' && p.data.title.trim() ? p.data.title.trim() : label;
-      const lines = pageLines(p.data, siteUrl, { head: [['title', 'Titulek'], ['heading', 'Nadpis']], tail: [['location_label', 'Popisek místa']] });
+      const game = p.name === 'detail-dne' ? GAME_PAGE_LINES.flatMap(([key, label, rich]) => (rich
+        ? paragraphs(p.data?.[key]).map((t) => `${label}: ${richTextMarkdown(t, { url: siteAddress(siteUrl) })}`)
+        : plainLine(p.data?.[key]) ? [`${label}: ${plainLine(p.data[key])}`] : [])) : [];
+      const lines = [...pageLines(p.data, siteUrl, { head: [['title', 'Titulek'], ['heading', 'Nadpis']], tail: [['location_label', 'Popisek místa']] }), ...game]
+        .filter((l) => !(game.length && l === '_(bez textu)_'));
       return section('###', title, p.yamlPath, path, path ? lines : ['Ukáže se na každé adrese, která na webu neexistuje.', ...lines]);
     })),
     ...part('Roky', [...years].sort((a, b) => String(b.year).localeCompare(String(a.year)))

@@ -33,23 +33,24 @@ export const LOOK_COUNTS = { min: 5, max: 10, spread: 1 };
  * The looks of a close-up: a named pair of an effect (mist, raster, pixel, wave) and colours (gray, sepia, hue), null = untouched.
  * Each level draws from its own five (`level`), so no look is in two levels; a quiz of a visitor offers the same ones.
  */
+/** The looks of the game (`note` = one line on what the look does to the picture, shown in the editor of a quiz). */
 export function gameLooks() {
   return [
-    { id: 'clear', label: 'Čistý pohled', level: 'easy', effect: null, colour: null },
-    { id: 'black-white', label: 'Černobílá fotka', level: 'easy', effect: null, colour: 'gray' },
-    { id: 'old-photo', label: 'Stará fotka', level: 'easy', effect: null, colour: 'sepia' },
-    { id: 'morning-mist', label: 'Ranní mlha', level: 'easy', effect: 'mist', colour: null },
-    { id: 'mosaic', label: 'Mozaika', level: 'easy', effect: 'pixel', colour: null },
-    { id: 'curtain', label: 'Za záclonou', level: 'medium', effect: 'raster', colour: null },
-    { id: 'water', label: 'Na hladině', level: 'medium', effect: 'wave', colour: null },
-    { id: 'magic-colours', label: 'Kouzelné barvy', level: 'medium', effect: null, colour: 'hue' },
-    { id: 'dusk', label: 'Za šera', level: 'medium', effect: 'mist', colour: 'gray' },
-    { id: 'puddle', label: 'Odraz v kaluži', level: 'medium', effect: 'wave', colour: 'gray' },
-    { id: 'dream', label: 'Sen', level: 'hard', effect: 'mist', colour: 'hue' },
-    { id: 'colour-blocks', label: 'Barevné kostky', level: 'hard', effect: 'pixel', colour: 'hue' },
-    { id: 'mirage', label: 'Fata morgána', level: 'hard', effect: 'wave', colour: 'hue' },
-    { id: 'flooded-postcard', label: 'Zatopená pohlednice', level: 'hard', effect: 'wave', colour: 'sepia' },
-    { id: 'embroidery', label: 'Výšivka', level: 'hard', effect: 'pixel', colour: 'sepia' },
+    { id: 'clear', label: 'Čistý pohled', note: 'Výřez beze změny, jen hodně zblízka.', level: 'easy', effect: null, colour: null },
+    { id: 'black-white', label: 'Černobílá fotka', note: 'Barvy zmizí, zůstanou jen světla a stíny.', level: 'easy', effect: null, colour: 'gray' },
+    { id: 'old-photo', label: 'Stará fotka', note: 'Barvy zhnědnou jako na staré fotce.', level: 'easy', effect: null, colour: 'sepia' },
+    { id: 'morning-mist', label: 'Ranní mlha', note: 'Výřez se rozmaže jako v mlze.', level: 'easy', effect: 'mist', colour: null },
+    { id: 'mosaic', label: 'Mozaika', note: 'Výřez se poskládá z velkých čtverečků.', level: 'easy', effect: 'pixel', colour: null },
+    { id: 'curtain', label: 'Za záclonou', note: 'Výřez je vidět jen po tečkách jako přes záclonu.', level: 'medium', effect: 'raster', colour: null },
+    { id: 'water', label: 'Na hladině', note: 'Výřez se vlní jako odraz na vodě.', level: 'medium', effect: 'wave', colour: null },
+    { id: 'magic-colours', label: 'Kouzelné barvy', note: 'Barvy se prohodí za jiné, tvary zůstanou.', level: 'medium', effect: null, colour: 'hue' },
+    { id: 'dusk', label: 'Za šera', note: 'Barvy zmizí a výřez se rozmaže jako za šera.', level: 'medium', effect: 'mist', colour: 'gray' },
+    { id: 'puddle', label: 'Odraz v kaluži', note: 'Barvy zmizí a výřez se vlní jako v kaluži.', level: 'medium', effect: 'wave', colour: 'gray' },
+    { id: 'dream', label: 'Sen', note: 'Barvy se prohodí za jiné a výřez se rozmaže.', level: 'hard', effect: 'mist', colour: 'hue' },
+    { id: 'colour-blocks', label: 'Barevné kostky', note: 'Barvy se prohodí za jiné a výřez se rozpadne na čtverečky.', level: 'hard', effect: 'pixel', colour: 'hue' },
+    { id: 'mirage', label: 'Fata morgána', note: 'Barvy se prohodí za jiné a výřez se vlní jako ve vedru.', level: 'hard', effect: 'wave', colour: 'hue' },
+    { id: 'flooded-postcard', label: 'Zatopená pohlednice', note: 'Barvy zhnědnou a výřez se vlní jako pod vodou.', level: 'hard', effect: 'wave', colour: 'sepia' },
+    { id: 'embroidery', label: 'Výšivka', note: 'Barvy zhnědnou a výřez se poskládá ze čtverečků jako výšivka.', level: 'hard', effect: 'pixel', colour: 'sepia' },
   ];
 }
 
@@ -807,6 +808,41 @@ export function monthGroups(days, epoch, played = null, levels = []) {
 }
 
 /** The state of a puzzle before the first guess. */
+/**
+ * One thumbnail of the offer (the daily game and the quiz of a visitor): a button while the round goes on (a miss red and faded,
+ * a ruled out one faded with its reason over it), after the end a link to the page of the work with its title (the right one
+ * green, the missed ones red, none faded any more). `work` = { id, title, url }, `src` = its small picture, `round` (newRound,
+ * applyGuess), `targetId` = the right one.
+ */
+/**
+ * Sets a freshly drawn stage (the game and a quiz) without its transitions (`apply`), so it never moves there from where the browser put it first:
+ * a new picture is the whole work until it gets its frame, and a transition from there would show the whole work being looked
+ * for. The transitions of `elements` are off while `apply` runs, the page is laid out (getBoundingClientRect) and then they are
+ * back, so only a change after this one moves (a miss zooming out, the end showing the work).
+ */
+export function withoutMotion(elements, apply) {
+  for (const el of elements) el.style.transition = 'none';
+  apply();
+  elements[0]?.getBoundingClientRect();
+  for (const el of elements) el.style.transition = '';
+}
+
+export function optionHtml({ work, src, round, targetId }) {
+  const esc = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  if (round.over) {
+    const mark = work.id === targetId ? ' right' : round.guesses.includes(work.id) ? ' wrong' : '';
+    return `<a class="option done${mark}" href="${esc(work.url)}" title="${esc(work.title)}" aria-label="Prohlédnout obraz ${esc(work.title)}"><img src="${esc(src)}" alt="" /></a>`;
+  }
+  const classes = ['option'];
+  if (round.guesses.includes(work.id)) classes.push('wrong', 'out');
+  else if (round.ruledOut.includes(work.id)) classes.push('out');
+  const reason = round.reasons[work.id];
+  const named = reason ? `Vyřazeno: ${esc(reason)}` : 'Obraz';
+  const disabled = classes.includes('out') ? ' disabled' : '';
+  const because = reason ? `<span class="because">${esc(reason)}</span>` : '';
+  return `<button class="${classes.join(' ')}" type="button" data-id="${work.id}" aria-label="${named}"${disabled}><img src="${esc(src)}" alt="" />${because}</button>`;
+}
+
 export function newRound() {
   return { guesses: [], ruledOut: [], reasons: {}, hints: [], solved: false, over: false };
 }

@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { GENERIC_PAGES, PAGES, PAGES_SUBDIR, pageProblems, paragraphs, preparePages, publicPageFields } from './pages.mjs';
 import {
+  GAME_DESCRIPTION, EDITOR_DESCRIPTION, QUIZ_DESCRIPTION, QUIZ_DROPS_TEXT, QUIZ_EDITOR_TEXT, QUIZ_LINES, QUIZ_LINE_KEYS, QUIZ_LINK, QUIZ_TEXT,
   ABOUT_CLOSING, ABOUT_DESCRIPTION, ABOUT_TEXT, CONTACT_DESCRIPTION, CONTACT_TEXT, NOT_FOUND_CLOSING, NOT_FOUND_TITLE, PAGE_DESCRIPTION_CHARS, TODO, fieldKeys,
 } from './schema.mjs';
 import { schemaKeysIn } from './metadata-yaml.mjs';
@@ -22,7 +23,7 @@ const file = (name) => path.join(dir, PAGES_SUBDIR, `${name}.yaml`);
 
 test('preparePages writes skeletons with the texts the pages had, without DOPLNIT, and keeps them on the next run', async () => {
   const r = await preparePages(dir);
-  assert.deepEqual(r.created, ['stranky/404.yaml', 'stranky/o-mne.yaml', 'stranky/kontakt.yaml'], 'no skeleton of an optional page');
+  assert.deepEqual(r.created, ['stranky/404.yaml', 'stranky/o-mne.yaml', 'stranky/kontakt.yaml', 'stranky/detail-dne.yaml'], 'no skeleton of an optional page');
   assert.deepEqual(r.problems, []);
   const about = r.pages.find((p) => p.name === 'o-mne');
   assert.equal(t(about.data.description), t(ABOUT_DESCRIPTION));
@@ -46,7 +47,7 @@ test('preparePages keeps a hand-written page and brings it in line', async () =>
   await fs.mkdir(path.join(dir, PAGES_SUBDIR));
   await fs.writeFile(file('kontakt'), 'text: Ahoj.\ndescription: Krátký popis.\n');
   const r = await preparePages(dir);
-  assert.deepEqual(r.created, ['stranky/404.yaml', 'stranky/o-mne.yaml'], 'only the missing pages get a skeleton');
+  assert.deepEqual(r.created, ['stranky/404.yaml', 'stranky/o-mne.yaml', 'stranky/detail-dne.yaml'], 'only the missing pages get a skeleton');
   assert.ok(r.updated.some((u) => u.startsWith('stranky/kontakt.yaml: doplněno location_label (výchozí hodnota)')));
   const contact = r.pages.find((p) => p.name === 'kontakt');
   assert.deepEqual([contact.data.description, contact.data.text, contact.data.location_label], ['Krátký popis.\n', 'Ahoj.\n', 'Žiji a maluji']);
@@ -146,4 +147,28 @@ test('pageProblems and textProblems: required texts of the page, bad links in th
   assert.ok(links.some((p) => /v text má adresu „www\.fler\.cz“/.test(p)));
   assert.deepEqual(pageProblems('stranky/kontakt.yaml', { description: 'P.', location_label: ' ' }, 'kontakt').length, 1);
   assert.deepEqual(pageProblems('stranky/o-mne.yaml', { description: 'P.' }, 'o-mne'), [], 'O mně has no title');
+});
+
+test('preparePages: the texts of Detail dne and of the quiz, with their defaults; an empty link and a long preview stop the page', async () => {
+  const r = await preparePages(dir);
+  const game = r.pages.find((p) => p.name === 'detail-dne');
+  assert.deepEqual([t(game.data.description), t(game.data.quiz_description), game.data.work_link, game.data.quiz_text, game.data.editor_text, game.data.quiz_drops_text],
+    [t(GAME_DESCRIPTION), t(QUIZ_DESCRIPTION), QUIZ_LINK, QUIZ_TEXT, QUIZ_EDITOR_TEXT, QUIZ_DROPS_TEXT]);
+  const text = await fs.readFile(file('detail-dne'), 'utf8');
+  assert.match(text, /\nquiz_text: \|\n {2}Tady se hraje kvíz/);
+  assert.doesNotMatch(text, new RegExp(TODO));
+  assert.deepEqual(publicPageFields('detail-dne'), ['description', 'editor_description', 'editor_text', 'quiz_description', 'quiz_drops_text', 'quiz_text', ...QUIZ_LINE_KEYS].sort());
+  // grouped by page: the file has description, then editor_…, quiz_… and work_…, each group together
+  const groups = [...text.matchAll(/^([a-z]+)[a-z_]*:/gm)].map((m) => m[1]).filter((g, i, all) => g !== all[i - 1]);
+  assert.deepEqual(groups, ['description', 'editor', 'quiz', 'work']);
+  assert.equal(t(game.data.editor_description), t(EDITOR_DESCRIPTION));
+  assert.match(text, /# Editor kvízu \(\/detail-dne\/muj-kviz\/.*\): nadpis 1\. kroku\./);
+  // the short texts of the quiz: each in the skeleton with its default, on one line, required
+  for (const [key, , value] of QUIZ_LINES) assert.equal(game.data[key], value, key);
+  assert.match(text, /\nquiz_copy: Zkopírovat odkaz\n/);
+  assert.deepEqual(pageProblems('stranky/detail-dne.yaml', { ...game.data, quiz_copy: ' ' }, 'detail-dne').map((p) => p.match(/: (\w+) /)[1]), ['quiz_copy']);
+  await fs.writeFile(file('detail-dne'), text.replace(`work_link: ${QUIZ_LINK}`, 'work_link: ""').replace(/editor_description: \|\n.*\n/, `editor_description: ${'a'.repeat(161)}\n`));
+  const bad = await preparePages(dir);
+  assert.deepEqual(bad.problems.map((p) => p.replace(/ .*\[/, ' [')), ['stranky/detail-dne.yaml: [prazdny-text-stranky]', 'stranky/detail-dne.yaml: [popis-stranky-dlouhy]']);
+  assert.equal(bad.pages.find((p) => p.name === 'detail-dne'), undefined);
 });

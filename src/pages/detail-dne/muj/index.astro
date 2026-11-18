@@ -1,0 +1,47 @@
+---
+// "Můj Detail dne": a quiz a visitor made of one work and sent as an address (src/lib/my-quiz.ts, scripts/lib/my-quiz.mjs). The
+// address is cleaned at once; without a quiz the page tells how to make one. Not for search engines (noindex, no sitemap).
+import Base from '../../../layouts/Base.astro';
+import { getGamePage, url } from '../../../lib/site';
+
+// the texts are in stranky/detail-dne.yaml of the content repository
+const page = getGamePage();
+import '../../../styles/detail-game.css';
+---
+<Base title="Můj Detail dne" description={page.quizDescription} noindex messageLauncher={false}>
+  <div class="detail-game my-quiz" data-src={url('/detail-dne/muj/data.json')} data-texts={JSON.stringify(page.lines)}>
+    <svg width="0" height="0" class="filters" aria-hidden="true"><filter id="game-wave" x="0" y="0" width="100%" height="100%"><feTurbulence data-wave-ripple type="turbulence" baseFrequency="0.012 0.02" numOctaves="2" seed="4" /><feDisplacementMap data-wave-map in="SourceGraphic" scale="0" xChannelSelector="R" yChannelSelector="G" /></filter></svg>
+    <div data-quiz hidden>
+      <header class="game-head">
+        <h1>Můj Detail dne <span class="level-name" data-level></span></h1>
+        <div class="head-actions">
+          <button class="action quiet" type="button" data-copy title="Odkaz na tenhle kvíz, poslat ho dál">{page.lines.quiz_copy}</button>
+          <a class="action quiet" data-make title="Udělej si vlastní Detail dne z tohoto obrazu">{page.lines.quiz_make}</a>
+        </div>
+      </header>
+      <input class="address" data-address readonly hidden aria-label="Odkaz na kvíz" />
+      <template data-drops-text>{page.quizDropsText.map((p) => <p set:html={p} />)}</template>
+      <div data-content><p class="empty">Připravuji kvíz…</p></div>
+    </div>
+    <section class="shelf" data-info>
+      <h1>Můj Detail dne</h1>
+      <p class="problem" data-problem></p>
+      {page.quizText.map((p) => <p set:html={p} />)}
+    </section>
+  </div>
+</Base>
+
+<style is:global>
+  .my-quiz .level-name { font-size: .55em; color: var(--ink-soft); font-family: var(--sans); letter-spacing: .04em; }
+  .my-quiz .address { width: 100%; font: inherit; font-size: .85rem; color: var(--ink); background: var(--paper-2); border: 1px solid var(--line); padding: 6px 8px; margin-bottom: 10px; }
+  .my-quiz .head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .my-quiz .problem:empty { display: none; }
+  .my-quiz .problem { color: var(--error); }
+  .my-quiz [data-info] p { max-width: 62ch; }
+</style>
+
+<script>
+  import { startQuiz } from '../../../lib/my-quiz';
+  const root = document.querySelector('.my-quiz') as HTMLElement | null;
+  if (root) startQuiz(root);
+</script>

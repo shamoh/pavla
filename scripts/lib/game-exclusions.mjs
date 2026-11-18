@@ -1,5 +1,5 @@
 // What the author keeps out of the game Detail dne (in the description of a work, content repository only):
-//   meta_game: false                            the work is never in the game: no puzzle and no thumbnail of the offer (nudes)
+//   game: false                            the work is never in the game: no puzzle and no thumbnail of the offer (nudes)
 //   meta_game_skip:                             places of the picture no close-up may touch (the ring binding of a sketchbook,
 //     - [left, top, width, height]              tape, a clip), each a rectangle in the pixels of the master photo, as meta_corners
 // The pipeline turns the rectangles into shares of the web picture (the game's coordinates: the photo may be trimmed by its
@@ -8,7 +8,7 @@
 import { gameFrame } from './detail-game.mjs';
 
 /** `false` = the work is out of the game (its options true / false are checked by the schema, optionProblems). */
-export const GAME_KEY = 'meta_game';
+export const GAME_KEY = 'game';
 /** The places of a work no close-up may touch. */
 export const SKIP_KEY = 'meta_game_skip';
 
@@ -92,7 +92,7 @@ export function puzzleView({ crop, ratio, level, areas = [] }) {
 }
 
 /**
- * The exclusions of the works of the content (`works` from prepareContent: `{ id, data, masterPath }`; meta_game false wins over
+ * The exclusions of the works of the content (`works` from prepareContent: `{ id, data, masterPath }`; game false wins over
  * meta_game_skip) for the plan, as
  * excludePrepared and puzzleView take them: work id → false or `{ areas, ratio }`. `picture(work)` resolves where the web
  * picture lies in the photo (`{ offset, width, height }`, the photo trimmed by its corners as the web images are).

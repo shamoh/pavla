@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { DETAILS_FILE, PLAN_DIR, planBuildYear, planYears, pragueDate, readPlan, readPlanYear, sitePlan, writePlan } from './game-plan.mjs';
+import { DETAILS_FILE, PLAN_DIR, SKIPS_FILE, planBuildYear, planYears, pragueDate, readPlan, readPlanYear, readSkips, sitePlan, skipsText, writePlan } from './game-plan.mjs';
 
 const tempDir = () => fs.mkdtemp(path.join(os.tmpdir(), 'pavla-plan-'));
 const day = (date) => ({ date, easy: { targetId: 'a', detail: 1, crop: {}, optionIds: ['a'], look: 'clear' } });
@@ -47,4 +47,15 @@ test('planBuildYear: the year in Prague, or DETAIL_DNE_YEAR to try the archive',
   assert.equal(planBuildYear({}, new Date('2026-12-31T23:30:00Z')), 2027);
   assert.equal(planBuildYear({ DETAIL_DNE_YEAR: '2028' }), 2028);
   assert.equal(planBuildYear({ DETAIL_DNE_YEAR: 'x' }, new Date('2026-06-01T12:00:00Z')), 2026);
+});
+
+test('skipsText and readSkips: only the places of works with them, rounded, back as rectangles; {} without the file', async () => {
+  const text = skipsText({ b: { areas: [{ x0: 0.123456, y0: 0, x1: 0.5, y1: 1 }] }, a: false, c: { areas: [] } });
+  assert.equal(text, '{"version":1,"areas":{"b":[[0.1235,0,0.5,1]]}}\n');
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'skips-'));
+  assert.deepEqual(await readSkips(dir), {});
+  await fs.mkdir(path.join(dir, PLAN_DIR), { recursive: true });
+  await fs.writeFile(path.join(dir, PLAN_DIR, SKIPS_FILE), text);
+  assert.deepEqual(await readSkips(dir), { b: [{ x0: 0.1235, y0: 0, x1: 0.5, y1: 1 }] });
+  assert.deepEqual(await planYears(dir), await planYears(dir), 'skips.json is no year of the plan');
 });

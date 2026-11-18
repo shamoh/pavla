@@ -1,4 +1,4 @@
-// export/detail-dne/ alone, to look at it before a change of meta_game / meta_game_skip goes to the pipeline (npm run game-export):
+// export/detail-dne/ alone, to look at it before a change of game / meta_game_skip goes to the pipeline (npm run game-export):
 // reads the content repository without changing it (no skeletons, no ids, no corners), the plan of the days of this
 // repository (game/detail-dne/) and the web pictures in public/ (npm run binary:pull first), and writes only export/detail-dne/
 // of the content repository (out of git there) or of --out <dir>. The plan is not changed: the excluded places are drawn

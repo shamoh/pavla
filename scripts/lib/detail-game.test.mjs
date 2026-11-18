@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  analyzePixels, applyGuess, archiveDays, gameDiagnostics, diagnosticsText, monthGroups, unplayedDays, daysWord, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, archiveRoom, archiveRoomTitle, cappedText, magicWord, tapBurst, groupDigits, rankForms, gameRanks, statsTitle, rulesHtml, rulesMine, LOOK_COUNTS, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
+  analyzePixels, applyGuess, archiveDays, gameDiagnostics, diagnosticsText, monthGroups, unplayedDays, daysWord, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, archiveRoom, archiveRoomTitle, cappedText, magicWord, tapBurst, groupDigits, rankForms, gameRanks, statsTitle, rulesHtml, rulesMine, LOOK_COUNTS, optionHtml, withoutMotion, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
   collectionHtml, gameCollection, simulatedRounds,
   PLAN_DETAIL_GAP, PLAN_HORIZON, PLAN_MAX_DETAILS, PLAN_WORK_GAP, extendPlan, planDay, planDetailOf, planDetails, planDaysByYear, planDetailsText, planUsage, planYearOf, planYearText, planYearsShown, plannedPuzzles, mergePlanDays, pragueDate, gameDiagnostics as diagnosticsOf,
   lookalikeDistance, newProgress, newRound, paletteDistance, rankLookalikes, regionDetail, regionEdges, regionPalette, rgbToLab, winTitle,
@@ -1162,6 +1162,15 @@ test('gameLooks: every level within LOOK_COUNTS, about the same count, a harder 
   assert.ok(Math.max(...counts) - Math.min(...counts) <= LOOK_COUNTS.spread, `counts ${counts.join(', ')}`);
 });
 
+test('gameLooks: every look says in one short line what it does to the picture (the editor of a quiz shows it under Zkreslení)', () => {
+  for (const look of gameLooks()) {
+    assert.equal(typeof look.note, 'string', look.id);
+    assert.match(look.note, /^\p{Lu}[^\n]*\.$/u, `${look.id}: a sentence on one line`);
+    assert.ok(look.note.length <= 62, `${look.id}: ${look.note.length} characters`);
+  }
+  assert.equal(new Set(gameLooks().map((l) => l.note)).size, gameLooks().length, 'every look has its own sentence');
+});
+
 test('lastViewOf, roundPuzzle, plannedPuzzles: a planned view (excluded places) is how far the puzzle zooms out, kept by the round', async () => {
   const { lastViewOf: viewOf } = await import('./detail-game.mjs');
   const level = gameLevels()[0];
@@ -1172,4 +1181,29 @@ test('lastViewOf, roundPuzzle, plannedPuzzles: a planned view (excluded places) 
   assert.equal('view' in roundPuzzle({ ...planned, view: undefined }), false);
   const out = plannedPuzzles({ plan: { days: { 3: { easy: planned } } }, day: 3, levels: [level], hasWork: () => true, computed: {} });
   assert.equal(out.easy.view, 0.4);
+});
+
+test('optionHtml: a button while the round goes on, after the end a link to the work with its title, none faded', () => {
+  const work = { id: 'a', title: 'Ráno <u Rybníka>', url: '/tvorba/2026/rano-a/' };
+  const going = { ...newRound(), guesses: ['a'], ruledOut: ['a'], reasons: {} };
+  assert.match(optionHtml({ work, src: '/p.webp', round: newRound(), targetId: 'b' }), /^<button class="option" type="button" data-id="a" aria-label="Obraz"><img src="\/p.webp"/);
+  assert.match(optionHtml({ work, src: '/p.webp', round: going, targetId: 'b' }), /class="option wrong out".* disabled/);
+  const ruled = { ...newRound(), ruledOut: ['a'], reasons: { a: 'z roku 2025' } };
+  assert.match(optionHtml({ work, src: '/p.webp', round: ruled, targetId: 'b' }), /aria-label="Vyřazeno: z roku 2025" disabled>.*<span class="because">z roku 2025<\/span>/);
+  const over = { ...newRound(), guesses: ['a', 'b'], over: true, solved: true };
+  assert.equal(optionHtml({ work, src: '/p.webp', round: over, targetId: 'b' }),
+    '<a class="option done wrong" href="/tvorba/2026/rano-a/" title="Ráno &lt;u Rybníka&gt;" aria-label="Prohlédnout obraz Ráno &lt;u Rybníka&gt;"><img src="/p.webp" alt="" /></a>');
+  assert.match(optionHtml({ work, src: '/p.webp', round: over, targetId: 'a' }), /^<a class="option done right"/);
+  assert.match(optionHtml({ work: { ...work, id: 'c' }, src: '/p.webp', round: over, targetId: 'b' }), /^<a class="option done" /);
+});
+
+test('withoutMotion: the stage is set with its transitions off, laid out, and only then are they back (no zoom from the whole work)', () => {
+  const log = [];
+  const el = (name) => ({ style: { set transition(v) { log.push(`${name}.transition=${v}`); } }, getBoundingClientRect: () => log.push(`${name}.layout`) });
+  const [img, view] = [el('img'), el('view')];
+  withoutMotion([img, view], () => log.push('apply'));
+  assert.deepEqual(log, ['img.transition=none', 'view.transition=none', 'apply', 'img.layout', 'img.transition=', 'view.transition=']);
+  log.length = 0;
+  withoutMotion([], () => log.push('apply'));
+  assert.deepEqual(log, ['apply']);
 });

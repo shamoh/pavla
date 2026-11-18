@@ -25,11 +25,6 @@ meta_edge: deckle
 # - false - žádné (cena a stav prodeje na webu Fler nepotřebují, obraz se může prodávat i napřímo)
 meta_fler: true
 
-# Obraz ve hře Detail dne, možnosti:
-# - true - hra z něj může brát výřezy a nabízet ho mezi obrazy k hádání
-# - false - do hry nepatří (např. akt), ani jako hádanka, ani v nabídce
-meta_game: true
-
 # NEPOVINNÉ. Místa obrazu, ze kterých hra Detail dne nikdy nevezme výřez a kam ani neoddálí pohled (kroužková vazba skicáku,
 # hřbet, páska, klip): každé na řádku jako [zleva, shora, šířka, výška] v pixelech fotky (jako meta_corners),
 # např. - [1840, 0, 260, 3000]. Nejlíp v editoru npm run corners; kde jsou, ukazuje export/detail-dne/.
@@ -83,6 +78,11 @@ featured: true
 
 # NEPOVINNÉ. Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
 # fler: https://www.fler.cz/zbozi/…
+
+# Obraz ve hře Detail dne, možnosti:
+# - true - hra z něj může brát výřezy a nabízet ho mezi obrazy k hádání
+# - false - do hry nepatří (např. akt): ani jako hádanka, ani v nabídce obrazů, ani ve vlastním kvízu
+game: true
 
 # NEPOVINNÉ. Odkaz na příspěvek s obrazem na Instagramu (https://www.instagram.com/p/…), až ho zveřejníš. Web ho ukáže u obrazu.
 # instagram: https://www.instagram.com/p/…

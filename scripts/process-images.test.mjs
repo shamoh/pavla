@@ -218,7 +218,7 @@ test('a new image without metadata becomes a draft that never leaves the content
   await addWork('2026', 'novy', undefined);
   const r = await run(opts({ today: new Date('2026-05-01') }));
   assert.equal(r.ok, true);
-  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml', '_index.yaml', 'stranky/404.yaml', 'stranky/o-mne.yaml', 'stranky/kontakt.yaml', 'tvorba/_index.yaml']);
+  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml', '_index.yaml', 'stranky/404.yaml', 'stranky/o-mne.yaml', 'stranky/kontakt.yaml', 'stranky/detail-dne.yaml', 'tvorba/_index.yaml']);
   assert.equal(YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/novy.yaml'), 'utf8')).meta_draft, true);
   assert.equal(r.processed, 0);
   assert.deepEqual(r.missing, []);
@@ -594,7 +594,7 @@ test('private note: never reaches the site repository, not even through comments
   const { derived_modified: modified, ...publicAttributes } = YAML.parse(copy);
   assert.deepEqual(publicAttributes, {
     id: key.slice(-5), title: 'Ráno', date: '2026-06-14', technique: '', size_cm: null, tags: [],
-    status: 'not-for-sale', featured: false, text: 'Veřejný popis.\n', mockups: false,
+    status: 'not-for-sale', featured: false, game: true, text: 'Veřejný popis.\n', mockups: false,
   });
   assert.match(modified, /^\d{4}-\d{2}-\d{2}$/, 'the only other attribute is the derived day of the last change');
   // the private repository keeps the note
@@ -1149,7 +1149,7 @@ test('prepare only (branches): skeletons, ids and checks, but no site data, imag
   const r = await run(opts({ prepareOnly: true, today: new Date('2026-05-01') }));
   assert.equal(r.ok, true);
   assert.equal(r.prepared, true);
-  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml', '_index.yaml', 'stranky/404.yaml', 'stranky/o-mne.yaml', 'stranky/kontakt.yaml', 'tvorba/_index.yaml']);
+  assert.deepEqual(r.created, ['tvorba/novy.yaml', 'roky/2026.yaml', '_index.yaml', 'stranky/404.yaml', 'stranky/o-mne.yaml', 'stranky/kontakt.yaml', 'stranky/detail-dne.yaml', 'tvorba/_index.yaml']);
   assert.equal(r.assigned.length, 1);
   const skeleton = YAML.parse(await fs.readFile(path.join(contentDir, 'tvorba/novy.yaml'), 'utf8'));
   assert.equal(skeleton.date, '2026-05-01', 'a new work is dated today');
@@ -1239,7 +1239,7 @@ test('existing files get every supported attribute on every run, on a branch too
   const r = await run(opts({ prepareOnly: true }));
   assert.equal(r.ok, true, r.problems.join('\n'));
   assert.deepEqual(r.updated.map((u) => u.split(':')[0]).sort(), ['fotky/kontakt.yaml', 'tvorba/plener/_index.yaml', 'tvorba/plener/vecer.yaml', 'tvorba/rano.yaml']);
-  assert.match(r.updated.find((u) => u.startsWith('tvorba/rano.yaml')), /doplněno status, technique, text \(DOPLNIT\); doplněno meta_draft, meta_edge, meta_fler, meta_game, meta_instagram, meta_pinterest, featured, mockups, tags \(výchozí hodnota\); neznámé mockup \(NEZNÁMÝ\)/);
+  assert.match(r.updated.find((u) => u.startsWith('tvorba/rano.yaml')), /doplněno status, technique, text \(DOPLNIT\); doplněno meta_draft, meta_edge, meta_fler, meta_instagram, meta_pinterest, featured, game, mockups, tags \(výchozí hodnota\); neznámé mockup \(NEZNÁMÝ\)/);
 
   const text = await fs.readFile(path.join(contentDir, 'tvorba/rano.yaml'), 'utf8');
   const data = YAML.parse(text);
@@ -1916,14 +1916,14 @@ test('gamePlan: a full run extends the plan of the days of Detail dne (game/deta
   const lines = [];
   const today = new Date('2026-12-25T12:00:00Z');
   await run(opts({ gamePlan: true, today, log: (l) => lines.push(l) }));
-  assert.deepEqual((await fs.readdir(dir)).sort(), ['2026.json', '2027.json', 'analysis', 'details.json'], 'the two weeks ahead reach into 2027');
+  assert.deepEqual((await fs.readdir(dir)).sort(), ['2026.json', '2027.json', 'analysis', 'details.json', 'skips.json'], 'the two weeks ahead reach into 2027');
   const analysed = (await fs.readdir(path.join(dir, 'analysis'))).sort();
   assert.ok(analysed.length > 0 && analysed.every((n) => /^[a-z][a-z0-9]{4}\.json$/.test(n)), 'the analysis of each picture, a file a work');
   const days2026 = JSON.parse(await fs.readFile(path.join(dir, '2026.json'), 'utf8')).days;
   assert.deepEqual(Object.keys(days2026), Array.from({ length: 61 }, (_, i) => `2026-${305 + i}`), '1 Nov (2026-305) to 31 Dec 2026 (2026-365), by the key of the day');
   assert.equal(days2026['2026-320'].date, '2026-11-16');
   assert.equal(JSON.parse(await fs.readFile(path.join(dir, '2027.json'), 'utf8')).days['2027-1'].date, '2027-01-01');
-  assert.ok(lines.some((l) => /^Detail dne: plan updated \(game\/detail-dne\/details\.json, game\/detail-dne\/2026\.json, game\/detail-dne\/2027\.json\), 69 days up to 2027-01-08; pictures analysed \d+, kept 0, removed 0$/.test(l)), lines.join('\n'));
+  assert.ok(lines.some((l) => /^Detail dne: plan updated \(game\/detail-dne\/details\.json, game\/detail-dne\/2026\.json, game\/detail-dne\/2027\.json, game\/detail-dne\/skips\.json\), 69 days up to 2027-01-08; pictures analysed \d+, kept 0, removed 0$/.test(l)), lines.join('\n'));
   lines.length = 0;
   await run(opts({ gamePlan: true, today, log: (l) => lines.push(l) }));
   assert.ok(lines.some((l) => new RegExp(`^Detail dne: plan unchanged, 69 days up to 2027-01-08; pictures analysed 0, kept ${analysed.length}, removed 0$`).test(l)), `the same day and works change nothing, no picture analysed again: ${lines.join('\n')}`);

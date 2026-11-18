@@ -168,3 +168,17 @@ test('pagesReadme: the home page, the pages and the years, links to the descript
   assert.match(text, /### Stránka nenalezena \(404\)\n\n\[404\.yaml\]\(\.\.\/\.\.\/stranky\/404\.yaml\)\n\nUkáže se na každé adrese.*\n\nTitulek: T\n\nNadpis: H\n\nNic\.\n\nZávěr: Zkuste \[tvorbu\]\(https:\/\/pavla\.example\/tvorba\/\)\.\n\nGoogle: Pro Google\.\n/, 'no web link: any address');
   assert.match(text, /### Rok 2025\n\n.*\n\n_\(bez textu\)_\n$/);
 });
+
+test('pagesReadme: the texts of Detail dne and of the quiz, each with its label, formatted', () => {
+  const text = pagesReadme({
+    pages: [{ name: 'detail-dne', yamlPath: 'stranky/detail-dne.yaml', data: {
+      description: 'Denní hra.', quiz_description: 'Kvíz z obrazu.', work_link: 'Udělat kvíz', quiz_text: 'Návod v [Tvorbě](/tvorba/).\n\nDruhý.\n', editor_text: '**Vyber** místo.\n', quiz_drops_text: 'Kapky v [Detailu dne](/detail-dne/).\n', editor_level: 'Úroveň', quiz_copy: 'Kopírovat',
+    } }],
+    siteUrl: 'https://example.cz',
+  });
+  assert.match(text, /### Detail dne\n\n\[detail-dne\.yaml\]\(\.\.\/\.\.\/stranky\/detail-dne\.yaml\) · \[web\]\(https:\/\/example\.cz\/detail-dne\/\)/);
+  // by page, as in the file: the editor, the quiz, the page of a work
+  assert.match(text, /Editor kvízu, text: \*\*Vyber\*\* místo\.\n\nEditor kvízu, nadpis 1\. kroku: Úroveň\n\nKvíz bez odkazu: Návod v \[Tvorbě\]\(https:\/\/example\.cz\/tvorba\/\)\.\n\nKvíz bez odkazu: Druhý\.\n\nKvíz, konec kola: Kapky v \[Detailu dne\]\(https:\/\/example\.cz\/detail-dne\/\)\.\n\nKvíz, tlačítko vpravo nahoře, zkopíruje odkaz na kvíz: Kopírovat\n\nKvíz, náhled odkazu: Kvíz z obrazu\.\n\nStránka obrazu, odkaz pod „Sdílet“, otevře editor kvízu \(jen obraz ve hře\): Udělat kvíz/);
+  assert.match(text, /Google: Denní hra\./);
+  assert.doesNotMatch(text, /bez textu/);
+});

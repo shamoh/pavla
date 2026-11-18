@@ -300,7 +300,7 @@ export const WORK_SCHEMA = {
   // former names of attributes: a file still using one is an error (rename it), never migrated silently
   // (`instagram` was the former name of meta_instagram; it is a link to the post now, and a leftover `instagram: true`
   // is reported by the check of that link)
-  renamed: { draft: 'meta_draft' },
+  renamed: { draft: 'meta_draft', meta_game: 'game' },
   fields: ordered([
     {
       key: 'id',
@@ -520,14 +520,19 @@ export const WORK_SCHEMA = {
       value: false,
     },
     {
-      key: 'meta_game',
+      key: 'game',
       settled: true,
       options: [true, false],
       doc: [
         'Obraz ve hře Detail dne, možnosti:',
         '- true - hra z něj může brát výřezy a nabízet ho mezi obrazy k hádání',
-        '- false - do hry nepatří (např. akt), ani jako hádanka, ani v nabídce',
+        '- false - do hry nepatří (např. akt): ani jako hádanka, ani v nabídce obrazů, ani ve vlastním kvízu',
       ],
+      previous: [[
+        'Obraz ve hře Detail dne, možnosti:',
+        '- true - hra z něj může brát výřezy a nabízet ho mezi obrazy k hádání',
+        '- false - do hry nepatří (např. akt), ani jako hádanka, ani v nabídce',
+      ]],
       value: true,
       missing: true,
     },
@@ -1083,8 +1088,123 @@ export const TEXT_PAGE_SCHEMA = {
   fields: ordered(pageFields('pod nadpisem', { closing: true, title: 'Nadpis stránky, zároveň titulek v záložce prohlížeče, např. „Kurzy“. Povinné.' })),
 };
 
-/** The schema of each page with a text in stranky/ of the content repository, by its file name (= its address). */
-export const PAGE_SCHEMAS = { 'o-mne': ABOUT_SCHEMA, kontakt: CONTACT_SCHEMA, 404: NOT_FOUND_SCHEMA, kurzy: TEXT_PAGE_SCHEMA };
+/**
+ * Default texts of the game Detail dne and of the quiz of a visitor (stranky/detail-dne.yaml): the values of its skeleton and
+ * what the site shows without a copy. The rules of the game, the verdicts and the ranks stay in the code (their numbers come
+ * from the rules, scripts/lib/detail-game.mjs).
+ */
+export const GAME_DESCRIPTION = 'Denní hra z mých obrazů: ze kterého obrazu je tento detail? Každý den tři nové, od lehkého po těžký.';
+export const QUIZ_DESCRIPTION = 'Kvíz z jednoho obrazu, který si někdo připravil a poslal: poznáš, ze kterého obrazu je výřez?';
+export const EDITOR_DESCRIPTION = 'Udělej si z obrazu vlastní Detail dne a pošli ho dál: vyber obtížnost, místo výřezu a zkreslení.';
+export const QUIZ_LINK = 'Udělat z obrazu Můj Detail dne';
+export const QUIZ_TEXT = 'Tady se hraje kvíz, který si někdo připravil z jednoho obrazu a poslal odkazem: poznáš, ze kterého\n'
+  + 'obrazu je výřez?\n'
+  + '\n'
+  + 'Vlastní kvíz si uděláš taky: otevři v [Tvorbě](/tvorba/) obraz, který se ti líbí, a u něj zvol\n'
+  + '**Udělat z obrazu Můj Detail dne**. Vybereš obtížnost, místo výřezu a zkreslení a odkaz pošleš komu chceš.\n'
+  + '\n'
+  + 'Každý den jsou tři nové výřezy v [Detailu dne](/detail-dne/), tam se sbírají i kapky a hodnosti.\n';
+export const QUIZ_DROPS_TEXT = 'Vlastní kvíz nedává kapky: ty sbíráš v denním [Detailu dne](/detail-dne/).\n';
+export const QUIZ_EDITOR_TEXT = 'Vyber obtížnost, místo výřezu a zkreslení, pak odkaz pošli komu chceš: uvidí přesně tenhle kvíz.\n'
+  + 'Vlastní kvíz nedává kapky.\n';
+
+/**
+ * The pages of stranky/detail-dne.yaml, by the prefix of the attribute (so the file, sorted by name, is grouped by page):
+ * the start of the comment over each attribute.
+ */
+export const GAME_PAGE_PLACES = {
+  description: 'Hra Detail dne (/detail-dne/)',
+  editor: 'Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu)',
+  quiz: 'Kvíz (/detail-dne/muj/, otevře ho poslaný odkaz)',
+  work: 'Stránka obrazu',
+};
+const placeOf = (key) => GAME_PAGE_PLACES[key.split('_')[0]];
+
+/**
+ * The short fixed texts of the quiz of a visitor and of its editor (titles, buttons, headings and messages): [key, what,
+ * default]. One line each, without formatting, never empty (pageProblems).
+ */
+export const QUIZ_LINES = [
+  ['editor_auto', 'tlačítko, vybere místo výřezu za návštěvníka', 'Vybrat místo za mě'],
+  ['editor_blocked', 'hláška, když výřez zasahuje do vynechaného místa', 'Tohle místo hra nebere (např. kroužková vazba), vyber jiné.'],
+  ['editor_copied', 'hláška po zkopírování odkazu na kvíz', 'Odkaz je zkopírovaný, pošli ho komu chceš.'],
+  ['editor_copy_by_hand', 'hláška, když prohlížeč odkaz zkopírovat nedovolí', 'Zkopíruj odkaz z pole nad tlačítkem.'],
+  ['editor_level', 'nadpis 1. kroku', 'Obtížnost'],
+  ['editor_load_failed', 'hláška, když se stránka nenačte celá', 'Editor se nepodařilo načíst. Zkuste stránku obnovit.'],
+  ['editor_look', 'nadpis 3. kroku', 'Zkreslení'],
+  ['editor_no_work', 'hláška, když z obrazu kvíz udělat nejde (obraz mimo hru, useknutý odkaz)', 'Z tohohle obrazu kvíz udělat nejde (nebo odkaz není celý). Vyber jiný obraz v Tvorbě.'],
+  ['editor_offer', 'věta nad obrazy, mezi kterými bude hráč hledat', 'Bude hledat mezi těmito obrazy (a tím tvým), vybírá je obtížnost:'],
+  ['editor_place', 'nadpis 2. kroku', 'Místo výřezu'],
+  ['editor_place_note', 'návod pod nadpisem 2. kroku', 'Ťukni do obrazu, kam má výřez ukazovat. Velikost určuje obtížnost.'],
+  ['editor_play', 'tlačítko, otevře kvíz ke hraní', 'Zahrát si ho'],
+  ['editor_preview', 'nadpis 4. kroku', 'Takhle ho uvidí hráč'],
+  ['editor_share', 'tlačítko, pošle odkaz na kvíz', 'Sdílet můj Detail dne'],
+  ['editor_title', 'titulek v záložce prohlížeče a v náhledu odkazu', 'Můj Detail dne: kvíz z obrazu'],
+  ['quiz_broken', 'hláška, když odkaz nejde přečíst (useknutý, obraz už na webu není)', 'Tenhle odkaz na kvíz nejde přečíst: možná je useknutý, nebo obraz už na webu není.'],
+  ['quiz_copied', 'tlačítko „Zkopírovat odkaz“ po zkopírování', 'Odkaz zkopírován'],
+  ['quiz_copy', 'tlačítko vpravo nahoře, zkopíruje odkaz na kvíz', 'Zkopírovat odkaz'],
+  ['quiz_load_failed', 'hláška, když se stránka nenačte celá', 'Kvíz se nepodařilo načíst. Zkuste stránku obnovit.'],
+  ['quiz_make', 'tlačítko vpravo nahoře, otevře editor z téhož obrazu', 'Udělat vlastní'],
+  ['work_link', 'odkaz pod „Sdílet“, otevře editor kvízu (jen obraz ve hře)', QUIZ_LINK],
+];
+/** The keys of QUIZ_LINES. */
+export const QUIZ_LINE_KEYS = QUIZ_LINES.map(([key]) => key);
+
+/** A short fixed text of the quiz (QUIZ_LINES): one line, no formatting, required. */
+const quizLineField = ([key, what, value]) => ({
+  key,
+  settled: true,
+  doc: `${placeOf(key)}: ${what}. Jeden řádek bez formátování, povinné.`,
+  value,
+  missing: value,
+});
+
+/** A text of the game page formatted like `text` (`what` = where it shows), its default meaning the same as a missing one. */
+const gameTextField = (key, what, value) => ({
+  key,
+  settled: true,
+  block: true,
+  rich: true,
+  doc: [`${placeOf(key)}: ${what}.`, `Piš ho pod „${key}: |“, každý řádek odsazený dvěma mezerami:`, ...writingRules('bez textu'), ...FORMATTING_DOC],
+  value,
+  missing: value,
+});
+
+/** A plain text of the game page for search engines and link previews. */
+const gameDescriptionField = (key, what, value) => ({
+  key,
+  settled: true,
+  block: true,
+  doc: [`${placeOf(key)}: ${what}:`, `jedna nebo dvě věty, nejvýš ${PAGE_DESCRIPTION_CHARS} znaků, bez formátování; na stránce se neukáže.`],
+  value,
+  missing: value,
+});
+
+/**
+ * The texts of the game Detail dne (/detail-dne/), of the quiz a visitor makes of a work (Můj Detail dne) and of its editor,
+ * grouped by page through the prefix of the attribute (GAME_PAGE_PLACES).
+ */
+export const GAME_PAGE_SCHEMA = {
+  name: 'game-page',
+  header: [
+    'Texty hry Detail dne a vlastního kvízu Můj Detail dne - kostru vytvořila pipeline s texty, které web měl.',
+    'Atributy jsou podle stránky: description = hra, editor_… = editor kvízu, quiz_… = kvíz, work_… = stránka obrazu.',
+    'Pravidla „Jak se hraje“, verdikty, nápovědy a hodnosti jsou v kódu webu (čísla v nich počítá hra), stejně jako texty,',
+    'které kvíz sdílí s hrou (otázka, „Tentokrát ne“, nápovědy).',
+  ],
+  fields: ordered([
+    gameDescriptionField('description', 'popis pro vyhledávače a náhled odkazu (Google, Facebook, WhatsApp)', GAME_DESCRIPTION),
+    gameDescriptionField('editor_description', 'popis pro náhled odkazu (stránka do vyhledávačů nejde)', EDITOR_DESCRIPTION),
+    gameTextField('editor_text', 'text pod větou „Kvíz z obrazu …“ (název obrazu doplní web)', QUIZ_EDITOR_TEXT),
+    gameDescriptionField('quiz_description', 'náhled odkazu na kvíz, který si lidé posílají (WhatsApp, Messenger)', QUIZ_DESCRIPTION),
+    gameTextField('quiz_drops_text', 'rámeček na konci kola pod tlačítky Obraz a Kolekce', QUIZ_DROPS_TEXT),
+    gameTextField('quiz_text', 'návod, když se stránka otevře bez odkazu (i pod hláškou o špatném odkazu); editor u obrazu mimo hru ukáže odstavce od druhého', QUIZ_TEXT),
+    ...QUIZ_LINES.map(quizLineField),
+    PRIVATE_NOTE,
+  ]),
+};
+
+export const PAGE_SCHEMAS = { 'o-mne': ABOUT_SCHEMA, kontakt: CONTACT_SCHEMA, 404: NOT_FOUND_SCHEMA, kurzy: TEXT_PAGE_SCHEMA, 'detail-dne': GAME_PAGE_SCHEMA };
 
 /** Keys of a schema. */
 export const fieldKeys = (schema) => schema.fields.map((f) => f.key);

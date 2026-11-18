@@ -13,7 +13,7 @@ import { SKIP_HEADER_ROOM, skipHeaderScope, skipsHeader } from '../../scripts/li
 import { levelFromParam } from '../../scripts/lib/detail-teaser.mjs';
 import {
   applyGuess, archiveDays, cappedText, magicWord, tapBurst, groupDigits, dailyPuzzles, dayId, dayLabel, nextStepsHtml, perfectDay, PERFECT_DAY_TEXT, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
-  GAME_STORE, collectionHtml, archiveRoom, archiveRoomTitle, lastViewOf, rankForms, rulesMine, statsTitle, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
+  GAME_STORE, collectionHtml, archiveRoom, archiveRoomTitle, lastViewOf, optionHtml, rankForms, rulesMine, statsTitle, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle, withoutMotion,
 } from '../../scripts/lib/detail-game.mjs';
 
 export { GAME_STORE };
@@ -556,16 +556,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
       <div class="side">
         ${statusHtml(round, level, outcome)}
         <div class="options">
-          ${optionWorks.map((w) => {
-            const classes = ['option'];
-            if (round.over && w.id === puzzle.targetId) classes.push('right');
-            else if (round.guesses.includes(w.id)) classes.push('wrong', 'out');
-            else if (round.ruledOut.includes(w.id) || round.over) classes.push('out');
-            const named = round.over ? escapeHtml(w.title) : round.reasons[w.id] ? `Vyřazeno: ${escapeHtml(round.reasons[w.id])}` : 'Obraz';
-            const disabled = round.over || classes.includes('out') ? 'disabled' : '';
-            const because = !round.over && round.reasons[w.id] ? `<span class="because">${escapeHtml(round.reasons[w.id])}</span>` : '';
-            return `<button class="${classes.join(' ')}" type="button" data-id="${w.id}" aria-label="${named}" ${disabled}><img src="${picture(w, false)}" alt="" />${because}</button>`;
-          }).join('')}
+          ${optionWorks.map((w) => optionHtml({ work: w, src: picture(w, false), round, targetId: puzzle.targetId })).join('')}
         </div>
         ${round.over ? resultHtml(outcome) : ''}
       </div>
@@ -574,16 +565,13 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     renderDiagnostics();
     const img = content.querySelector('.stage img') as HTMLImageElement;
     const view = content.querySelector('.view') as HTMLElement;
-    img.style.transition = 'none';
-    view.style.transition = 'none';
     // a finished round opened again shows the whole work; only the moment of the end moves
-    if (outcome) {
-      showFrame(img, work, gameFrame(puzzle.crop, round.guesses.length - 1, level.guesses - 1, work.ratio, lastViewOf(puzzle, level)));
-      showCover({ ...round, over: false, guesses: round.guesses.slice(0, -1) });
-    } else placePicture(round);
-    img.getBoundingClientRect();
-    img.style.transition = '';
-    view.style.transition = '';
+    withoutMotion([img, view], () => {
+      if (outcome) {
+        showFrame(img, work, gameFrame(puzzle.crop, round.guesses.length - 1, level.guesses - 1, work.ratio, lastViewOf(puzzle, level)));
+        showCover({ ...round, over: false, guesses: round.guesses.slice(0, -1) });
+      } else placePicture(round);
+    });
     if (outcome) {
       requestAnimationFrame(() => placePicture(round));
       if (round.solved) {
@@ -623,15 +611,12 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     const fresh = root.querySelector('.stage img') as HTMLImageElement;
     const view = root.querySelector('.view') as HTMLElement;
     const clip = view.parentElement as HTMLElement;
-    fresh.style.transition = 'none';
-    view.style.transition = 'none';
-    fresh.style.transform = transform;
-    view.style.filter = filter;
-    clip.style.mask = mask;
-    clip.style.setProperty('-webkit-mask', mask);
-    fresh.getBoundingClientRect();
-    fresh.style.transition = '';
-    view.style.transition = '';
+    withoutMotion([fresh, view], () => {
+      fresh.style.transform = transform;
+      view.style.filter = filter;
+      clip.style.mask = mask;
+      clip.style.setProperty('-webkit-mask', mask);
+    });
     requestAnimationFrame(() => placePicture(round));
   }
 
@@ -698,7 +683,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
   }, true);
   root.addEventListener('click', (event) => {
     const target = event.target as HTMLElement;
-    const option = target.closest('.option') as HTMLButtonElement | null;
+    const option = target.closest('button.option') as HTMLButtonElement | null;
     if (option && !option.disabled) guess(option.dataset.id as string);
     const level = target.closest('[data-level]') as HTMLElement | null;
     if (level) openLevel(level.dataset.level as string);

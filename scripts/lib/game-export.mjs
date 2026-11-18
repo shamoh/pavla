@@ -173,7 +173,7 @@ export function gameIndexReadme(entries, out = []) {
     'Pro každý obraz ve hře výřezy, které z něj hra bere (čtverec s číslem, barva podle úrovně), a vynechaná místa (šrafovaná,',
     '`meta_game_skip`). Místo, které výřez prozrazuje (kroužková vazba, páska), zapiš do popisu obrazu jako',
     '`meta_game_skip: [[zleva, shora, šířka, výška]]` v pixelech fotky (nejlíp v editoru `npm run corners`); celý obraz',
-    'mimo hru: `meta_game: false`.',
+    'mimo hru: `game: false`.',
     '', `Ve hře: ${count(entries.length, ['obraz', 'obrazy', 'obrazů'])}.`];
   const groups = new Map();
   for (const e of entries) {
@@ -197,7 +197,7 @@ export function gameIndexReadme(entries, out = []) {
     lines.push('</table>');
   }
   if (out.length) {
-    lines.push('', '## Mimo hru', '', 'Obrazy s `meta_game: false`: hra je nepoužije ani jako hádanku, ani v nabídce.', '');
+    lines.push('', '## Mimo hru', '', 'Obrazy s `game: false`: hra je nepoužije ani jako hádanku, ani v nabídce.', '');
     for (const o of out) lines.push(`- ${esc(o.title)}${o.code ? ` \`${o.code}\`` : ''}${o.collection ? ` (${esc(o.collection)})` : ''}`);
   }
   return `${lines.join('\n')}\n`;

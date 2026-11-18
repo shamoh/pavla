@@ -1,0 +1,137 @@
+# Texty hry Detail dne a vlastního kvízu Můj Detail dne - kostru vytvořila pipeline s texty, které web měl.
+# Atributy jsou podle stránky: description = hra, editor_… = editor kvízu, quiz_… = kvíz, work_… = stránka obrazu.
+# Pravidla „Jak se hraje“, verdikty, nápovědy a hodnosti jsou v kódu webu (čísla v nich počítá hra), stejně jako texty,
+# které kvíz sdílí s hrou (otázka, „Tentokrát ne“, nápovědy).
+
+# Hra Detail dne (/detail-dne/): popis pro vyhledávače a náhled odkazu (Google, Facebook, WhatsApp):
+# jedna nebo dvě věty, nejvýš 160 znaků, bez formátování; na stránce se neukáže.
+description: |
+  Denní hra z mých obrazů: ze kterého obrazu je tento detail? Každý den tři nové, od lehkého po těžký.
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): tlačítko, vybere místo výřezu za návštěvníka. Jeden řádek bez formátování, povinné.
+editor_auto: Vybrat místo za mě
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): hláška, když výřez zasahuje do vynechaného místa. Jeden řádek bez formátování, povinné.
+editor_blocked: Tohle místo hra nebere (např. kroužková vazba), vyber jiné.
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): hláška po zkopírování odkazu na kvíz. Jeden řádek bez formátování, povinné.
+editor_copied: Odkaz je zkopírovaný, pošli ho komu chceš.
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): hláška, když prohlížeč odkaz zkopírovat nedovolí. Jeden řádek bez formátování, povinné.
+editor_copy_by_hand: Zkopíruj odkaz z pole nad tlačítkem.
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): popis pro náhled odkazu (stránka do vyhledávačů nejde):
+# jedna nebo dvě věty, nejvýš 160 znaků, bez formátování; na stránce se neukáže.
+editor_description: |
+  Udělej si z obrazu vlastní Detail dne a pošli ho dál: vyber obtížnost, místo výřezu a zkreslení.
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): nadpis 1. kroku. Jeden řádek bez formátování, povinné.
+editor_level: Obtížnost
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): hláška, když se stránka nenačte celá. Jeden řádek bez formátování, povinné.
+editor_load_failed: Editor se nepodařilo načíst. Zkuste stránku obnovit.
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): nadpis 3. kroku. Jeden řádek bez formátování, povinné.
+editor_look: Zkreslení
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): hláška, když z obrazu kvíz udělat nejde (obraz mimo hru, useknutý odkaz). Jeden řádek bez formátování, povinné.
+editor_no_work: Z tohohle obrazu kvíz udělat nejde (nebo odkaz není celý). Vyber jiný obraz v Tvorbě.
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): věta nad obrazy, mezi kterými bude hráč hledat. Jeden řádek bez formátování, povinné.
+editor_offer: "Bude hledat mezi těmito obrazy (a tím tvým), vybírá je obtížnost:"
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): nadpis 2. kroku. Jeden řádek bez formátování, povinné.
+editor_place: Místo výřezu
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): návod pod nadpisem 2. kroku. Jeden řádek bez formátování, povinné.
+editor_place_note: Ťukni do obrazu, kam má výřez ukazovat. Velikost určuje obtížnost.
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): tlačítko, otevře kvíz ke hraní. Jeden řádek bez formátování, povinné.
+editor_play: Zahrát si ho
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): nadpis 4. kroku. Jeden řádek bez formátování, povinné.
+editor_preview: Takhle ho uvidí hráč
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): tlačítko, pošle odkaz na kvíz. Jeden řádek bez formátování, povinné.
+editor_share: Sdílet můj Detail dne
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): text pod větou „Kvíz z obrazu …“ (název obrazu doplní web).
+# Piš ho pod „editor_text: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez textu.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](k3f9a) = odkaz na jiný obraz podle jeho kódu id, [](k3f9a) = s jeho názvem jako textem odkazu
+#     (rozpracovaný obraz zůstane bez odkazu),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+editor_text: |
+  Vyber obtížnost, místo výřezu a zkreslení, pak odkaz pošli komu chceš: uvidí přesně tenhle kvíz.
+  Vlastní kvíz nedává kapky.
+
+# Editor kvízu (/detail-dne/muj-kviz/, otevře ho odkaz na stránce obrazu): titulek v záložce prohlížeče a v náhledu odkazu. Jeden řádek bez formátování, povinné.
+editor_title: Vyrob kvíz z obrazu
+
+# Kvíz (/detail-dne/muj/, otevře ho poslaný odkaz): hláška, když odkaz nejde přečíst (useknutý, obraz už na webu není). Jeden řádek bez formátování, povinné.
+quiz_broken: "Tenhle odkaz na kvíz nejde přečíst: možná je useknutý, nebo obraz už na webu není."
+
+# Kvíz (/detail-dne/muj/, otevře ho poslaný odkaz): tlačítko „Zkopírovat odkaz“ po zkopírování. Jeden řádek bez formátování, povinné.
+quiz_copied: Odkaz zkopírován
+
+# Kvíz (/detail-dne/muj/, otevře ho poslaný odkaz): tlačítko vpravo nahoře, zkopíruje odkaz na kvíz. Jeden řádek bez formátování, povinné.
+quiz_copy: Poslat odkaz dál
+
+# Kvíz (/detail-dne/muj/, otevře ho poslaný odkaz): náhled odkazu na kvíz, který si lidé posílají (WhatsApp, Messenger):
+# jedna nebo dvě věty, nejvýš 160 znaků, bez formátování; na stránce se neukáže.
+quiz_description: |
+  Kvíz z jednoho obrazu, který si někdo připravil a poslal: poznáš, ze kterého obrazu je výřez?
+
+# Kvíz (/detail-dne/muj/, otevře ho poslaný odkaz): rámeček na konci kola pod tlačítky Obraz a Kolekce.
+# Piš ho pod „quiz_drops_text: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez textu.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](k3f9a) = odkaz na jiný obraz podle jeho kódu id, [](k3f9a) = s jeho názvem jako textem odkazu
+#     (rozpracovaný obraz zůstane bez odkazu),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+quiz_drops_text: |
+  Tenhle kvíz je jen pro radost, **kapky** se sbírají v denním [Detailu dne](/detail-dne/).
+
+# Kvíz (/detail-dne/muj/, otevře ho poslaný odkaz): hláška, když se stránka nenačte celá. Jeden řádek bez formátování, povinné.
+quiz_load_failed: Kvíz se nepodařilo načíst. Zkuste stránku obnovit.
+
+# Kvíz (/detail-dne/muj/, otevře ho poslaný odkaz): tlačítko vpravo nahoře, otevře editor z téhož obrazu. Jeden řádek bez formátování, povinné.
+quiz_make: Udělat vlastní
+
+# Kvíz (/detail-dne/muj/, otevře ho poslaný odkaz): návod, když se stránka otevře bez odkazu (i pod hláškou o špatném odkazu); editor u obrazu mimo hru ukáže odstavce od druhého.
+# Piš ho pod „quiz_text: |“, každý řádek odsazený dvěma mezerami:
+#   - řádky zalamuj, kde chceš: na webu se spojí mezerou (příliš dlouhé zalomí automatika),
+#   - prázdný řádek = nový odstavec,
+#   - prázdné "" = bez textu.
+# Formátování:
+#   - **slovo** = tučně,
+#   - *slovo* = kurzívou,
+#   - [text](/tvorba/) = odkaz na stránku tohoto webu (adresa začíná /),
+#   - [text](k3f9a) = odkaz na jiný obraz podle jeho kódu id, [](k3f9a) = s jeho názvem jako textem odkazu
+#     (rozpracovaný obraz zůstane bez odkazu),
+#   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
+quiz_text: |
+  Tady se hraje kvíz, který si někdo připravil z jednoho obrazu a poslal odkazem: poznáš, ze kterého
+  obrazu je výřez?
+
+  Vlastní kvíz si uděláš taky: otevři v [Tvorbě](/tvorba/) obraz, který se ti líbí, a u něj zvol
+  **Udělat z obrazu Můj Detail dne**. Vybereš obtížnost, místo výřezu a zkreslení a odkaz pošleš komu chceš.
+
+  Každý den jsou tři nové výřezy v [Detailu dne](/detail-dne/), tam se sbírají i kapky a hodnosti.
+
+# Stránka obrazu: odkaz pod „Sdílet“, otevře editor kvízu (jen obraz ve hře). Jeden řádek bez formátování, povinné.
+work_link: Zahrát si s tímhle obrazem
+
+# NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
+# private_note: co jsem na stránce změnila a proč

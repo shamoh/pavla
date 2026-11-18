@@ -20,8 +20,8 @@ import { paragraphs } from './rich-text.mjs';
 export { paragraphs };
 import {
   ABOUT_CLOSING, ABOUT_DESCRIPTION, ABOUT_TEXT, CONTACT_DESCRIPTION, CONTACT_LOCATION_LABEL, CONTACT_TEXT,
-  NOT_FOUND_CLOSING, NOT_FOUND_DESCRIPTION, NOT_FOUND_HEADING, NOT_FOUND_TEXT, NOT_FOUND_TITLE, PAGE_SCHEMAS, fieldKeys,
-  publicKeys,
+  EDITOR_DESCRIPTION, GAME_DESCRIPTION, NOT_FOUND_CLOSING, NOT_FOUND_DESCRIPTION, NOT_FOUND_HEADING, NOT_FOUND_TEXT, NOT_FOUND_TITLE, PAGE_DESCRIPTION_CHARS,
+  PAGE_SCHEMAS, QUIZ_DESCRIPTION, QUIZ_DROPS_TEXT, QUIZ_EDITOR_TEXT, QUIZ_LINES, QUIZ_LINE_KEYS, QUIZ_TEXT, fieldKeys, publicKeys,
 } from './schema.mjs';
 
 export const PAGES_SUBDIR = 'stranky';
@@ -38,6 +38,15 @@ export const PAGES = {
     defaults: { description: NOT_FOUND_DESCRIPTION, heading: NOT_FOUND_HEADING, text: NOT_FOUND_TEXT, closing: NOT_FOUND_CLOSING, title: NOT_FOUND_TITLE },
   },
   kurzy: { schema: PAGE_SCHEMAS.kurzy, optional: true },
+  // the texts of the game Detail dne and of the quiz of a visitor (its own pages build them, getGamePage)
+  'detail-dne': {
+    schema: PAGE_SCHEMAS['detail-dne'],
+    defaults: {
+      description: GAME_DESCRIPTION, editor_description: EDITOR_DESCRIPTION, editor_text: QUIZ_EDITOR_TEXT,
+      quiz_description: QUIZ_DESCRIPTION, quiz_drops_text: QUIZ_DROPS_TEXT, quiz_text: QUIZ_TEXT,
+      ...Object.fromEntries(QUIZ_LINES.map(([key, , value]) => [key, value])),
+    },
+  },
 };
 
 /** Names of the generic text pages (optional ones, each built as /<name>/ by src/pages/[page].astro). */
@@ -47,7 +56,9 @@ export const GENERIC_PAGES = Object.keys(PAGES).filter((name) => PAGES[name].opt
 export const publicPageFields = (name) => publicKeys(PAGES[name].schema);
 
 /** Attributes that must not be empty when the schema of the page has them. */
-const REQUIRED_KEYS = ['title', 'heading', 'location_label'];
+const REQUIRED_KEYS = ['title', 'heading', 'location_label', ...QUIZ_LINE_KEYS];
+/** Descriptions for link previews besides `description` (checked by textProblems), with the same limit. */
+const PREVIEW_KEYS = ['quiz_description', 'editor_description'];
 
 /**
  * Problems of the values of one page besides its texts (textProblems in scripts/lib/content.mjs): its required
@@ -55,8 +66,11 @@ const REQUIRED_KEYS = ['title', 'heading', 'location_label'];
  */
 export function pageProblems(yamlPath, data, name = 'o-mne') {
   const keys = new Set(fieldKeys(PAGES[name].schema));
-  return REQUIRED_KEYS.filter((key) => keys.has(key) && (typeof data[key] !== 'string' || !data[key].trim()))
+  const empty = REQUIRED_KEYS.filter((key) => keys.has(key) && (typeof data[key] !== 'string' || !data[key].trim()))
     .map((key) => `${yamlPath}: ${key} je prázdný nebo není text, stránka ho potřebuje [prazdny-text-stranky]`);
+  const long = PREVIEW_KEYS.filter((key) => keys.has(key) && typeof data[key] === 'string' && data[key].trim().length > PAGE_DESCRIPTION_CHARS)
+    .map((key) => `${yamlPath}: ${key} má ${data[key].trim().length} znaků, zkrať ho nejvýš na ${PAGE_DESCRIPTION_CHARS} (delší náhled odkazu uřízne) [popis-stranky-dlouhy]`);
+  return [...empty, ...long];
 }
 
 /**

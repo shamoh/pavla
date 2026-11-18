@@ -13,13 +13,13 @@ test('exclusionProblems: nothing is fine; places are [left, top, width, height] 
   }
   const one = (value) => exclusionProblems(value, 4000, 3000, 'tvorba/a.yaml')[0];
   assert.match(one('ano'), /^tvorba\/a\.yaml: meta_game_skip musí být seznam míst.* \[spatne-vynechane-misto\]$/);
-  assert.match(one(false), /musí být seznam míst/, 'false belongs to meta_game');
+  assert.match(one(false), /musí být seznam míst/, 'false belongs to game');
   assert.match(one([]), /musí být seznam míst/);
   assert.match(one([[1, 2, 3]]), /\[zleva, shora, šířka, výška\]/);
   assert.match(one([[1.5, 2, 3, 4]]), /celých pixelech/);
   assert.match(one([[0, 0, 0, 10]]), /kladnou šířku/);
   assert.match(one([[0, 0, 10, 10], [3900, 0, 200, 10]]), /^tvorba\/a\.yaml: meta_game_skip místo 2 sahá mimo fotku \(4100 × 10 px, fotka má 4000 × 3000\)/);
-  assert.deepEqual([GAME_KEY, SKIP_KEY], ['meta_game', 'meta_game_skip']);
+  assert.deepEqual([GAME_KEY, SKIP_KEY], ['game', 'meta_game_skip']);
 });
 
 test('areasInImage: pixels of the photo as shares of the web picture, trimmed by the corners (offset), clipped', () => {
@@ -79,12 +79,12 @@ test('planViews: only the days planned again, a view where a work has areas, an 
   assert.equal('view' in out[7].easy, false);
 });
 
-test('contentExclusions: false for a work out (meta_game false wins over its places), areas in shares of its web picture with its ratio, nothing for the others', async () => {
+test('contentExclusions: false for a work out (game false wins over its places), areas in shares of its web picture with its ratio, nothing for the others', async () => {
   const works = [
-    { data: { id: 'a1b2c', meta_game: false, meta_game_skip: [[0, 0, 10, 10]] }, masterPath: '/w.jpg' },
+    { data: { id: 'a1b2c', game: false, meta_game_skip: [[0, 0, 10, 10]] }, masterPath: '/w.jpg' },
     { data: { id: 'd3e4f', meta_game_skip: [[500, 0, 100, 1000]] }, masterPath: '/x.jpg' },
     { data: { id: 'g5h6i' }, masterPath: '/y.jpg' },
-    { data: { id: 'j7k8l', meta_game: true }, masterPath: '/z.jpg' },
+    { data: { id: 'j7k8l', game: true }, masterPath: '/z.jpg' },
   ];
   const asked = [];
   const out = await contentExclusions(works, async (w) => { asked.push(w.data.id); return { offset: { left: 0, top: 0 }, width: 1000, height: 1000 }; });

@@ -26,6 +26,27 @@ export { pragueDate };
 export const PLAN_DIR = path.join('game', 'detail-dne');
 /** The file of the numbered details in PLAN_DIR. */
 export const DETAILS_FILE = 'details.json';
+/**
+ * The places of works kept out of the game, for the site (the quiz of a visitor may not pick them): `{ version, areas: { <work
+ * id>: [[x0, y0, x1, y1], …] } }` in shares of the web picture, rounded; nothing else of meta_game_skip leaves the content repository.
+ */
+export const SKIPS_FILE = 'skips.json';
+
+/** The text of SKIPS_FILE from the exclusions of the plan (contentExclusions): only the works with places, sorted. */
+export function skipsText(exclusions = {}) {
+  const r = (v) => Math.round(v * 10000) / 10000;
+  const areas = Object.fromEntries(Object.entries(exclusions)
+    .filter(([, e]) => e && e.areas?.length)
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([id, e]) => [id, e.areas.map((a) => [r(a.x0), r(a.y0), r(a.x1), r(a.y1)])]));
+  return `${JSON.stringify({ version: 1, areas })}\n`;
+}
+
+/** The places kept out of the game of `siteDir` (SKIPS_FILE): work id → [{ x0, y0, x1, y1 }], {} without the file. */
+export async function readSkips(siteDir) {
+  const file = await readJson(path.join(siteDir, PLAN_DIR, SKIPS_FILE));
+  return Object.fromEntries(Object.entries(file?.areas ?? {}).map(([id, list]) => [id, list.map(([x0, y0, x1, y1]) => ({ x0, y0, x1, y1 }))]));
+}
 
 const readJson = async (file) => {
   try {
@@ -125,7 +146,7 @@ export async function updateGamePlan({ siteDir, config, date = new Date(), exclu
   // the analysis of a picture is kept (game/detail-dne/analysis/), made again only for a new or changed picture
   const game = await prepareGame(works, siteDir, undefined, undefined, { places: true, save: true });
   const { analysis } = game;
-  // what the author keeps out of the game (meta_game, meta_game_skip; scripts/lib/game-exclusions.mjs): only the days planned again
+  // what the author keeps out of the game (game, meta_game_skip; scripts/lib/game-exclusions.mjs): only the days planned again
   // change, the analyses stay as they are
   const prepared = excludePrepared(game.prepared, exclusions);
   const places = excludePrepared(game.places, exclusions);
@@ -134,6 +155,12 @@ export async function updateGamePlan({ siteDir, config, date = new Date(), exclu
   const extended = extendPlan({ plan: await readPlan(siteDir), prepared, places, levels, today, epoch: GAME_EPOCH });
   const plan = { ...extended, days: planViews(extended.days, { exclusions, levels, from: today + PLAN_LOCKED + 1 }) };
   const changed = [...analysis.written, ...analysis.removed, ...await writePlan(siteDir, plan)];
+  const skipsFile = path.join(siteDir, PLAN_DIR, SKIPS_FILE);
+  const skips = skipsText(exclusions);
+  if ((await fs.readFile(skipsFile, 'utf8').catch(() => null)) !== skips) {
+    await fs.writeFile(skipsFile, skips);
+    changed.push(path.join(PLAN_DIR, SKIPS_FILE));
+  }
   const keys = Object.keys(plan.days).map(Number);
 
   return { changed, days: keys.length, ahead: plan.days[Math.max(...keys)]?.date ?? null, analysis, plan };

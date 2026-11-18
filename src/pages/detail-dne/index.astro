@@ -4,13 +4,14 @@
 // in the sitemap; the progress stays in the browser of the player. Its share image: three close-ups (gameShareImage). The markup
 // (gamePageHtml) and the look (src/styles/detail-game.css) are shared with the prototype of the game (.prototypes/detail-dne.html).
 import Base from '../../layouts/Base.astro';
-import { site, url } from '../../lib/site';
+import { getGamePage, site, url } from '../../lib/site';
 import { gameShareImage } from '../../lib/detail-game-works';
 import { gamePageHtml } from '../../../scripts/lib/detail-game-page.mjs';
 import { breadcrumbLd, gamePageLd, graphLd } from '../../../scripts/lib/seo.mjs';
 import '../../styles/detail-game.css';
 
-const description = 'Denní hra z mých obrazů: ze kterého obrazu je tento detail? Každý den tři nové, od lehkého po těžký.';
+// the texts are in stranky/detail-dne.yaml of the content repository
+const { description } = getGamePage();
 const share = gameShareImage();
 const image = share ? { src: share.src, width: share.width, height: share.height } : undefined;
 const jsonLd = graphLd(

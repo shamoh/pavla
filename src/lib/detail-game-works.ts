@@ -2,17 +2,21 @@
 // the home page) and the archive files of the plan of the days (src/pages/detail-dne/plan/[year].json.ts).
 import { config, formatSize, getCollections, getWorks, site, siteDataRoot, workUrl } from './site';
 import { gameShareName, gameShareParts } from '../../scripts/lib/detail-game-share.mjs';
-import { gameData, prepareGame } from '../../scripts/lib/detail-game-data.mjs';
-import { planBuildYear, sitePlan } from '../../scripts/lib/game-plan.mjs';
+import { gameData, gameWorkFields, prepareGame } from '../../scripts/lib/detail-game-data.mjs';
+import { planBuildYear, readSkips, sitePlan } from '../../scripts/lib/game-plan.mjs';
+import { quizSimilar } from '../../scripts/lib/my-quiz.mjs';
 import { workImageDir } from '../../scripts/lib/site-images.mjs';
 import { ownText } from '../../scripts/lib/rich-text.mjs';
 import { summarize } from '../../scripts/lib/seo.mjs';
 import { VIEWER_TEXT_MAX } from '../../scripts/lib/work-viewer.mjs';
 
-/** Every published work with what the game needs of it (the analysis of its picture: technique, tags, colours, its folder). */
+/**
+ * Every published work in the game with what the game needs of it (the analysis of its picture: technique, tags, colours, its
+ * folder); a work with `game: false` is never in it (nor in a quiz of a visitor).
+ */
 export function gameWorks() {
   const titles = new Map(getCollections().map((c) => [c.slug, c.title]));
-  return getWorks().map((w) => ({
+  return getWorks().filter((w) => w.game !== false).map((w) => ({
     id: w.id,
     title: w.title,
     sub: [w.technique, formatSize(w.size_cm)].filter(Boolean).join(' · '),
@@ -57,4 +61,24 @@ export function gameShareImage() {
   if (!parts.length) return null;
   const name = gameShareName(parts, size);
   return { parts, size, name, src: `/detail-dne/${name}`, width: og.width, height: og.height };
+}
+
+/**
+ * The data of the quiz of a visitor ("Můj Detail dne", /detail-dne/muj/data.json; scripts/lib/my-quiz.mjs): the works in the game
+ * (what a thumbnail, a hint and the card of the end need), for each the works most like it to draw the offer from (quizSimilar),
+ * the places the game picked in each level ("Vybrat místo za mě": level → id → [{ x, y, size }]) and the places kept out of the
+ * game (skips.json of the plan: id → [{ x0, y0, x1, y1 }] in shares of the picture).
+ */
+export async function quizPageData() {
+  const works = gameWorks();
+  const { prepared } = await gamePageData();
+  const picks = Object.fromEntries(Object.entries(prepared as Record<string, Record<string, { crop: { x: number; y: number; size: number } }[]>>)
+    .map(([level, answers]) => [level, Object.fromEntries(Object.entries(answers).map(([id, crops]) => [id, crops.map((c) => ({ x: c.crop.x, y: c.crop.y, size: c.crop.size }))]))]));
+  return {
+    author: site.author,
+    works: works.map(gameWorkFields),
+    similar: quizSimilar(works),
+    picks,
+    skips: await readSkips(siteDataRoot),
+  };
 }

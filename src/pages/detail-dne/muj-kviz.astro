@@ -1,0 +1,100 @@
+---
+// The editor of "Můj Detail dne" (src/lib/my-quiz-editor.ts, scripts/lib/my-quiz.mjs): opened from the page of a work
+// (?obraz=<id>), it makes a quiz of that work and gives its address. Not for search engines (noindex, no sitemap).
+import Base from '../../layouts/Base.astro';
+import { getGamePage, url } from '../../lib/site';
+import { QUIZ_PREVIEW } from '../../../scripts/lib/my-quiz.mjs';
+
+// the texts are in stranky/detail-dne.yaml of the content repository
+const page = getGamePage();
+import '../../styles/detail-game.css';
+---
+<Base title={page.editorTitle} description={page.editorDescription} noindex messageLauncher={false}>
+  <div class="detail-game quiz-editor" data-src={url('/detail-dne/muj/data.json')} data-texts={JSON.stringify(page.lines)}>
+    <div data-problem hidden>
+      <h1>Můj Detail dne</h1>
+      <p data-problem-text></p>
+      {page.quizText.slice(1).map((p) => <p set:html={p} />)}
+    </div>
+    <div data-editor hidden>
+      <h1>Můj Detail dne</h1>
+      <p class="lead">Kvíz z obrazu <a data-work-link><b data-title></b></a>.</p>
+      {page.editorText.map((p) => <p class="lead" set:html={p} />)}
+      <h2><span class="n">1</span> {page.lines.editor_level}</h2>
+      <div class="levels" data-levels></div>
+      <p class="note" data-level-note></p>
+      <div class="columns">
+        <div>
+          <h2><span class="n">2</span> {page.lines.editor_place}</h2>
+          <p class="note">{page.lines.editor_place_note}</p>
+          <div class="whole" data-whole>
+            <img data-whole-img alt="" />
+            <div class="skips" data-skips></div>
+            <span class="frame" data-frame></span>
+          </div>
+          <p class="blocked" data-blocked hidden>{page.lines.editor_blocked}</p>
+          <button class="action quiet" type="button" data-auto>{page.lines.editor_auto}</button>
+        </div>
+        <div>
+          <h2><span class="n">3</span> {page.lines.editor_look}</h2>
+          <p class="note look-note" data-look-note></p>
+          <div class="looks" data-looks></div>
+          <h2><span class="n">4</span> {page.lines.editor_preview}</h2>
+          <div class="preview" data-preview data-window={QUIZ_PREVIEW}></div>
+          <p class="note">{page.lines.editor_offer}</p>
+          <div class="offer" data-offer></div>
+        </div>
+      </div>
+      <div class="send">
+        <input class="address" data-address readonly hidden aria-label="Odkaz na kvíz" />
+        <div class="actions">
+          <button class="action" type="button" data-share>{page.lines.editor_share}</button>
+          <a class="action quiet" data-play>{page.lines.editor_play}</a>
+        </div>
+        <p class="note" data-share-status role="status"></p>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<style is:global>
+  .quiz-editor h2 { font-size: 1.3rem; margin: 22px 0 8px; display: flex; align-items: center; gap: 10px; }
+  .quiz-editor h2 .n { font-family: var(--sans); font-size: .85rem; width: 1.7em; height: 1.7em; border-radius: 50%; display: inline-grid; place-items: center; background: var(--paper-2); color: var(--ink); }
+  .quiz-editor .lead, .quiz-editor .note { max-width: 62ch; }
+  .quiz-editor .note { font-size: .9rem; color: var(--ink-soft); margin: 4px 0 8px; }
+  .quiz-editor .levels { display: flex; gap: 6px; flex-wrap: wrap; }
+  .quiz-editor .columns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 28px; }
+  @media (min-width: 800px) { .quiz-editor .columns { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
+  .quiz-editor .whole { position: relative; line-height: 0; cursor: crosshair; }
+  .quiz-editor .whole img { width: 100%; height: auto; }
+  .quiz-editor .frame { position: absolute; border: 3px solid var(--accent); box-shadow: 0 0 0 1px var(--paper); pointer-events: none; transition: all .2s ease; }
+  .quiz-editor .frame.blocked { border-color: var(--error); }
+  .quiz-editor .skips .skip { position: absolute; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--error) 45%, transparent) 0 4px, transparent 4px 10px); pointer-events: none; }
+  .quiz-editor .blocked { color: var(--error); font-size: .9rem; margin: 6px 0; }
+  .quiz-editor .look-note { min-height: 1.4em; }
+  .quiz-editor [data-auto] { margin-top: 8px; }
+  .quiz-editor .looks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+  .quiz-editor .look { font: inherit; padding: 0; border: 2px solid transparent; background: none; color: var(--ink); cursor: pointer; display: grid; gap: 3px; text-align: center; }
+  .quiz-editor .look.on { border-color: var(--accent); }
+  .quiz-editor .look .name { font-size: .74rem; line-height: 1.2; padding-bottom: 3px; }
+  .quiz-editor .window, .quiz-editor .preview { position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: var(--paper-2); }
+  .quiz-editor .preview { max-width: 360px; border: 1px solid var(--line); }
+  .quiz-editor .window .clip, .quiz-editor .preview .clip { position: absolute; inset: 0; overflow: hidden; }
+  .quiz-editor .window .view, .quiz-editor .preview .view { position: absolute; inset: calc(-1 * var(--bleed)); overflow: hidden; }
+  .quiz-editor .window img, .quiz-editor .preview img { position: absolute; left: var(--bleed); top: var(--bleed); width: calc(100% - 2 * var(--bleed)); height: auto; max-width: none; transform-origin: 0 0; }
+  .quiz-editor .window canvas, .quiz-editor .preview canvas { position: absolute; left: var(--bleed); top: var(--bleed); width: calc(100% - 2 * var(--bleed)); height: calc(100% - 2 * var(--bleed)); image-rendering: pixelated; }
+  .quiz-editor .filters { position: absolute; width: 0; height: 0; }
+  .quiz-editor .offer { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; max-width: 360px; }
+  .quiz-editor .offer img { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--paper-2); }
+  .quiz-editor .send { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .quiz-editor .address { width: 100%; max-width: 640px; font: inherit; font-size: .85rem; color: var(--ink); background: var(--paper-2); border: 1px solid var(--line); padding: 6px 8px; margin-bottom: 10px; }
+  .quiz-editor .send .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .quiz-editor [aria-disabled] { opacity: .5; pointer-events: none; }
+  @media (max-width: 520px) { .quiz-editor .looks { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+</style>
+
+<script>
+  import { startQuizEditor } from '../../lib/my-quiz-editor';
+  const root = document.querySelector('.quiz-editor') as HTMLElement | null;
+  if (root) startQuizEditor(root);
+</script>

@@ -9,6 +9,7 @@ import { plainText, richBlocks, richParagraphs, searchDescription } from '../../
 import { readCopies } from '../../scripts/lib/site-content.mjs';
 import { HOME_PAGE_DIR, LEGACY_OG_FILE, UNCOLLECTED_PAGE_DIR, collectionPageDir, coverDir, pageShareFile, photoDir, workImageDir, yearPageDir } from '../../scripts/lib/site-images.mjs';
 import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
+import { QUIZ_LINE_KEYS } from '../../scripts/lib/schema.mjs';
 import { HOME_BUTTON, HOME_EMPTY_TEXT, HOME_HEADING, HOME_SHOW_BUTTON, HOME_TEXT, UNCOLLECTED_TEXT, homeEmptyClosing } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
 import { NO_COLLECTION_TITLE } from '../../scripts/lib/gallery-filter.mjs';
@@ -84,6 +85,8 @@ export interface Work {
   /** Link to the post with the work on Instagram (once published there). */
   instagram?: string;
   featured?: boolean;
+  /** false = never in the game Detail dne nor in a quiz of a visitor (`game` of the content repository, e.g. a nude). */
+  game?: boolean;
   /** Mockups (the work in a frame on a wall) shown on the page, independent of the status. */
   mockups?: boolean;
   /**
@@ -397,6 +400,27 @@ export function getPage(name: keyof typeof PAGES): PageText | null {
   return {
     description: searchDescription(data), title: line(data.title), heading: line(data.heading), locationLabel: line(data.location_label),
     blocks: richBlocks(data.text, { url, work: workHref }) as TextBlock[], closing: textHtml(data.closing),
+  };
+}
+
+/**
+ * The texts of the game Detail dne and of the quiz of a visitor (stranky/detail-dne.yaml): each from the copy, or its default
+ * when the copy (or the attribute) is missing; the rich ones as paragraphs of HTML (textHtml).
+ */
+export function getGamePage() {
+  const data = { ...PAGES['detail-dne'].defaults, ...(copies().pages.get('detail-dne') ?? {}) } as Record<string, unknown>;
+  const line = (value: unknown) => plainText(String(value ?? '')).trim();
+  return {
+    description: line(data.description),
+    quizDescription: line(data.quiz_description),
+    workLink: line(data.work_link),
+    editorTitle: line(data.editor_title),
+    editorDescription: line(data.editor_description),
+    quizText: textHtml(data.quiz_text),
+    editorText: textHtml(data.editor_text),
+    quizDropsText: textHtml(data.quiz_drops_text),
+    // the short fixed texts of the quiz and its editor (QUIZ_LINES), one line each
+    lines: Object.fromEntries(QUIZ_LINE_KEYS.map((key: string) => [key, line(data[key])])) as Record<string, string>,
   };
 }
 
