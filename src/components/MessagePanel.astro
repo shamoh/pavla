@@ -8,10 +8,15 @@ import MessageForm from './MessageForm.astro';
 interface Props {
   /** What this page is, for a message about it (scripts/lib/messages.mjs workContext / pageContext). */
   context: object | null;
+  /**
+   * false: no launcher in the corner (a page where it would cover something, the game); the panel opens from the footer
+   * link, and the launcher shows only while a message waits minimized, so a draft is never lost.
+   */
+  launcher?: boolean;
 }
-const { context } = Astro.props;
+const { context, launcher = true } = Astro.props;
 ---
-<div class="msg" data-message-panel data-context={JSON.stringify(context)} data-state="closed">
+<div class="msg" data-message-panel data-context={JSON.stringify(context)} data-state="closed" data-launcher={launcher ? undefined : 'off'}>
   <button type="button" class="launcher" data-msg-launcher aria-haspopup="dialog" aria-controls="msg-panel" aria-expanded="false">
     <svg class="pen" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4.5 19.5l1-4.2L16 4.8a1.6 1.6 0 0 1 2.3 0l.9.9a1.6 1.6 0 0 1 0 2.3L8.7 18.5l-4.2 1z" />
@@ -64,6 +69,7 @@ const { context } = Astro.props;
   .launcher .dot { display: none; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
   .msg[data-state='minimized'] .launcher .dot { display: inline-block; }
   .msg[data-state='compact'] .launcher, .msg[data-state='expanded'] .launcher { opacity: 0; pointer-events: none; transform: translateY(8px); }
+  .msg[data-launcher='off']:not([data-state='minimized']) .launcher { display: none; }
   .msg.tucked .launcher { transform: translateY(calc(100% + var(--msg-edge) + 8px)); }
 
   .tip {

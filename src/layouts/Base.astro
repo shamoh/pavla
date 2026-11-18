@@ -16,13 +16,14 @@ import { skipHeaderScope, skipHeaderScript } from '../../scripts/lib/skip-header
  * `type`: og:type ('article' for a work); `noindex`: a page search engines should leave out (404), without canonical;
  * `jsonLd`: structured data of the page (scripts/lib/seo.mjs graphLd), null for none.
  * `message`: what a message from this page is about (scripts/lib/messages.mjs; default: the page by its title),
- * `messagePanel`: false on the contact page, which has the form itself.
+ * `messagePanel`: false on the contact page, which has the form itself; `messageLauncher`: false = the panel and the footer
+ * link "Napsat k této stránce" without the launcher in the corner (the game, where it would cover the play).
  */
 interface Props {
   title?: string; description?: string; image?: ShareImage; type?: 'website' | 'article'; noindex?: boolean; jsonLd?: object | null;
-  message?: object | null; messagePanel?: boolean;
+  message?: object | null; messagePanel?: boolean; messageLauncher?: boolean;
 }
-const { title, description: own, image, type = 'website', noindex = false, jsonLd = null, messagePanel = true } = Astro.props;
+const { title, description: own, image, type = 'website', noindex = false, jsonLd = null, messagePanel = true, messageLauncher = true } = Astro.props;
 const description = summarize(own || `${site.author} — ${site.tagline.toLowerCase()}.`);
 const fullTitle = title ? `${title} · ${site.title}` : `${site.title} — ${site.tagline}`;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
@@ -105,7 +106,7 @@ const skipScope = skipHeaderScope(Astro.url.pathname, import.meta.env.BASE_URL);
       </nav>
     </header>
     <main><slot /></main>
-    <footer class:list={['site-footer', { 'with-launcher': withMessages }]}>
+    <footer class:list={['site-footer', { 'with-launcher': withMessages && messageLauncher }]}>
       <span class="meta">
         <span>© {new Date().getFullYear()} <NameShades text={site.author} />
         <!-- Build version: calendar versioning, the version is the build time (YY.MMDD.HHMM, Prague time). -->
@@ -122,7 +123,7 @@ const skipScope = skipHeaderScope(Astro.url.pathname, import.meta.env.BASE_URL);
       </span>
     </footer>
     {skipScope && <script is:inline set:html={skipHeaderScript(skipScope)} />}
-    {withMessages && <MessagePanel context={messageContext} />}
+    {withMessages && <MessagePanel context={messageContext} launcher={messageLauncher} />}
   </body>
 </html>
 

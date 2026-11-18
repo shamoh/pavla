@@ -264,8 +264,9 @@ function bindPanel(root: HTMLElement) {
   launcher.addEventListener('mouseleave', hideTip);
   launcher.addEventListener('focus', () => { if (launcher.matches(':focus-visible')) showTip(); });
   launcher.addEventListener('blur', hideTip);
+  // without the launcher (data-launcher="off", MessagePanel.astro) there is nothing to point at: no tip, kept for a page with it
   try {
-    if (!storage?.getItem(TIP_KEY)) {
+    if (root.dataset.launcher !== 'off' && !storage?.getItem(TIP_KEY)) {
       storage?.setItem(TIP_KEY, '1');
       tipTimer = window.setTimeout(() => {
         showTip();

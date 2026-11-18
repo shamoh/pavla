@@ -2090,6 +2090,9 @@ Návštěvník může napsat z každé stránky; zprávu doručí [Web3Forms](ht
     (—, štítek ukáže „Rozepsaná zpráva •“), **zavřený** (×; s textem se nejdřív zeptá „Zahodit rozepsanou zprávu?“).
     Esc panel schová (s textem) nebo zavře. Na telefonu je panel spodní „šuplík“ (velký přes celou výšku).
   - Je to vždy tentýž formulář, změnou velikosti se text neztratí.
+- **Detail dne**: štítek vpravo dole by zakrýval hru, a tak tam není (`messageLauncher={false}` v `Base.astro`,
+  `launcher` v `MessagePanel.astro`, `data-launcher="off"`, ani vysvětlivka); panel otevře odkaz „Napsat k této stránce“
+  v patičce. Štítek se ukáže jen se schovanou rozepsanou zprávou, aby nezůstala ztracená.
 - **Souvislost**: zpráva nese stránku, odkud vznikla („K obrazu: Ovce (2026)“, „Ke stránce: Kolekce“), křížkem jde
   odebrat. Do e-mailu jde předmět `[pavla-web] <typ>: <obraz (id) nebo stránka>`, adresa stránky a u obrazu jeho id;
   odesílatel je „Web <adresa webu>“ (`messageSender`, např. „Web pavla.kramolis.cz“), aby zpráva nevypadala jako od autorky.
@@ -2110,7 +2113,7 @@ Návštěvník může napsat z každé stránky; zprávu doručí [Web3Forms](ht
 - Kód: `scripts/lib/messages.mjs` (typy, souvislost, předmět, kontrola, data pro Web3Forms, nastavení),
   `scripts/lib/message-draft.mjs` (stavy panelu, koncept), `src/lib/message-form.ts` (chování v prohlížeči),
   `src/components/MessageForm.astro`, `src/components/MessagePanel.astro`, zapojení v `Base.astro` (props `message`,
-  `messagePanel`), `src/pages/kontakt.astro`, `src/pages/kontakt/odeslano.astro`.
+  `messagePanel`, `messageLauncher`), `src/pages/kontakt.astro`, `src/pages/kontakt/odeslano.astro`.
 - Vyzkoušení: `npm run demo`, na `/tvorba/` štítek vpravo dole, otevřít, napsat, ⤢ / ⤡ / —, přejít na jinou stránku
   (štítek „Rozepsaná zpráva“, po otevření text i souvislost zůstanou), × → „Zahodit“; na `/tvorba/2025/demo-pivonky-vjr39/`
   „Zeptat se na obraz“ (souvislost a „Zájem o koupi“, bez e-mailu nejde odeslat); odeslání ukáže poděkování s poznámkou

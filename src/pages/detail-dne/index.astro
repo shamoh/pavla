@@ -18,7 +18,7 @@ const jsonLd = graphLd(
   breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Detail dne', path: '/detail-dne/' }]),
 );
 ---
-<Base title="Detail dne" description={description} image={image} jsonLd={jsonLd} messagePanel={false}>
+<Base title="Detail dne" description={description} image={image} jsonLd={jsonLd} messageLauncher={false}>
   <Fragment set:html={gamePageHtml({ src: url('/detail-dne/data.json') })} />
 </Base>
 <script>
