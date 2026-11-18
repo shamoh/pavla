@@ -13,7 +13,7 @@ import { SKIP_HEADER_ROOM, skipHeaderScope, skipsHeader } from '../../scripts/li
 import { levelFromParam } from '../../scripts/lib/detail-teaser.mjs';
 import {
   applyGuess, archiveDays, cappedText, magicWord, tapBurst, groupDigits, dailyPuzzles, dayId, dayLabel, nextStepsHtml, perfectDay, PERFECT_DAY_TEXT, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
-  GAME_STORE, collectionHtml, archiveRoom, archiveRoomTitle, rankForms, statsTitle, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
+  GAME_STORE, collectionHtml, archiveRoom, archiveRoomTitle, rankForms, rulesMine, statsTitle, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle,
 } from '../../scripts/lib/detail-game.mjs';
 
 export { GAME_STORE };
@@ -271,6 +271,12 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     $('stats').title = statsTitle(progress);
     const ranks = root.querySelectorAll<HTMLElement>('[data-rank]');
     ranks.forEach((li) => li.classList.toggle('current', Number(li.dataset.rank) === Math.min(rank.index, ranks.length - 1)));
+    // the player's numbers by the headings of the rules too (a narrow phone has no room for the rank at the top)
+    const mine = rulesMine(progress) as Record<string, string>;
+    root.querySelectorAll<HTMLElement>('[data-mine]').forEach((el) => {
+      el.textContent = mine[el.dataset.mine as string] ?? '';
+      el.hidden = !el.textContent;
+    });
     $('archive-room').innerHTML = roomText(false);
   }
 

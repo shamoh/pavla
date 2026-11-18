@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  analyzePixels, applyGuess, archiveDays, gameDiagnostics, diagnosticsText, monthGroups, unplayedDays, daysWord, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, archiveRoom, archiveRoomTitle, cappedText, magicWord, tapBurst, groupDigits, rankForms, gameRanks, statsTitle, rulesHtml, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
+  analyzePixels, applyGuess, archiveDays, gameDiagnostics, diagnosticsText, monthGroups, unplayedDays, daysWord, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, archiveRoom, archiveRoomTitle, cappedText, magicWord, tapBurst, groupDigits, rankForms, gameRanks, statsTitle, rulesHtml, rulesMine, LOOK_COUNTS, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
   collectionHtml, gameCollection, simulatedRounds,
   PLAN_DETAIL_GAP, PLAN_HORIZON, PLAN_MAX_DETAILS, PLAN_WORK_GAP, extendPlan, planDay, planDetailOf, planDetails, planDaysByYear, planDetailsText, planUsage, planYearOf, planYearText, planYearsShown, plannedPuzzles, mergePlanDays, pragueDate, gameDiagnostics as diagnosticsOf,
   lookalikeDistance, newProgress, newRound, paletteDistance, rankLookalikes, regionDetail, regionEdges, regionPalette, rgbToLab, winTitle,
@@ -1137,4 +1137,27 @@ test('the plan by years: the year of a day, the days split by it, this year and 
   const merged = mergePlanDays({ days: { 61: { date: '2027-01-01' } }, archive: [2026] }, { year: 2026, days: { 0: { date: '2026-11-01' }, 61: { date: 'not this' } } });
   assert.deepEqual(merged, { days: { 0: { date: '2026-11-01' }, 61: { date: '2027-01-01' } }, archive: [2026] }, 'the days already there stay');
   assert.equal(pragueDate(new Date('2026-12-31T23:30:00Z')), '2027-01-01');
+});
+
+test('rulesMine: the player\'s drops, series, rank and the way to the next one by the headings of the rules', () => {
+  const rank = gameRank(1234);
+  const mine = rulesMine({ drops: 1234, streak: 3 });
+  assert.equal(mine.drops, ' · máš 1 234');
+  assert.equal(mine.streak, ' · máš 3');
+  assert.equal(mine.rank, ` · máš #${rank.index + 1} ${rank.title}`);
+  assert.equal(mine.next, `Do #${rank.index + 2} ${rank.nextTitle} ti zbývá ${groupDigits(rank.next - 1234)} 💧.`);
+  assert.equal(rulesMine({ drops: 0, streak: 0 }).rank, ` · máš #1 ${gameRanks()[0][1]}`, 'before the first game too');
+  const html = rulesHtml();
+  for (const key of Object.keys(mine)) assert.match(html, new RegExp(`data-mine="${key}" hidden`), key);
+});
+
+test('gameLooks: every level within LOOK_COUNTS, about the same count, a harder level never fewer, each look in its level', () => {
+  const levels = gameLevels();
+  const counts = levels.map((l) => l.looks.length);
+  for (const [i, level] of levels.entries()) {
+    assert.ok(counts[i] >= LOOK_COUNTS.min && counts[i] <= LOOK_COUNTS.max, `${level.id}: ${counts[i]} looks`);
+    if (i) assert.ok(counts[i] >= counts[i - 1], `${level.id} has fewer looks than the level before it`);
+    for (const id of level.looks) assert.equal(gameLooks().find((l) => l.id === id)?.level, level.id, id);
+  }
+  assert.ok(Math.max(...counts) - Math.min(...counts) <= LOOK_COUNTS.spread, `counts ${counts.join(', ')}`);
 });

@@ -22,6 +22,14 @@ export function gameLevels() {
 }
 
 /**
+ * How many looks a level has (gameLooks): each comes about once in that many days and never two days in a row (lookForDay),
+ * so fewer than `min` repeat too soon; more than `max` is too many to name and offer in the quiz editor. The levels have about
+ * the same count: they differ by at most `spread`, and a harder level never has fewer than an easier one. Rather tune or add
+ * looks than drop them.
+ */
+export const LOOK_COUNTS = { min: 5, max: 10, spread: 1 };
+
+/**
  * The looks of a close-up: a named pair of an effect (mist, raster, pixel, wave) and colours (gray, sepia, hue), null = untouched.
  * Each level draws from its own five (`level`), so no look is in two levels; a quiz of a visitor offers the same ones.
  */
@@ -917,6 +925,20 @@ export function statsTitle({ drops, streak }) {
 }
 
 /**
+ * The player's own numbers by the headings of the rules (`data-mine` of rulesHtml): the drops, the series, the rank with its number
+ * and title, and what is left to the next one. Plain text; `progress` = { drops, streak }.
+ */
+export function rulesMine({ drops, streak }) {
+  const rank = gameRank(drops);
+  return {
+    drops: ` · máš ${groupDigits(drops)}`,
+    streak: ` · máš ${streak}`,
+    rank: ` · máš #${rank.index + 1} ${rank.title}`,
+    next: `Do #${rank.index + 2} ${rank.nextTitle} ti zbývá ${groupDigits(rank.next - drops)} 💧.`,
+  };
+}
+
+/**
  * The bubble over the cap of the archive in the bar of an archive day: what it means for the player (`left` of `cap` drops the
  * archive still gives today, archiveRoom).
  */
@@ -956,7 +978,9 @@ export function cappedText({ gained, capped }) {
 /**
  * The section "Jak se hraje" under the game (built with the page, gamePageHtml): short blocks with an icon each (the day, the drops
  * with their table from gameLevels and dropsFor, the series, the archive and its cap, the ranks with the whole list folded, the
- * collection). The script of the game marks the player's rank in the list (`data-rank` = gameRank index).
+ * collection). The script of the game marks the player's rank in the list (`data-rank` = gameRank index) and fills the player's own
+ * numbers next to the headings (`data-mine`, rulesMine): on a narrow phone the line at the top has no room for the rank, and a tap
+ * on the drops leads here.
  */
 export function rulesHtml() {
   const levels = gameLevels();
@@ -972,14 +996,15 @@ export function rulesHtml() {
     <div class="rule-grid">
       <div class="rule"><h3><span aria-hidden="true">🔍</span> Tři detaily denně</h3>
         <p>Každý den tři výřezy z obrazů, v lehké, střední a těžké úrovni. Najdi mezi náhledy ten, ze kterého je. Po omylu se detail oddálí, v lehké úrovni přijde i nápověda.</p></div>
-      <div class="rule"><h3><span aria-hidden="true">💧</span> Kapky</h3>
+      <div class="rule"><h3><span aria-hidden="true">💧</span> Kapky<span class="mine" data-mine="drops" hidden></span></h3>
         <p>Za každý uhodnutý detail. Čím dřív a čím těžší úroveň, tím víc:</p>
         <table class="drops"><thead><tr><th></th>${levels.map((l) => `<th scope="col">${l.label}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
-      <div class="rule"><h3><span aria-hidden="true">🔥</span> Série</h3>
+      <div class="rule"><h3><span aria-hidden="true">🔥</span> Série<span class="mine" data-mine="streak" hidden></span></h3>
         <p>Hraj den po dni: každý další den v řadě přidá k zisku bonus, od šestého dne plný (${series} 💧 podle úrovně). Prohra sérii nepřeruší, vynechaný den ano.</p></div>
       <div class="rule"><h3><span aria-hidden="true">📅</span> Archiv</h3>
         <p>Zmeškané dny dohraješ kdykoli, za poloviční kapky a bez bonusu série. Z archivu se ale za den započte <b>nejvýš ${cap} 💧</b>, co je navíc, propadne. Obraz do sbírky přibude vždycky.</p></div>
-      <div class="rule"><h3><span aria-hidden="true">🏅</span> Hodnosti</h3>
+      <div class="rule"><h3><span aria-hidden="true">🏅</span> Hodnosti<span class="mine" data-mine="rank" hidden></span></h3>
+        <p class="mine-next" data-mine="next" hidden></p>
         <p>Kapky tě posouvají v hodnostech. Ze začátku přicházejí po dnech, pak po týdnech a nakonec po měsících, nejdéle za půl roku. Za poslední přibývají hvězdičky.</p>
         <details><summary>Všech ${ranks.length} hodností</summary><ol class="ranks">${list}</ol></details></div>
       <div class="rule"><h3><span aria-hidden="true">🖼️</span> Sbírka</h3>

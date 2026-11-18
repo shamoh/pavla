@@ -768,7 +768,10 @@ stránka je `src/pages/detail-dne/index.astro`, hra v prohlížeči `src/lib/det
   řádkem kapky, sérii (kolik dní v řadě), hodnost s číslem a kolik zbývá do další, strop archivu a kde jsou pravidla (`statsTitle`). Sekce „Jak se hraje“ pod sbírkou (`rulesHtml`, sestavená
   s markupem stránky z `gameLevels`, `dropsFor`, `archiveRoom`, `gameRanks`, takže čísla nikdy neutečou): bloky vedle sebe
   (na telefonu pod sebou) Tři detaily denně, Kapky (tabulka úroveň × pokus), Série, Archiv (strop), Hodnosti (sbalený seznam
-  všech, hráčova hodnost tučně „← ty“) a Sbírka, pod nimi „ukládá se jen v tomto prohlížeči“.
+  všech, hráčova hodnost tučně „← ty“) a Sbírka, pod nimi „ukládá se jen v tomto prohlížeči“. U nadpisů jsou hráčova čísla
+  barvou odkazů (`rulesMine`, prvky `data-mine`, bez skriptu skryté): „💧 Kapky · máš 174“, „🔥 Série · máš 3“,
+  „🏅 Hodnosti · máš #2 Mokrý štětec“ a pod ním „Do #3 … ti zbývá … 💧.“; na úzkém telefonu se hodnost do horního řádku
+  nevejde, klepnutí na kapky ji ukáže tady.
 - **Diagnostika** (jen po dobu zkoušky v rodině): sekce „Diagnostika“ na konci stránky (pod sbírkou, nad patičkou) vypíše, co je právě na obrazovce (`gameDiagnostics`):
   den (pořadí v roce, rok, datum se dnem v týdnu, dnes / archiv / budoucí), klíč dne (`2026-320`, nadpis, soubor plánu, adresa, den hry od začátku),
   úroveň a její nastavení, odkud hádanka je (spočítaná pro den / uložená v kole), obraz a výřez, stav kola, pohled tohoto
@@ -831,7 +834,7 @@ pro Instagram z `mockups/instagram/` (`prototypeScenes`), takže prototyp ukazuj
   odpovědí a dnů plánu. Změna hry na webu = změna prototypu po `npm run prototypes`, nic se nekopíruje ručně. Každý den tři různé obrazy ve třech obtížnostech (`gameLevels`, `dailyPuzzles`), pro všechny stejné (podle data od `GAME_EPOCH`,
   obrazy se v každé úrovni střídají v zamíchaném pořadí, `puzzleForLevel`). Úroveň určuje velikost výřezu `size`, část obrazu `zone`, výběr
   výřezu `pick`, počet náhledů `options`, jejich podobnost `reach`, oddálení `lastView`, pokusy `guesses`, nápovědy `hints`, násobek kapek `drops`,
-  vzhledy `looks` (pět id z katalogu `gameLooks`: pojmenovaná dvojice deformace — mlha, rastr, mozaika `drawPixels`, vlny — a barev — černobílé, sépie, posunuté; každý vzhled patří jen jedné úrovni; vzhledy úrovně se střídají v zamíchaných blocích, takže každý přijde stejně často a nikdy dva dny po sobě, `lookForDay`; hra ukáže jeho jméno, síla `effectSettings`, `effectStyle`: vše jako podíl okna (mlha 1 % = rozostření 5 px v okně 500 px, vlny 4 %, rastr 9 %, mozaika 2 %), takže je vzhled na telefonu stejně těžký jako na počítači; vlny mají v každém okně asi 6 × 10 vln (`waveRipple`) a obraz přesahuje okno o 8 % jeho velikosti (`--bleed`), aby se okraj netrhal; v prvním
+  vzhledy `looks` (pět id z katalogu `gameLooks`: pojmenovaná dvojice deformace — mlha, rastr, mozaika `drawPixels`, vlny — a barev — černobílé, sépie, posunuté; každý vzhled patří jen jedné úrovni; počet na úroveň hlídá test podle `LOOK_COUNTS`: aspoň 5 (jinak se opakují moc často), nejvýš 10 (jména jdou i do editoru kvízu), úrovně se liší nejvýš o 1 a těžší nikdy nemá míň; vzhledy úrovně se střídají v zamíchaných blocích, takže každý přijde stejně často a nikdy dva dny po sobě, `lookForDay`; hra ukáže jeho jméno, síla `effectSettings`, `effectStyle`: vše jako podíl okna (mlha 1 % = rozostření 5 px v okně 500 px, vlny 4 %, rastr 9 %, mozaika 2 %), takže je vzhled na telefonu stejně těžký jako na počítači; vlny mají v každém okně asi 6 × 10 vln (`waveRipple`) a obraz přesahuje okno o 8 % jeho velikosti (`--bleed`), aby se okraj netrhal; v prvním
   pokusu nejsilnější, s každým omylem slábnou, v posledním nejsou žádné, `effectStrength`, stejně klesají kapky `dropsFor`). Žádný pohled hádanky
   (ani oddálený) nesahá na okraj papíru ani k názvu a podpisu dole: `gameFrame` ho drží v bezpečné části obrazu (stejné okraje jako `analyzePixels`),
   pohled větší než ona se zmenší. Rozložení: výřez, stavový blok (otázka, vzhled s pokusem a kapkami, v lehké úrovni řádek nápovědy; na konci

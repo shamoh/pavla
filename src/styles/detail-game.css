@@ -177,6 +177,9 @@
 .detail-game .rule-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 28px; margin-bottom: 12px; }
 .detail-game .rule h3 { font-family: var(--serif); font-size: 1.2rem; font-weight: 500; margin: 0 0 4px; }
 .detail-game .rule p { font-size: .92rem; margin: 0 0 6px; }
+/* The player's own numbers by the headings (rulesMine): "💧 Kapky · máš 174", "🏅 Hodnosti · máš #2 Mokrý štětec". */
+.detail-game .rule h3 .mine { color: var(--accent); }
+.detail-game .rule .mine-next { color: var(--accent); }
 .detail-game .rule table.drops { border-collapse: collapse; font-size: .86rem; font-variant-numeric: tabular-nums; }
 .detail-game .rule table.drops th, .detail-game .rule table.drops td { padding: 2px 10px 2px 0; text-align: right; font-weight: 400; }
 .detail-game .rule table.drops thead th { color: var(--ink-soft); }
