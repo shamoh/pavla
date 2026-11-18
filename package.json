@@ -17,6 +17,7 @@
     "straighten": "node scripts/straighten.mjs",
     "favicons": "node scripts/favicons.mjs",
     "app-screenshots": "node scripts/app-screenshots.mjs",
+    "game-overview": "node scripts/game-overview.mjs",
     "prototypes": "node scripts/prototypes.mjs"
   },
   "dependencies": {

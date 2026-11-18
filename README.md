@@ -809,6 +809,14 @@ stránka je `src/pages/detail-dne/index.astro`, hra v prohlížeči `src/lib/det
 
 ### Prototypy
 
+**Přehled vzhledů Detailu dne pro autorku** (`npm run game-overview`, `scripts/game-overview.mjs`, šablona
+`scripts/prototypes/prehled-hry.html`): po `npm run build` zapíše `.prototypes/prehled-hry/index.html` + `img/` (mimo git):
+úrovně, stavebnice efektů a barev s čísly z `effectSettings`, všechny kombinace, každý vzhled na poslední hádance plánu
+s ním (do dneška, obrázek v největší šířce jako ve hře) s proklikáním pokusů, laboratoř (efekt, barvy, síla, velikost
+výřezu, čísla efektů) a poznámky autorky ke každému vzhledu. Kreslí funkcemi hry vloženými jako text (`effectStyle`,
+`gameFrame`, `drawPixels`…), takže po změně nastavení stačí stránku přegenerovat. Zveřejňuje se jako stránka pro autorku
+(poznámky ukládá do jejího úložiště, jinak jen do prohlížeče s tlačítkem na zkopírování).
+
 Samostatné stránky pro hledání nastavení zobrazení děl, nad daty webu (`npm run prototypes`, `scripts/prototypes.mjs`,
 `scripts/lib/prototypes.mjs`, šablony `scripts/prototypes/*.html`): zapíše je do `.prototypes/` (mimo git; jinam
 `npm run prototypes -- <složka>`), otevírají se přímo z disku a obrázky berou z `public/` dat, takže fungují jen vedle

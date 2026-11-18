@@ -1,0 +1,733 @@
+<title>Detail dne pod lupou</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Work+Sans:wght@300;400;500&display=swap&subset=latin-ext">
+<style>
+  /* Layout: one reading column of sections; the looks as a grid of cards (window + tries + numbers + a note); the lab as two columns. Colours of the site (Papír / Noc). */
+  :root {
+    --paper: #f7f4ee; --paper-2: #efeae0; --ink: #2b2724; --ink-soft: #6d655c; --line: #ddd5c7; --accent: #487282;
+    --easy: #4b7556; --medium: #487282; --hard: #a4513c; --mark: #f4e7b8;
+    --serif: 'Cormorant Garamond', Georgia, serif; --sans: 'Work Sans', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --paper: #1c1a18; --paper-2: #252220; --ink: #ece6dc; --ink-soft: #a89f93; --line: #3a3531; --accent: #8fb7c4;
+    --easy: #93bf9c; --medium: #8fb7c4; --hard: #e0937d; --mark: #3b331c; color-scheme: dark } }
+  :root[data-theme="dark"] {
+    --paper: #1c1a18; --paper-2: #252220; --ink: #ece6dc; --ink-soft: #a89f93; --line: #3a3531; --accent: #8fb7c4;
+    --easy: #93bf9c; --medium: #8fb7c4; --hard: #e0937d; --mark: #3b331c; color-scheme: dark }
+  * { box-sizing: border-box; }
+  body { background: var(--paper); color: var(--ink); font: 300 16px/1.6 var(--sans); }
+  main { max-width: 1120px; margin: 0 auto; padding-block: 32px 80px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 400; line-height: 1.15; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); }
+  h2 { font-size: clamp(1.7rem, 4vw, 2.3rem); margin-bottom: 10px; }
+  h3 { font-size: 1.45rem; }
+  p { max-width: 68ch; margin: 0 0 10px; }
+  b, strong { font-weight: 500; }
+  a { color: var(--accent); }
+  .lede { font-size: 1.08rem; color: var(--ink-soft); max-width: 68ch; margin-top: 10px; }
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 8px; }
+  .toc a { text-decoration: none; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: .9rem; }
+  .toc a:hover { border-color: var(--ink); }
+  section { padding-block: 34px 6px; border-top: 1px solid var(--line); margin-top: 30px; }
+  .muted { color: var(--ink-soft); }
+  .small { font-size: .88rem; }
+  .eyebrow { font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+  .tag { display: inline-block; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 1px 9px; border: 1px solid currentColor; }
+  .tag.easy { color: var(--easy); } .tag.medium { color: var(--medium); } .tag.hard { color: var(--hard); }
+  .table-wrap { overflow-x: auto; margin: 10px 0 16px; }
+  table { border-collapse: collapse; font-size: .92rem; font-variant-numeric: tabular-nums; min-width: 520px; }
+  th, td { text-align: left; padding: 7px 14px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th { font-weight: 500; color: var(--ink-soft); font-size: .8rem; letter-spacing: .04em; }
+  tbody th { font-weight: 400; color: var(--ink-soft); }
+  .steps { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 10px; max-width: 72ch; }
+  .steps li { padding-left: 34px; position: relative; }
+  .steps li span.n { position: absolute; left: 0; top: 1px; width: 24px; height: 24px; border-radius: 50%; background: var(--paper-2); display: grid; place-items: center; font-size: .8rem; font-weight: 500; }
+
+  /* a window on a work, drawn as the stage of the game (the functions of the game, copied in) */
+  .win { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; background: var(--paper-2); border: 1px solid var(--line); }
+  .win .filters { position: absolute; width: 0; height: 0; }
+  .win .clip { position: absolute; inset: 0; overflow: hidden; }
+  .win .view { position: absolute; inset: calc(-1 * var(--bleed, 16px)); overflow: hidden; transition: filter .5s ease; }
+  .win img { position: absolute; left: var(--bleed, 16px); top: var(--bleed, 16px); width: calc(100% - 2 * var(--bleed, 16px)); height: auto; max-width: none; transform-origin: 0 0; transition: transform .5s ease; }
+  .win canvas { position: absolute; left: var(--bleed, 16px); top: var(--bleed, 16px); width: calc(100% - 2 * var(--bleed, 16px)); height: calc(100% - 2 * var(--bleed, 16px)); image-rendering: pixelated; }
+  @media (prefers-reduced-motion: reduce) { .win .view, .win img { transition: none; } }
+  .whole { position: relative; display: inline-block; width: 100%; line-height: 0; }
+  .whole img { width: 100%; height: auto; border: 1px solid var(--line); }
+  .whole .frame { position: absolute; border: 2px solid var(--hard); box-shadow: 0 0 0 1px rgb(255 255 255 / .6); transition: all .5s ease; }
+
+  .zoom-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin: 14px 0; }
+  .zoom-row figure { margin: 0; display: grid; gap: 6px; }
+  .zoom-row figcaption { font-size: .88rem; }
+
+  .blocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 26px; margin: 12px 0; }
+  .block h3 { font-size: 1.3rem; margin-bottom: 4px; }
+  .block p { font-size: .93rem; }
+  .matrix td, .matrix th { text-align: center; min-width: 120px; }
+  .matrix tbody th { text-align: left; min-width: 150px; }
+  .matrix .used { font-weight: 400; display: grid; gap: 3px; justify-items: center; }
+  .matrix button { font: inherit; font-size: .82rem; color: var(--ink-soft); background: none; border: 1px dashed var(--line); border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+  .matrix button:hover { color: var(--ink); border-color: var(--ink); }
+
+  .level-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 26px 0 12px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 22px; }
+  .card { border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 10px; align-content: start; background: var(--paper); }
+  .card .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .card .combo { font-size: .84rem; color: var(--ink-soft); }
+  .pics { display: grid; grid-template-columns: 1fr 34%; gap: 10px; align-items: start; }
+  .tries { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .tries button, .verdicts button, .btn {
+    font: inherit; font-size: .85rem; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; cursor: pointer;
+  }
+  .tries button[aria-pressed="true"], .verdicts button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .tries button:focus-visible, .verdicts button:focus-visible, .btn:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .state { font-size: .84rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 2.6em; }
+  .params { margin: 0; padding-left: 1.1em; font-size: .86rem; color: var(--ink-soft); }
+  .verdicts { display: flex; gap: 6px; flex-wrap: wrap; }
+  textarea { width: 100%; min-height: 58px; font: inherit; font-size: .9rem; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; resize: vertical; }
+  .example { font-size: .82rem; color: var(--ink-soft); }
+
+  .lab { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 26px; align-items: start; margin-top: 14px; }
+  .lab .stagebox { display: grid; gap: 10px; }
+  .lab .stagebox .pair { display: grid; grid-template-columns: 1fr 36%; gap: 12px; align-items: start; }
+  .controls { display: grid; gap: 12px; }
+  .controls label { display: grid; gap: 3px; font-size: .9rem; }
+  .controls .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .controls output { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-size: .85rem; }
+  select, input[type="range"] { width: 100%; font: inherit; color: var(--ink); background: var(--paper); }
+  select { border: 1px solid var(--line); border-radius: 4px; padding: 5px 6px; }
+  input[type="range"] { accent-color: var(--accent); }
+  fieldset { border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px 12px; display: grid; gap: 10px; }
+  legend { font-size: .8rem; color: var(--ink-soft); letter-spacing: .04em; padding: 0 6px; }
+  .note-box { background: var(--paper-2); border-radius: 6px; padding: 14px 16px; max-width: 76ch; margin: 14px 0; }
+  .save-state { font-size: .85rem; color: var(--ink-soft); }
+  .summary { display: grid; gap: 6px; margin: 12px 0; padding: 0; list-style: none; }
+  .summary li { font-size: .92rem; }
+  .chat { display: grid; gap: 10px; margin: 14px 0; max-width: 76ch; }
+  .chat .msg { padding: 10px 14px; border-radius: 8px; white-space: pre-wrap; font-size: .95rem; }
+  .chat .q { background: var(--paper-2); justify-self: end; max-width: 85%; }
+  .chat .a { border: 1px solid var(--line); }
+  .chat .a.wait { color: var(--ink-soft); }
+  .chat-form { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; max-width: 76ch; }
+  @media (max-width: 760px) {
+    .lab { grid-template-columns: 1fr; }
+    .controls .row { grid-template-columns: 1fr; }
+  }
+</style>
+
+<main>
+  <p class="eyebrow">Pro Pavlu · stav k <span data-generated></span></p>
+  <h1>Detail dne pod lupou</h1>
+  <p class="lede">Všechno, co hra dělá s výřezy z tvých obrazů: tři úrovně a <b>zkreslení</b> výřezu (mlha, mozaika, vlnění, jiné barvy…), z jakých dílů a s jakými čísly,
+    a u každého zkreslení skutečná hádanka z posledních dnů, kterou si tu můžeš projít pokus po pokusu. U každého zkreslení napiš,
+    co s ním (nechat, ulehčit, ztížit, vyhodit). V laboratoři na konci si můžeš zkusit jiná čísla i jinou velikost výřezu.</p>
+  <nav class="toc" aria-label="Obsah">
+    <a href="#kolo">Jak funguje kolo</a><a href="#urovne">Tři úrovně</a><a href="#stavebnice">Stavebnice zkreslení</a><a href="#pocty">Kolik zkreslení</a>
+    <a href="#zkresleni">Všech <span data-look-count></span> zkreslení</a><a href="#laborator">Laboratoř</a><a href="#otazky">Zeptej se</a><a href="#poznamky">Tvoje poznámky</a>
+  </nav>
+
+  <section id="kolo">
+    <h2>Jak funguje jedno kolo</h2>
+    <ol class="steps">
+      <li><span class="n">1</span>Na první pokus je výřez <b>nejmenší</b> (nejhlubší zoom) a zkreslení <b>nejsilnější</b> (100&nbsp;%).</li>
+      <li><span class="n">2</span>Po každém omylu se výřez <b>oddálí</b> (je vidět víc obrazu) a zkreslení <b>zeslábne</b>.</li>
+      <li><span class="n">3</span>Na poslední pokus už zkreslení nepůsobí vůbec (0&nbsp;%): je vidět čistý obraz a výřez je největší.</li>
+      <li><span class="n">4</span>Výřez nikdy neukáže okraj papíru, název ani podpis: drží se 8&nbsp;% od okrajů a 18&nbsp;% od spodku obrazu.</li>
+    </ol>
+    <div class="table-wrap"><table data-round-table></table></div>
+    <p class="small muted">Velikost výřezu je podíl kratší strany obrazu: 24&nbsp;% znamená čtverec, jehož strana je čtvrtina výšky (u obrazu na šířku).</p>
+  </section>
+
+  <section id="urovne">
+    <h2>Tři úrovně</h2>
+    <div class="table-wrap"><table data-level-table></table></div>
+    <p>Stejné místo obrazu ve velikosti výřezu všech tří úrovní (bez zkreslení, na první pokus):</p>
+    <div class="zoom-row" data-level-zoom></div>
+    <div class="note-box">
+      <b>Velikost výřezu a zkreslení.</b> Dnes velikost výřezu určuje jen úroveň (24 / 16 / 11&nbsp;%), zkreslení ji nemění.
+      Šlo by ale dát každému zkreslení vlastní velikost: třeba Vlnění nebo Kouzelným barvám větší výřez (víc souvislostí),
+      Mozaice menší. V <a href="#laborator">laboratoři</a> si to zkus posuvníkem „Velikost výřezu“ a návrh ulož ke zkreslení.
+    </div>
+  </section>
+
+  <section id="stavebnice">
+    <h2>Stavebnice zkreslení</h2>
+    <p>Každé zkreslení je dvojice: <b>efekt</b> (co obraz zakrývá) a <b>barvy</b> (jak je mění). Čísla jsou pro první pokus
+      (100&nbsp;%); na dalších pokusech se zmenšují. Jsou to podíly okna, aby bylo zkreslení stejně těžké na telefonu i na počítači;
+      v pixelech je uvádím pro okno 360&nbsp;px (telefon).</p>
+    <div class="blocks" data-blocks></div>
+    <h3 style="margin-top:18px">Všechny kombinace</h3>
+    <p class="small muted">Které dvojice hra používá a v jaké úrovni. Nepoužité si můžeš vyzkoušet v laboratoři.</p>
+    <div class="table-wrap"><table class="matrix" data-matrix></table></div>
+  </section>
+
+  <section id="pocty">
+    <h2>Kolik zkreslení má každá úroveň</h2>
+    <p>Zkreslení jedné úrovně se střídají: každé přijde zhruba jednou za tolik dní, kolik jich úroveň má, a nikdy ne dva dny
+      po sobě. Proto jich nesmí být málo, jinak by se stejný princip opakoval moc často. Pravidla, která si hlídáme:</p>
+    <ul class="steps" data-count-rules></ul>
+    <div class="table-wrap"><table data-counts></table></div>
+    <p class="small muted">Sloupec „po tvých poznámkách“ počítá s tím, co u zkreslení označíš „Vyhodit“ nebo „Do jiné úrovně“.</p>
+  </section>
+
+  <section id="zkresleni">
+    <h2>Všech <span data-look-count></span> zkreslení</h2>
+    <p>Každý na skutečné hádance z plánu. Klikej na pokusy a sleduj, jak se výřez oddaluje a zkreslení slábne; malý obrázek
+      vpravo ukazuje, kde v obraze výřez je. Pod tím tvoje hodnocení a poznámka.</p>
+    <p class="save-state" data-save-state>Poznámky se ukládají…</p>
+    <div data-looks></div>
+  </section>
+
+  <section id="laborator">
+    <h2>Laboratoř</h2>
+    <p>Tady si poskládáš vlastní zkreslení: obraz, efekt, barvy, sílu, velikost výřezu i čísla efektů. Až se ti něco bude líbit,
+      ulož to jako návrh k některému zkreslení.</p>
+    <div class="lab">
+      <div class="stagebox">
+        <div class="pair"><div data-lab-window></div><div class="whole" data-lab-whole></div></div>
+        <p class="state" data-lab-state></p>
+      </div>
+      <div class="controls">
+        <div class="row">
+          <label>Obraz <select id="lab-picture" data-lab="picture"></select></label>
+          <label>Začít od zkreslení <select id="lab-look" data-lab="look"></select></label>
+        </div>
+        <div class="row">
+          <label>Efekt <select id="lab-effect" data-lab="effect">
+            <option value="">bez efektu</option><option value="mist">Mlha</option><option value="raster">Záclona (tečky)</option>
+            <option value="pixel">Mozaika</option><option value="wave">Vlnění</option></select></label>
+          <label>Barvy <select id="lab-colour" data-lab="colour">
+            <option value="">původní</option><option value="gray">černobílá</option><option value="sepia">sépie</option>
+            <option value="hue">posunuté</option></select></label>
+        </div>
+        <div class="row">
+          <label>Síla zkreslení <output data-out="strength"></output><input id="lab-strength" type="range" min="0" max="100" step="5" data-lab="strength"></label>
+          <label>Velikost výřezu <output data-out="size"></output><input id="lab-size" type="range" min="5" max="60" step="1" data-lab="size"></label>
+        </div>
+        <fieldset>
+          <legend>Čísla efektů (při síle 100 %)</legend>
+          <div class="row">
+            <label>Mlha: rozmazání <output data-out="mist"></output><input id="lab-mist" type="range" min="0" max="4" step="0.1" data-lab="mist"></label>
+            <label>Vlnění: posun <output data-out="wave"></output><input id="lab-wave" type="range" min="0" max="10" step="0.5" data-lab="wave"></label>
+          </div>
+          <div class="row">
+            <label>Mozaika: kostka <output data-out="pixelStep"></output><input id="lab-pixel" type="range" min="0.5" max="8" step="0.25" data-lab="pixelStep"></label>
+            <label>Posun barev <output data-out="hue"></output><input id="lab-hue" type="range" min="0" max="180" step="10" data-lab="hue"></label>
+          </div>
+          <div class="row">
+            <label>Záclona: rozestup teček <output data-out="rasterStep"></output><input id="lab-raster-step" type="range" min="3" max="20" step="1" data-lab="rasterStep"></label>
+            <label>Záclona: velikost teček <output data-out="rasterDot"></output><input id="lab-raster-dot" type="range" min="60" max="140" step="5" data-lab="rasterDot"></label>
+          </div>
+        </fieldset>
+        <div class="row">
+          <label>Uložit jako návrh ke zkreslení <select id="lab-target" data-lab-target></select></label>
+          <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+            <button type="button" class="btn" data-lab-save>Uložit návrh</button>
+            <button type="button" class="btn" data-lab-reset>Vrátit čísla hry</button>
+          </div>
+        </div>
+        <p class="save-state" data-lab-saved></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="otazky">
+    <h2>Zeptej se</h2>
+    <p>Když ti něco není jasné (co znamená číslo, proč je něco těžké, co by se stalo, kdyby…), napiš otázku. Odpovídá Claude,
+      zná všechna čísla z této stránky i tvoje poznámky. Odpovědi jsou jen vysvětlení, nic ve hře nemění; změny pak uděláme s Liborem.</p>
+    <div class="chat" data-chat-log aria-live="polite"></div>
+    <form class="chat-form" data-chat-form>
+      <textarea id="chat-question" data-chat-question placeholder="Například: Proč je Mozaika v lehké úrovni, když je těžká?"></textarea>
+      <button type="submit" class="btn" data-chat-send>Zeptat se</button>
+    </form>
+    <p class="small muted" data-chat-off hidden>Tady se teď ptát nejde (stránka je otevřená mimo Claude nebo otázky nejsou povolené). Napiš otázku do poznámek.</p>
+  </section>
+
+  <section id="poznamky">
+    <h2>Tvoje poznámky</h2>
+    <p>Souhrn všeho, co jsi u zkreslení napsala. Celkový dojem nebo nápad sem:</p>
+    <textarea id="general-note" data-general placeholder="Například: Na střední úrovni bych chtěla víc kontextu…"></textarea>
+    <ul class="summary" data-summary></ul>
+    <p><button type="button" class="btn" data-copy>Zkopírovat poznámky jako text</button> <span class="save-state" data-copied></span></p>
+    <p class="small muted" data-store-note></p>
+  </section>
+</main>
+
+<script>
+/*DATA*/
+
+// ---- functions of the game, copied from scripts/lib/detail-game.mjs by scripts/game-overview.mjs ----
+/*FUNCTIONS*/
+// ----
+
+const $ = (s, el = document) => el.querySelector(s);
+const pct = (v, d = 0) => `${(Math.round(v * 100 * 10 ** d) / 10 ** d).toLocaleString('cs-CZ')} %`;
+const num = (v) => v.toLocaleString('cs-CZ');
+const levelOf = (id) => PAGE.levels.find((l) => l.id === id);
+const lookOf = (id) => PAGE.looks.find((l) => l.id === id);
+const exampleOf = (lookId) => PAGE.examples.find((e) => e.look === lookId);
+const EFFECTS = { '': 'bez efektu', mist: 'Mlha', raster: 'Záclona', pixel: 'Mozaika', wave: 'Vlnění' };
+const COLOURS = { '': 'původní barvy', gray: 'černobílá', sepia: 'sépie', hue: 'posunuté barvy' };
+const ZONES = { center: 'blízko středu obrazu', any: 'kdekoli (mimo okraje a podpis)', edge: 'spíš u okrajů obrazu' };
+const PICKS = { clear: 'nejvýraznější místa obrazu (hodně kresby a kontrastu)', confusing: 'místa, která se podobají jiným obrazům' };
+const PHONE = 360;
+document.querySelector('[data-generated]').textContent = new Date(PAGE.generated).toLocaleDateString('cs-CZ');
+
+/** What a try of a level shows: the strength of the look and the frame (share of the shorter side). */
+function tryOf(level, misses, crop, ratio) {
+  return { strength: effectStrength(misses, level.guesses), frame: gameFrame(crop, misses, level.guesses - 1, ratio, level.lastView) };
+}
+
+// ---- the window ----
+let windows = 0;
+function makeWindow() {
+  const id = `wave-${++windows}`;
+  const el = document.createElement('div');
+  el.className = 'win';
+  el.dataset.wave = id;
+  el.innerHTML = `<svg class="filters" aria-hidden="true"><filter id="${id}" x="0" y="0" width="100%" height="100%"><feTurbulence type="turbulence" baseFrequency="0.012 0.02" numOctaves="2" seed="4"/><feDisplacementMap in="SourceGraphic" scale="0" xChannelSelector="R" yChannelSelector="G"/></filter></svg><div class="clip"><div class="view"><img alt=""><canvas hidden></canvas></div></div>`;
+  return el;
+}
+/** Draws `frame` of the picture into the window under the look, as the stage of the game does (showFrame + showCover). */
+function paint(el, { src, ratio, frame, effect, colour, strength, settings = PAGE.settings }) {
+  const img = el.querySelector('img');
+  if (img.getAttribute('src') !== src) img.src = src;
+  const W = el.clientWidth || 300;
+  el.style.setProperty('--bleed', `${Math.max(16, Math.ceil(W * 0.08))}px`);
+  const scale = 1 / (frame.size * Math.min(1, ratio));
+  img.style.transform = `translate(${W / 2 - frame.x * W * scale}px, ${W / 2 - frame.y * ratio * W * scale}px) scale(${scale})`;
+  const look = effectStyle(effect || null, colour || null, strength, settings, W);
+  const view = el.querySelector('.view');
+  const clip = el.querySelector('.clip');
+  view.style.filter = look.filter.replace('#game-wave', `#${el.dataset.wave}`);
+  clip.style.mask = look.mask;
+  clip.style.webkitMask = look.mask;
+  el.querySelector('feDisplacementMap').setAttribute('scale', String(look.wave));
+  el.querySelector('feTurbulence').setAttribute('baseFrequency', waveRipple(W));
+  const canvas = el.querySelector('canvas');
+  canvas.hidden = !look.pixels;
+  if (look.pixels) {
+    const draw = () => drawPixels(canvas, img, frame, look.pixels);
+    if (img.complete && img.naturalWidth) draw(); else img.addEventListener('load', draw, { once: true });
+  }
+  return look;
+}
+/** The whole picture with a rectangle where the window is. */
+function makeWhole() {
+  const el = document.createElement('div');
+  el.className = 'whole';
+  el.innerHTML = '<img alt=""><span class="frame"></span>';
+  return el;
+}
+function showWhole(el, { src, ratio, frame }) {
+  const img = el.querySelector('img');
+  if (img.getAttribute('src') !== src) img.src = src;
+  const w = frame.size * Math.min(1, ratio) * 100;
+  const h = frame.size * Math.min(1, 1 / ratio) * 100;
+  Object.assign(el.querySelector('.frame').style, { left: `${frame.x * 100 - w / 2}%`, top: `${frame.y * 100 - h / 2}%`, width: `${w}%`, height: `${h}%` });
+}
+
+// ---- words for the numbers ----
+/** What the look does at `strength` in a window of PHONE px, in words. */
+function lookWords(effect, colour, strength, settings = PAGE.settings) {
+  if (strength <= 0) return 'čistý obraz';
+  const s = effectStyle(effect || null, colour || null, strength, settings, PHONE);
+  const parts = [];
+  if (effect === 'mist') parts.push(`rozmazání ${num(Math.round(settings.mist * strength * 100) / 100)} % okna (${num(Math.round((settings.mist / 100) * PHONE * strength * 10) / 10)} px)`);
+  if (effect === 'pixel') parts.push(`mozaika ${s.pixels} × ${s.pixels} kostek`);
+  if (effect === 'wave') parts.push(`vlny posouvají až o ${s.wave} px`);
+  if (effect === 'raster') {
+    const radius = Math.round(141 - (141 - settings.rasterDot) * strength);
+    parts.push(`tečky po ${num(settings.rasterStep)} % okna, poloměr ${radius} %${radius >= 141 ? ' (nic nezakrývají)' : ''}`);
+  }
+  if (colour === 'gray') parts.push(`černobílá ${pct(strength)}`);
+  if (colour === 'sepia') parts.push(`sépie ${pct(strength)}`);
+  if (colour === 'hue') parts.push(`barvy posunuté o ${Math.round(settings.hue * strength)}°`);
+  return parts.join(', ') || 'čistý obraz';
+}
+
+// ---- how a round goes ----
+(function roundTable() {
+  const most = Math.max(...PAGE.levels.map((l) => l.guesses));
+  const head = `<thead><tr><th></th>${PAGE.levels.map((l) => `<th colspan="2"><span class="tag ${l.id}">${l.label}</span></th>`).join('')}</tr>
+    <tr><th>Pokus</th>${PAGE.levels.map(() => '<th>síla zkreslení</th><th>výřez</th>').join('')}</tr></thead>`;
+  const rows = Array.from({ length: most }, (_, m) => `<tr><th>${m + 1}.</th>${PAGE.levels.map((l) => {
+    if (m >= l.guesses) return '<td>–</td><td>–</td>';
+    const t = tryOf(l, m, { x: 0.5, y: 0.4, size: l.size }, 1.33);
+    return `<td>${pct(t.strength)}</td><td>${pct(t.frame.size)}</td>`;
+  }).join('')}</tr>`).join('');
+  $('[data-round-table]').innerHTML = head + `<tbody>${rows}</tbody>`;
+})();
+
+// ---- the levels ----
+(function levelTable() {
+  const rows = [
+    ['Výřez na první pokus', (l) => `${pct(l.size)} kratší strany`],
+    ['Výřez na poslední pokus', (l) => `až ${pct(l.lastView)}`],
+    ['Odkud se výřez bere', (l) => ZONES[l.zone]],
+    ['Jaká místa', (l) => PICKS[l.pick]],
+    ['Obrazů v nabídce', (l) => `${l.options}`],
+    ['Jak podobné jsou ostatní', (l) => `${num(l.reach)} (${l.reach < 0.6 ? 'spíš různé obrazy' : l.reach < 0.95 ? 'hodně podobné' : 'ty nejpodobnější'})`],
+    ['Pokusů', (l) => `${l.guesses}`],
+    ['Nápověda po omylu', (l) => (l.hints ? 'ano (rok, technika nebo kolekce)' : 'ne')],
+    ['Kapky (násobek)', (l) => `×${l.drops}`],
+    ['Zkreslení (střídají se)', (l) => l.looks.map((id) => lookOf(id).label).join(', ')],
+  ];
+  $('[data-level-table]').innerHTML = `<thead><tr><th></th>${PAGE.levels.map((l) => `<th><span class="tag ${l.id}">${l.label}</span></th>`).join('')}</tr></thead>
+    <tbody>${rows.map(([name, f]) => `<tr><th>${name}</th>${PAGE.levels.map((l) => `<td>${f(l)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  const e = exampleOf(PAGE.levels[0].looks[0]) || PAGE.examples[0];
+  const row = $('[data-level-zoom]');
+  for (const l of PAGE.levels) {
+    const fig = document.createElement('figure');
+    const win = makeWindow();
+    fig.append(win);
+    fig.insertAdjacentHTML('beforeend', `<figcaption><span class="tag ${l.id}">${l.label}</span> výřez ${pct(l.size)}</figcaption>`);
+    row.append(fig);
+    requestAnimationFrame(() => paint(win, { src: e.src, ratio: e.ratio, frame: gameFrame({ ...e.crop, size: l.size }, 0, 1, e.ratio, l.size), strength: 0 }));
+  }
+  const whole = document.createElement('figure');
+  const w = makeWhole();
+  whole.append(w);
+  whole.insertAdjacentHTML('beforeend', `<figcaption class="muted">${e.title}: celý obraz</figcaption>`);
+  row.append(whole);
+  showWhole(w, { src: e.src, ratio: e.ratio, frame: gameFrame({ ...e.crop, size: PAGE.levels[0].size }, 0, 1, e.ratio, PAGE.levels[0].size) });
+})();
+
+// ---- the building blocks ----
+(function blocks() {
+  const s = PAGE.settings;
+  const strengths = (l) => Array.from({ length: l.guesses }, (_, m) => effectStrength(m, l.guesses));
+  const easy = PAGE.levels[0];
+  const steps = strengths(easy).slice(0, -1);
+  const items = [
+    ['Mlha', `Obraz je rozmazaný: ${num(s.mist)} % šířky okna (na telefonu ${num(Math.round(s.mist / 100 * PHONE * 10) / 10)} px). Další pokusy: ${steps.slice(1).map((v) => `${num(Math.round(s.mist / 100 * PHONE * v * 10) / 10)} px`).join(', ')}, pak ostrý.`],
+    ['Záclona', `Obraz je vidět jen skrz kulaté tečky v mřížce po ${num(s.rasterStep)} % okna (asi ${Math.round(100 / s.rasterStep)} teček napříč). Na začátku se tečky dotýkají (poloměr ${s.rasterDot} %), s dalšími pokusy rostou, až nezakrývají nic (141 %).`],
+    ['Mozaika', `Výřez je složený z kostek, každá má průměrnou barvu svého kousku: ${Math.round(100 / s.pixelStep)} × ${Math.round(100 / s.pixelStep)} kostek. Na dalších pokusech jemnější: ${steps.slice(1).map((v) => Math.round(100 / (s.pixelStep * v))).join(', ')} kostek napříč, pak hladký obraz.`],
+    ['Vlnění', `Obraz se vlní jako na hladině: posun až o ${num(s.wave)} % okna (na telefonu ${Math.round(s.wave / 100 * PHONE)} px), asi 6 vln napříč a 10 shora dolů. Na dalších pokusech slabší.`],
+    ['Černobílá', 'Barvy zmizí (na prvním pokusu úplně), s dalšími pokusy se postupně vracejí.'],
+    ['Sépie', 'Hnědavý tón staré fotky, s dalšími pokusy slábne.'],
+    ['Posunuté barvy', `Všechny barvy se otočí kolem barevného kruhu o ${s.hue}° (modrá zčervená, zelená zfialoví…). Na dalších pokusech ${steps.slice(1).map((v) => `${Math.round(s.hue * v)}°`).join(', ')}, pak původní.`],
+  ];
+  $('[data-blocks]').innerHTML = items.map(([h, p]) => `<div class="block"><h3>${h}</h3><p>${p}</p></div>`).join('');
+  const effects = ['', 'mist', 'raster', 'pixel', 'wave'];
+  const colours = ['', 'gray', 'sepia', 'hue'];
+  const cell = (effect, colour) => {
+    const look = PAGE.looks.find((l) => (l.effect || '') === effect && (l.colour || '') === colour);
+    if (look) return `<td><span class="used">${look.label}<span class="tag ${look.level}">${levelOf(look.level).label}</span></span></td>`;
+    return `<td><button type="button" data-try="${effect}|${colour}">vyzkoušet</button></td>`;
+  };
+  $('[data-matrix]').innerHTML = `<thead><tr><th></th>${colours.map((c) => `<th>${COLOURS[c]}</th>`).join('')}</tr></thead>
+    <tbody>${effects.map((e) => `<tr><th>${EFFECTS[e]}</th>${colours.map((c) => cell(e, c)).join('')}</tr>`).join('')}</tbody>`;
+  $('[data-matrix]').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-try]');
+    if (!b) return;
+    const [effect, colour] = b.dataset.try.split('|');
+    Object.assign(lab, { effect, colour, strength: 1 });
+    syncLab();
+    document.getElementById('laborator').scrollIntoView({ behavior: 'smooth' });
+  });
+})();
+
+// ---- notes: shared through the store of the page when it has one, else only in this browser ----
+const VERDICTS = [['nechat', 'Nechat'], ['lehci', 'Ulehčit'], ['tezsi', 'Ztížit'], ['jinam', 'Do jiné úrovně'], ['vyhodit', 'Vyhodit']];
+const notes = {};
+let store = null;
+const LOCAL = 'detail-dne-prehled-poznamky';
+try { Object.assign(notes, JSON.parse(localStorage.getItem(LOCAL) || '{}')); } catch { /* none */ }
+const timers = {};
+function saveNote(id) {
+  notes[id] = { ...notes[id], updated: new Date().toISOString() };
+  try { localStorage.setItem(LOCAL, JSON.stringify(notes)); } catch { /* only in memory */ }
+  renderSummary();
+  if (!store) return;
+  clearTimeout(timers[id]);
+  timers[id] = setTimeout(async () => {
+    try {
+      await store.doc(`ohlasy/${id}`).set(notes[id]);
+      $('[data-save-state]').textContent = 'Uloženo, Libor to uvidí.';
+    } catch {
+      $('[data-save-state]').textContent = 'Uložit se nepodařilo; poznámky zůstávají v tomto prohlížeči, pošli je tlačítkem dole.';
+    }
+  }, 700);
+}
+function noteLine(id) {
+  const n = notes[id];
+  if (!n) return '';
+  const name = id === 'obecne' ? 'Celkově' : `${lookOf(id)?.label ?? id} (${levelOf(lookOf(id)?.level)?.label ?? ''})`;
+  const verdict = VERDICTS.find(([v]) => v === n.verdict)?.[1];
+  const lab = n.lab ? `návrh z laboratoře: ${EFFECTS[n.lab.effect]}, ${COLOURS[n.lab.colour]}, výřez ${n.lab.size} %, ${lookWords(n.lab.effect, n.lab.colour, 1, n.lab.settings)}` : '';
+  const parts = [verdict, n.text?.trim(), lab].filter(Boolean);
+  return parts.length ? `${name}: ${parts.join(' · ')}` : '';
+}
+function renderSummary() {
+  const lines = ['obecne', ...PAGE.looks.map((l) => l.id)].map(noteLine).filter(Boolean);
+  renderCounts();
+  $('[data-summary]').innerHTML = lines.length ? lines.map((l) => `<li>${l.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])}</li>`).join('') : '<li class="muted">Zatím žádné poznámky.</li>';
+}
+
+// ---- how many looks a level has ----
+function renderCounts() {
+  const c = PAGE.lookCounts;
+  const out = (level) => level.looks.filter((id) => ['vyhodit', 'jinam'].includes(notes[id]?.verdict)).length;
+  const rows = PAGE.levels.map((l) => {
+    const now = l.looks.length;
+    const after = now - out(l);
+    const state = after < c.min ? `pod minimem ${c.min}: je potřeba nějaké doplnit` : after > c.max ? `nad maximem ${c.max}` : 'v pořádku';
+    return `<tr><th><span class="tag ${l.id}">${l.label}</span></th><td>${now}</td><td>${after}</td><td>${state}</td></tr>`;
+  });
+  const afters = PAGE.levels.map((l) => l.looks.length - out(l));
+  const spread = Math.max(...afters) - Math.min(...afters) > c.spread || afters.some((v, i) => i && v < afters[i - 1]);
+  $('[data-counts]').innerHTML = `<thead><tr><th>Úroveň</th><th>teď</th><th>po tvých poznámkách</th><th></th></tr></thead><tbody>${rows.join('')}</tbody>`
+    + (spread ? `<tfoot><tr><td colspan="4">Úrovně by se lišily víc než o ${c.spread} (nebo by těžší měla míň než lehčí).</td></tr></tfoot>` : '');
+}
+(function countRules() {
+  const c = PAGE.lookCounts;
+  $('[data-count-rules]').innerHTML = [
+    `Na každou úroveň <b>aspoň ${c.min}</b> zkreslení, aby se nic neopakovalo moc často, a <b>nejvýš ${c.max}</b>.`,
+    'Každé má vlastní básnické jméno (Ranní mlha, Fata morgána…): stejná jména pak nabídneme i v editoru kvízu pro návštěvníky, a tam jich nesmí být příliš.',
+    `Úrovně mají <b>přibližně stejně</b> zkreslení: liší se nejvýš o ${c.spread}, a když, tak má těžší úroveň o jedno víc.`,
+    'Raději <b>ladíme a přidáváme</b>, než vyřazujeme: když nějaké vyhodíme, je potřeba za něj vymyslet jiné.',
+  ].map((t, i) => `<li><span class="n">${i + 1}</span>${t}</li>`).join('');
+})();
+
+// ---- the looks ----
+(function looks() {
+  const host = $('[data-looks]');
+  for (const level of PAGE.levels) {
+    host.insertAdjacentHTML('beforeend', `<div class="level-head"><h3>${level.label} úroveň</h3><span class="muted small">výřez ${pct(level.size)} → ${pct(level.lastView)} · ${level.guesses} pokusy · kapky ×${level.drops}</span></div>`);
+    const grid = document.createElement('div');
+    grid.className = 'cards';
+    host.append(grid);
+    for (const id of level.looks) {
+      const look = lookOf(id);
+      const e = exampleOf(id);
+      const card = document.createElement('article');
+      card.className = 'card';
+      card.innerHTML = `<div class="top"><h3>${look.label}</h3><span class="tag ${level.id}">${level.label}</span></div>
+        <div class="combo">${EFFECTS[look.effect || '']} + ${COLOURS[look.colour || '']}</div>
+        <div class="pics"><div data-w></div><div data-whole></div></div>
+        <div class="tries" role="group" aria-label="Pokus">${Array.from({ length: level.guesses }, (_, m) => `<button type="button" data-try="${m}" aria-pressed="${m === 0}">${m + 1}. pokus</button>`).join('')}</div>
+        <p class="state" data-state></p>
+        <ul class="params">${Array.from({ length: level.guesses }, (_, m) => `<li>${m + 1}. pokus: ${lookWords(look.effect, look.colour, effectStrength(m, level.guesses))}</li>`).join('')}</ul>
+        ${e ? `<p class="example">Hádanka z ${new Date(e.date).toLocaleDateString('cs-CZ')}: <a href="https://pavla.kramolis.cz${e.url}" target="_blank" rel="noopener">${e.title}</a></p>` : '<p class="example">V plánu zatím bez hádanky.</p>'}
+        <div class="verdicts" role="group" aria-label="Co s tímto zkreslením">${VERDICTS.map(([v, t]) => `<button type="button" data-verdict="${v}" aria-pressed="false">${t}</button>`).join('')}</div>
+        <textarea id="note-${id}" data-note placeholder="Poznámka k ${look.label}…"></textarea>`;
+      grid.append(card);
+      if (e) {
+        const win = makeWindow();
+        const whole = makeWhole();
+        card.querySelector('[data-w]').append(win);
+        card.querySelector('[data-whole]').append(whole);
+        let misses = 0;
+        const show = () => {
+          const t = tryOf(level, misses, e.crop, e.ratio);
+          paint(win, { src: e.src, ratio: e.ratio, frame: t.frame, effect: look.effect, colour: look.colour, strength: t.strength });
+          showWhole(whole, { src: e.src, ratio: e.ratio, frame: t.frame });
+          card.querySelector('[data-state]').textContent = `Pokus ${misses + 1} z ${level.guesses}: zkreslení ${pct(t.strength)}, výřez ${pct(t.frame.size)} kratší strany.`;
+          card.querySelectorAll('[data-try]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.try) === misses)));
+        };
+        card.querySelector('.tries').addEventListener('click', (ev) => {
+          const b = ev.target.closest('[data-try]');
+          if (b) { misses = Number(b.dataset.try); show(); }
+        });
+        requestAnimationFrame(show);
+        new ResizeObserver(() => show()).observe(win);
+      }
+      const verdicts = card.querySelectorAll('[data-verdict]');
+      const text = card.querySelector('[data-note]');
+      const fill = () => {
+        verdicts.forEach((b) => b.setAttribute('aria-pressed', String(notes[id]?.verdict === b.dataset.verdict)));
+        if (document.activeElement !== text) text.value = notes[id]?.text ?? '';
+      };
+      card.querySelector('.verdicts').addEventListener('click', (ev) => {
+        const b = ev.target.closest('[data-verdict]');
+        if (!b) return;
+        const same = notes[id]?.verdict === b.dataset.verdict;
+        notes[id] = { ...notes[id], verdict: same ? '' : b.dataset.verdict };
+        fill();
+        saveNote(id);
+      });
+      text.addEventListener('input', () => { notes[id] = { ...notes[id], text: text.value }; saveNote(id); });
+      card.fill = fill;
+      fill();
+    }
+  }
+})();
+
+// ---- the lab ----
+const lab = { picture: 0, effect: '', colour: '', strength: 1, size: 24, settings: { ...PAGE.settings } };
+const labWin = makeWindow();
+const labWhole = makeWhole();
+$('[data-lab-window]').append(labWin);
+$('[data-lab-whole]').append(labWhole);
+$('#lab-picture').innerHTML = PAGE.examples.map((e, i) => `<option value="${i}">${e.title}</option>`).join('');
+$('#lab-look').innerHTML = '<option value="">—</option>' + PAGE.looks.map((l) => `<option value="${l.id}">${l.label} (${levelOf(l.level).label})</option>`).join('');
+$('[data-lab-target]').innerHTML = PAGE.looks.map((l) => `<option value="${l.id}">${l.label} (${levelOf(l.level).label})</option>`).join('');
+function syncLab() {
+  $('#lab-picture').value = String(lab.picture);
+  $('#lab-effect').value = lab.effect;
+  $('#lab-colour').value = lab.colour;
+  $('#lab-strength').value = String(Math.round(lab.strength * 100));
+  $('#lab-size').value = String(lab.size);
+  $('#lab-mist').value = String(lab.settings.mist);
+  $('#lab-wave').value = String(lab.settings.wave);
+  $('#lab-pixel').value = String(lab.settings.pixelStep);
+  $('#lab-hue').value = String(lab.settings.hue);
+  $('#lab-raster-step').value = String(lab.settings.rasterStep);
+  $('#lab-raster-dot').value = String(lab.settings.rasterDot);
+  drawLab();
+}
+function drawLab() {
+  const e = PAGE.examples[lab.picture];
+  if (!e) return;
+  const size = lab.size / 100;
+  const frame = gameFrame({ ...e.crop, size }, 0, 1, e.ratio, size);
+  paint(labWin, { src: e.src, ratio: e.ratio, frame, effect: lab.effect, colour: lab.colour, strength: lab.strength, settings: lab.settings });
+  showWhole(labWhole, { src: e.src, ratio: e.ratio, frame });
+  const s = lab.settings;
+  const out = {
+    strength: pct(lab.strength), size: `${lab.size} % kratší strany`, mist: `${num(s.mist)} % okna`, wave: `${num(s.wave)} % okna`,
+    pixelStep: `${num(s.pixelStep)} % (${Math.round(100 / s.pixelStep)} kostek)`, hue: `${s.hue}°`, rasterStep: `${s.rasterStep} % okna`, rasterDot: `${s.rasterDot} %`,
+  };
+  for (const [k, v] of Object.entries(out)) { const o = $(`[data-out="${k}"]`); if (o) o.textContent = v; }
+  $('[data-lab-state]').textContent = `${EFFECTS[lab.effect]} + ${COLOURS[lab.colour]}: ${lookWords(lab.effect, lab.colour, lab.strength, s)}. Výřez ${frame.size === size ? `${lab.size} %` : `${pct(frame.size)} (víc se do obrazu nevejde)`}.`;
+}
+document.querySelector('.controls').addEventListener('input', (ev) => {
+  const key = ev.target.dataset.lab;
+  if (!key) return;
+  const v = ev.target.value;
+  if (key === 'picture') lab.picture = Number(v);
+  else if (key === 'look') {
+    if (!v) return;
+    const look = lookOf(v);
+    const level = levelOf(look.level);
+    const i = PAGE.examples.findIndex((e) => e.look === v);
+    Object.assign(lab, { effect: look.effect || '', colour: look.colour || '', strength: 1, size: Math.round(level.size * 100), picture: i >= 0 ? i : lab.picture });
+    $('[data-lab-target]').value = v;
+    syncLab();
+    return;
+  } else if (key === 'effect' || key === 'colour') lab[key] = v;
+  else if (key === 'strength') lab.strength = Number(v) / 100;
+  else if (key === 'size') lab.size = Number(v);
+  else lab.settings[key] = Number(v);
+  drawLab();
+});
+$('[data-lab-reset]').addEventListener('click', () => { lab.settings = { ...PAGE.settings }; syncLab(); });
+$('[data-lab-save]').addEventListener('click', () => {
+  const id = $('[data-lab-target]').value;
+  notes[id] = { ...notes[id], lab: { effect: lab.effect, colour: lab.colour, size: lab.size, settings: { ...lab.settings } } };
+  saveNote(id);
+  $('[data-lab-saved]').textContent = `Návrh uložen ke zkreslení ${lookOf(id).label}.`;
+});
+new ResizeObserver(() => drawLab()).observe(labWin);
+syncLab();
+
+// ---- general note and copying ----
+const general = $('[data-general]');
+general.addEventListener('input', () => { notes.obecne = { ...notes.obecne, text: general.value }; saveNote('obecne'); });
+$('[data-copy]').addEventListener('click', async () => {
+  const text = ['Detail dne – poznámky ke zkreslením', ...['obecne', ...PAGE.looks.map((l) => l.id)].map(noteLine).filter(Boolean)].join('\n');
+  try { await navigator.clipboard.writeText(text); $('[data-copied]').textContent = 'Zkopírováno.'; } catch {
+    const range = document.createRange();
+    range.selectNodeContents($('[data-summary]'));
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+    $('[data-copied]').textContent = 'Označeno, zkopíruj Cmd+C.';
+  }
+});
+function fillAll() {
+  if (document.activeElement !== general) general.value = notes.obecne?.text ?? '';
+  document.querySelectorAll('.card').forEach((c) => c.fill?.());
+  renderSummary();
+}
+fillAll();
+$('[data-save-state]').textContent = 'Poznámky se zatím ukládají jen v tomto prohlížeči.';
+document.querySelectorAll('[data-look-count]').forEach((el) => { el.textContent = String(PAGE.looks.length); });
+
+// ---- questions: answered by Claude through the page (sample), with everything this page knows ----
+function chatContext() {
+  const levels = PAGE.levels.map((l) => `- ${l.label}: výřez na první pokus ${pct(l.size)} kratší strany obrazu, na posledním až ${pct(l.lastView)}; místo ${ZONES[l.zone]}; ${PICKS[l.pick]}; ${l.options} obrazů v nabídce, podobnost ostatních ${num(l.reach)} (0 = různé, 1 = nejpodobnější); ${l.guesses} pokusy; nápověda ${l.hints ? 'ano' : 'ne'}; kapky ×${l.drops}.`);
+  const looks = PAGE.looks.map((k) => {
+    const l = levelOf(k.level);
+    const tries = Array.from({ length: l.guesses }, (_, m) => `${m + 1}. pokus: ${lookWords(k.effect, k.colour, effectStrength(m, l.guesses))}`).join('; ');
+    return `- ${k.label} (${l.label}): ${EFFECTS[k.effect || '']} + ${COLOURS[k.colour || '']}. ${tries}.`;
+  });
+  const s = PAGE.settings;
+  const mine = ['obecne', ...PAGE.looks.map((k) => k.id)].map(noteLine).filter(Boolean);
+  return [
+    'Jsi pomocník ve stránce, kde malířka Pavla Kramolišová (autorka obrazů) ladí denní hru Detail dne na svém webu. Ve hře hráč podle malého výřezu hádá, ze kterého z 9 obrazů je. Odpovídej Pavle česky, tykej, krátce a srozumitelně, bez programátorských slov. Vysvětluj, co znamenají čísla a jak se hra chová; nic neměníš, změny udělá její manžel Libor s Claudem. Když něco nevíš nebo to tu není, řekni to a navrhni, ať to napíše do poznámek. Nevymýšlej funkce, které hra nemá.',
+    'Jak funguje kolo: první pokus má nejmenší výřez a nejsilnější zkreslení (100 %); po každém omylu se výřez oddálí a zkreslení zeslábne rovnoměrně; poslední pokus je bez zkreslení. Výřez nikdy neukáže okraj papíru, název ani podpis (8 % od okrajů, 18 % od spodku). Velikost výřezu dnes určuje jen úroveň, ne zkreslení (šlo by přidat).',
+    `Čísla zkreslení při síle 100 % (podíl okna; okno na telefonu ~360 px): mlha ${s.mist} %, záclona tečky po ${s.rasterStep} % s poloměrem ${s.rasterDot} %, mozaika kostka ${s.pixelStep} % (${Math.round(100 / s.pixelStep)} kostek napříč), vlnění posun ${s.wave} %, posun barev ${s.hue}°.`,
+    `Pravidla počtů: na úroveň ${PAGE.lookCounts.min} až ${PAGE.lookCounts.max} zkreslení, úrovně se liší nejvýš o ${PAGE.lookCounts.spread} (těžší nikdy méně), raději ladit a přidávat než vyřazovat; zkreslení se v úrovni střídají, nikdy dva dny po sobě stejné.`,
+    'Úrovně:', ...levels, 'Zkreslení:', ...looks,
+    `Laboratoř teď: ${EFFECTS[lab.effect]} + ${COLOURS[lab.colour]}, síla ${pct(lab.strength)}, výřez ${lab.size} %.`,
+    mine.length ? `Pavliny poznámky:\n${mine.join('\n')}` : 'Pavla zatím nic nepoznamenala.',
+  ].join('\n');
+}
+(async () => {
+  const sample = await window.claude?.use?.('sample').catch(() => null);
+  const form = $('[data-chat-form]');
+  if (!sample) {
+    form.hidden = true;
+    $('[data-chat-off]').hidden = false;
+    return;
+  }
+  const log = $('[data-chat-log]');
+  const question = $('[data-chat-question]');
+  const history = [];
+  const bubble = (cls, text) => {
+    const el = document.createElement('div');
+    el.className = `msg ${cls}`;
+    el.textContent = text;
+    log.append(el);
+    return el;
+  };
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const q = question.value.trim();
+    if (!q) return;
+    question.value = '';
+    bubble('q', q);
+    const answer = bubble('a wait', 'Přemýšlím…');
+    const send = $('[data-chat-send]');
+    send.disabled = true;
+    history.push({ role: 'user', content: q });
+    const input = history.map((m, i) => (i === 0 ? { role: 'user', content: `${chatContext()}\n\nPavlina otázka: ${m.content}` } : m));
+    try {
+      const { text } = await sample(input, { onText: ({ text: t }) => { if (t) { answer.classList.remove('wait'); answer.textContent = t; } } });
+      answer.classList.remove('wait');
+      answer.textContent = text;
+      history.push({ role: 'assistant', content: text });
+    } catch (e) {
+      history.pop();
+      answer.classList.remove('wait');
+      if (e?.code === 'not_granted') { form.hidden = true; $('[data-chat-off]').hidden = false; answer.remove(); }
+      else answer.textContent = e?.code === 'rate_limited' ? 'Teď je otázek moc najednou, zkus to za chvilku.' : 'Odpověď se nepodařilo získat, zkus to znovu.';
+    } finally {
+      send.disabled = false;
+    }
+  });
+})();
+$('[data-store-note]').textContent = 'Poznámky se ukládají jen v tomto prohlížeči; pošli je Liborovi tlačítkem výše.';
+
+(async () => {
+  const db = await window.claude?.use?.('db').catch(() => null);
+  if (!db) return;
+  store = db;
+  const timer = setTimeout(() => { $('[data-save-state]').textContent = 'Úložiště zatím neodpovídá; poznámky se drží v tomto prohlížeči.'; }, 10000);
+  db.collection('ohlasy').onSnapshot((snap) => {
+    clearTimeout(timer);
+    for (const doc of snap.docs) {
+      const remote = doc.data();
+      if (!notes[doc.id] || (remote.updated || '') > (notes[doc.id].updated || '')) notes[doc.id] = { ...remote };
+    }
+    fillAll();
+    $('[data-save-state]').textContent = 'Poznámky se ukládají k této stránce, Libor je uvidí.';
+    $('[data-store-note]').textContent = 'Poznámky se ukládají k této stránce; Libor je uvidí i bez kopírování.';
+  }, () => {
+    clearTimeout(timer);
+    store = null;
+    $('[data-save-state]').textContent = 'Poznámky se ukládají jen v tomto prohlížeči; pošli je Liborovi tlačítkem dole.';
+  });
+})();
+</script>
