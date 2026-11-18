@@ -6,6 +6,7 @@ details:
     discgolfového hřiště.
   grabstejn-skica: Podkresba tužkou.
 featured: true
+game: true
 mockups: true
 size_cm:
   - 38
@@ -21,4 +22,4 @@ technique: akvarel
 text: |
   Hrad Grabštejn za letního slunného dne.
 title: Hrad Grabštejn
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18

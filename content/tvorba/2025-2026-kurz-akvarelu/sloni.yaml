@@ -2,6 +2,7 @@
 id: uba6b
 date: 2026-02-18
 featured: false
+game: true
 mockups: true
 price: 500
 size_cm:
@@ -15,4 +16,4 @@ technique: akvarel
 text: |
   Sloní máma s mládětem.
 title: Sloni
-derived_modified: 2026-10-22
+derived_modified: 2026-11-18

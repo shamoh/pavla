@@ -2,6 +2,7 @@
 id: rpxz5
 date: 2026-04-17
 featured: false
+game: true
 mockups: false
 size_cm:
   - 30
@@ -18,4 +19,4 @@ text: >
   Chrám svaté Barbory a jezuitská kolej, malováno na dvojstranu skicáku od
   kostela svatého Jakuba v Kutné Hoře.
 title: Barbora III
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18

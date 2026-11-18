@@ -2,6 +2,7 @@
 id: pujaq
 date: 2025-10-19
 featured: false
+game: true
 mockups: false
 size_cm:
   - 30
@@ -19,4 +20,4 @@ text: >
 
   obyvateli.
 title: Pavučina
-derived_modified: 2026-10-29
+derived_modified: 2026-11-18

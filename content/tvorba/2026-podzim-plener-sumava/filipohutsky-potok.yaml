@@ -2,6 +2,7 @@
 id: b7y6d
 date: 2026-09-24
 featured: false
+game: true
 mockups: false
 size_cm:
   - 21
@@ -17,4 +18,4 @@ technique: brush pen
 text: |
   Kaskády na Filipohuťském potoce, zachycené pár rychlými tahy brush penu.
 title: Filipohuťský potok
-derived_modified: 2026-10-29
+derived_modified: 2026-11-18

@@ -2,6 +2,7 @@
 id: uw24h
 date: 2026-08-19
 featured: false
+game: true
 mockups: true
 price: 500
 size_cm:
@@ -17,4 +18,4 @@ technique: akvarel
 text: |
   Rybník v Rohanově malovaný v letním odpoledni.
 title: Rohanov – rybník
-derived_modified: 2026-10-30
+derived_modified: 2026-11-18

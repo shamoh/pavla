@@ -2,6 +2,7 @@
 id: kh6ur
 date: 2026-04-23
 featured: true
+game: true
 mockups: true
 size_cm:
   - 30
@@ -16,4 +17,4 @@ technique: akvarel
 text: |
   Rozkvetlé makové pole, malováno podle fotky.
 title: Makové pole
-derived_modified: 2026-10-30
+derived_modified: 2026-11-18

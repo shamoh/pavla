@@ -2,6 +2,7 @@
 id: d6wjf
 date: 2025-10-18
 featured: false
+game: true
 mockups: true
 price: 500
 size_cm:
@@ -17,4 +18,4 @@ technique: akvarel
 text: |
   Stromy zbarvené podzimem se zrcadlí v tiché vodě slepého ramene Otavy.
 title: Slepé rameno Otavy
-derived_modified: 2026-10-22
+derived_modified: 2026-11-18

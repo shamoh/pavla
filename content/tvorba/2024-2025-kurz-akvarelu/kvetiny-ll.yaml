@@ -2,6 +2,7 @@
 id: mbdsh
 date: 2025-04-16
 featured: false
+game: true
 mockups: false
 size_cm:
   - 31
@@ -16,4 +17,4 @@ technique: akvarel
 text: |
   Kytice květů z fantazie, doplněná wabi-sabi motýlem.
 title: Kytice květin
-derived_modified: 2026-10-29
+derived_modified: 2026-11-18

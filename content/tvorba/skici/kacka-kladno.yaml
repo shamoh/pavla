@@ -2,6 +2,7 @@
 id: ufyrq
 date: 2026-04-04
 featured: true
+game: true
 mockups: false
 size_cm:
   - 16
@@ -17,4 +18,4 @@ technique: brush pen
 text: |
   Kačka si čte na lavičce, schoulená zimou.
 title: Kačka sedící
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18

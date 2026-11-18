@@ -2,6 +2,7 @@
 id: ceavt
 date: 2026-05-03
 featured: false
+game: true
 mockups: false
 size_cm:
   - 30
@@ -18,4 +19,4 @@ text: >
   Výhled z vrchu Šibeník do jarní krajiny kolem Štěkně. Nejdřív slepá kresba
   fixem, pak akvarel.
 title: Na Šibeníku
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18

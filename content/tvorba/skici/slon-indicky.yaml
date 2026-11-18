@@ -2,6 +2,7 @@
 id: y78qq
 date: 2026-08-24
 featured: false
+game: true
 mockups: false
 size_cm:
   - 15
@@ -17,4 +18,4 @@ text: >
   Slon indický v pražské zoo, skicováno ve stoje u výběhu, vlevo brush penem a
   vpravo jemným fixem.
 title: Slon indický
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18

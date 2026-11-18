@@ -2,6 +2,7 @@
 id: ct8mr
 date: 2026-08-24
 featured: false
+game: true
 mockups: false
 size_cm:
   - 21
@@ -18,4 +19,4 @@ technique: brush pen a fix
 text: >
   Gorila Kisumu v pražské zoo, skicováno vlevo brush penem a vpravo jemným fixem.
 title: Kisumu
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18

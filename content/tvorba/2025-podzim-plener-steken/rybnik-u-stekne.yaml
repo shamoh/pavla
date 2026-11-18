@@ -2,6 +2,7 @@
 id: gh8r2
 date: 2025-10-20
 featured: true
+game: true
 mockups: true
 price: 1500
 size_cm:
@@ -17,4 +18,4 @@ technique: akvarel
 text: |
   Rybník kousek od Štěkně, malováno v sychravém podzimním dni.
 title: Rybník u Štěkně
-derived_modified: 2026-11-03
+derived_modified: 2026-11-18

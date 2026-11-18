@@ -2,6 +2,7 @@
 id: zf894
 date: 2026-09-15
 featured: false
+game: true
 mockups: false
 size_cm:
   - 30
@@ -16,4 +17,4 @@ text: >
   Švestkový koláč s rozpůlenými švestkami na talíři. Malá podzimní výzva –
   sklizeň.
 title: Švestkový koláč
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18

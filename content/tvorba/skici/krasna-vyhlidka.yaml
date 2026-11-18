@@ -2,6 +2,7 @@
 id: grf3d
 date: 2021-10-28
 featured: false
+game: true
 mockups: false
 size_cm:
   - 16
@@ -18,4 +19,4 @@ text: >
   Podzimní výhled z restaurace Krásná vyhlídka pod Javorníkem u Rohanova na
   Šumavě.
 title: Krásná vyhlídka
-derived_modified: 2026-11-10
+derived_modified: 2026-11-18
