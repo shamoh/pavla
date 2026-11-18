@@ -90,7 +90,7 @@ function showPath(key, value, from) {
 /** The show of the works on sale (the footer), without the site base (url() adds it). */
 export const saleShowPath = (from) => showPath('status', 'unsold', from);
 
-/** The show of the author's selection (the second button of the home page, the footer), without the site base. */
+/** The show of the author's selection (the second button of the home page, the footer, the shortcut of the home screen icon), without the site base. */
 export const featuredShowPath = (from) => showPath('featured', FEATURED_ON, from);
 
 /**

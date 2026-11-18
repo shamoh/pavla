@@ -120,6 +120,7 @@ test('CINEMA_RANDOM / cinemaFirst / saleShowPath / featuredShowPath: ?cinema=ran
   assert.equal(cinemaToParams(new URLSearchParams('status=unsold'), { id: CINEMA_RANDOM, interval: 15 }, settings).toString(), 'status=unsold&cinema=random');
   assert.equal(featuredShowPath('home'), '/tvorba/?featured=1&cinema=random&from=home');
   assert.equal(featuredShowPath('footer'), '/tvorba/?featured=1&cinema=random&from=footer');
+  assert.equal(featuredShowPath('shortcut'), '/tvorba/?featured=1&cinema=random&from=shortcut');
   assert.throws(() => featuredShowPath('menu'), /unknown link of the show: menu/);
   const featured = new URLSearchParams(featuredShowPath('home').split('?')[1]);
   assert.equal(featured.get(CINEMA_FROM), 'home');

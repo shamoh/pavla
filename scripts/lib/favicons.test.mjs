@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
-import { APPLE_SIZE, ICO_SIZES, makeFavicons, packIco, renderIcon } from './favicons.mjs';
+import fs from 'node:fs';
+import {
+  APPLE_SIZE, ICO_SIZES, MANIFEST_SHORTCUTS, MANIFEST_SIZES, SHORTCUT_ICON_SIZE, makeFavicons, manifestIconFile, packIco, renderIcon,
+  shortcutIconFile, webManifest,
+} from './favicons.mjs';
 
 const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="20" fill="#6f9bb8"/></svg>');
 
@@ -32,10 +36,58 @@ test('renderIcon: square PNG, transparent by default, with a background when ask
   assert.deepEqual([...corner.subarray(0, 3)], [0xf7, 0xf4, 0xee]);
 });
 
-test('makeFavicons: ICO with every size, apple touch icon in its size', async () => {
-  const { ico, apple } = await makeFavicons(svg);
+test('makeFavicons: ICO with every size from the favicon, the home screen icons opaque from their own SVG', async () => {
+  const home = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#3f80c8"/></svg>');
+  const { ico, apple, manifest } = await makeFavicons(svg, home);
   assert.equal(ico.readUInt16LE(4), ICO_SIZES.length);
   assert.deepEqual(ICO_SIZES.map((_, i) => ico.readUInt8(6 + 16 * i)), ICO_SIZES);
   const meta = await sharp(apple).metadata();
   assert.deepEqual([meta.width, meta.height], [APPLE_SIZE, APPLE_SIZE]);
+  const corner = await sharp(apple).extract({ left: 0, top: 0, width: 1, height: 1 }).raw().toBuffer();
+  assert.deepEqual([...corner.subarray(0, 3)], [0x3f, 0x80, 0xc8], 'the painting reaches the corner, no paper margin');
+  assert.deepEqual(Object.keys(manifest), ['icon-192.png', 'icon-512.png']);
+  for (const size of MANIFEST_SIZES) {
+    const m = await sharp(manifest[manifestIconFile(size)]).metadata();
+    assert.deepEqual([m.width, m.height], [size, size]);
+  }
+});
+
+test('makeFavicons: a 96 px icon of every shortcut, an unknown shortcut is an error', async () => {
+  const { manifest } = await makeFavicons(svg, svg, { tvorba: svg });
+  const m = await sharp(manifest[shortcutIconFile('tvorba')]).metadata();
+  assert.deepEqual([m.width, m.height], [SHORTCUT_ICON_SIZE, SHORTCUT_ICON_SIZE]);
+  await assert.rejects(makeFavicons(svg, svg, { obchod: svg }), /icon of an unknown shortcut: obchod/);
+});
+
+test('webManifest: name, short name under the icon, colours, relative addresses, icons any and maskable', () => {
+  const m = webManifest({ title: 'Pavla Kramolišová', tagline: 'Akvarely pro radost' }, '#f7f4ee');
+  assert.equal(m.name, 'Pavla Kramolišová');
+  assert.equal(m.short_name, 'Pavla');
+  assert.equal(m.description, 'Akvarely pro radost');
+  assert.deepEqual([m.start_url, m.scope, m.display, m.lang], ['./', './', 'minimal-ui', 'cs']);
+  assert.deepEqual([m.background_color, m.theme_color], ['#f7f4ee', '#f7f4ee']);
+  assert.deepEqual(m.icons.map((i) => `${i.src} ${i.sizes} ${i.purpose}`), ['icon-192.png 192x192 any', 'icon-512.png 512x512 any', 'icon-512.png 512x512 maskable']);
+  assert.deepEqual(m.shortcuts.map((x) => `${x.name} ${x.url}`), ['Detail dne detail-dne/', 'Tvorba tvorba/'], 'no selection, no show');
+  assert.ok(m.shortcuts.every((x) => x.short_name === x.name && x.description && !x.url.startsWith('/')), 'relative');
+  assert.deepEqual(m.shortcuts[0].icons, [{ src: 'shortcut-detail-dne.png', sizes: '96x96', type: 'image/png' }]);
+  const featured = webManifest({ title: 'Pavla Kramolišová' }, '#f7f4ee', { hasFeatured: true });
+  assert.deepEqual(featured.shortcuts.map((x) => `${x.name} ${x.url}`), [
+    'Detail dne detail-dne/', 'Tvorba tvorba/', 'Promítat tvorba/?featured=1&cinema=random&from=shortcut',
+  ]);
+  assert.equal(featured.shortcuts[2].icons[0].src, 'shortcut-promitat.png');
+  assert.equal('description' in webManifest({ title: 'X' }, '#fff'), false, 'no tagline, no description');
+});
+
+test('the committed icons exist for every file of the manifest and the home screen SVG is the source', () => {
+  const root = new URL('../../', import.meta.url);
+  const shortcuts = MANIFEST_SHORTCUTS.flatMap(({ id }) => [`scripts/shortcut-icons/${id}.svg`, `public/${shortcutIconFile(id)}`]);
+  for (const file of ['scripts/home-screen-icon.svg', 'public/apple-touch-icon.png', ...MANIFEST_SIZES.map((s) => `public/${manifestIconFile(s)}`), ...shortcuts]) {
+    assert.ok(fs.existsSync(new URL(file, root)), file);
+  }
+});
+
+test('favicon.svg: the sheet of paper turns dark in the dark mode of the browser', () => {
+  const favicon = fs.readFileSync(new URL('../../public/favicon.svg', import.meta.url), 'utf8');
+  assert.match(favicon, /@media \(prefers-color-scheme: dark\)\{\.sheet\{/);
+  assert.match(favicon, /<rect class="sheet"/);
 });

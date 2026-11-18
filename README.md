@@ -67,7 +67,7 @@ pavla/                                      (toto repo, veřejné)
   binary.lock                               jméno (hash stromu) vygenerovaných obrázků, které patří k tomuto stavu main
   public/                                   vygenerované obrázky leží ve složce své stránky (= adresa, generuje pipeline,
                                             scripts/lib/site-images.mjs), nejsou v main: větev main_binary (npm run binary:pull);
-                                            statické soubory webu (favicon.svg, favicon.ico, apple-touch-icon.png, CNAME) vedle, v main:
+                                            statické soubory webu (favicon.svg, favicon.ico, apple-touch-icon.png, icon-192/512.png, CNAME) vedle, v main:
     tvorba/<rok>/<slug>-<id>/               dílo: webové velikosti, detaily, mockupy, og-<otisk>.jpg, pin-<otisk>.jpg + info.json
     tvorba/<rok>/_cover/, tvorba/<rok>/_og/ rok: vlastní úvodní fotka, obrázek pro sdílení vybraného obalu (og-<otisk>.jpg)
     tvorba/kolekce/<slug>/_cover/, …/_og/   totéž pro kolekci
@@ -1013,7 +1013,7 @@ hodnoty hledal prototyp `promitani.html`, viz *Prototypy*):
   tam patří jen ke kontaktu); výběr autorky navíc
   tlačítko „▶ Moje nejmilejší“ na úvodní stránce vedle „Prohlédnout tvorbu“ (`button_show` v `_index.yaml`, `""` = bez
   něj; `from=home`). Parametr `from` (`CINEMA_FROM`, `CINEMA_LINK_SOURCES`) jen pojmenuje odkaz webu pro událost
-  `cinema_open` (`method` `home` / `footer`, `cinemaLinkMethod`; které promítání, ukáže adresa stránky);
+  `cinema_open` (`method` `home` / `footer` / `shortcut` = zkratka „Promítat“ ikony na ploše, `cinemaLinkMethod`; které promítání, ukáže adresa stránky);
   galerie ho z adresy hned smaže, do sdíleného odkazu se nedostane. Ze stránky díla nebo kolekce (popisek, ↓, ↑) vede Zpět zpátky do promítání na stejné dílo.
 - **Nápověda:** první otevření promítání v kartě prohlížeče ukáže ovládání a na `HINT_MS` (4 s) hlášku „← → listovat
   · ↓ obraz · ↑ kolekce“, na dotykové obrazovce „tahem do stran listovat · dolů obraz · nahoru kolekce“ (`cinemaHint`); otevřené odkazem
@@ -1478,7 +1478,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | barvy děl a filtr Barva (`colors` v `info.json`, `?color=`) | vymyšlené obrázky testovacích děl (`npm run demo:prepare` jim rozebere barvy); `/tvorba/?color=zelena`, `/tvorba/?color=tyrkysova&technique=akvarel` |
 | obecná textová stránka jen se souborem (`optional`), v mapě webu | `demo-content/stranky/kurzy.yaml`; `/kurzy/`, `/sitemap.xml` |
 | nadpis úvodní stránky na dva řádky (`heading`) | `demo-content/_index.yaml`; `/` |
-| tlačítko „▶ Moje nejmilejší“ (`button_show`), „Moje nejmilejší“ v patičce = promítání výběru autorky (`method` `home` / `footer`) | `demo-content/_index.yaml`, díla s `featured: true`; `/`; `button_show: ""` jen unit testy |
+| tlačítko „▶ Moje nejmilejší“ (`button_show`), „Moje nejmilejší“ v patičce a zkratka „Promítat“ v manifestu = promítání výběru autorky (`method` `home` / `footer` / `shortcut`) | `demo-content/_index.yaml`, díla s `featured: true`; `/`; `button_show: ""` jen unit testy |
 | doporučení „vzorová věta z kostry“ (`sampleAdvice`) | v kopii testovacích dat nastav `text` kolekce na „Toto je moje nejvíc nejoblíbenější kolekce.“ a spusť `npm run demo:prepare` (log `? advice:`), pak `git checkout demo-content/` |
 | doporučení v souhrnu běhu: bez štítků, popis s malým písmenem a bez tečky / popisky detailů bez tečky / na prodej bez mockupů / text kolekce bez tečky / popis a popisek fotky bez tečky | Rozpracovaný obraz / Ráno u rybníka, Pivoňky / Máky, Bouřka nad polem, Modravské slatě, Pivoňky / Město 2026 / fotky stránek |
 | zrušení filtrů | `/tvorba/`: vyber techniku a štítek, vpravo „N z 60 děl × Zrušit filtry“; klik vrátí všechna díla i „60 děl“ a 1. stránku, dlaždice a počet na stránku zůstanou. `/tvorba/2025/`: rok zůstane. Lišta po posunu: se dvěma filtry „Zrušit vše“, s jedním ne. Panel „Upravit“: „Zrušit filtry“ vedle „Hotovo“. |
@@ -2042,33 +2042,34 @@ přidat komponentou `<Photo name="…" />`.
 
 ## Ikona webu (favicon)
 
-Zdrojem je `public/favicon.svg` (moderní prohlížeče). Z něj `npm run favicons` (`scripts/favicons.mjs`,
-`scripts/lib/favicons.mjs`) vyrobí `public/favicon.ico` (16, 32 a 48 px; starší prohlížeče, čtečky a náhledy odkazů)
-a `public/apple-touch-icon.png` (180 px na papírovém podkladu; iPhone a iPad při uložení na plochu, SVG neumí).
-Po každé změně `favicon.svg` spusť `npm run favicons` a commitni všechny tři; odkazuje na ně `Base.astro`.
-Vyzkoušení: `npm run build`, v `dist/` jsou všechny tři soubory a v hlavičce stránek tři odkazy `rel="icon"` / `rel="apple-touch-icon"`.
+Ikona v záložce je `public/favicon.svg` (moderní prohlížeče): malý akvarel na lístku papíru s roztřepeným okrajem (obloha,
+kopce, pole a červený mák; okraje rozvlní filtr `feTurbulence`). V tmavém režimu prohlížeče (`prefers-color-scheme: dark`
+ve stylu přímo v SVG) je lístek tmavý (třída `sheet`), aby v tmavé liště záložek nesvítil; obrázek na něm zůstává.
+`favicon.ico` a starší prohlížeče mají vždy světlou podobu. Ikona na plochu telefonu má vlastní zdroj
+`scripts/home-screen-icon.svg`: týž obrázek přes celý čtverec, bez lístku a okraje, aby se v zaobleném čtverci
+telefonu nezmenšil (mimo `public/`, nenasazuje se).
+`npm run favicons` (`scripts/favicons.mjs`, `scripts/lib/favicons.mjs`) z nich vyrobí:
 
-```yaml
-# fotky/o-mne-uvod.yaml (obsahové repo)
-alt: Pavla maluje u potoka na šumavské pláni   # co je na fotce
-caption: Můj ateliér pod širým nebem           # popisek pod fotkou, nepovinné
-focus: [85, 60]                                # bod [zleva %, shora %], který zůstane vidět při ořezu
-```
+- `public/favicon.ico` z `favicon.svg` (16, 32 a 48 px; starší prohlížeče, čtečky a náhledy odkazů),
+- `public/apple-touch-icon.png` (180 px; iPhone a iPad při uložení na plochu, SVG neumí; pod obrázkem papír `APPLE_BACKGROUND`,
+  aby iOS průhledné místo nezačernil),
+- `public/icon-192.png` a `public/icon-512.png` (`MANIFEST_SIZES`) pro Android,
+- `public/shortcut-<id>.png` (96 px, `SHORTCUT_ICON_SIZE`) ikony zkratek ze `scripts/shortcut-icons/<id>.svg`: Detail dne = lupa
+  nad výřezem obrázku, Tvorba = čtyři malé obrazy, Promítat = trojúhelník ▶ vyplněný obrázkem na barvě noci.
 
-**Ořez a `focus`:** stránka může fotku oříznout na pevný poměr stran
-(`<Photo name="…" aspect="2 / 1" />`). Ořez se vycentruje na bod `focus`
-(výchozí `[50, 50]` = střed). Hodí se, když je důležitá část fotky u okraje.
-`focus` mimo 0–100 nebo v jiném tvaru pipeline ohlásí jako chybu. Hodnota
-jde do veřejné kopie `content/fotky/<název>.yaml` (spolu s `alt` a `caption`; `info.json` nese jen data
-obrázků) a na web jako CSS `object-position`. Bez `aspect` se fotka
-neořezává a `focus` nemá vliv.
-
-**Bílý okraj do papíru (`blendEdge`):** `<Photo name="…" blendEdge={10} />` u fotky s bílým okrajem (akvarel na
-papíře): tělo fotky zůstane beze změny, jen pás o hloubce 10 % šířky podél okrajů (nahoře a dole stejně hluboký)
-plynule přejde do kopie fotky prolnuté s papírem (`multiply`, bílá = barva papíru palety) a krajní třetina pásu
-té kopie plynule zmizí, takže po obvodu nezůstane linka. Jsou to dvě vrstvy téhož obrázku (stáhne se jednou),
-obě s maskou; bez zástupné barvy pod obrázkem. Na tmavé paletě se nic nemění.
-Vyzkoušení: fotka s bílým okrajem, `npm run build && npm run preview`, v patičce přepnout na Pergamen.
+Manifest `/site.webmanifest` (`src/pages/site.webmanifest.ts`, `webManifest`) staví web z `site.config.yaml`: `name` = `site.title`,
+pod ikonou `short_name` = jeho první slovo, `description` = `site.tagline`, barvy `background_color` a `theme_color` = papír první
+palety, `display: minimal-ui` (stránka si nechá Zpět a Obnovit, je to galerie, ne aplikace), adresy relativně k manifestu.
+Ikony 192 a 512 px jako `any`, 512 px i jako `maskable` (obrázek přes celou plochu, slunce i kopce jsou v bezpečném kruhu).
+Zkratky po dlouhém stisku ikony na Androidu (`shortcuts`, `MANIFEST_SHORTCUTS`, každá s vlastní ikonou): „Detail dne“ (`/detail-dne/`),
+„Tvorba“ (`/tvorba/`) a „Promítat“ = promítání výběru autorky (`featuredShowPath('shortcut')`, jen s `hasFeaturedWorks`; v události
+`cinema_open` `method` `shortcut`). Nová zkratka = záznam v `MANIFEST_SHORTCUTS` a její `scripts/shortcut-icons/<id>.svg`
+(neznámé id `npm run favicons` odmítne).
+Po každé změně kteréhokoli SVG spusť `npm run favicons` a commitni výsledky; odkazuje na ně `Base.astro` (`rel="icon"`,
+`rel="apple-touch-icon"`, `rel="manifest"`).
+Vyzkoušení: `npm run build`, v `dist/` jsou `favicon.*`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `shortcut-*.png` a `site.webmanifest`;
+v Chrome DevTools → Application → Manifest se ukáže název, barvy, ikony (i náhled `maskable` v kruhu) a zkratky.
+Tmavá ikona: přepnout systém (nebo DevTools → Rendering → `prefers-color-scheme: dark`) a otevřít `/favicon.svg`.
 
 ## Zprávy od návštěvníků (formulář, „Napište mi“)
 
@@ -2600,7 +2601,7 @@ analytics:
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
   | `palette_change` | návštěvník v patičce přepne barvy webu (jen skutečná změna, ne opakovaný klik na tutéž); i „Barvy: …“ v promítání | `palette` (`papir`, `pergamen`, `noc`, `auto`); z promítání `source: cinema` |
   | `view_change` | návštěvník přepne zobrazení děl (velké obrazy / dlaždice) nebo velikost dlaždic, na úvodní stránce i v galerii (`viewEventParams`) | `listing` (`home`, `gallery`), `view` (`grid`, `tiles-s`, `tiles-m`, `tiles-l`) |
-  | `cinema_open` | promítání výpisu otevřené (`cinemaOpenParams`) | `listing` (`gallery`, `year`, `collection`), `results` (kolik děl promítá), `interval` (s), `method` (`CINEMA_OPEN_METHODS`: `button` „▶ Promítat“, `link` adresa s `cinema`, `home` tlačítko „▶ Moje nejmilejší“ na úvodní stránce, `footer` „Obrazy na prodej“ / „Moje nejmilejší“ v patičce) |
+  | `cinema_open` | promítání výpisu otevřené (`cinemaOpenParams`) | `listing` (`gallery`, `year`, `collection`), `results` (kolik děl promítá), `interval` (s), `method` (`CINEMA_OPEN_METHODS`: `button` „▶ Promítat“, `link` adresa s `cinema`, `home` tlačítko „▶ Moje nejmilejší“ na úvodní stránce, `footer` „Obrazy na prodej“ / „Moje nejmilejší“ v patičce, `shortcut` zkratka „Promítat“ ikony na ploše telefonu) |
   | `cinema_close` | promítání zavřené nebo opuštěné na stránku díla či kolekce (`cinemaCloseParams`) | `listing`, `reason` (`CINEMA_CLOSE_REASONS`: `button` ×, `esc` Esc nebo konec celé obrazovky, `back` Zpět, `work` stránka díla, `collection` kolekce), `seconds`, `shown` (kolik děl ukázalo) |
   | `game_start` | první tip v kole hry Detail dne (otevření stránky měří zobrazení stránky; `gameEventParams`) | `level` (`easy`, `medium`, `hard`; do 2026-11-16 `lehka`, `stredni`, `tezka`), `day` (klíč dne `2026-320`, `dayId`; do 2026-11-16 číslo od prvního dne, např. `15`), `archive` (`yes` = den z archivu, `no` = dnešek), `look` (vzhled dne z `gameLooks`, např. `mosaic`) |
   | `game_end` | kolo hry Detail dne skončilo (uhádnuté nebo po posledním pokusu) | jako `game_start` a `solved` (`yes` / `no`), `misses` (omyly), `drops` (získané kapky), `streak` (série dnů po kole), `work_id`, `work_title` (hádaný obraz) |

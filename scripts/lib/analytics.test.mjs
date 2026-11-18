@@ -74,8 +74,8 @@ test('trackEvent: sends through gtag when the Google tag is on the page, otherwi
 test('cinema_open / cinema_close: the listing, how it opened, why it closed, how long and how many works', () => {
   assert.equal(EVENTS.cinema, 'cinema_open');
   assert.equal(EVENTS.cinemaClose, 'cinema_close');
-  assert.deepEqual(CINEMA_OPEN_METHODS, ['button', 'link', 'home', 'footer']);
-  assert.deepEqual(CINEMA_LINK_SOURCES.map(cinemaLinkMethod), ['home', 'footer'], 'a link of the site counted apart');
+  assert.deepEqual(CINEMA_OPEN_METHODS, ['button', 'link', 'home', 'footer', 'shortcut']);
+  assert.deepEqual(CINEMA_LINK_SOURCES.map(cinemaLinkMethod), ['home', 'footer', 'shortcut'], 'a link of the site counted apart');
   assert.deepEqual([null, '', 'menu', 'contact'].map(cinemaLinkMethod), ['link', 'link', 'link', 'link'], 'any other address = link');
   assert.equal(cinemaOpenParams({ listing: 'gallery', results: 3, interval: 15, method: 'home' }).method, 'home');
   assert.deepEqual(cinemaOpenParams({ listing: 'year', results: 12, interval: 15, method: 'link' }), { listing: 'year', results: 12, interval: 15, method: 'link' });
