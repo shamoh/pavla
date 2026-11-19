@@ -6,6 +6,7 @@ import {
 } from '../../scripts/lib/detail-game.mjs';
 import { levelFromParam } from '../../scripts/lib/detail-teaser.mjs';
 import { QUIZ_SAFE, cropExcluded, quizWindows, quizCrop, quizEventParams, quizOffer, quizShareText, quizToParams, quizUrl } from '../../scripts/lib/my-quiz.mjs';
+import { GAME_TWO_COLUMNS, skipHeaderScope, skipsHeader, startTop } from '../../scripts/lib/skip-header.mjs';
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, trackEvent } from '../../scripts/lib/analytics.mjs';
 
 type Work = { id: string; title: string; sub: string; url: string; folder: string; widths: number[]; ratio: number };
@@ -146,4 +147,10 @@ export async function startQuizEditor(root: HTMLElement) {
   addEventListener('resize', () => requestAnimationFrame(render));
   $('editor').hidden = false;
   setLevel(state.level, true);
+  // only once it is drawn (before that the page is too short to scroll): a fresh visit, and always on a phone, has the title of the
+  // editor on top, as the game and the quiz (scripts/lib/skip-header.mjs)
+  const phoneLike = !matchMedia(GAME_TWO_COLUMNS).matches || innerHeight < 700;
+  const entry = performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined;
+  const page = { path: location.pathname, scope: skipHeaderScope(location.pathname, BASE || '/'), hash: location.hash, navigation: entry?.type ?? '' };
+  if (skipsHeader(page) || phoneLike) scrollTo({ top: startTop(root.getBoundingClientRect().top, scrollY, phoneLike) });
 }

@@ -28,6 +28,18 @@ export function skipsHeader(page) {
   return Boolean(page.scope) && (page.path + '/').startsWith(page.scope) && !page.hash && page.navigation === 'navigate';
 }
 
+/**
+ * Where a page drawn by its script (the game Detail dne, a quiz of a visitor) scrolls so its title is on top: `top` = the top of
+ * its root in the window now, `scrollY` the scroll now; `flush` (a phone upright, a low screen) right at the top, so the stage and
+ * the thumbnails fit, otherwise `room` px under it as the pages of Tvorba open. Never above the page.
+ */
+export function startTop(top, scrollY, flush, room = SKIP_HEADER_ROOM) {
+  return Math.max(0, top + scrollY - (flush ? 0 : room));
+}
+
+/** The media query of the two columns of the game (stage beside the thumbnails); without it a page of the game is phone-like. */
+export const GAME_TWO_COLUMNS = '(min-width: 800px), (orientation: landscape) and (min-width: 560px)';
+
 /** Scrolls the window so that `main` starts `room` px under its top edge, when the page skips the header. */
 export function skipHeader(scope, room, main) {
   var entry = window.performance && performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null;

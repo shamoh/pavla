@@ -814,6 +814,64 @@ export function monthGroups(days, epoch, played = null, levels = []) {
  * green, the missed ones red, none faded any more). `work` = { id, title, url }, `src` = its small picture, `round` (newRound,
  * applyGuess), `targetId` = the right one.
  */
+/** Room in px kept under the thumbnails at the bottom of the screen. */
+export const SCREEN_GAP = 12;
+/** The smallest the stage gets: everything fits on the screen first, only on an absurdly small one it gives up. */
+export const MIN_STAGE = 120;
+
+/**
+ * The size of the stage (and the widest the thumbnails may be) so the stage, the status and all thumbnails fit on the screen under
+ * the top of the game (the game and a quiz of a visitor, fitStage):
+ * - one column (a phone upright): the stage as big as it can be with the status and all thumbnails under it (MIN_STAGE only on an
+ *   absurdly small screen);
+ * - two columns (`wide`: a computer, a phone on its side): the stage takes its half but no more than the height of the screen, and the
+ *   thumbnails get narrower until the status and all of them fit by the stage too (a phone on its side is low).
+ * All in px: `full` = the width the stage has without a limit, `screen` = the height of the window, `top` = the top of the stage
+ * under the top of the game, `status` and `options` = their heights, `optionsWidth` = the width of the thumbnails now.
+ * Returns { stage, options } (options = their widest, or null = as wide as they are).
+ */
+export function stageFit({ wide, full, screen, top, status, options, optionsWidth }) {
+  if (wide) {
+    const free = screen - top - SCREEN_GAP;
+    // three rows of 4 : 3 thumbnails, three in a row, gaps of 6 px: height = 3 × (width - 12) / 3 × 3 / 4 + 12 = (width - 12) × 3 / 4 + 12
+    const forOptions = screen - top - status - 10 - SCREEN_GAP;
+    const widest = Math.round(((forOptions - 12) * 4) / 3 + 12);
+    return { stage: Math.round(Math.max(MIN_STAGE, Math.min(full, free))), options: widest < optionsWidth ? Math.max(160, widest) : null };
+  }
+  const below = status + options + 12 + 10 + SCREEN_GAP;
+  return { stage: Math.round(Math.max(MIN_STAGE, Math.min(full, screen - top - below))), options: null };
+}
+
+/**
+ * Fits the stage of a drawn round in `root` (its .stage, .status and .options) to the screen (stageFit), measured once for each `key`
+ * in `fitted` (the toolbar of a mobile browser comes and goes while playing, and nothing may change with it); the game keys it by the
+ * width, level and archive, a quiz by the width. Sets the width of the stage, its bleed and the widest the thumbnails may be.
+ */
+export function fitStageIn(root, { wide, key, fitted }) {
+  const stage = root.querySelector('.stage');
+  if (!stage) return;
+  const options = root.querySelector('.options');
+  const status = root.querySelector('.status');
+  if (!fitted.has(key)) {
+    stage.style.width = '';
+    options.style.maxWidth = '';
+    fitted.set(key, stageFit({
+      wide,
+      full: stage.clientWidth,
+      screen: innerHeight,
+      top: stage.getBoundingClientRect().top - root.getBoundingClientRect().top,
+      status: status.offsetHeight,
+      options: options.offsetHeight,
+      optionsWidth: options.clientWidth,
+    }));
+  }
+  const fit = fitted.get(key);
+  stage.style.width = `${fit.stage}px`;
+  // the picture reaches beyond the window by a share of it, more than the wave and the blur take (effectSettings: 4 % + 1 %)
+  stage.style.setProperty('--bleed', `${Math.max(16, Math.ceil(fit.stage * 0.08))}px`);
+  options.style.maxWidth = fit.options ? `${fit.options}px` : '';
+}
+
 /**
  * Sets a freshly drawn stage (the game and a quiz) without its transitions (`apply`), so it never moves there from where the browser put it first:
  * a new picture is the whole work until it gets its frame, and a transition from there would show the whole work being looked

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  analyzePixels, applyGuess, archiveDays, gameDiagnostics, diagnosticsText, monthGroups, unplayedDays, daysWord, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, archiveRoom, archiveRoomTitle, cappedText, magicWord, tapBurst, groupDigits, rankForms, gameRanks, statsTitle, rulesHtml, rulesMine, LOOK_COUNTS, optionHtml, withoutMotion, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
+  analyzePixels, applyGuess, archiveDays, gameDiagnostics, diagnosticsText, monthGroups, unplayedDays, daysWord, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, chooseDecoys, confusingCrops, dailyPuzzles, drawPixels, dropsFor, effectSettings, effectStrength, effectStyle, waveRipple, frameSource, gameLevels, inZone, prepareLevel, puzzleForLevel, finishRound, archiveRoom, archiveRoomTitle, cappedText, magicWord, tapBurst, groupDigits, rankForms, gameRanks, statsTitle, rulesHtml, rulesMine, LOOK_COUNTS, optionHtml, withoutMotion, stageFit, MIN_STAGE, SCREEN_GAP, gameDay, gameFrame, gameHash, gameHint, gameRandom, gameRank, gameShareText, gameShuffle, gameLooks, dropsWord, lookForDay, techniqueFamily, lookKey, representativeSample, windowHtml,
   collectionHtml, gameCollection, simulatedRounds,
   PLAN_DETAIL_GAP, PLAN_HORIZON, PLAN_MAX_DETAILS, PLAN_WORK_GAP, extendPlan, planDay, planDetailOf, planDetails, planDaysByYear, planDetailsText, planUsage, planYearOf, planYearText, planYearsShown, plannedPuzzles, mergePlanDays, pragueDate, gameDiagnostics as diagnosticsOf,
   lookalikeDistance, newProgress, newRound, paletteDistance, rankLookalikes, regionDetail, regionEdges, regionPalette, rgbToLab, winTitle,
@@ -1206,4 +1206,24 @@ test('withoutMotion: the stage is set with its transitions off, laid out, and on
   log.length = 0;
   withoutMotion([], () => log.push('apply'));
   assert.deepEqual(log, ['apply']);
+});
+
+test('stageFit: on a phone the stage leaves room for the status and all thumbnails; beside them it takes no more than the screen', () => {
+  // a phone 360 × 740, the stage 60 px under the title (the buttons on their own line), status 60, thumbnails 320
+  const phone = { wide: false, full: 328, screen: 740, top: 60, status: 60, options: 320, optionsWidth: 328 };
+  const fit = stageFit(phone);
+  assert.equal(fit.stage, 740 - 60 - (60 + 320 + 12 + 10 + SCREEN_GAP));
+  assert.equal(fit.options, null);
+  // everything still fits: top + stage + the rest = the screen
+  assert.equal(phone.top + fit.stage + 60 + 320 + 12 + 10 + SCREEN_GAP, 740);
+  // a big screen: never wider than it is
+  assert.equal(stageFit({ ...phone, screen: 2000 }).stage, 328);
+  // an absurdly small screen: MIN_STAGE
+  assert.equal(stageFit({ ...phone, screen: 300 }).stage, MIN_STAGE);
+  // two columns: the stage at most the height left, the thumbnails narrower when they would not fit by it
+  const wide = { wide: true, full: 600, screen: 500, top: 50, status: 80, options: 400, optionsWidth: 500 };
+  const beside = stageFit(wide);
+  assert.equal(beside.stage, 500 - 50 - SCREEN_GAP);
+  assert.equal(beside.options, Math.round(((500 - 50 - 80 - 10 - SCREEN_GAP - 12) * 4) / 3 + 12));
+  assert.equal(stageFit({ ...wide, screen: 1400 }).options, null, 'room enough: as wide as they are');
 });

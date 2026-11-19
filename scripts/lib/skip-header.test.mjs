@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SKIP_HEADER_ROOM, SKIP_HEADER_SCOPES, skipHeaderScope, skipHeaderScript, skipsHeader } from './skip-header.mjs';
+import { SKIP_HEADER_ROOM, SKIP_HEADER_SCOPES, skipHeaderScope, skipHeaderScript, skipsHeader, startTop } from './skip-header.mjs';
 
 const page = (over = {}) => ({ path: '/tvorba/2026/maky-ab12c/', scope: '/tvorba/', hash: '', navigation: 'navigate', ...over });
 
@@ -67,4 +67,14 @@ test('skipHeaderScope: Tvorba and the game, with the base path of the site; noth
   assert.equal(skipHeaderScope('/web/detail-dne/', '/web/'), '/web/detail-dne/');
   for (const path of ['/', '/o-mne/', '/kontakt/', '/detail-dnes/', '/tvorbax/']) assert.equal(skipHeaderScope(path), '', path);
   assert.equal(skipsHeader({ path: '/detail-dne/', scope: skipHeaderScope('/detail-dne/'), hash: '', navigation: 'navigate' }), true);
+});
+
+test('startTop: the title of a page drawn by its script on top; flush on a phone, the room of Tvorba otherwise, never above the page', () => {
+  // the root 300 px down in the window, scrolled by 100: its top is at 400 in the page
+  assert.equal(startTop(300, 100, true), 400);
+  assert.equal(startTop(300, 100, false), 400 - SKIP_HEADER_ROOM);
+  assert.equal(startTop(300, 100, false, 30), 370);
+  // already scrolled past it, or at the very top: never a negative scroll
+  assert.equal(startTop(-50, 20, true), 0);
+  assert.equal(startTop(5, 0, false), 0);
 });

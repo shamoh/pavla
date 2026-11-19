@@ -34,7 +34,9 @@ import '../../../styles/detail-game.css';
 <style is:global>
   .my-quiz .level-name { font-size: .55em; color: var(--ink-soft); font-family: var(--sans); letter-spacing: .04em; }
   .my-quiz .address { width: 100%; font: inherit; font-size: .85rem; color: var(--ink); background: var(--paper-2); border: 1px solid var(--line); padding: 6px 8px; margin-bottom: 10px; }
-  .my-quiz .head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  /* the buttons beside the title when they fit, else together on their own line under it (the game keeps its head on one line) */
+  .detail-game.my-quiz .game-head { flex-wrap: wrap; row-gap: 8px; }
+  .my-quiz .head-actions { display: flex; flex-wrap: nowrap; gap: 8px; }
   .my-quiz .problem:empty { display: none; }
   .my-quiz .problem { color: var(--error); }
   .my-quiz [data-info] p { max-width: 62ch; }

@@ -9,11 +9,11 @@
 // The prototype of the game (.prototypes/detail-dne.html, scripts/lib/prototypes.mjs) runs this same code, bundled, with its own
 // options (GameOptions): the data inside the page, its own memory, a look or a collection chosen by its tuning, days to come.
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, gameEventParams, trackEvent } from '../../scripts/lib/analytics.mjs';
-import { SKIP_HEADER_ROOM, skipHeaderScope, skipsHeader } from '../../scripts/lib/skip-header.mjs';
+import { GAME_TWO_COLUMNS, skipHeaderScope, skipsHeader, startTop } from '../../scripts/lib/skip-header.mjs';
 import { levelFromParam } from '../../scripts/lib/detail-teaser.mjs';
 import {
   applyGuess, archiveDays, cappedText, magicWord, tapBurst, groupDigits, dailyPuzzles, dayId, dayLabel, nextStepsHtml, perfectDay, PERFECT_DAY_TEXT, daysWord, diagnosticsText, gameDiagnostics, monthGroups, unplayedDays, dayFromParam, dayMarks, gameDate, keptPuzzle, roundPuzzle, drawPixels, dropsFor, dropsWord, effectSettings, effectStrength, effectStyle, waveRipple, finishRound, gameDay, gameFrame,
-  GAME_STORE, collectionHtml, archiveRoom, archiveRoomTitle, lastViewOf, optionHtml, rankForms, rulesMine, statsTitle, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle, withoutMotion,
+  GAME_STORE, collectionHtml, archiveRoom, archiveRoomTitle, lastViewOf, optionHtml, rankForms, rulesMine, statsTitle, roundKey as gameRoundKey, gameCollection, gameLevels, gameLooks, gameRank, gameShareText, mergePlanDays, planYearOf, plannedPuzzles, newProgress, newRound, winTitle, withoutMotion, fitStageIn,
 } from '../../scripts/lib/detail-game.mjs';
 
 export { GAME_STORE };
@@ -34,7 +34,7 @@ const localDate = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 /** When the stage and the thumbnails stand side by side: a big screen, or one on its side (a phone); the same query as in the page's CSS. */
-const TWO_COLUMNS = '(min-width: 800px), (orientation: landscape) and (min-width: 560px)';
+const TWO_COLUMNS = GAME_TWO_COLUMNS;
 /** How many days the archive shows before "Starší dny". */
 const ARCHIVE_SHOWN = 14;
 /** The word typed anywhere on the page (not in a field) that shows or hides the diagnostics; on a phone five taps on the title. */
@@ -194,46 +194,9 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
     root.querySelector('[data-wave-ripple]')?.setAttribute('baseFrequency', waveRipple(size));
   }
 
-  /**
-   * The stage and the thumbnails always fit on the screen under the game's top, measured once for each level and width (the toolbar
-   * of a mobile browser comes and goes while playing, and nothing may change with it):
-   * - one column (a phone upright): the stage as big as it can be with the status and all thumbnails under it (MIN_STAGE only on an absurdly small screen);
-   * - two columns (TWO_COLUMNS: a computer, a phone on its side): the stage takes its half but no more than the height of the screen,
-   *   and the thumbnails get narrower until the status and all of them fit by the stage too (a phone on its side is low).
-   */
+  /** The stage and the thumbnails always fit on the screen under the game's top (stageFit), measured once per width, level and day kind. */
   const fitted = new Map<string, { stage: number; options: number | null }>();
-  const SCREEN_GAP = 12;
-  /** The smallest the stage gets: everything fits on the screen first, only on an absurdly small one it gives up. */
-  const MIN_STAGE = 120;
-  function fitStage() {
-    const stage = root.querySelector('.stage') as HTMLElement | null;
-    if (!stage) return;
-    const options = root.querySelector('.options') as HTMLElement;
-    const status = root.querySelector('.status') as HTMLElement;
-    const wide = matchMedia(TWO_COLUMNS).matches;
-    const key = `${innerWidth}:${store.level}:${archive()}`;
-    if (!fitted.has(key)) {
-      stage.style.width = '';
-      options.style.maxWidth = '';
-      const full = stage.clientWidth;
-      const top = stage.getBoundingClientRect().top - root.getBoundingClientRect().top;
-      if (wide) {
-        const free = innerHeight - top - SCREEN_GAP;
-        // three rows of 4 : 3 thumbnails, three in a row, gaps of 6 px: height = 3 × (width - 12) / 3 × 3 / 4 + 12 = (width - 12) × 3 / 4 + 12
-        const forOptions = innerHeight - top - status.offsetHeight - 10 - SCREEN_GAP;
-        const widest = Math.round(((forOptions - 12) * 4) / 3 + 12);
-        fitted.set(key, { stage: Math.round(Math.max(MIN_STAGE, Math.min(full, free))), options: widest < options.clientWidth ? Math.max(160, widest) : null });
-      } else {
-        const below = status.offsetHeight + options.offsetHeight + 12 + 10 + SCREEN_GAP;
-        fitted.set(key, { stage: Math.round(Math.max(MIN_STAGE, Math.min(full, innerHeight - top - below))), options: null });
-      }
-    }
-    const fit = fitted.get(key)!;
-    stage.style.width = `${fit.stage}px`;
-    // the picture reaches beyond the window by a share of it, more than the wave and the blur take (effectSettings: 4 % + 1 %)
-    stage.style.setProperty('--bleed', `${Math.max(16, Math.ceil(fit.stage * 0.08))}px`);
-    options.style.maxWidth = fit.options ? `${fit.options}px` : '';
-  }
+  const fitStage = () => fitStageIn(root, { wide: matchMedia(TWO_COLUMNS).matches, key: `${innerWidth}:${store.level}:${archive()}`, fitted });
 
   function placePicture(round: any) {
     const img = root.querySelector('.stage img') as HTMLImageElement | null;
@@ -709,7 +672,7 @@ export async function startGame(root: HTMLElement, options: GameOptions = {}): P
    */
   const phoneLike = () => !matchMedia(TWO_COLUMNS).matches || innerHeight < 700;
   function toGame(smooth = false) {
-    const top = Math.max(0, root.getBoundingClientRect().top + scrollY - (phoneLike() ? 0 : SKIP_HEADER_ROOM));
+    const top = startTop(root.getBoundingClientRect().top, scrollY, phoneLike());
     scrollTo({ top, behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
   }
   addEventListener('resize', () => {

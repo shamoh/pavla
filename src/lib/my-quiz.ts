@@ -3,9 +3,10 @@
 // reload plays on); "Zkopírovat odkaz" gives it back. No drops, no series: the same stage, thumbnails and hints as the game
 // (the pure functions of scripts/lib/detail-game.mjs and the look of src/styles/detail-game.css).
 import {
-  applyGuess, drawPixels, effectSettings, effectStrength, effectStyle, gameFrame, newRound, optionHtml, waveRipple, winTitle, withoutMotion,
+  applyGuess, drawPixels, effectSettings, effectStrength, effectStyle, fitStageIn, gameFrame, newRound, optionHtml, waveRipple, winTitle, withoutMotion,
 } from '../../scripts/lib/detail-game.mjs';
 import { QUIZ_EDITOR_PATH, QUIZ_PATH, QUIZ_SAFE, QUIZ_STORE, quizEventParams, quizFromParams, quizOnOpen, quizShareText, quizToParams, quizUrl, quizView } from '../../scripts/lib/my-quiz.mjs';
+import { GAME_TWO_COLUMNS, skipHeaderScope, skipsHeader, startTop } from '../../scripts/lib/skip-header.mjs';
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, trackEvent } from '../../scripts/lib/analytics.mjs';
 
 type Work = { id: string; title: string; sub: string; year: number; technique: string; collection: string; collectionTitle: string; text: string; url: string; folder: string; widths: number[]; ratio: number };
@@ -63,11 +64,14 @@ export async function startQuiz(root: HTMLElement) {
   const dropsText = ($('drops-text') as unknown as HTMLTemplateElement | null)?.innerHTML.trim() ?? '';
   ($('make') as HTMLAnchorElement).href = `${BASE}${QUIZ_EDITOR_PATH}?obraz=${work.id}`;
 
+  /** The stage and the thumbnails always fit on the screen under the title, as in the game (stageFit), measured once per width. */
+  const fitted = new Map<string, { stage: number; options: number | null }>();
+  const fitStage = () => fitStageIn(root, { wide: matchMedia(GAME_TWO_COLUMNS).matches, key: String(innerWidth), fitted });
+
   function place() {
     const stage = root.querySelector('.stage') as HTMLElement;
     const img = stage.querySelector('img') as HTMLImageElement;
     const size = stage.clientWidth;
-    stage.style.setProperty('--bleed', `${Math.max(16, Math.ceil(size * 0.08))}px`);
     if (round.over) {
       const scale = 1 / Math.max(1, work.ratio);
       img.style.transform = `translate(${(size - size * scale) / 2}px, ${(size - size * work.ratio * scale) / 2}px) scale(${scale})`;
@@ -140,6 +144,7 @@ export async function startQuiz(root: HTMLElement) {
         ${result}
       </div>
     </div>`;
+    fitStage();
     const img = root.querySelector('.stage img') as HTMLImageElement;
     const view = root.querySelector('.stage .view') as HTMLElement;
     const clip = view.parentElement as HTMLElement;
@@ -158,6 +163,8 @@ export async function startQuiz(root: HTMLElement) {
     round = applyGuess(round, { targetId: work.id }, options, id, level.guesses, level.hints);
     if (round === before) return;
     keep({ params, round });
+    // the card of the end may be under the screen: there after the picture has come out, a scroll, not a jump (as the game)
+    if (round.over) setTimeout(() => root.querySelector('.result')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 1600);
     if (!before.guesses.length) trackEvent(EVENTS.gameStart, quizEventParams(quiz));
     if (round.over) trackEvent(EVENTS.gameEnd, quizEventParams(quiz, { solved: round.solved, misses: misses() }));
     render(stageNow());
@@ -190,11 +197,17 @@ export async function startQuiz(root: HTMLElement) {
     const share = target.closest('[data-copy]') as HTMLElement | null;
     if (share) copy(share);
   });
-  addEventListener('resize', () => requestAnimationFrame(place));
+  addEventListener('resize', () => requestAnimationFrame(() => { fitStage(); place(); }));
   $('info').hidden = true;
   $('quiz').hidden = false;
   // the params of the page itself are its address now: the copy button gives them back
   params = quizToParams({ workId: quiz.workId, level: level.id, x: quiz.crop.x, y: quiz.crop.y, look: quiz.look.id, offer: quiz.offer }).toString();
   keep({ params, round });
   render();
+  // only once it is drawn (before that the page is too short to scroll): a fresh visit, and always on a phone, has the title of the
+  // quiz on top, as the game (scripts/lib/skip-header.mjs)
+  const phoneLike = !matchMedia(GAME_TWO_COLUMNS).matches || innerHeight < 700;
+  const entry = performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined;
+  const page = { path: location.pathname, scope: skipHeaderScope(location.pathname, BASE || '/'), hash: location.hash, navigation: entry?.type ?? '' };
+  if (skipsHeader(page) || phoneLike) scrollTo({ top: startTop(root.getBoundingClientRect().top, scrollY, phoneLike) });
 }
