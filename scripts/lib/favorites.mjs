@@ -89,6 +89,23 @@ export function favoritesLinkState(ids, { page, param, max }) {
   return href ? { kind: 'link', count: ids.length, href } : { kind: 'over', count: ids.length, href: null };
 }
 
+/**
+ * "Seznam" in a show of favourites (the gallery with ?favorites=1): the address of "Můj výběr" with the works of the show
+ * (`showIds`, in the order of the gallery) that are still favourites. More than `max` = the page without ids (the
+ * visitor's own favourites, the same works) when the favourites are the only filter (`onlyFavorites`), else none; none
+ * also without any favourite left. Self-contained (no other function of this module).
+ */
+export function showSelectionLink(showIds, favorites, { page, param, max, onlyFavorites }) {
+  const liked = new Set(favorites);
+  const ids = showIds.filter((id) => liked.has(id));
+  if (!ids.length) return null;
+  if (ids.length <= max) return `${page}?${param}=${ids.join(',')}`;
+  return onlyFavorites ? page : null;
+}
+
+/** What a listing of the own favourites says without any (the gallery with ?favorites=1, "Můj výběr"). */
+export const NO_FAVORITES_TEXT = 'Zatím tu nic není. Srdíčkem u obrazu si ho přidáte do oblíbených.';
+
 /** "N obrazů" of "Můj výběr" in Czech. */
 export function worksWord(count) {
   if (count === 1) return '1 obraz';

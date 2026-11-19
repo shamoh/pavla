@@ -6,13 +6,14 @@
 // a link to its page. "Barvy: …" switches the colours of the cinema (its own, cinema.palette = Noc by default,
 // remembered apart from those of the pages); "Celá obrazovka" while the browser has not gone to the whole screen by
 // itself (opened by a link). The pictures are AVIF where the browser can (<picture>, cinemaSources), else WebP, else
-// JPEG. Keys: ← → step, Space pause, ↓ the page of the work, ↑ its collection, L the heart of the favourites (src/lib/favorites.ts;
+// JPEG. Keys: ← → step, Space pause, ↓ the page of the work, ↑ its collection, S "Seznam" (the listing), L the heart of the favourites (src/lib/favorites.ts;
 // also its button after the title in the caption), Esc closes. A finger (or the mouse)
 // moves the work along and brings its neighbour (src/lib/follow-swipe.ts); a finger up = its collection, down = the
-// page of the work, like ↑ ↓. The screen stays on while it runs (Screen Wake Lock). Where it is in the address, the
+// page of the work, like ↑ ↓; two fingers pinched together = "Seznam", like S. The screen stays on while it runs
+// (Screen Wake Lock). Where it is in the address, the
 // history and the statistics of the show is up to the gallery (the hooks).
 import { autoHide } from '../../scripts/lib/work-viewer.mjs';
-import { CINEMA_STORAGE_KEYS, captionMode, cinemaPalette, cinemaSources, fitBox, imageWidth, intervalLabel, lingerMs, CINEMA_HINT_KEY, HINT_MS, cinemaHint, fullscreenHint, shuffledOrder, wrapIndex } from '../../scripts/lib/cinema.mjs';
+import { CINEMA_STORAGE_KEYS, cinemaRunCounts, pinchedIn, captionMode, cinemaPalette, cinemaSources, fitBox, imageWidth, intervalLabel, lingerMs, CINEMA_HINT_KEY, HINT_MS, cinemaHint, fullscreenHint, shuffledOrder, wrapIndex } from '../../scripts/lib/cinema.mjs';
 import { EVENTS, SHARE_COPY, SHARE_NATIVE, trackEvent } from '../../scripts/lib/analytics.mjs';
 import { paletteEventParams } from '../../scripts/lib/palettes.mjs';
 import { copiedText } from '../../scripts/lib/share.mjs';
@@ -27,15 +28,33 @@ export interface CinemaWork {
 }
 export interface CinemaSettings {
   intervals: number[]; defaultInterval: number; fadeMs: number; controlsMs: number; captionMs: number; marginPercent: number; palette: string;
-  swipe: { fraction: number; minPx: number; flickPxPerMs: number };
+  swipe: { fraction: number; minPx: number; flickPxPerMs: number; pinch: number };
 }
+/**
+ * How the show was closed or left (CINEMA_CLOSE_METHODS by reason): its button or link (button, click), a key, the end
+ * of the whole screen, two fingers pinched together, a finger up or down.
+ */
+export type CloseMethod = 'button' | 'key' | 'fullscreen' | 'pinch' | 'click' | 'swipe';
+type ListMethod = 'button' | 'key' | 'pinch';
+/** What the statistics get of a run: how long, how many works, how many steps by a finger, and how it ended. */
+export interface CinemaRun { ms: number; shown: number; swipes: number; keys: number; swipes_missed: number; method?: CloseMethod }
+
 export interface CinemaHooks {
   /** A work shown or another interval picked (the address). */
   shown: (id: string, interval: number) => void;
-  /** Closed: why, how long it ran and how many works it showed. Leaving to a work or a collection, the page goes on. */
-  closed: (reason: 'button' | 'esc' | 'back' | 'work' | 'collection', run: { ms: number; shown: number }) => void;
+  /**
+   * Closed: why, the run (CinemaRun) and how it was asked for (`run.method`, none for Back); `leaving` = to another page
+   * (a work, a collection, "Seznam" of a show of favourites), the page goes on.
+   */
+  closed: (reason: 'close' | 'back' | 'work' | 'collection' | 'list' | 'selection', run: CinemaRun, leaving: boolean) => void;
   /** The link of the show shared or copied. */
   shared: (method: string) => void;
+  /**
+   * "Seznam" (and the key S, two fingers pinched together): the works of the show (`ids`, in the order of the listing) as a listing, its address and
+   * tooltip. An address on this page (the listing with its filters) closes the show; another ("Můj výběr" of a show of
+   * favourites) leaves to it. Null or no hook = no "Seznam".
+   */
+  list?: (ids: string[]) => { href: string; title: string } | null;
 }
 
 const CAPTION_LABELS: Record<string, string> = { timed: 'Popisky: na chvíli', on: 'Popisky: stále', off: 'Popisky: skryté' };
@@ -55,6 +74,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   const layers = [...root.querySelectorAll<HTMLElement>('.cinema-layer')];
   const caption = $<HTMLAnchorElement>('.cinema-caption');
   const toCollection = $<HTMLAnchorElement>('.cinema-collection');
+  const toList = $<HTMLAnchorElement>('.cinema-list');
   const intervalsBox = $('.cinema-intervals');
   const pauseButton = $<HTMLButtonElement>('.cinema-pause');
   const captionsButton = $<HTMLButtonElement>('.cinema-captions');
@@ -66,7 +86,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   const paletteButton = $<HTMLButtonElement>('.cinema-palette');
   const heartButton = $<HTMLButtonElement>('.cinema-heart');
 
-  type Show = { works: CinemaWork[]; order: string[]; index: number; interval: number; paused: boolean; full: boolean; shown: number; since: number };
+  type Show = { works: CinemaWork[]; order: string[]; index: number; interval: number; paused: boolean; full: boolean; shown: number; counter: ReturnType<typeof cinemaRunCounts>; since: number };
   let show: Show | null = null;
   const byId = new Map<string, CinemaWork>();
   let cur = 0; // the layer shown
@@ -281,7 +301,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   document.addEventListener('fullscreenchange', () => {
     renderFullscreen();
     // leaving the whole screen (Esc, the browser) closes the cinema too
-    if (!document.fullscreenElement && show?.full) close('esc');
+    if (!document.fullscreenElement && show?.full) close('close', 'fullscreen');
   });
   let wake: { release: () => Promise<void> } | null = null;
   async function lock() {
@@ -347,30 +367,82 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   });
   // "?" in the controls (a phone has no keys) and the key ?: the hint again
   $('.cinema-help').addEventListener('click', () => showHint());
-  $('.cinema-close').addEventListener('click', () => close('button'));
+  $('.cinema-close').addEventListener('click', () => close('close', 'button'));
   $('.cinema-prev').addEventListener('click', () => step(-1));
   $('.cinema-next').addEventListener('click', () => step(1));
   // leaving to the page of the work or its collection: the address keeps the show, Back returns to it
-  caption.addEventListener('click', () => leave('work'));
-  toCollection.addEventListener('click', () => leave('collection'));
-  function leave(reason: 'work' | 'collection') {
-    if (show) hooks.closed(reason, { ms: Date.now() - show.since, shown: show.shown });
+  caption.addEventListener('click', () => leave('work', 'click'));
+  toCollection.addEventListener('click', () => leave('collection', 'click'));
+  // "Seznam" (the key S): the works of the show as a listing (hooks.list), again after every heart (the key L too);
+  // with a modifier key the browser opens the link elsewhere and the show goes on
+  toList.addEventListener('click', (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    toListing('button');
+  });
+  function renderList() {
+    const list = show && hooks.list ? hooks.list(show.works.map((w) => w.id)) : null;
+    toList.hidden = !list;
+    if (list) {
+      toList.href = list.href;
+      toList.title = `${list.title} (S)`;
+    } else {
+      toList.removeAttribute('href');
+    }
+  }
+  onFavoritesChange(renderList);
+  /** The listing of "Seznam": this page = the show closes, another = it leaves to it; false without "Seznam". */
+  function toListing(method: ListMethod) {
+    if (!show || toList.hidden) return false;
+    const target = new URL(toList.href, location.href);
+    if (target.pathname === location.pathname) {
+      close('list', method);
+      return true;
+    }
+    // the only listing on another page: "Můj výběr" of a show of favourites
+    leave('selection', method);
+    location.assign(target.href);
+
+    return true;
+  }
+  /** The run so far for the statistics, `method` = how it ends. */
+  const runOf = (s: Show, method?: CloseMethod): CinemaRun => ({ ms: Date.now() - s.since, shown: s.shown, ...s.counter.counts, ...(method ? { method } : {}) });
+  function leave(reason: 'work' | 'collection' | 'selection', method: CloseMethod) {
+    if (show) hooks.closed(reason, runOf(show, method), true);
   }
   // ↓ or a finger down: the page of the work; ↑ or a finger up: its collection (none: it says so); whether it leaves
-  function toWork() {
+  function toWork(method: 'key' | 'swipe') {
     if (!show) return false;
-    leave('work');
+    leave('work', method);
     location.assign(work(show.index).url);
     return true;
   }
-  function toItsCollection() {
+  function toItsCollection(method: 'key' | 'swipe') {
     if (!show) return false;
     const c = collections[work(show.index).collection];
     if (!c) { say('Obraz není v žádné kolekci'); return false; }
-    leave('collection');
+    leave('collection', method);
     location.assign(c.url);
     return true;
   }
+  // two fingers pinched together (like closing a photo of a phone gallery, pinchedIn) = "Seznam"; not on a zoomed page,
+  // where a pinch zooms out (the cinema leaves zooming in to the browser: touch-action: pinch-zoom). Touch events, not
+  // pointers: a browser may take two fingers for zooming and cancel their pointers (follow-swipe lets go of them).
+  let pinch: { start: number; last: number } | null = null;
+  const spread = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const zoomed = () => (window.visualViewport?.scale ?? 1) > 1.01;
+  root.addEventListener('touchstart', (e) => {
+    // the second finger starts a pinch; one alone or a third = none
+    pinch = show && e.touches.length === 2 && !zoomed() ? { start: spread(e.touches), last: spread(e.touches) } : null;
+  }, { passive: true });
+  root.addEventListener('touchmove', (e) => { if (pinch && e.touches.length === 2) pinch.last = spread(e.touches); }, { passive: true });
+  root.addEventListener('touchend', () => {
+    if (!pinch) return;
+    const p = pinch;
+    pinch = null;
+    if (!zoomed() && pinchedIn(p.start, p.last, settings.swipe)) toListing('pinch');
+  }, { passive: true });
+  root.addEventListener('touchcancel', () => { pinch = null; }, { passive: true });
   for (const el of root.querySelectorAll<HTMLElement>('.cinema-controls, .cinema-caption')) {
     el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') controls.hold(true); });
     el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') controls.hold(false); });
@@ -378,18 +450,20 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   root.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' && show) { controls.show(); linger(); } });
   document.addEventListener('keydown', (e) => {
     if (!show) return;
-    if (e.key === 'Escape') { close('esc'); return; }
+    if (e.key === 'Escape') { close('close', 'key'); return; }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const target = e.target instanceof Element ? e.target : null;
     if (e.key === ' ' && !target?.closest('button, a')) { e.preventDefault(); togglePause(); fullscreen(); return; }
     if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); return; }
     if (e.key === '?') { e.preventDefault(); showHint(); return; }
     if (e.key === 'l' || e.key === 'L') { e.preventDefault(); toggleHeart(); return; }
+    if (e.key === 's' || e.key === 'S') { e.preventDefault(); toListing('key'); return; }
     const act: Record<string, () => void> = {
-      ArrowLeft: () => step(-1),
-      ArrowRight: () => step(1),
-      ArrowDown: toWork,
-      ArrowUp: toItsCollection,
+      // steps by keys are counted (cinemaRunCounts), those by ‹ › not
+      ArrowLeft: () => { show!.counter.stepped('key'); step(-1); },
+      ArrowRight: () => { show!.counter.stepped('key'); step(1); },
+      ArrowDown: () => toWork('key'),
+      ArrowUp: () => toItsCollection('key'),
     };
     if (act[e.key]) { e.preventDefault(); act[e.key](); }
     fullscreen();
@@ -408,7 +482,9 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
       near.style.opacity = '1';
       return near;
     },
-    stepped: (dir) => {
+    stepped: (dir, pointerType) => {
+      // a step by a finger (not the mouse) for the statistics
+      show!.counter.stepped(pointerType);
       const here = layers[cur];
       const near = layers[1 - cur];
       here.style.transition = 'none';
@@ -421,13 +497,15 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     // a swipe that slid back: the time left, at least the shortest interval
     settled: (near) => { if (near) near.style.opacity = ''; schedule(lingerMs(swipeLeft, settings)); },
     started: () => { swipeLeft = stopTimer(); },
+    // a finger swipe that slid back: is the threshold swipe.fraction right? (cinema_close swipes_missed)
+    missed: (pointerType) => show?.counter.missed(pointerType),
     tapped: (e) => {
       linger();
       // a tap: the controls on, the next tap off (a mouse shows them by moving)
       if (e.pointerType === 'mouse') controls.show(); else controls.toggle();
       fullscreen();
     },
-    vertical: (dir) => (dir > 0 ? toItsCollection() : toWork()),
+    vertical: (dir) => (dir > 0 ? toItsCollection('swipe') : toWork('swipe')),
     ignore: (e) => Boolean((e.target as HTMLElement).closest('button, a')),
     swipe: settings.swipe,
   });
@@ -439,7 +517,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     ahead.clear();
     for (const w of works) byId.set(w.id, w);
     const ids = works.map((w) => w.id);
-    show = { works, order: shuffledOrder(ids, firstId), index: 0, interval, paused: false, full: false, shown: 1, since: Date.now() };
+    show = { works, order: shuffledOrder(ids, firstId), index: 0, interval, paused: false, full: false, shown: 1, counter: cinemaRunCounts(), since: Date.now() };
     // over everything: the rest of the page is out of reach (keyboard, screen readers) while it runs
     document.body.append(root);
     inerted = [...document.body.children].filter((el): el is HTMLElement => el !== root && el instanceof HTMLElement && !el.inert);
@@ -455,6 +533,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     renderIntervals();
     renderPause();
     renderFullscreen();
+    renderList();
     controls.hide();
     root.focus({ preventScroll: true });
     if (method === 'button') fullscreen();
@@ -465,9 +544,10 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     hint(method);
     return true;
   }
-  function close(reason: 'button' | 'esc' | 'back') {
+  /** Closed here: `method` = how (none for Back, which comes from the gallery). */
+  function close(reason: 'close' | 'back' | 'list', method?: CloseMethod) {
     if (!show) return;
-    const run = { ms: Date.now() - show.since, shown: show.shown };
+    const run = runOf(show, method);
     show = null;
     seq++;
     stopTimer();
@@ -478,7 +558,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     inerted = [];
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     release();
-    hooks.closed(reason, run);
+    hooks.closed(reason, run, false);
   }
   return {
     open,

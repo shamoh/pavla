@@ -1023,6 +1023,7 @@ pro Instagram z `mockups/instagram/` (`prototypeScenes`), takže prototyp ukazuj
     má přednost), pauza,
   - „Popisky“ přepíná `CAPTION_MODES`: na chvíli (výchozí, popisek každého obrazu zmizí po `captionMs`), stále, skryté;
     s ovládáním je popisek vždy vidět; pamatuje se `pavla.cinema.captions`,
+  - „Seznam“ (klávesa S, sevření dvou prstů): zpět na výpis s jeho filtry, v promítání vlastních oblíbených jeho díla jako „Můj výběr“ (viz *Oblíbené obrazy*),
   - „Odkaz“: adresa promítání (v celé obrazovce není vidět), na telefonu sdílení, jinak do schránky,
   - × (zavřít),
   - po stranách ‹ ›.
@@ -1089,10 +1090,10 @@ hodnoty hledal prototyp `promitani.html`, viz *Prototypy*):
   odkaz na stránku díla. Tři polohy (`CAPTION_MODES`, tlačítko je přepíná dokola): **na chvíli** (výchozí, popisek
   každého díla zmizí po `captionMs`), **stále**, **skryté**; s ovládáním je popisek vždy vidět.
 - **Ovládání** jen po pohybu myši nebo ťuknutí (další ťuknutí ho skryje), zmizí po `controlsMs` (`autoHide`):
-  nahoře „Kolekce: <název>“ (odkaz na kolekci díla), časy, pauza, „Popisky: …“, „Odkaz“ (adresa promítání: na
+  nahoře „Kolekce: <název>“ (odkaz na kolekci díla), časy, pauza, „Popisky: …“, „Seznam“ (klávesa **S**, na telefonu sevření dvou prstů, `hooks.list`; v každém promítání: zavře ho a nechá výpis s jeho filtry, „Zpět na seznam těchto obrazů“ `LISTING_LIST_TITLE`; v promítání vlastních oblíbených, galerie s `favorites=1`, místo toho otevře jeho díla, která jsou pořád oblíbená, jako „Můj výběr“ `/tvorba/vyber/?obrazy=…` k poslání dál, `showSelectionLink`, `SELECTION_LIST_TITLE`; nad `FAVORITES_LINK_MAX` jen s filtrem oblíbených samotným `/tvorba/vyber/` = vlastní oblíbené, s dalšími filtry nebo bez oblíbených zpět na výpis; s klávesou Cmd/Ctrl/Shift otevře odkaz jinde a promítání běží dál; `cinema_close` s `reason: list` = zpět na výpis, `selection` = na „Můj výběr“, a `method` `button` / `key` / `pinch` podle toho, co ho spustilo; viz `CINEMA_CLOSE_METHODS`), „Odkaz“ (adresa promítání: na
   telefonu nabídka sdílení, jinak do schránky, `copiedText`), „Barvy: …“, „Celá obrazovka“ (jen mimo celou obrazovku, kde ji
   prohlížeč umí), „?“ (nápověda znovu) a ×; po stranách ‹ › (na telefonu jen tah). S ovládáním je vidět i popisek (i ve skrytých popiscích).
-- **Klávesy:** ← → listují, mezerník pauza a pokračování se stejným časem, ↓ stránka díla, ↑ jeho kolekce, Esc zavře;
+- **Klávesy:** ← → listují, mezerník pauza a pokračování se stejným časem, ↓ stránka díla, ↑ jeho kolekce, S „Seznam“ (zpět na výpis), Esc zavře;
   každá klávesa i klik přepne do celé obrazovky, pokud v ní promítání ještě není; **F** (malé i velké) je přepínač: do celé
   obrazovky a z ní ven, promítání pak běží dál v okně (Esc z celé obrazovky promítání zavře); **?** ukáže nápovědu znovu
   (jako „?“ v ovládání; mimo celou obrazovku s „klik nebo F = celá obrazovka“, v ní na počítači s „F = celá obrazovka / okno“).
@@ -1102,6 +1103,11 @@ hodnoty hledal prototyp `promitani.html`, viz *Prototypy*):
   kolekci“), **dolů** = stránka díla, jako ↑ ↓; dílo mezitím jde s prstem nahoru nebo dolů (o 60 % pohybu, náznak, kam
   tah vede) a bez kroku sjede zpět; myš svisle nic nedělá. Promítání si nechá každý pohyb jednoho prstu
   (`touch-action: pinch-zoom`, `overscroll-behavior: none`: žádné posouvání ani obnovení stránky tahem dolů).
+  Druhý prst tah prvního zruší (dílo sjede zpět; i v prohlížeči fotek díla).
+- **Sevření dvou prstů** k sobě (jako zavření fotky v galerii telefonu) = „Seznam“, jako S: prsty na začátku aspoň
+  `swipe.minPx` od sebe a na konci nejvýš `swipe.pinch` (0,6) původní vzdálenosti (`pinchedIn`, dotykové události
+  v `src/lib/cinema.ts`); roztažení dál přiblíží obraz (prohlížeč) a na přiblížené stránce (`visualViewport.scale`) sevření
+  jen oddálí, „Seznam“ nespustí.
 - **Adresa** nese filtry, dílo a nevýchozí čas: `/tvorba/?tag=voda&cinema=k3f9a&interval=45` (`cinemaToParams`,
   `cinemaFromParams`), nikdy zobrazení a stránku galerie (`filtersToParams`: bez `view`, `tile`, `perPage`, `page`), takže
   odkaz na promítání nechá každému jeho vlastní zobrazení; po zavření se adresa vrátí k galerii, jak ji návštěvník má; každé další dílo adresu přepíše. Otevření tlačítkem přidá záznam historie (Zpět promítání
@@ -1110,16 +1116,17 @@ hodnoty hledal prototyp `promitani.html`, viz *Prototypy*):
   Promítání odkazem z webu: „Na prodej“ (patička; na Kontaktu „Obrazy na prodej“) = díla na prodej `/tvorba/?status=unsold&cinema=random&from=…`
   (`saleShowPath`, jen když nějaké dílo na prodej je, `hasWorksOnSale`), „Výběr“ (patička) = výběr autorky
   `/tvorba/?featured=1&cinema=random&from=…` (`featuredShowPath`, jen když nějaké dílo s `featured: true` je,
-  `hasFeaturedWorks`). Obojí je nenápadný odkaz v patičce každé stránky (`from=footer`; Kontakt je nemá, adresy
+  `hasFeaturedWorks`), „Oblíbené“ (patička) = vlastní oblíbené návštěvníka `/tvorba/?favorites=1&cinema=random&from=…`
+  (`favoritesShowPath`, jen když nějaké má, viz *Oblíbené obrazy*). Na prodej a Výběr jsou nenápadný odkaz v patičce každé stránky (`from=footer`; Kontakt je nemá, adresy
   tam patří jen ke kontaktu); výběr autorky navíc
   tlačítko „▶ Moje nejmilejší“ na úvodní stránce vedle „Prohlédnout tvorbu“ (`button_show` v `_index.yaml`, `""` = bez
   něj; `from=home`). Parametr `from` (`CINEMA_FROM`, `CINEMA_LINK_SOURCES`) jen pojmenuje odkaz webu pro událost
-  `cinema_open` (`method` `home` / `footer` / `shortcut` = zkratka „Promítat“ ikony na ploše, `cinemaLinkMethod`; které promítání, ukáže adresa stránky);
+  `cinema_open` (`method` `home` / `footer` / `shortcut` = zkratka „Promítat“ ikony na ploše / `shortcut_favorites` = zkratka „Oblíbené“, `cinemaLinkMethod`; které promítání, ukáže adresa stránky);
   galerie ho z adresy hned smaže, do sdíleného odkazu se nedostane. Ze stránky díla nebo kolekce (popisek, ↓, ↑) vede Zpět zpátky do promítání na stejné dílo.
 - **Srdce oblíbených** v popisku hned za názvem (a ★) a klávesa **L** přidá nebo odebere promítané dílo z oblíbených
   s hláškou „♥ Přidáno do oblíbených“ / „Odebráno z oblíbených“ (i se skrytým popiskem; viz *Oblíbené obrazy*).
 - **Nápověda:** první otevření promítání v kartě prohlížeče ukáže ovládání a na `HINT_MS` (4 s) hlášku „← → listovat
-  · ↓ obraz · ↑ kolekce · L oblíbené“, na dotykové obrazovce „tahem do stran listovat · dolů obraz · nahoru kolekce“ (`cinemaHint`); otevřené odkazem
+  · ↓ obraz · ↑ kolekce · S seznam · L oblíbené“, na dotykové obrazovce „tahem do stran listovat · dolů obraz · nahoru kolekce · sevřením seznam“ (`cinemaHint`); otevřené odkazem
   (kde prohlížeč celou obrazovku umí) navíc „· klik nebo F = celá obrazovka“ / „· ťuknutí = celá obrazovka“
   (`fullscreenHint`), a to při každém otevření odkazem, po první nápovědě v kartě už jen tahle část;
   pamatuje se jen v kartě (`sessionStorage` `pavla.cinema.hinted`), nová karta ji ukáže znovu.
@@ -1150,8 +1157,9 @@ na stránce i v jiných kartách ukazují totéž, `storage`); bez JavaScriptu �
   stránky) v pořadí galerie (`shownFavorites`), odkaz na „Můj výběr“ s nimi (`favoritesLinkState`). Bez oblíbených
   mezi zobrazenými se neukáže; nad `FAVORITES_LINK_MAX` (100 děl, ~600 znaků adresy, bezpečně pod tím, co udrží
   messengery a e-mail) je šedý s čárkovaným okrajem a bublinou „Zužte filtr, výběr je příliš velký na odkaz“ (`OVER_LINK_TITLE`).
-- **Patička:** první odkaz „Oblíbené“ vede na `/tvorba/vyber/` (vlastní oblíbené); jen když návštěvník nějaké oblíbené má
-  (skript v `Base.astro`, po každé změně i z jiné karty).
+- **Patička:** první odkaz „Oblíbené“ pustí promítání vlastních oblíbených `/tvorba/?favorites=1&cinema=random&from=footer`
+  (`favoritesShowPath`, filtr „Jen moje oblíbené“ galerie, jako „Na prodej“ a „Výběr“, viz *Promítání*); jen když návštěvník
+  nějaké oblíbené má (skript v `Base.astro`, po každé změně i z jiné karty).
 - **„Můj výběr“** `/tvorba/vyber/?obrazy=<id>,<id>…` (`SELECTION_PATH`, `SELECTION_PARAM`, `src/pages/tvorba/vyber.astro`,
   `noindex`, mimo mapu webu): díla z adresy (neznámé kódy vynechá, každé jednou, `selectionFromSearch`) v pořadí galerie,
   v zobrazení zapamatovaném pro galerii; „N obrazů. Odkaz na tuhle stránku jde poslat dál.“, vpravo „Zkopírovat odkaz“
@@ -2199,7 +2207,8 @@ telefonu nezmenšil (mimo `public/`, nenasazuje se).
   aby iOS průhledné místo nezačernil),
 - `public/icon-192.png` a `public/icon-512.png` (`MANIFEST_SIZES`) pro Android,
 - `public/shortcut-<id>.png` (96 px, `SHORTCUT_ICON_SIZE`) ikony zkratek ze `scripts/shortcut-icons/<id>.svg`: Detail dne = lupa
-  nad výřezem obrázku, Tvorba = čtyři malé obrazy, Promítat = trojúhelník ▶ vyplněný obrázkem na barvě noci.
+  nad výřezem obrázku, Tvorba = čtyři malé obrazy, Promítat = trojúhelník ▶ vyplněný obrázkem na barvě noci, Oblíbené =
+  akvarelové červené srdce na barvě noci.
 
 Manifest `/site.webmanifest` (`src/pages/site.webmanifest.ts`, `webManifest`) staví web z `site.config.yaml`: `name` = `site.title`,
 pod ikonou `short_name` = jeho první slovo, `description` = `site.tagline`, barvy `background_color` a `theme_color` = papír první
@@ -2207,8 +2216,9 @@ palety, `display: standalone` (aplikace bez lišty prohlížeče, viz „Web jak
 `orientation: any`, adresy relativně k manifestu.
 Ikony 192 a 512 px jako `any`, 512 px i jako `maskable` (obrázek přes celou plochu, slunce i kopce jsou v bezpečném kruhu).
 Zkratky po dlouhém stisku ikony na Androidu (`shortcuts`, `MANIFEST_SHORTCUTS`, každá s vlastní ikonou): „Detail dne“ (`/detail-dne/`),
-„Tvorba“ (`/tvorba/`) a „Promítat“ = promítání výběru autorky (`featuredShowPath('shortcut')`, jen s `hasFeaturedWorks`; v události
-`cinema_open` `method` `shortcut`). Nová zkratka = záznam v `MANIFEST_SHORTCUTS` a její `scripts/shortcut-icons/<id>.svg`
+„Tvorba“ (`/tvorba/`), „Promítat“ = promítání výběru autorky (`featuredShowPath('shortcut')`, jen s `hasFeaturedWorks`; v události
+`cinema_open` `method` `shortcut`) a „Oblíbené“ = promítání vlastních oblíbených návštěvníka (`favoritesShowPath('shortcut_favorites')`,
+vždy: manifest oblíbené nezná; bez nich galerie místo „Tomuhle výběru nic neodpovídá.“ napíše `NO_FAVORITES_TEXT`; `method` `shortcut_favorites`). Nová zkratka = záznam v `MANIFEST_SHORTCUTS` a její `scripts/shortcut-icons/<id>.svg`
 (neznámé id `npm run favicons` odmítne).
 Po každé změně kteréhokoli SVG spusť `npm run favicons` a commitni výsledky; odkazuje na ně `Base.astro` (`rel="icon"`,
 `rel="apple-touch-icon"`, `rel="manifest"`).
@@ -2396,8 +2406,8 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | značky na úvodní stránce | `/`: v dlaždicích jen hvězdička (menší, průsvitnější), žádné košíky (`home.tileMarks`); galerie beze změny. |
 | doba běhu pipeline | `npm run demo:prepare`: pod každým přegenerovaným dílem řádek `  ⏱ … · total N s`, na konci `⏱ run: checks … · drafts … · works … · … · total …` (fáze pod 0,05 s chybí); druhé spuštění bez změn díla nepřegeneruje a nenakreslí znovu ani náhledy draftů (celý běh ~10 s, `.demo/site/.previews/` je prázdná). |
 | velikosti v kontrole automatiky | `node scripts/check-health.mjs` (bez tokenů; za proxy `NODE_USE_ENV_PROXY=1`): řádek „Velikost: repo webu … MB (… % z 1000 MB) · obsahové repo nezjištěno · nasazený web (GitHub Pages) … MB …“ a „Minuty GitHub Actions nebyly zkontrolovány (chybí secret CHECK_TOKEN …)“; s `CHECK_TOKEN=<token> ` před příkazem (a `--settings`, `REPO=<obsahové repo>`, `SETTINGS_DIR=<obsahové repo>/docs/github-nastaveni` = i porovnání nastavení) řádek „Minuty Actions soukromých rep za tento měsíc: N z 2000 …“. |
-| oblíbené | `npm run demo`, `/tvorba/`: najeď myší na obraz, vpravo nahoře obrysové srdce, klik ho naplní (karta se neotevře) a vlevo od „N děl“ přibude „♥ Moje oblíbené (1)“; filtr, který dílo vyřadí, odkaz schová; odkaz otevře `/tvorba/vyber/?obrazy=…` s „1 obraz“, „Zkopírovat odkaz“ a „▶ Promítat“; v promítání `L` srdce přepne s hláškou; na stránce díla srdce pod ★ (bez ★ na jejím místě); v telefonu (nástroje pro vývojáře) obrysová srdce nejsou; jiná karta prohlížeče ukáže změnu hned; v konzoli (úroveň Verbose) `[analytics] favorite_add` / `favorite_remove` / `favorites_open` |
-| promítání | `npm run demo`, `/tvorba/?tag=voda` → „▶ Promítat“: celá obrazovka, adresa `?tag=voda&cinema=<id>`, díla se po 15 s prolnou; pohyb myši ukáže ovládání („Kolekce: …“, 5 s … 3 min, pauza, Popisky, Odkaz, ×), za 3 s zmizí. „45 s“ → `&interval=45` a pamatuje se (nové promítání začne na 45 s), „15 s“ ho z adresy smaže. ← →, mezerník (hláška „Pozastaveno“), tah myší (dílo jde s myší, sousední vedle), ↓ stránka díla a Zpět vrátí promítání na stejné dílo, Esc zavře a Zpět po „▶ Promítat“ také. Popisky: „na chvíli“ zmizí po 4 s, „stále“, „skryté“ (s nimi i ★ a „K PRODEJI“: Máky mají obojí, díla v soukromé sbírce nic); pohyb myši ukáže popisek i ve „skryté“. Čas „5 s“, po 4 s pohnout myší: dílo zůstane ještě 5 s. Pravé tlačítko na „▶ Promítat“ → kopírovat odkaz (`…&cinema=random`). S dlaždicemi (`?view=tiles`) adresa promítání `view` nemá, po zavření ho galerie zase ukáže. Patička „Obrazy na prodej“ → promítání `?status=unsold` od náhodného díla, v nové kartě s nápovědou „← → listovat · ↓ obraz · ↑ kolekce · klik nebo F = celá obrazovka“ (podruhé v téže kartě jen „klik nebo F = celá obrazovka“; F přepne do celé obrazovky a zase zpět do okna; klávesa ? i „?“ v ovládání ukáže nápovědu znovu). Promítání je v barvách Noc, i když web je Papír; „Barvy: …“ je přepíná (Papír, Pergamen, Noc, podle systému), patička webu zůstane beze změny a nové promítání začne v posledních zvolených. Na telefonu (DevTools, zařízení s dotykem) tah prstem nahoru otevře kolekci díla, dolů stránku díla. Odkaz `/tvorba/?cinema=<id>&interval=5` otevře promítání rovnou (celá obrazovka až po prvním kliknutí, v ovládání „Celá obrazovka“, v DevTools → Network se načítají `….avif`). Prohlížeč fotek díla (Ráno u rybníka): tah myší posouvá obrázek a vedle něj detail; F celá obrazovka s popiskem přes spodek (popisek vlevo, „1 / 5“ u pravého okraje), → další detail, F zpět do okna; barvy prohlížeče podle palety v patičce. Na stránce díla (zavřený prohlížeč) ← / → otevře předchozí / další dílo z odkazů dole, v poli zprávy na Kontaktu šipky jen posouvají kurzor. V konzoli (Verbose) `[analytics] cinema_open` / `cinema_close`. |
+| oblíbené | `npm run demo`, `/tvorba/`: najeď myší na obraz, vpravo nahoře obrysové srdce, klik ho naplní (karta se neotevře) a vlevo od „N děl“ přibude „♥ Moje oblíbené (1)“; filtr, který dílo vyřadí, odkaz schová; odkaz otevře `/tvorba/vyber/?obrazy=…` s „1 obraz“, „Zkopírovat odkaz“ a „▶ Promítat“; v promítání `L` srdce přepne s hláškou; na stránce díla srdce pod ★ (bez ★ na jejím místě); v telefonu (nástroje pro vývojáře) obrysová srdce nejsou; jiná karta prohlížeče ukáže změnu hned; patička „Oblíbené“ pustí promítání jen oblíbených (`?favorites=1&cinema=random`, v konzoli `cinema_open` s `method: footer`), v jeho ovládání „Seznam“ otevře „Můj výběr“ s nimi (`cinema_close` s `reason: selection`), `L` v promítání srdce odebere a po zavření galerie dílo schová; `/tvorba/?favorites=1&cinema=random&from=shortcut_favorites` (zkratka „Oblíbené“) bez oblíbených (smazat `pavla.favorites` v DevTools) = „Zatím tu nic není. …“; v konzoli (úroveň Verbose) `[analytics] favorite_add` / `favorite_remove` / `favorites_open` |
+| promítání | `npm run demo`, `/tvorba/?tag=voda` → „▶ Promítat“: celá obrazovka, adresa `?tag=voda&cinema=<id>`, díla se po 15 s prolnou; pohyb myši ukáže ovládání („Kolekce: …“, 5 s … 3 min, pauza, Popisky, Odkaz, ×), za 3 s zmizí. „45 s“ → `&interval=45` a pamatuje se (nové promítání začne na 45 s), „15 s“ ho z adresy smaže. ← →, mezerník (hláška „Pozastaveno“), tah myší (dílo jde s myší, sousední vedle), ↓ stránka díla a Zpět vrátí promítání na stejné dílo, Esc zavře a Zpět po „▶ Promítat“ také. Popisky: „na chvíli“ zmizí po 4 s, „stále“, „skryté“ (s nimi i ★ a „K PRODEJI“: Máky mají obojí, díla v soukromé sbírce nic); pohyb myši ukáže popisek i ve „skryté“. Čas „5 s“, po 4 s pohnout myší: dílo zůstane ještě 5 s. Pravé tlačítko na „▶ Promítat“ → kopírovat odkaz (`…&cinema=random`). S dlaždicemi (`?view=tiles`) adresa promítání `view` nemá, po zavření ho galerie zase ukáže. Patička „Obrazy na prodej“ → promítání `?status=unsold` od náhodného díla, v nové kartě s nápovědou „← → listovat · ↓ obraz · ↑ kolekce · klik nebo F = celá obrazovka“ (podruhé v téže kartě jen „klik nebo F = celá obrazovka“; F přepne do celé obrazovky a zase zpět do okna; klávesa ? i „?“ v ovládání ukáže nápovědu znovu). Promítání je v barvách Noc, i když web je Papír; „Barvy: …“ je přepíná (Papír, Pergamen, Noc, podle systému), patička webu zůstane beze změny a nové promítání začne v posledních zvolených. Na telefonu (DevTools, zařízení s dotykem) tah prstem nahoru otevře kolekci díla, dolů stránku díla. Odkaz `/tvorba/?cinema=<id>&interval=5` otevře promítání rovnou (celá obrazovka až po prvním kliknutí, v ovládání „Celá obrazovka“, v DevTools → Network se načítají `….avif`). Prohlížeč fotek díla (Ráno u rybníka): tah myší posouvá obrázek a vedle něj detail; F celá obrazovka s popiskem přes spodek (popisek vlevo, „1 / 5“ u pravého okraje), → další detail, F zpět do okna; barvy prohlížeče podle palety v patičce. Na stránce díla (zavřený prohlížeč) ← / → otevře předchozí / další dílo z odkazů dole, v poli zprávy na Kontaktu šipky jen posouvají kurzor. „Seznam“ nebo klávesa S promítání zavře a nechá galerii s `?tag=voda` (`cinema_close` s `reason: list` a `method: button` / `key`; v DevTools v režimu zařízení s dotykem Shift + tah myší = sevření dvou prstů), stejně na stránce roku, kolekce a „Můj výběr“. V konzoli (Verbose) `[analytics] cinema_open` / `cinema_close`. |
 | hra Detail dne | `npm run demo`, `/detail-dne/`: tři úrovně (v testovacích datech má Lehká jen 3 obrazy, opakují se), ťukni na špatný náhled (výřez se oddálí, efekt zeslábne, nic se neposune), pak na správný (obraz se odhalí, kapky, verdikt zezelená, karta výsledku pod náhledy se zeleným „✓ …“ a jedním řádkem „Obraz · Kolekce · Sdílet“, klik na odhalený obraz otevře stránku díla; prohra = červené „✗ Tentokrát ne“); po obnovení stránky stav zůstane; neodehrané úrovně jsou světle žluté; na konci stránky (nad patičkou) sekce „Diagnostika“ s hádankou a krokem; dole v „Archiv“ klikni na dlaždici 3. 11.: adresa `?den=2026-307`, nad úrovněmi „Archiv · 3. listopadu · poloviční kapky“, za první tip polovina kapek (Lehká 5), série se nezmění, u dne v archivu zezelená / zčervená puntík; po všech třech úrovních karta napíše „Den 2026#307 máš za sebou“ a odkaz „V archivu na tebe čeká ještě … ↓“ posune stránku k archivu, „Dnes“ vrátí dnešek a adresu bez `?den`; `?den=999` = dnešek; v konzoli (Verbose) `[analytics] game_start` / `game_end`; v nástrojích pro vývojáře v režimu telefonu (390 × 664) jsou výřez i všechny náhledy na obrazovce; zdrojový kód stránky má `noindex`. Skutečná data: `npm run build && npx astro preview`, `/detail-dne/`. |
 | vlastní kvíz Můj Detail dne | `npm run demo:build && npx astro preview` s `SITE_DATA_DIR=.demo/site`: na stránce díla pod „Sdílet“ odkaz „Udělat z obrazu Detail dne“ (u `demo-kocka-na-plotu` s `game: false` není); editor: přepni obtížnost, ťukni do obrazu (rámeček se přesune), u díla s vynechanými místy (`demo-jablka-na-stole`) šrafy a výřez do nich červeně se zakázaným sdílením, „Vybrat místo za mě“, vyber zkreslení (živé náhledy), „Zahrát si ho“: adresa se zkrátí na `/detail-dne/muj/`, obnovení stránky hraje dál, po konci kola všech 9 náhledů odkazuje na stránky děl; useknutá adresa = hláška; `/detail-dne/muj/` bez adresy = návod. |
 | plán dnů hry Detail dne | `npm run demo` vypíše „Detail dne: plan updated (game/detail-dne/details.json, game/detail-dne/2026.json), … days up to …; pictures analysed N, kept 0, removed 0“ (soubory v `.demo/site/game/detail-dne/`: dny od 1. 11. 2026 do dneška + 14 po letech, jeden řádek na den a na dílo, detaily děl s čísly, `analysis/<id>.json` rozbor každého obrázku); druhý `npm run demo` týž den = „plan unchanged, …; pictures analysed 0, kept N, removed 0“ (žádný obrázek se znovu nerozebírá); po smazání jednoho `analysis/<id>.json` další běh rozebere jen ten; `npm run demo:build`, `/detail-dne/`, v „Diagnostika“ řádek „Hádanka: z plánu dnů, detail #…“; po smazání složky a novém `npm run demo:build` „spočítaná pro den“ (stejná hádanka, protože dny do zítřka plán zapisuje tak, jak je hra počítala). Archiv roku: `DETAIL_DNE_YEAR=2028 SITE_DATA_DIR=.demo/site npx astro build` vyrobí `/detail-dne/plan/2026.json`, `data.json` má prázdné `plan.days` a `plan.archive: [2026]`; `npx astro preview`, `/detail-dne/?den=3` načte ten soubor a hraje den z plánu |
@@ -2831,8 +2841,8 @@ analytics:
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
   | `palette_change` | návštěvník v patičce přepne barvy webu (jen skutečná změna, ne opakovaný klik na tutéž); i „Barvy: …“ v promítání | `palette` (`papir`, `pergamen`, `noc`, `auto`); z promítání `source: cinema` |
   | `view_change` | návštěvník přepne zobrazení děl (velké obrazy / dlaždice) nebo velikost dlaždic, na úvodní stránce i v galerii (`viewEventParams`) | `listing` (`home`, `gallery`), `view` (`grid`, `tiles-s`, `tiles-m`, `tiles-l`) |
-  | `cinema_open` | promítání výpisu otevřené (`cinemaOpenParams`) | `listing` (`gallery`, `year`, `collection`, `selection` = „Můj výběr“), `results` (kolik děl promítá), `interval` (s), `method` (`CINEMA_OPEN_METHODS`: `button` „▶ Promítat“, `link` adresa s `cinema`, `home` tlačítko „▶ Moje nejmilejší“ na úvodní stránce, `footer` „Obrazy na prodej“ / „Moje nejmilejší“ v patičce, `shortcut` zkratka „Promítat“ ikony na ploše telefonu) |
-  | `cinema_close` | promítání zavřené nebo opuštěné na stránku díla či kolekce (`cinemaCloseParams`) | `listing`, `reason` (`CINEMA_CLOSE_REASONS`: `button` ×, `esc` Esc nebo konec celé obrazovky, `back` Zpět, `work` stránka díla, `collection` kolekce), `seconds`, `shown` (kolik děl ukázalo) |
+  | `cinema_open` | promítání výpisu otevřené (`cinemaOpenParams`) | `listing` (`gallery`, `year`, `collection`, `selection` = „Můj výběr“), `results` (kolik děl promítá), `interval` (s), `method` (`CINEMA_OPEN_METHODS`: `button` „▶ Promítat“, `link` adresa s `cinema`, `home` tlačítko „▶ Moje nejmilejší“ na úvodní stránce, `footer` „Oblíbené“ / „Na prodej“ / „Výběr“ v patičce, `shortcut` zkratka „Promítat“ ikony na ploše telefonu, `shortcut_favorites` její zkratka „Oblíbené“) |
+  | `cinema_close` | promítání zavřené nebo opuštěné na stránku díla či kolekce (`cinemaCloseParams`) | `listing`, `reason` (`CINEMA_CLOSE_REASONS`: `close` × nebo Esc, `back` Zpět, `work` stránka díla, `collection` kolekce, `list` „Seznam“ zpět na výpis, `selection` „Seznam“ promítání oblíbených na „Můj výběr“; do 2026-11-20 místo `close` `button` a `esc`), `seconds`, `shown` (kolik děl ukázalo), `swipes` (kolik kroků prstem do stran, myš se nepočítá: jak lidé používají gesta), `keys` (kolik kroků šipkami ← →, šipky ‹ › na obrazovce se nepočítají: srovnání s počítačem), `swipes_missed` (kolik tahů prstem dílo nepřepnulo a vrátilo se, i tah zpátky opačně; ne bez souseda ani zrušený druhým prstem: ukazuje, jestli sedí práh `swipe.fraction`; počty `cinemaRunCounts`, konec tahu `swipeEnd`), `method` = jak (`CINEMA_CLOSE_METHODS` podle důvodu, u `back` není): `close` `button` × / `key` Esc / `fullscreen` konec celé obrazovky (Esc v ní, gesto systému); `list` a `selection` `button` „Seznam“ / `key` S / `pinch` sevření dvou prstů; `work` a `collection` `click` popisek či „Kolekce: …“ / `key` ↓ ↑ / `swipe` prst dolů či nahoru |
   | `game_start` | první tip v kole hry Detail dne (otevření stránky měří zobrazení stránky; `gameEventParams`); ve vlastním kvízu `source: quiz`, `level`, `look`, `work_id` (`quizEventParams`) | `level` (`easy`, `medium`, `hard`; do 2026-11-16 `lehka`, `stredni`, `tezka`), `day` (klíč dne `2026-320`, `dayId`; do 2026-11-16 číslo od prvního dne, např. `15`), `archive` (`yes` = den z archivu, `no` = dnešek), `look` (vzhled dne z `gameLooks`, např. `mosaic`) |
   | `game_end` | kolo hry Detail dne skončilo (uhádnuté nebo po posledním pokusu); ve vlastním kvízu jako jeho `game_start` a `solved`, `misses` | jako `game_start` a `solved` (`yes` / `no`), `misses` (omyly), `drops` (získané kapky), `streak` (série dnů po kole), `work_id`, `work_title` (hádaný obraz) |
   | `code_open` | obraz otevřený podle kódu z pole `#` v hlavičce (`codeEvent`, jen když obraz existuje) | `work_id`, `method` (`CODE_METHODS`: `paste` = vložený kód otevřel obraz hned, `enter` = potvrzený Enterem / „Přejít“) |
@@ -2863,14 +2873,14 @@ analytics:
   | Hledání | `q` | Text hledání v galerii nebo v přehledu kolekcí (gallery_filter). |
   | ID díla | `work_id` | Trvalý kód díla (např. g4psg) u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek, kód. |
   | Název díla | `work_title` | Název díla u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek. |
-  | Způsob | `method` | Jak: share, image_view, cinema_open, code_open, more_click, app_install (accepted, dismissed, help_ios, installed…); hodnoty v README webu. |
+  | Způsob | `method` | Jak: share, image_view, cinema_open/close, code_open, more_click, app_install (accepted, dismissed, help_ios, installed…); hodnoty v README webu. |
   | Typ zprávy | `message_type` | Typ odeslané zprávy (message_sent): greeting, work, purchase, collaboration, bug, other. |
   | Barvy webu | `palette` | Barvy zvolené v patičce (palette_change): papir, pergamen, noc, auto. |
   | Výpis | `listing` | Kde: view_change home = úvodní stránka, gallery = galerie; cinema_open/close gallery, year, collection, selection (Můj výběr). |
   | Zobrazení | `view` | Nové zobrazení děl (view_change): grid = velké obrazy, tiles-s / tiles-m / tiles-l = dlaždice malé / střední / velké. |
   | Obrázek | `image` | Obrázek v prohlížeči fotek díla (image_view): obraz, detail-<jméno>, mockup-<scéna>; stejně jako kotva v adrese. |
   | Doba obrazu | `interval` | Promítání (cinema_open): kolik sekund zůstane každé dílo. |
-  | Důvod zavření | `reason` | Promítání (cinema_close): button, esc, back, work = na stránku díla, collection = na kolekci. |
+  | Důvod zavření | `reason` | Promítání (cinema_close): close = × nebo Esc, back, work = na dílo, collection = na kolekci, list = zpět na výpis, selection = na Můj výběr. |
   | Odkud | `source` | share, palette_change, game_*: cinema, game, quiz; favorite_*: gallery, home, selection, work, cinema; prázdné = jinde. |
   | Úroveň hry | `level` | Detail dne (game_start, game_end, share): easy, medium, hard (Lehká, Střední, Těžká; do 2026-11-16 lehka, stredni, tezka). |
   | Den hry | `day` | Detail dne: klíč dne `2026-320` = rok a pořadí dne v roce (`dayId`, v nadpisu „2026#320“; do 2026-11-16 číslo od prvního dne hry). |
@@ -2884,7 +2894,10 @@ analytics:
   A *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru, jednotka Standardní, popis: „Kolik děl (na přehledu
   kolekcí kolik kolekcí) odpovídá filtru po jeho změně (gallery_filter); u cinema_open kolik děl promítá.“),
   `seconds` (Doba promítání, jednotka Sekundy, „Jak dlouho běželo promítání (cinema_close).“), `shown` (Promítnutá díla,
-  Standardní, „Kolik děl promítání ukázalo (cinema_close).“), `misses` (Omyly ve hře, Standardní, „Kolik špatných tipů měl hráč
+  Standardní, „Kolik děl promítání ukázalo (cinema_close).“), `swipes` (Kroky prstem, Standardní, „Kolik děl promítání
+  návštěvník přešel tahem prstu do stran (cinema_close).“), `keys` (Kroky klávesami, Standardní, „Kolik děl promítání
+  návštěvník přešel šipkami ← → (cinema_close).“), `swipes_missed` (Nepovedené tahy, Standardní, „Kolik tahů prstem
+  v promítání dílo nepřepnulo, vrátilo se zpět (cinema_close).“), `misses` (Omyly ve hře, Standardní, „Kolik špatných tipů měl hráč
   v kole Detailu dne (game_end).“), `drops` (Kapky, Standardní, „Kolik kapek kolo Detailu dne přineslo (game_end).“) a `streak`
   (Série dnů, Standardní, „Kolik dní v řadě hráč hraje Detail dne, po kole (game_end).“). Data se v nich ukazují až od chvíle
   registrace, zpětně ne. Nový parametr události = nový řádek v této tabulce.
@@ -2896,7 +2909,7 @@ analytics:
   na detailu Ráno u rybníka klik na „Na Instagramu“ → `[analytics] instagram_click`, na ikonu v řádku „Sdílet“ →
   `[analytics] share` s `method` (např. `pinterest`, `copy`); klik na obraz, detail nebo mockup a listování v prohlížeči
   fotek → `[analytics] image_view` s `image`, `image_kind` a `method`; „▶ Promítat“ → `[analytics] cinema_open`,
-  Esc → `[analytics] cinema_close` se `seconds` a `shown`; v `/detail-dne/` první tip → `[analytics] game_start`, konec kola →
+  Esc → `[analytics] cinema_close` s `reason: close`, `method: key`, `seconds`, `shown`, `swipes`, `keys` (kolikrát ← →) a `swipes_missed`; v `/detail-dne/` první tip → `[analytics] game_start`, konec kola →
   `[analytics] game_end`, „Sdílet výsledek“ → `[analytics] share` se `source: game`.
   Na nasazeném webu: GA → *Administrátor → DebugView* s Tag Assistantem, nebo *V reálném čase → Počet událostí*.
 - Kód: `scripts/lib/analytics.mjs` (kdy měřit, obsah značky, kontrola ID), `analyticsId` v `src/lib/site.ts`.

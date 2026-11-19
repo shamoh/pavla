@@ -167,7 +167,8 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   import { exactId, normalizeQuery } from '../../scripts/lib/search.mjs';
   import { selectCombobox } from '../lib/combobox';
   import { BAR_START, activeFilters, filteredCount, scrollBar, withoutFilter, withoutFilters, worksCount } from '../../scripts/lib/filter-bar.mjs';
-  import { FAVORITES_LINK_MAX, OVER_LINK_TITLE, SELECTION_PARAM, favoritesLinkState, shownFavorites } from '../../scripts/lib/favorites.mjs';
+  import { FAVORITES_LINK_MAX, NO_FAVORITES_TEXT, OVER_LINK_TITLE, SELECTION_PARAM, favoritesLinkState, showSelectionLink, shownFavorites } from '../../scripts/lib/favorites.mjs';
+  import { LISTING_LIST_TITLE, SELECTION_LIST_TITLE } from '../../scripts/lib/cinema.mjs';
   import { FAVORITES_ON } from '../../scripts/lib/gallery-filter.mjs';
   import { favorites, onFavoritesChange } from '../lib/favorites';
 
@@ -206,6 +207,8 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   // "Zrušit filtry" next to the count, in the open panel and "Zrušit vše" in the bar: all filters off (withoutFilters)
   const resets = [...document.querySelectorAll<HTMLButtonElement>('[data-filters-reset]')];
   const emptyEl = document.getElementById('empty')!;
+  // only the own favourites without any (also the shortcut "Oblíbené" of the app): how to add some
+  const emptyText = emptyEl.textContent;
   // "▶ Promítat" next to the count and in the bar (the cinema, at the end): links to the show of these filters
   // (?…&cinema=random), so they can be copied; a plain click opens it here
   const playButtons = [...document.querySelectorAll<HTMLAnchorElement>('[data-cinema-open]')];
@@ -232,10 +235,14 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     const [choice] = facetChoices(works, state, 'favorites', [FAVORITES_ON]);
     favoritesFilter.hidden = !favoritesBox.checked && choice.count === 0;
   }
+  // a heart changed during a show of favourites: the list follows when the show closes (apply() would rewrite its address)
+  let favoritesChangedInShow = false;
   onFavoritesChange(() => {
     markFavorites();
     // with the filter on a work taken out of the favourites leaves the list at once
-    if (state.favorites) apply(); else { renderMine(); renderFavoritesFilter(); }
+    if (state.favorites && cinema.isOpen) favoritesChangedInShow = true;
+    else if (state.favorites) apply();
+    else { renderMine(); renderFavoritesFilter(); }
   });
   // Page sizes of each view (big pictures, tiles); `pageSizes` = those of the current view.
   const sizes: { grid: number[]; tiles: number[] } = JSON.parse(grid.dataset.pageSizes!);
@@ -396,6 +403,7 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     }
     collectionCombo?.sync();
     emptyEl.hidden = shown > 0;
+    emptyEl.textContent = state.favorites && !favorites().length ? NO_FAVORITES_TEXT : emptyText;
     const p = stateToParams(state);
     history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
     // Links back here (← Tvorba, the year, the collection on a work page) return to these filters and this page.
@@ -624,14 +632,28 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     .map((c) => ({ id: c.dataset.id!, collection: c.dataset.collection!, ...JSON.parse(c.dataset.cinema!) }));
   const cinema = createCinema(cinemaRoot, cinemaConf, JSON.parse(cinemaRoot.dataset.collections!), {
     shown: (id, interval) => history.replaceState(history.state, '', cinemaHref(id, interval)),
-    closed: (reason, run) => {
+    closed: (reason, run, leaving) => {
       trackEvent(EVENTS.cinemaClose, cinemaCloseParams({ listing, reason, ...run }));
-      // to a work or a collection: the address stays (Back returns to the show); Back itself has moved already
-      if (reason === 'work' || reason === 'collection' || reason === 'back') return;
-      if (history.state?.[CINEMA_OPENED]) history.back();
+      // to a work, a collection or "Můj výběr": the address stays (Back returns to the show)
+      if (leaving) return;
+      const opened = reason !== 'back' && history.state?.[CINEMA_OPENED];
+      if (favoritesChangedInShow) { favoritesChangedInShow = false; apply(); }
+      // Back itself has moved already
+      if (reason === 'back') return;
+      if (opened) history.back();
       else history.replaceState(history.state, '', cinemaHref(null, 0));
     },
     shared: (method) => trackEvent(EVENTS.share, { method, source: 'cinema', work_id: cinema.current ?? '' }),
+    // "Seznam": a show of the own favourites = its works as "Můj výběr" (to send on); any other (or favourites too many
+    // for that link) = this listing with its filters, the show closes
+    list: (ids) => {
+      const selection = state.favorites !== FAVORITES_ON ? null : showSelectionLink(ids, favorites(), {
+        page: grid.dataset.selection!, param: SELECTION_PARAM, max: FAVORITES_LINK_MAX, onlyFavorites: [...filtersToParams(state).keys()].every((k) => k === 'favorites'),
+      });
+      return selection
+        ? { href: selection, title: SELECTION_LIST_TITLE }
+        : { href: new URL(cinemaHref(null, 0), location.href).href, title: LISTING_LIST_TITLE };
+    },
   });
   // `tracked`: the method of cinema_open when another than `method` (a link of the site, cinemaLinkMethod)
   function openCinema(firstId: string | null, interval: number, method: 'button' | 'link', tracked: string = method) {

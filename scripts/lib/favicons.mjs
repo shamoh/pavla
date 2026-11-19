@@ -4,7 +4,7 @@
 // not shrink inside the rounded square of the phone): apple-touch-icon.png (iPhone and iPad; iOS ignores SVG icons and
 // fills transparency with black, hence the paper background under it) and icon-<size>.png of site.webmanifest (Android).
 import sharp from 'sharp';
-import { featuredShowPath } from './cinema.mjs';
+import { favoritesShowPath, featuredShowPath } from './cinema.mjs';
 
 /** Sizes inside favicon.ico. */
 export const ICO_SIZES = [16, 32, 48];
@@ -78,7 +78,9 @@ export async function makeFavicons(svg, homeSvg, shortcutSvgs = {}) {
  * Shortcuts of the home screen icon (a long press on Android): name, description, address relative to the manifest (so
  * they follow a base path like start_url; with a trailing slash like every link of the site) and an icon of its own,
  * public/shortcut-<id>.png made from scripts/shortcut-icons/<id>.svg. `featured`: offered only while the author has
- * chosen some works (the show of her selection, from=shortcut for cinema_open).
+ * chosen some works (the show of her selection, from=shortcut for cinema_open). "Oblíbené" = the show of the visitor's
+ * own favourites (from=shortcut_favorites), always offered: the manifest cannot know them; without any the gallery says
+ * how to add some (NO_FAVORITES_TEXT).
  */
 export const SHORTCUT_ICON_SIZE = 96;
 export const shortcutIconFile = (id) => `shortcut-${id}.png`;
@@ -86,6 +88,7 @@ export const MANIFEST_SHORTCUTS = [
   { id: 'detail-dne', name: 'Detail dne', description: 'Dnešní hra: poznej obraz podle výřezu', url: 'detail-dne/' },
   { id: 'tvorba', name: 'Tvorba', description: 'Všechny obrazy', url: 'tvorba/' },
   { id: 'promitat', name: 'Promítat', description: 'Moje nejmilejší obrazy jeden po druhém', url: featuredShowPath('shortcut').slice(1), featured: true },
+  { id: 'oblibene', name: 'Oblíbené', description: 'Obrazy, které jste si označili srdcem, jeden po druhém', url: favoritesShowPath('shortcut_favorites').slice(1) },
 ];
 
 /**

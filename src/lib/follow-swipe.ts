@@ -4,7 +4,7 @@
 // viewer of a work page. Up and down moves are left alone (touch-action: pan-y on the surface keeps sideways ones here),
 // unless `vertical` takes them: a finger (not the mouse) moved up or down far enough or with a flick. The picture moves
 // up or down with the finger meanwhile (a hint where it leads) and slides back when nothing happens.
-import { dragStep } from '../../scripts/lib/cinema.mjs';
+import { dragStep, swipeEnd } from '../../scripts/lib/cinema.mjs';
 
 type Dir = 1 | -1;
 export interface FollowSwipe {
@@ -14,14 +14,16 @@ export interface FollowSwipe {
   shown: () => HTMLElement;
   /** The neighbour in `dir` (1 = next, from the right), ready and visible beside the shown one; null = none. */
   neighbour: (dir: Dir) => HTMLElement | null;
-  /** The neighbour slid into place: from now on it is the one shown. */
-  stepped: (dir: Dir) => void;
+  /** The neighbour slid into place: from now on it is the one shown; `pointerType` = what moved it (mouse, touch, pen). */
+  stepped: (dir: Dir, pointerType: string) => void;
   /** Both slid back; `near` = the neighbour that was beside (to hide again). */
   settled?: (near: HTMLElement | null) => void;
   /** A drag began (the cinema stops its timer). */
   started?: () => void;
   /** A press without a move. */
   tapped?: (e: PointerEvent) => void;
+  /** A sideways drag slid back with a neighbour there (swipeEnd missed); `pointerType` = what moved it. */
+  missed?: (pointerType: string) => void;
   /**
    * A finger (or pen) moved up (1) or down (-1) far enough or with a flick (dragStep over the height); returns whether
    * it leads somewhere (false: the picture slides back).
@@ -55,6 +57,11 @@ export function followSwipe(o: FollowSwipe): void {
   const slideMs = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : SLIDE_MS);
 
   o.surface.addEventListener('pointerdown', (e) => {
+    // a second finger: no swipe of the first any more (a pinch, maybe a gesture of the page), it slides back
+    if (drag && e.pointerType !== 'mouse' && e.pointerId !== drag.id) {
+      end({ pointerId: drag.id } as PointerEvent, true);
+      return;
+    }
     if (e.button > 0 || drag || o.ignore?.(e)) return;
     drag = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), moving: false, upright: false, type: e.pointerType, dir: 0, near: null, here: o.shown() };
   });
@@ -112,7 +119,7 @@ export function followSwipe(o: FollowSwipe): void {
       return;
     }
     if (!d.moving) {
-      if (!cancelled) o.tapped?.(e);
+      if (swipeEnd({ moving: false, cancelled }) === 'tap') o.tapped?.(e);
       return;
     }
     swallowClick = true;
@@ -120,15 +127,17 @@ export function followSwipe(o: FollowSwipe): void {
     const width = innerWidth;
     const s = cancelled ? 0 : dragStep(e.clientX - d.x, e.clientY - d.y, width, performance.now() - d.t, o.swipe);
     const ms = slideMs();
-    if (s && s === d.dir && d.near) {
+    const outcome = swipeEnd({ moving: true, cancelled, step: s, dir: d.dir, hasNeighbour: Boolean(d.near) });
+    if (outcome === 'step' && d.near) {
       const near = d.near;
       place(d.here, -s * width, ms);
       place(near, 0, ms);
-      setTimeout(() => { unplace(d.here); unplace(near); o.stepped(s as Dir); }, ms);
+      setTimeout(() => { unplace(d.here); unplace(near); o.stepped(s as Dir, d.type); }, ms);
     } else {
       place(d.here, 0, ms);
       if (d.near) place(d.near, (d.dir || 1) * width, ms);
       setTimeout(() => { unplace(d.here); if (d.near) unplace(d.near); o.settled?.(d.near); }, ms);
+      if (outcome === 'missed') o.missed?.(d.type);
     }
   };
   o.surface.addEventListener('pointerup', (e) => end(e, false));

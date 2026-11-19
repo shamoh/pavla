@@ -2,7 +2,7 @@
 import CodeJump from '../components/CodeJump.astro';
 import MessagePanel from '../components/MessagePanel.astro';
 import { analyticsId, hasFeaturedWorks, hasWorksOnSale, messages, site, url, version, type ShareImage } from '../lib/site';
-import { featuredShowPath, saleShowPath } from '../../scripts/lib/cinema.mjs';
+import { favoritesShowPath, featuredShowPath, saleShowPath } from '../../scripts/lib/cinema.mjs';
 import { gtagConfigScript, gtagSrc } from '../../scripts/lib/analytics.mjs';
 import { jsonLdText, summarize, verificationMeta } from '../../scripts/lib/seo.mjs';
 import { pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
@@ -12,7 +12,6 @@ import PalettePicker from '../components/PalettePicker.astro';
 import NameShades from '../components/NameShades.astro';
 import { skipHeaderScope, skipHeaderScript } from '../../scripts/lib/skip-header.mjs';
 import { splashScreens } from '../../scripts/lib/splash.mjs';
-import { SELECTION_PATH } from '../../scripts/lib/favorites.mjs';
 
 /**
  * `type`: og:type ('article' for a work); `noindex`: a page search engines should leave out (404), without canonical;
@@ -125,8 +124,8 @@ const skipScope = skipHeaderScope(Astro.url.pathname, import.meta.env.BASE_URL);
         <PalettePicker />
       </span>
       <span class="links">
-        <!-- shown by the script below only to a visitor with some favourites (src/lib/favorites.ts) -->
-        <a href={url(SELECTION_PATH)} title="Obrazy, které jste si označili srdcem" data-favorites-footer hidden>Oblíbené</a>
+        <!-- the show of the visitor's favourites; shown by the script below only to a visitor with some (src/lib/favorites.ts) -->
+        <a href={url(favoritesShowPath('footer'))} title="Obrazy, které jste si označili srdcem, jeden po druhém přes celou obrazovku" data-favorites-footer hidden>Oblíbené</a>
         {onSale && <a href={url(saleShowPath('footer'))} title="Obrazy na prodej jeden po druhém přes celou obrazovku">Na prodej</a>}
         {featured && <a href={url(featuredShowPath('footer'))} title="Moje nejmilejší obrazy jeden po druhém přes celou obrazovku">Výběr</a>}
         {site.instagram && <a href={`https://www.instagram.com/${site.instagram}/`} rel="me">Instagram</a>}

@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import { cinemaRunCounts } from './cinema.mjs';
 import {
-  CINEMA_CLOSE_REASONS, MORE_METHODS, CINEMA_LINK_SOURCES, CINEMA_OPEN_METHODS, EVENTS, IMAGE_METHODS, cinemaCloseParams, cinemaLinkMethod, gameEventParams, cinemaOpenParams, imageEventParams, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
+  CINEMA_CLOSE_REASONS, CINEMA_CLOSE_METHODS, MORE_METHODS, CINEMA_LINK_SOURCES, CINEMA_OPEN_METHODS, EVENTS, IMAGE_METHODS, cinemaCloseParams, cinemaLinkMethod, gameEventParams, cinemaOpenParams, imageEventParams, filterEventParams, gtagConfigScript, gtagSrc, isMeasurementId, measurementIdFor, trackEvent, trackedClick, viewEventParams,
 } from './analytics.mjs';
 
 const analytics = { googleMeasurementId: 'G-HPZNHYZ2MQ' };
@@ -82,14 +83,34 @@ test('trackEvent: sends through gtag when the Google tag is on the page, otherwi
 test('cinema_open / cinema_close: the listing, how it opened, why it closed, how long and how many works', () => {
   assert.equal(EVENTS.cinema, 'cinema_open');
   assert.equal(EVENTS.cinemaClose, 'cinema_close');
-  assert.deepEqual(CINEMA_OPEN_METHODS, ['button', 'link', 'home', 'footer', 'shortcut']);
-  assert.deepEqual(CINEMA_LINK_SOURCES.map(cinemaLinkMethod), ['home', 'footer', 'shortcut'], 'a link of the site counted apart');
+  assert.deepEqual(CINEMA_OPEN_METHODS, ['button', 'link', 'home', 'footer', 'shortcut', 'shortcut_favorites']);
+  assert.deepEqual(CINEMA_LINK_SOURCES.map(cinemaLinkMethod), ['home', 'footer', 'shortcut', 'shortcut_favorites'], 'a link of the site counted apart');
   assert.deepEqual([null, '', 'menu', 'contact'].map(cinemaLinkMethod), ['link', 'link', 'link', 'link'], 'any other address = link');
   assert.equal(cinemaOpenParams({ listing: 'gallery', results: 3, interval: 15, method: 'home' }).method, 'home');
   assert.deepEqual(cinemaOpenParams({ listing: 'year', results: 12, interval: 15, method: 'link' }), { listing: 'year', results: 12, interval: 15, method: 'link' });
   assert.throws(() => cinemaOpenParams({ listing: 'gallery', results: 1, interval: 15, method: 'tap' }), /unknown method of cinema_open: tap/);
-  assert.ok(CINEMA_CLOSE_REASONS.includes('collection'));
-  assert.deepEqual(cinemaCloseParams({ listing: 'gallery', reason: 'esc', ms: 61499, shown: 5 }), { listing: 'gallery', reason: 'esc', seconds: 61, shown: 5 });
+  assert.deepEqual(CINEMA_CLOSE_REASONS, ['close', 'back', 'work', 'collection', 'list', 'selection']);
+  assert.deepEqual(Object.keys(CINEMA_CLOSE_METHODS).sort(), CINEMA_CLOSE_REASONS.filter((r) => r !== 'back').sort(), 'every reason but Back says how');
+  assert.deepEqual(cinemaCloseParams({ listing: 'gallery', reason: 'close', ms: 61499, shown: 5, swipes: 3, method: 'key' }),
+    { listing: 'gallery', reason: 'close', seconds: 61, shown: 5, swipes: 3, keys: 0, swipes_missed: 0, method: 'key' }, 'Esc');
+  assert.equal(cinemaCloseParams({ listing: 'gallery', reason: 'close', ms: 1, shown: 1, method: 'button' }).method, 'button', '×');
+  assert.equal(cinemaCloseParams({ listing: 'gallery', reason: 'close', ms: 1, shown: 1, method: 'fullscreen' }).method, 'fullscreen', 'the whole screen left');
+  assert.deepEqual(cinemaCloseParams({ listing: 'gallery', reason: 'back', ms: 2000, shown: 2, swipes: 1, method: 'key' }),
+    { listing: 'gallery', reason: 'back', seconds: 2, shown: 2, swipes: 1, keys: 0, swipes_missed: 0 }, 'Back: no method');
+  assert.deepEqual(cinemaCloseParams({ listing: 'gallery', reason: 'back', ms: 1, shown: 1 }), { listing: 'gallery', reason: 'back', seconds: 0, shown: 1, swipes: 0, keys: 0, swipes_missed: 0 }, 'no counts given = none');
+  assert.deepEqual(cinemaCloseParams({ listing: 'year', reason: 'close', ms: 9000, shown: 7, swipes: 2, keys: 4, swipes_missed: 3, method: 'button' }),
+    { listing: 'year', reason: 'close', seconds: 9, shown: 7, swipes: 2, keys: 4, swipes_missed: 3, method: 'button' }, 'every count goes on');
+  assert.equal(cinemaCloseParams({ listing: 'gallery', reason: 'list', ms: 2000, shown: 2, method: 'key' }).method, 'key', '"Seznam" back to the listing by S');
+  assert.equal(cinemaCloseParams({ listing: 'gallery', reason: 'selection', ms: 2000, shown: 2, method: 'pinch' }).method, 'pinch', '"Seznam" to "Můj výběr" by a pinch');
+  assert.equal(cinemaCloseParams({ listing: 'gallery', reason: 'work', ms: 1, shown: 1, method: 'swipe' }).method, 'swipe', 'a finger down');
+  assert.equal(cinemaCloseParams({ listing: 'gallery', reason: 'collection', ms: 1, shown: 1, method: 'click' }).method, 'click', '"Kolekce: …"');
+  for (const [reason, methods] of Object.entries(CINEMA_CLOSE_METHODS)) {
+    for (const method of methods) assert.equal(cinemaCloseParams({ listing: 'selection', reason, ms: 0, shown: 1, method }).method, method, `${reason} ${method}`);
+    assert.throws(() => cinemaCloseParams({ listing: 'gallery', reason, ms: 1, shown: 1 }), /unknown method of cinema_close/, `${reason} always says how`);
+  }
+  assert.throws(() => cinemaCloseParams({ listing: 'gallery', reason: 'list', ms: 1, shown: 1, method: 'swipe' }), /unknown method of cinema_close list: swipe/);
+  assert.throws(() => cinemaCloseParams({ listing: 'gallery', reason: 'close', ms: 1, shown: 1, method: 'pinch' }), /unknown method/);
+  assert.throws(() => cinemaCloseParams({ listing: 'gallery', reason: 'esc', ms: 1, shown: 1, method: 'key' }), /unknown reason/, 'the old reasons are gone');
   assert.throws(() => cinemaCloseParams({ listing: 'gallery', reason: 'swipe', ms: 1, shown: 1 }), /unknown reason/);
 });
 
@@ -132,4 +153,17 @@ test('trackedClick: more_click of a card under a work, the clicked work and wher
     { name: 'more_click', params: { work_id: 'rw4dh', work_title: 'Máky', method: 'similar' } });
   assert.deepEqual(trackedClick({ track: EVENTS.more, method: MORE_METHODS.similarFilter }), { name: 'more_click', params: { method: 'similar_filter' } });
   assert.deepEqual(Object.values(MORE_METHODS), ['related', 'similar', 'similar_filter']);
+});
+
+test('cinema_close carries every count of a show (cinemaRunCounts) and README registers each as a custom metric', async () => {
+  const counter = cinemaRunCounts();
+  counter.stepped('touch');
+  counter.stepped('key');
+  counter.missed('touch');
+  const run = counter.counts;
+  const params = cinemaCloseParams({ listing: 'gallery', reason: 'back', ms: 0, shown: 1, ...run });
+  for (const [name, value] of Object.entries(run)) assert.equal(params[name], value, `${name} in cinema_close`);
+  const readme = await fs.readFile(new URL('../../README.md', import.meta.url), 'utf8');
+  const metrics = readme.split('*Vlastní metriky → Vytvořit*')[1].split('Nový parametr události')[0];
+  for (const name of [...Object.keys(run), 'seconds', 'shown']) assert.match(metrics, new RegExp(`\`${name}\` \\(`), `${name} among the metrics to register`);
 });

@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import YAML from 'yaml';
 import {
-  CAPTION_MODES, CINEMA_DEFAULTS, CINEMA_STORAGE_KEYS, CINEMA_RANDOM, CINEMA_HINT_KEY, cinemaHint, fullscreenHint, cinemaFirst, lingerMs, saleShowPath, featuredShowPath, CINEMA_FROM, captionMode, cinemaCard, cinemaPalette, cinemaPalettes, cinemaSources, cinemaFromParams, intervalLabel, cinemaSettings, cinemaToParams, dragStep, fitBox, imageWidth, shuffledOrder, wrapIndex,
+  CAPTION_MODES, CINEMA_DEFAULTS, CINEMA_STORAGE_KEYS, CINEMA_RANDOM, CINEMA_HINT_KEY, cinemaHint, fullscreenHint, cinemaFirst, lingerMs, pinchedIn, swipeEnd, cinemaRunCounts, LISTING_LIST_TITLE, SELECTION_LIST_TITLE, saleShowPath, featuredShowPath, favoritesShowPath, CINEMA_FROM, captionMode, cinemaCard, cinemaPalette, cinemaPalettes, cinemaSources, cinemaFromParams, intervalLabel, cinemaSettings, cinemaToParams, dragStep, fitBox, imageWidth, shuffledOrder, wrapIndex,
 } from './cinema.mjs';
-import { FEATURED_ON, filtersToParams, stateFromParams } from './gallery-filter.mjs';
+import { FAVORITES_ON, FEATURED_ON, filtersToParams, stateFromParams } from './gallery-filter.mjs';
 
 const settings = cinemaSettings({});
 
@@ -24,6 +24,8 @@ test('cinemaSettings: the defaults, own values over them, bad values are errors;
   assert.equal(cinemaSettings({ cinema: { palette: 'auto' } }).palette, 'auto');
   assert.throws(() => cinemaSettings({ cinema: { marginPercent: 60 } }), /marginPercent/);
   assert.throws(() => cinemaSettings({ cinema: { swipe: { fraction: 0 } } }), /swipe.fraction/);
+  assert.equal(cinemaSettings({}).swipe.pinch, 0.6, 'the default pinch');
+  for (const pinch of [0, 1, 1.5, -0.2, '0.5']) assert.throws(() => cinemaSettings({ cinema: { swipe: { pinch } } }), /swipe.pinch/, String(pinch));
   const config = YAML.parse(fs.readFileSync(new URL('../../site.config.yaml', import.meta.url), 'utf8'));
   assert.doesNotThrow(() => cinemaSettings(config));
 });
@@ -108,7 +110,7 @@ test('fitBox / imageWidth: as large as fits with the margin; the smallest sharp 
   });
 });
 
-test('CINEMA_RANDOM / cinemaFirst / saleShowPath / featuredShowPath: ?cinema=random starts anywhere; the shows of the works on sale and of the selection', () => {
+test('CINEMA_RANDOM / cinemaFirst / saleShowPath / featuredShowPath / favoritesShowPath: ?cinema=random starts anywhere; the shows of the works on sale, of the selection and of the favourites', () => {
   assert.equal(cinemaFirst(CINEMA_RANDOM), null);
   assert.equal(cinemaFirst('a1b2c'), 'a1b2c');
   assert.equal(cinemaFirst(null), null);
@@ -122,6 +124,11 @@ test('CINEMA_RANDOM / cinemaFirst / saleShowPath / featuredShowPath: ?cinema=ran
   assert.equal(featuredShowPath('footer'), '/tvorba/?featured=1&cinema=random&from=footer');
   assert.equal(featuredShowPath('shortcut'), '/tvorba/?featured=1&cinema=random&from=shortcut');
   assert.throws(() => featuredShowPath('menu'), /unknown link of the show: menu/);
+  assert.equal(favoritesShowPath('footer'), '/tvorba/?favorites=1&cinema=random&from=footer');
+  assert.throws(() => favoritesShowPath('contact'), /unknown link of the show: contact/);
+  const liked = new URLSearchParams(favoritesShowPath('footer').split('?')[1]);
+  assert.equal(liked.get('favorites'), FAVORITES_ON, 'the gallery filter of the own favourites');
+  assert.equal(cinemaFromParams(liked, settings).id, CINEMA_RANDOM, 'opens the show');
   const featured = new URLSearchParams(featuredShowPath('home').split('?')[1]);
   assert.equal(featured.get(CINEMA_FROM), 'home');
   assert.equal(filtersToParams(stateFromParams(featured)).toString(), 'featured=1', 'the address of the gallery drops from');
@@ -138,13 +145,65 @@ test('lingerMs: a move or a swipe keeps the work at least the shortest interval,
 });
 
 test('cinemaHint: keys with a mouse and a keyboard, swipes with a finger; its own key in the tab', () => {
-  assert.equal(cinemaHint(false), '← → listovat · ↓ obraz · ↑ kolekce · L oblíbené');
-  assert.match(cinemaHint(true), /^tahem do stran listovat · dolů obraz · nahoru kolekce$/);
-  assert.equal(cinemaHint(false, 'window'), '← → listovat · ↓ obraz · ↑ kolekce · L oblíbené · klik nebo F = celá obrazovka', 'not in the whole screen yet');
-  assert.equal(cinemaHint(false, 'full'), '← → listovat · ↓ obraz · ↑ kolekce · L oblíbené · F = celá obrazovka / okno', 'in it: how to leave it');
+  assert.equal(cinemaHint(false), '← → listovat · ↓ obraz · ↑ kolekce · S seznam · L oblíbené');
+  assert.match(cinemaHint(true), /^tahem do stran listovat · dolů obraz · nahoru kolekce · sevřením seznam$/);
+  assert.equal(cinemaHint(false, 'window'), '← → listovat · ↓ obraz · ↑ kolekce · S seznam · L oblíbené · klik nebo F = celá obrazovka', 'not in the whole screen yet');
+  assert.equal(cinemaHint(false, 'full'), '← → listovat · ↓ obraz · ↑ kolekce · S seznam · L oblíbené · F = celá obrazovka / okno', 'in it: how to leave it');
   assert.equal(cinemaHint(true, 'full'), cinemaHint(true), 'a finger has no F');
   assert.equal(fullscreenHint(false), 'klik nebo F = celá obrazovka');
   assert.equal(fullscreenHint(true), 'ťuknutí = celá obrazovka');
-  assert.equal(cinemaHint(true, 'window'), 'tahem do stran listovat · dolů obraz · nahoru kolekce · ťuknutí = celá obrazovka');
+  assert.equal(cinemaHint(true, 'window'), 'tahem do stran listovat · dolů obraz · nahoru kolekce · sevřením seznam · ťuknutí = celá obrazovka');
   assert.ok(!Object.values(CINEMA_STORAGE_KEYS).includes(CINEMA_HINT_KEY), 'not among the remembered settings');
+});
+
+test('LISTING_LIST_TITLE / SELECTION_LIST_TITLE: the tooltips of "Seznam", the key added by the cinema', () => {
+  assert.equal(LISTING_LIST_TITLE, 'Zpět na seznam těchto obrazů');
+  assert.match(SELECTION_LIST_TITLE, /Můj výběr/);
+  assert.doesNotMatch(`${LISTING_LIST_TITLE} ${SELECTION_LIST_TITLE}`, /\(S\)/);
+});
+
+test('pinchedIn: two fingers apart, closed to swipe.pinch of their distance = "Seznam"', () => {
+  const swipe = { ...CINEMA_DEFAULTS.swipe, minPx: 50, pinch: 0.6 };
+  assert.equal(pinchedIn(300, 120, swipe), true, 'closed well');
+  assert.equal(pinchedIn(300, 180, swipe), true, 'just at the share');
+  assert.equal(pinchedIn(300, 200, swipe), false, 'not enough');
+  assert.equal(pinchedIn(300, 400, swipe), false, 'apart = zoom, not "Seznam"');
+  assert.equal(pinchedIn(40, 10, swipe), false, 'two fingers side by side at first: no pinch');
+});
+
+test('swipeEnd: a tap, a step, a swipe that slid back (missed) or none', () => {
+  assert.equal(swipeEnd({ moving: false, cancelled: false }), 'tap');
+  assert.equal(swipeEnd({ moving: false, cancelled: true }), 'none', 'a press cancelled is no tap');
+  assert.equal(swipeEnd({ moving: true, cancelled: false, step: 1, dir: 1, hasNeighbour: true }), 'step');
+  assert.equal(swipeEnd({ moving: true, cancelled: false, step: -1, dir: -1, hasNeighbour: true }), 'step', 'to the previous');
+  assert.equal(swipeEnd({ moving: true, cancelled: false, step: 0, dir: 1, hasNeighbour: true }), 'missed', 'not far nor quick enough');
+  assert.equal(swipeEnd({ moving: true, cancelled: false, step: -1, dir: 1, hasNeighbour: true }), 'missed', 'back the other way');
+  assert.equal(swipeEnd({ moving: true, cancelled: false, step: 1, dir: 1, hasNeighbour: false }), 'none', 'nothing beside: no threshold at work');
+  assert.equal(swipeEnd({ moving: true, cancelled: true, step: 0, dir: 1, hasNeighbour: true }), 'none', 'a second finger: not missed');
+});
+
+test('swipeEnd with dragStep: a short slow drag is missed, a long one or a flick steps', () => {
+  const swipe = CINEMA_DEFAULTS.swipe;
+  const end = (dx, ms) => swipeEnd({ moving: true, cancelled: false, step: dragStep(dx, 0, 1000, ms, swipe), dir: dx < 0 ? 1 : -1, hasNeighbour: true });
+  assert.equal(end(-120, 900), 'missed', 'under swipe.fraction of the width, slow');
+  assert.equal(end(-1000 * swipe.fraction, 900), 'step', 'just at swipe.fraction');
+  assert.equal(end(-120, 150), 'step', 'a flick');
+});
+
+test('cinemaRunCounts: finger steps, key steps and finger swipes slid back; the mouse not counted', () => {
+  const counter = cinemaRunCounts();
+  assert.deepEqual(counter.counts, { swipes: 0, keys: 0, swipes_missed: 0 }, 'nothing yet');
+  counter.stepped('touch');
+  counter.stepped('pen');
+  counter.stepped('mouse');
+  counter.stepped('key');
+  counter.stepped('key');
+  counter.stepped('key');
+  counter.missed('touch');
+  counter.missed('mouse');
+  assert.deepEqual(counter.counts, { swipes: 2, keys: 3, swipes_missed: 1 });
+  const copy = counter.counts;
+  copy.keys = 99;
+  assert.equal(counter.counts.keys, 3, 'the counts given out are a copy');
+  assert.deepEqual(cinemaRunCounts().counts, { swipes: 0, keys: 0, swipes_missed: 0 }, 'every show counts afresh');
 });

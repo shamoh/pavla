@@ -11,6 +11,7 @@ import { collectionUrl, config, getCollections, getWorks } from '../../lib/site'
 import { DEFAULT_VIEW, TILE_SIZE_STORAGE_KEY, VIEW_STORAGE_KEY } from '../../../scripts/lib/gallery-filter.mjs';
 import { columnsFor, viewSetup } from '../../../scripts/lib/view-layout.mjs';
 import { EVENTS } from '../../../scripts/lib/analytics.mjs';
+import { NO_FAVORITES_TEXT } from '../../../scripts/lib/favorites.mjs';
 
 const works = getWorks();
 const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile'], keys: { view: VIEW_STORAGE_KEY, tile: TILE_SIZE_STORAGE_KEY }, columns: columnsFor(config, 'gallery') });
@@ -26,7 +27,7 @@ const collections = Object.fromEntries(getCollections().map((c) => [c.slug, { ti
       <button type="button" class="pill play" id="selection-play" title="Vybraná díla jedno po druhém přes celou obrazovku"><span aria-hidden="true">▶</span> Promítat</button>
     </span>
   </div>
-  <p class="muted" id="selection-empty" hidden>Zatím tu nic není. Srdíčkem u obrazu si ho přidáte do oblíbených.</p>
+  <p class="muted" id="selection-empty" hidden>{NO_FAVORITES_TEXT}</p>
   <noscript><p class="muted">Výběr se ukáže jen se zapnutým JavaScriptem.</p></noscript>
   <WorkGrid works={works} place="gallery" heartSource="selection" hidden={works.map(() => true)} cinema id="grid" data-view={JSON.stringify(setup)} />
   <Cinema collections={collections} />
@@ -51,7 +52,7 @@ const collections = Object.fromEntries(getCollections().map((c) => [c.slug, { ti
 <script>
   import { SELECTION_PARAM, FAVORITES_LINK_MAX, favoritesOpenParams, selectionFromSearch, selectionLink, shownFavorites, worksWord } from '../../../scripts/lib/favorites.mjs';
   import { EVENTS, cinemaCloseParams, cinemaOpenParams, trackEvent } from '../../../scripts/lib/analytics.mjs';
-  import { cinemaFromParams, CINEMA_STORAGE_KEYS } from '../../../scripts/lib/cinema.mjs';
+  import { cinemaFromParams, CINEMA_STORAGE_KEYS, LISTING_LIST_TITLE } from '../../../scripts/lib/cinema.mjs';
   import { balanceGrid, gridCards, showViewOf, viewOf } from '../../../scripts/lib/view-layout.mjs';
   import { type CinemaWork, createCinema } from '../../lib/cinema';
   import { applyShareButtons } from '../../lib/share-button';
@@ -96,6 +97,8 @@ const collections = Object.fromEntries(getCollections().map((c) => [c.slug, { ti
   const cinema = createCinema(cinemaRoot, cinemaConf, JSON.parse(cinemaRoot.dataset.collections!), {
     shown: () => {},
     closed: (reason, run) => trackEvent(EVENTS.cinemaClose, cinemaCloseParams({ listing: 'selection', reason, ...run })),
+    // "Seznam" = this page: the show closes
+    list: () => ({ href: location.href, title: LISTING_LIST_TITLE }),
     shared: (method) => trackEvent(EVENTS.share, { method, source: 'cinema', work_id: cinema.current ?? '' }),
   });
   const play = document.getElementById('selection-play')!;

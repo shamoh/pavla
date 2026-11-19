@@ -24,6 +24,7 @@ const { collections } = Astro.props;
       <button type="button" class="cinema-pause"></button>
       <button type="button" class="cinema-captions"></button>
       <button type="button" class="cinema-palette"></button>
+      <a class="cinema-list" hidden>Seznam</a>
       <button type="button" class="cinema-share" title="Odkaz na toto promítání (sdílet nebo zkopírovat)">Odkaz</button>
       <button type="button" class="cinema-fullscreen" title="Přes celou obrazovku" hidden>Celá obrazovka</button>
       <button type="button" class="cinema-help" aria-label="Nápověda (?)" title="Nápověda (?)">?</button>
@@ -102,12 +103,13 @@ const { collections } = Astro.props;
   :global(.cinema-collection:hover .cinema-collection-title) { text-decoration: underline; text-underline-offset: 4px; }
   :global(.cinema-collection[hidden]) { display: inline; visibility: hidden; }
   :global(.cinema-buttons) { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; margin-left: auto; }
-  :global(.cinema button) {
+  :global(.cinema button), :global(.cinema .cinema-list) {
     font: inherit; font-size: 0.9rem; color: var(--ink); background: color-mix(in srgb, var(--paper) 75%, transparent);
     border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; cursor: pointer; white-space: nowrap;
   }
-  :global(.cinema button:hover) { background: var(--paper); }
-  :global(.cinema button[hidden]) { display: none; }
+  :global(.cinema .cinema-list) { text-decoration: none; font-size: 0.9rem; }
+  :global(.cinema button:hover), :global(.cinema .cinema-list:hover) { background: var(--paper); }
+  :global(.cinema button[hidden]), :global(.cinema .cinema-list[hidden]) { display: none; }
   :global(.cinema button[aria-pressed='true']) { background: var(--ink); color: var(--paper); border-color: var(--ink); }
   :global(.cinema .cinema-close) { font-size: 1.4rem; line-height: 1; width: 40px; height: 40px; padding: 0; }
   :global(.cinema .cinema-nav) {

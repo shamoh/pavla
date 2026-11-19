@@ -97,9 +97,10 @@ export function gameEventParams({ level, day, today, id, look }, end = null) {
 /**
  * Links of the site that open a show and name themselves by `?from=` (CINEMA_FROM, scripts/lib/cinema.mjs): home = the
  * second button of the home page, footer = "Obrazy na prodej" / "Moje nejmilejší" in the footer,
- * shortcut = "Promítat" of the home screen icon (site.webmanifest) (which show it was is in the address of the page). The gallery drops `from` from the address.
+ * shortcut = "Promítat" and shortcut_favorites = "Oblíbené" of the home screen icon (site.webmanifest) (which show it was is
+ * in the address of the page). The gallery drops `from` from the address.
  */
-export const CINEMA_LINK_SOURCES = ['home', 'footer', 'shortcut'];
+export const CINEMA_LINK_SOURCES = ['home', 'footer', 'shortcut', 'shortcut_favorites'];
 
 /**
  * How the cinema opened (`method` of cinema_open): button = "▶ Promítat", link = the page opened with ?cinema=,
@@ -111,10 +112,24 @@ export const CINEMA_OPEN_METHODS = ['button', 'link', ...CINEMA_LINK_SOURCES];
 export const cinemaLinkMethod = (from) => (CINEMA_LINK_SOURCES.includes(from) ? from : 'link');
 
 /**
- * Why the cinema closed (`reason` of cinema_close): button = ×, esc = Esc (or leaving the whole screen), back = Back
- * of the browser, work / collection = to the page of the work shown or of its collection.
+ * Why the cinema closed (`reason` of cinema_close): close = × or Esc, back = Back of the browser, work / collection = to
+ * the page of the work shown or of its collection, list = "Seznam" back to the listing, selection = "Seznam" of a show of
+ * favourites to "Můj výběr" (its works).
  */
-export const CINEMA_CLOSE_REASONS = ['button', 'esc', 'back', 'work', 'collection'];
+export const CINEMA_CLOSE_REASONS = ['close', 'back', 'work', 'collection', 'list', 'selection'];
+
+/**
+ * How it was asked for (`method` of cinema_close), by reason; Back has none. button = ×, "Seznam"; key = Esc, S, ↓ ↑;
+ * fullscreen = the end of the whole screen (Esc in it, a gesture of the system); pinch = two fingers pinched together;
+ * click = the caption or "Kolekce: …"; swipe = a finger down or up.
+ */
+export const CINEMA_CLOSE_METHODS = {
+  close: ['button', 'key', 'fullscreen'],
+  list: ['button', 'key', 'pinch'],
+  selection: ['button', 'key', 'pinch'],
+  work: ['click', 'key', 'swipe'],
+  collection: ['click', 'key', 'swipe'],
+};
 
 /** Parameters of cinema_open. */
 export function cinemaOpenParams({ listing, results, interval, method }) {
@@ -122,10 +137,19 @@ export function cinemaOpenParams({ listing, results, interval, method }) {
   return { listing, results, interval, method };
 }
 
-/** Parameters of cinema_close: how long it ran (whole seconds) and how many works it showed. */
-export function cinemaCloseParams({ listing, reason, ms, shown }) {
+/**
+ * Parameters of cinema_close: how long it ran (whole seconds), how many works it showed, its counts (cinemaRunCounts in
+ * scripts/lib/cinema.mjs: `swipes` steps by a finger, `keys` steps by ← →, `swipes_missed` finger swipes slid back) and
+ * how it was closed (`method`, CINEMA_CLOSE_METHODS of the reason).
+ */
+export function cinemaCloseParams({ listing, reason, ms, shown, swipes = 0, keys = 0, swipes_missed = 0, method }) {
   if (!CINEMA_CLOSE_REASONS.includes(reason)) throw new Error(`unknown reason of cinema_close: ${reason}`);
-  return { listing, reason, seconds: Math.round(ms / 1000), shown };
+  const params = { listing, reason, seconds: Math.round(ms / 1000), shown, swipes, keys, swipes_missed };
+  const methods = CINEMA_CLOSE_METHODS[reason];
+  if (!methods) return params;
+  if (!methods.includes(method)) throw new Error(`unknown method of cinema_close ${reason}: ${method}`);
+
+  return { ...params, method };
 }
 
 /**

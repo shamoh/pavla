@@ -68,14 +68,18 @@ test('webManifest: name, short name under the icon, colours, relative addresses,
   assert.equal(m.prefer_related_applications, false);
   assert.deepEqual([m.background_color, m.theme_color], ['#f7f4ee', '#f7f4ee']);
   assert.deepEqual(m.icons.map((i) => `${i.src} ${i.sizes} ${i.purpose}`), ['icon-192.png 192x192 any', 'icon-512.png 512x512 any', 'icon-512.png 512x512 maskable']);
-  assert.deepEqual(m.shortcuts.map((x) => `${x.name} ${x.url}`), ['Detail dne detail-dne/', 'Tvorba tvorba/'], 'no selection, no show');
+  assert.deepEqual(m.shortcuts.map((x) => `${x.name} ${x.url}`), [
+    'Detail dne detail-dne/', 'Tvorba tvorba/', 'Oblíbené tvorba/?favorites=1&cinema=random&from=shortcut_favorites',
+  ], 'no selection, no show of it; the favourites always (the manifest cannot know them)');
   assert.ok(m.shortcuts.every((x) => x.short_name === x.name && x.description && !x.url.startsWith('/')), 'relative');
   assert.deepEqual(m.shortcuts[0].icons, [{ src: 'shortcut-detail-dne.png', sizes: '96x96', type: 'image/png' }]);
   const featured = webManifest({ title: 'Pavla Kramolišová' }, '#f7f4ee', { hasFeatured: true });
   assert.deepEqual(featured.shortcuts.map((x) => `${x.name} ${x.url}`), [
     'Detail dne detail-dne/', 'Tvorba tvorba/', 'Promítat tvorba/?featured=1&cinema=random&from=shortcut',
+    'Oblíbené tvorba/?favorites=1&cinema=random&from=shortcut_favorites',
   ]);
   assert.equal(featured.shortcuts[2].icons[0].src, 'shortcut-promitat.png');
+  assert.equal(featured.shortcuts[3].icons[0].src, 'shortcut-oblibene.png');
   assert.equal('description' in webManifest({ title: 'X' }, '#fff'), false, 'no tagline, no description');
 });
 

@@ -235,6 +235,7 @@ cinema:
     fraction: 0.2
     minPx: 50                  # kratší pohyb je ťuknutí
     flickPxPerMs: 0.5          # rychlost švihnutí (px/ms)
+    pinch: 0.6                 # sevření dvou prstů na tento podíl jejich vzdálenosti = „Seznam“
 
 home:
   # Sloupce obrazů stejné výšky na úvodní stránce (galerie má své v gallery.columns): nižší sloupec nejdřív rozšíří

@@ -11,7 +11,7 @@ import { summarize } from './seo.mjs';
 import { VIEWER_TEXT_MAX } from './work-viewer.mjs';
 import { AUTO, PALETTES } from './palettes.mjs';
 import { isOnSale } from './works.mjs';
-import { FEATURED_ON, galleryFilterPath } from './gallery-filter.mjs';
+import { FAVORITES_ON, FEATURED_ON, galleryFilterPath } from './gallery-filter.mjs';
 import { CINEMA_LINK_SOURCES } from './analytics.mjs';
 
 /** The settings of the cinema when site.config.yaml leaves them out. */
@@ -23,7 +23,8 @@ export const CINEMA_DEFAULTS = {
   captionMs: 4000, // captions "for a while" (the default): how long the caption of a work stays before it fades
   marginPercent: 0, // the paper around a work, % of the shorter side of the screen
   palette: 'noc', // the colours of the cinema (an id of PALETTES or auto), apart from those of the pages
-  swipe: { fraction: 0.2, minPx: 50, flickPxPerMs: 0.5 }, // a step by a finger: far enough, or a quick flick
+  // a step by a finger: far enough, or a quick flick; `pinch` = two fingers closed to this share of their distance = "Seznam"
+  swipe: { fraction: 0.2, minPx: 50, flickPxPerMs: 0.5, pinch: 0.6 },
 };
 
 /** The settings of the cinema from site.config.yaml (`config.cinema`), with the defaults; a bad value is an error. */
@@ -39,6 +40,7 @@ export function cinemaSettings(config) {
   if (!(typeof s.marginPercent === 'number' && s.marginPercent >= 0 && s.marginPercent < 50)) throw new Error('site.config.yaml cinema.marginPercent: 0 to 50');
   if (!cinemaPalettes().some((p) => p.id === s.palette)) throw new Error(`site.config.yaml cinema.palette: one of ${cinemaPalettes().map((p) => p.id).join(', ')}`);
   for (const k of ['fraction', 'minPx', 'flickPxPerMs']) if (!positive(s.swipe[k])) throw new Error(`site.config.yaml cinema.swipe.${k}: a positive number`);
+  if (!(positive(s.swipe.pinch) && s.swipe.pinch < 1)) throw new Error('site.config.yaml cinema.swipe.pinch: a share between 0 and 1');
   return { ...s, intervals: [...s.intervals].sort((a, b) => a - b) };
 }
 
@@ -94,6 +96,16 @@ export const saleShowPath = (from) => showPath('status', 'unsold', from);
 export const featuredShowPath = (from) => showPath('featured', FEATURED_ON, from);
 
 /**
+ * The show of the visitor's own favourites (the footer "Oblíbené"), without the site base: the gallery filter
+ * ?favorites=1 reads them in the visitor's browser.
+ */
+export const favoritesShowPath = (from) => showPath('favorites', FAVORITES_ON, from);
+
+/** Tooltips of "Seznam" in the cinema (the key S is added): back to the listing shown / to "Můj výběr" of a show of favourites. */
+export const LISTING_LIST_TITLE = 'Zpět na seznam těchto obrazů';
+export const SELECTION_LIST_TITLE = 'Tyto obrazy jako seznam (Můj výběr), odkaz jde poslat dál';
+
+/**
  * The hint on the first opening of the cinema in a tab (sessionStorage `CINEMA_HINT_KEY`, every new tab once more):
  * the controls and this line for `HINT_MS`; again by the key ? or "?" in the controls. `touch` = a finger is the pointer
  * (a phone, a tablet). `screen` = where the show is, where the browser can go to the whole screen: `window` = not yet
@@ -103,7 +115,7 @@ export const featuredShowPath = (from) => showPath('featured', FEATURED_ON, from
 export const CINEMA_HINT_KEY = 'pavla.cinema.hinted';
 export const HINT_MS = 4000;
 export function cinemaHint(touch, screen = '') {
-  const moves = touch ? 'tahem do stran listovat · dolů obraz · nahoru kolekce' : '← → listovat · ↓ obraz · ↑ kolekce · L oblíbené';
+  const moves = touch ? 'tahem do stran listovat · dolů obraz · nahoru kolekce · sevřením seznam' : '← → listovat · ↓ obraz · ↑ kolekce · S seznam · L oblíbené';
   if (screen === 'window') return `${moves} · ${fullscreenHint(touch)}`;
   if (screen === 'full' && !touch) return `${moves} · F = celá obrazovka / okno`;
   return moves;
@@ -202,6 +214,47 @@ export function dragStep(dx, dy, width, ms, swipe) {
   const flick = ms > 0 && ax / ms >= swipe.flickPxPerMs;
   if (!far && !flick) return 0;
   return dx < 0 ? 1 : -1;
+}
+
+/**
+ * How a drag of follow-swipe ended (src/lib/follow-swipe.ts): tap = no move; step = to the neighbour (dragStep in the
+ * direction of the drag); missed = slid back with a neighbour there (not far nor quick enough, or back the other way:
+ * the threshold swipe.fraction at work); none = cancelled (a second finger, the browser) or nothing beside to step to.
+ */
+export function swipeEnd({ moving, cancelled, step, dir, hasNeighbour }) {
+  if (!moving) return cancelled ? 'none' : 'tap';
+  if (cancelled || !hasNeighbour) return 'none';
+  return step !== 0 && step === dir ? 'step' : 'missed';
+}
+
+/**
+ * The counts of a show for cinema_close (its parameters, also metrics of GA): `swipes` = steps by a finger (touch or a
+ * pen), `keys` = steps by ← →, `swipes_missed` = drags of a finger that slid back (swipeEnd missed). The mouse and the
+ * arrows ‹ › on the screen are not counted: these compare the phone with the keyboard.
+ */
+export function cinemaRunCounts() {
+  const counts = { swipes: 0, keys: 0, swipes_missed: 0 };
+  const finger = (by) => by === 'touch' || by === 'pen';
+  return {
+    /** A step to the next or previous work: `by` = 'key' or the pointer type of a drag. */
+    stepped(by) {
+      if (by === 'key') counts.keys++;
+      else if (finger(by)) counts.swipes++;
+    },
+    /** A drag that slid back: `by` = its pointer type. */
+    missed(by) {
+      if (finger(by)) counts.swipes_missed++;
+    },
+    get counts() { return { ...counts }; },
+  };
+}
+
+/**
+ * Whether two fingers `startPx` apart closed to `endPx` make "Seznam" (like closing a photo of a phone gallery): apart
+ * at least `swipe.minPx` at first (two fingers side by side are no pinch), then at most `swipe.pinch` of it.
+ */
+export function pinchedIn(startPx, endPx, swipe) {
+  return startPx >= swipe.minPx && endPx <= startPx * swipe.pinch;
 }
 
 /** The size (CSS px) of a work of `ratio` (height / width) as large as fits a screen w × h with `marginPercent`. */

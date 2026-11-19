@@ -4,6 +4,7 @@ import { ID_ALPHABET, ID_FIRST } from './works.mjs';
 import {
   FAVORITE_SOURCES, OVER_LINK_TITLE, SELECTION_PATH, favoriteEventParams, favoriteLabel, favoritesLinkState, favoritesOpenParams, worksWord,
   FAVORITES_LINK_MAX, SELECTION_PARAM, isFavoriteId, ownSelection, readFavorites, selectionFromSearch, selectionLink, shownFavorites, toggleFavorite,
+  NO_FAVORITES_TEXT, showSelectionLink,
 } from './favorites.mjs';
 
 test('an id of a work: the alphabet of works.mjs, five characters, a letter first', () => {
@@ -77,4 +78,20 @@ test('the events of the favourites: the work and its place; "Můj výběr" with 
   assert.deepEqual(favoritesOpenParams(['a2345'], ['a2345']), { results: 1, own: 'yes' });
   assert.deepEqual(favoritesOpenParams(['a2345', 'b2345'], ['a2345']), { results: 2, own: 'no' });
   assert.deepEqual(FAVORITE_SOURCES, ['gallery', 'home', 'selection', 'work', 'cinema']);
+});
+
+test('showSelectionLink: "Seznam" of a show of favourites = "Můj výběr" with its works still liked, in the order of the show', () => {
+  const opts = { page: SELECTION_PATH, param: SELECTION_PARAM, max: 2, onlyFavorites: true };
+  assert.equal(showSelectionLink(['b2222', 'a2222', 'c2222'], ['a2222', 'b2222'], opts), '/tvorba/vyber/?obrazy=b2222,a2222', 'order of the show');
+  assert.equal(showSelectionLink(['a2222', 'b2222'], ['b2222'], opts), '/tvorba/vyber/?obrazy=b2222', 'a heart taken in the show');
+  assert.equal(showSelectionLink(['a2222'], [], opts), null, 'no favourite left = no "Seznam"');
+  assert.equal(showSelectionLink([], ['a2222'], opts), null);
+  const many = ['a2222', 'b2222', 'c2222'];
+  assert.equal(showSelectionLink(many, many, opts), '/tvorba/vyber/', 'over the cap, only the favourites filter: the own favourites');
+  assert.equal(showSelectionLink(many, many, { ...opts, onlyFavorites: false }), null, 'over the cap with other filters: none');
+  assert.equal(showSelectionLink(many, many, { ...opts, max: 3 }), '/tvorba/vyber/?obrazy=a2222,b2222,c2222', 'at the cap still a link');
+});
+
+test('NO_FAVORITES_TEXT: how to add favourites, a sentence', () => {
+  assert.match(NO_FAVORITES_TEXT, /^Zatím tu nic není\. .*oblíbených\.$/);
 });
