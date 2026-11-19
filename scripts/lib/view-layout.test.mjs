@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  COLUMN_DEFAULTS, COLUMN_ORDERS, COLUMN_PLACES, VIEW_KINDS, balanceColumns, columnCount, columnPlan, columnSettings, columnsFor, inlineScript, orderColumns, viewOf, viewScript, viewSetup,
+  COLUMN_DEFAULTS, COLUMN_ORDERS, COLUMN_PLACES, VIEW_GRID_ATTRIBUTE, VIEW_KINDS, balanceColumns, columnCount, columnPlan, columnSettings, columnsFor, inlineScript, orderColumns, viewOf, viewScript, viewSetup,
 } from './view-layout.mjs';
 import fs from 'node:fs';
 import YAML from 'yaml';
 import { CARD_IMAGE_SIZES, DEFAULT_VIEW, TILE_SIZE_STORAGE_KEY, VIEW_STORAGE_KEY, viewImageSizes } from './gallery-filter.mjs';
+import { fakeCard, fakeElement, plain, runInlineScript } from './test-support/inline-script-dom.mjs';
 
 // The gallery: big pictures by default, a link with a view, tile size, page or page size decides.
 const gallery = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 'page', 'perPage'], keys: { view: VIEW_STORAGE_KEY, tile: TILE_SIZE_STORAGE_KEY } });
@@ -82,12 +83,38 @@ test('balanceColumns: one column, more columns than items, equal items, a long l
   assert.ok(spread(many, cols) < 1.5, JSON.stringify(totals(many, cols)));
 });
 
-test('viewScript: self-contained, valid script that starts the grid right before it', () => {
+test('viewScript: self-contained, valid script', () => {
   assert.doesNotThrow(() => new Function(viewScript));
-  assert.match(viewScript, /startView\(document\.currentScript\.previousElementSibling\);\n\}\)\(\);$/);
   assert.doesNotMatch(viewScript, /\bimport\b|\b__name\b/);
   function demoStart() {}
-  assert.match(inlineScript([demoStart], demoStart), /^\(function \(\) \{\nfunction demoStart\(\) \{\}\ndemoStart\(/);
+  assert.match(inlineScript([demoStart], demoStart), /^\(function \(\) \{\nfunction demoStart\(\) \{\}\n/);
+});
+
+const galleryGrid = () => fakeElement({ attributes: { id: 'grid', 'data-view': JSON.stringify(gallery) }, children: [fakeCard('a1'), fakeCard('b2')] });
+
+test('viewScript: starts the grid right before it in the view of the link or the memory', () => {
+  const linked = runInlineScript(viewScript, [galleryGrid()], { search: '?view=tiles&tile=l' }).grid;
+  assert.deepEqual(plain(linked.viewState), { view: 'tiles', tile: 'l' });
+  assert.deepEqual(plain(linked.viewSetup), gallery);
+  assert.equal(linked.classList.contains('tiles-l'), true);
+  const remembered = runInlineScript(viewScript, [galleryGrid()], { stored: { [VIEW_STORAGE_KEY]: 'tiles' } }).grid;
+  assert.deepEqual(plain(remembered.viewState), { view: 'tiles', tile: 'm' });
+});
+
+test('viewScript: still finds the grid when the grid component puts its own script right after it (the hearts of favourites)', () => {
+  const heartsScript = fakeElement({ tagName: 'SCRIPT', attributes: { type: 'module', src: '/_astro/WorkGrid.js' } });
+  const { grid } = runInlineScript(viewScript, [galleryGrid(), heartsScript], { search: '?view=tiles' });
+  assert.deepEqual(plain(grid.viewState), { view: 'tiles', tile: 'm' });
+  assert.equal(grid.classList.contains('tiles'), true);
+});
+
+test('viewGridBefore: looks for the attribute the grid carries', () => {
+  assert.match(viewScript, new RegExp(`hasAttribute\\('${VIEW_GRID_ATTRIBUTE}'\\)`));
+  assert.doesNotMatch(viewScript, /currentScript\.previousElementSibling/, 'never just the element right before it');
+});
+
+test('viewScript: no grid before it = does nothing (no error)', () => {
+  assert.doesNotThrow(() => runInlineScript(viewScript, [fakeElement({ tagName: 'P' })]));
 });
 
 test('inline scripts: every copied function lives in view-layout.mjs (the dev server rewrites calls of imported ones)', async () => {

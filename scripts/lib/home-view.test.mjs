@@ -8,6 +8,7 @@ import {
 } from './home-view.mjs';
 import { viewOf } from './view-layout.mjs';
 import { TILE_SIZE_STORAGE_KEY, VIEW_STORAGE_KEY } from './gallery-filter.mjs';
+import { fakeCard, fakeElement, plain, runInlineScript } from './test-support/inline-script-dom.mjs';
 
 const setup = homeSetup(homeRecent(), 'cov01');
 const of = (search, view = null, tile = null) => viewOf(search, view, tile, setup);
@@ -89,8 +90,55 @@ test('home setup: the view setup with counts, screens and the cover, as JSON', (
   assert.deepEqual(JSON.parse(JSON.stringify(setup)), setup);
 });
 
-test('homeScript: self-contained, valid script that starts the grid right before it', () => {
+test('homeScript: self-contained, valid script', () => {
   assert.doesNotThrow(() => new Function(homeScript));
-  assert.match(homeScript, /startHome\(document\.currentScript\.previousElementSibling\)/);
   assert.doesNotMatch(homeScript, /\bimport\b|\b__name\b/);
+});
+
+// "Nejnovější" on the home page: the grid #recent with data-view, then the inline script. Without grid.viewSetup the
+// page script never wires the view switch (big pictures | tiles | − | +) and nothing lays the works out.
+const homeGrid = (count = 40) => fakeElement({
+  attributes: { id: 'recent', 'data-view': JSON.stringify(setup) },
+  children: Array.from({ length: count }, (_, i) => fakeCard(`w${String(i).padStart(4, '0')}`)),
+});
+const shownCards = (grid) => grid.children.filter((card) => !card.hidden).length;
+
+test('homeScript: starts the grid right before it (view, count of the screen, address)', () => {
+  const { grid, address } = runInlineScript(homeScript, [homeGrid()], { search: '?view=grid' });
+  assert.deepEqual(plain(grid.viewState), { view: 'grid', tile: 'm' });
+  assert.deepEqual(plain(grid.viewSetup), setup);
+  assert.equal(shownCards(grid), setup.recent.wide.grid);
+  assert.equal(grid.classList.contains('tiles'), false);
+  assert.equal(address, '/?view=grid');
+});
+
+test('homeScript: a remembered tile size and the count of a phone, a non-default size goes to the address', () => {
+  const { grid, address } = runInlineScript(homeScript, [homeGrid()], { stored: { [HOME_TILE_SIZE_STORAGE_KEY]: 's' }, width: 400 });
+  assert.deepEqual(plain(grid.viewState), { view: 'tiles', tile: 's' });
+  assert.equal(shownCards(grid), setup.recent.phone.s);
+  assert.equal(grid.classList.contains('tiles-s'), true);
+  assert.equal(address, '/?tile=s');
+  assert.equal(runInlineScript(homeScript, [homeGrid()]).address, '/', 'the default view stays out of the address');
+});
+
+test('homeScript: never shows the work of the cover among the newest', () => {
+  const { grid } = runInlineScript(homeScript, [homeGrid()], { search: '?view=grid' });
+  assert.equal(grid.children.find((card) => card.getAttribute('data-id') === 'cov01'), undefined, 'the fake grid has no cover');
+  const withCover = homeGrid();
+  withCover.children[0] = fakeCard('cov01');
+  runInlineScript(homeScript, [withCover], { search: '?view=grid' });
+  assert.equal(withCover.children[0].hidden, true);
+  assert.equal(shownCards(withCover), setup.recent.wide.grid);
+});
+
+test('homeScript: still finds the grid when the grid component puts its own script right after it (the hearts of favourites)', () => {
+  const heartsScript = fakeElement({ tagName: 'SCRIPT', attributes: { type: 'module', src: '/_astro/WorkGrid.js' } });
+  const { grid } = runInlineScript(homeScript, [homeGrid(), heartsScript, fakeElement({ tagName: 'SCRIPT' })], { search: '?view=grid' });
+  assert.deepEqual(plain(grid.viewState), { view: 'grid', tile: 'm' }, 'the page script needs grid.viewState and grid.viewSetup');
+  assert.equal(shownCards(grid), setup.recent.wide.grid);
+});
+
+test('homeScript: no grid before it = does nothing (no error)', () => {
+  assert.doesNotThrow(() => runInlineScript(homeScript, [fakeElement({ tagName: 'P' })]));
+  assert.doesNotThrow(() => runInlineScript(homeScript, []));
 });

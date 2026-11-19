@@ -180,7 +180,17 @@ v `scripts/lib/page-links.mjs`): `/tvorba/`, `/tvorba/kolekce/`, `/kontakt/?…`
 přesměroval, dev server ji obslouží tak, jak je, a stránka pak neví, že je v sekci Tvorba); soubory (`/sitemap.xml`,
 obrázky) beze změny. Odkaz bez lomítka vypíše se stránkou a skončí kódem 1. V kódu adresu stránky piš s lomítkem;
 odkazy v textech (`[text](/tvorba)`) dostanou lomítko samy (`withTrailingSlash` v `richTextHtml` a `richTextMarkdown`),
-takže kvůli nim kontrola nikdy neselže.
+takže kvůli nim kontrola nikdy neselže. A vložené skripty, které běží nad prvkem před sebou (zobrazení mřížky galerie
+a „Nejnovější“, náhodný úvodní obraz; `inlineScriptProblems` v `scripts/lib/inline-targets.mjs`, seznam `INLINE_TARGETS`):
+každý musí mít mezi předchozími sourozenci prvek se svou značkou (`data-view`, `data-pick-box`), jinak by nic neudělal
+(`skript-bez-prvku`), žádný nesmí brát `document.currentScript.previousElementSibling` (`skript-bere-predchozi-prvek`;
+prvek přímo před skriptem: komponenta za mřížku vložila vlastní skript a „Nejnovější“ přestala reagovat) a `data-view`
+mřížky, kterou skript najde, musí být platné nastavení (`data-view-neplatny`, `viewSetupProblem`: objekt JSON, `keys`
+s klíči paměti `view` a `tile`, `views` a `tiles` jako neprázdné seznamy jmen s výchozím `defaultView` / `defaultTile`;
+vypíše všechny důvody; tlačítka přepínače mají
+vlastní `data-view` se jménem zobrazení a nekontrolují se). Nalezené vypíše se stránkou a kódem a skončí kódem 1. Nový
+takový skript = jeho hledací funkce a značka do `INLINE_TARGETS`. Rozbor HTML `htmlElements` (prvky, rodiče, atributy
+s hodnotami, obsah skriptů) stačí na postavené stránky, není to úplný parser.
 Běží i v „Kontrole kódu“ po stavbě webu (pull request s chybějícím obrázkem, stránkou mimo mapu nebo vadnými
 texty se nesloučí). Texty a strukturovaná data nasazeného webu kontroluje stejně i týdenní kontrola (níže).
 Testovací web: `SITE_DATA_DIR=.demo/site npm run check:images` po
@@ -366,8 +376,8 @@ slovem): text nadpisu, titulek stránky, JSON-LD ani bublina nad obrazem ji neob
 „Nejnovější“ neopakuje dílo z úvodního obrazu (počet podle zobrazení, viz *Úvodní stránka*).
 
 Náhodný obraz: stránka obsahuje všechny kandidáty, první viditelný a ostatní `hidden` s líně načítanými obrázky
-(skryté se nestahují). Hned za nimi je malý vložený skript (`applyRandomPick` ze `scripts/lib/random-pick.mjs`),
-který ještě před vykreslením ukáže náhodného, takže nic nepřeblikne. Bez JavaScriptu zůstane první. Karusel
+(skryté se nestahují) v krabičce s `data-pick-box`. Za ní je malý vložený skript (`applyRandomPick` ze `scripts/lib/random-pick.mjs`;
+krabičku najde `pickBoxBefore` = nejbližší předchozí prvek s `data-pick-box`, ne jen prvek přímo před sebou), který ještě před vykreslením ukáže náhodného, takže nic nepřeblikne. Bez JavaScriptu zůstane první. Karusel
 (střídání během návštěvy) záměrně není: obrazy mají různé poměry stran a rám by „dýchal“.
 
 Vyzkoušení (`npm run demo`): `/` a `/tvorba/2026/` náhodně (obnovuj stránku), `/tvorba/2025/` vlastní fotka
@@ -579,7 +589,7 @@ klíče `grid` = velké obrazy, `s` / `m` / `l` = dlaždice; chybějící = výc
     Nejnovější dílo tak nemusí být vlevo nahoře; pořadí uvnitř sloupce zůstává od nejnovějšího.
   - Vyzkoušení hodnot: prototyp `zarovnani-sloupcu.html` (viz *Prototypy*) s posuvníky pro `maxGap`, `maxTop` a výběrem `order`.
 - **Bez přeblikávání:** zobrazení odkazu nebo paměti, počet pro telefon i sloupce nastaví vložený skript hned za mřížkou
-  (`homeScript` = `startHome`, `layoutHome` a jejich pomocné funkce zkopírované jako text, proto bez importů; všechny musí být v `scripts/lib/view-layout.mjs`, protože dev server přepisuje volání importovaných funkcí na `__vite_ssr_import_…`, které by kopie ve stránce nenašla, hlídá test), ještě
+  (`homeScript` = `startHome`, `layoutHome` a jejich pomocné funkce zkopírované jako text; mřížku najde `viewGridBefore` = nejbližší předchozí prvek s `data-view`, takže komponenta smí za mřížku vložit vlastní skript, jako `WorkGrid.astro` skript srdíček; proto bez importů; všechny musí být v `scripts/lib/view-layout.mjs`, protože dev server přepisuje volání importovaných funkcí na `__vite_ssr_import_…`, které by kopie ve stránce nenašla, hlídá test), ještě
   než se stránka vykreslí. Nastavení dostane v `data-view` mřížky (`homeSetup` = `viewSetup` + počty, obrazovky a
   dílo úvodního obrazu). Skript stránky (`src/pages/index.astro`) pak obsluhuje přepínač.
 - Do URL se píše jen jiné než výchozí zobrazení (`homeSearch`; ostatní parametry adresy, např. `utm_*`, zůstanou),
@@ -1215,7 +1225,7 @@ seznamů.
   `[]` = nikde) a `sale.icon` (`cart` košík, `tag` cenovka, `bag` taška). Velikost a krytí jdou do mřížky jako
   proměnné `--mark-*` (`WorkGrid.astro`), velikost dlaždice zná CSS z `.pic` (`container-type: inline-size`, jednotka `cqi`).
 - **Bez přeblikávání:** zapamatované zobrazení a velikost dlaždic nastaví vložený skript hned za mřížkou
-  (`viewScript` = `startView`, `viewOf` a `showViewOf` zkopírované jako text, proto bez importů), ještě než se stránka
+  (`viewScript` = `startView`, `viewOf` a `showViewOf` zkopírované jako text, proto bez importů; mřížku najde `viewGridBefore`), ještě než se stránka
   vykreslí; nastavení dostane v `data-view` mřížky (`viewSetup`: zobrazení, výchozí, parametry odkazu, které rozhodují
   `linkKeys`, klíče paměti, `sizes`). Skript galerie pak převezme jeho výsledek (`grid.viewState`) a vyfiltruje,
   rozstránkuje a rozloží díla. Přepínač pod díly nastaví až skript galerie (při vykreslení ještě není na stránce).
@@ -2426,6 +2436,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | `derived_` v obsahu | do `demo-content/tvorba/demo-maky.yaml` přidej `derived_x: 1`, `npm run demo:prepare`: chyba „derived_ attributes are made by the pipeline…“ (pak smaž) |
 | vyhledávače | po `npm run demo:build`: `.demo/site/dist/robots.txt`, `.demo/site/dist/sitemap.xml` (s `lastmod`), ve zdroji stránek `<meta name="description">` a `application/ld+json` (dílo `VisualArtwork` s `keywords` a `artform`, u Ráno u rybníka a Máků `sameAs` s odkazem na Instagram / Fler, výpisy `CollectionPage` s `keywords`, úvod `WebSite` + `Person`); 404 má `noindex` |
 | chybějící obrázek | smaž v `.demo/site/dist/tvorba/*/*/` jeden obrázek, `SITE_DATA_DIR=.demo/site npm run check:images`: vypíše ho se stránkou a skončí kódem 1 |
+| vložený skript bez prvku | v `.demo/site/dist/index.html` smaž `data-view` u `id="recent"`, `SITE_DATA_DIR=.demo/site npm run check:images`: vypíše `viewGridBefore finds no earlier element with data-view` se stránkou a skončí kódem 1 |
 | chyby v popisu | např. `date: 14. 6. 2026`, `collection: plener` v popisu díla, podsložka v kolekci bez díla, dvě složky se stejnou adresou, popisek v `details:` k neexistující fotce, zveřejňované dílo, kolekce, rok, úvod nebo fotka s textem začínajícím `DOPLNIT`, `cover` s dílem z jiné kolekce nebo `focus: [120, 50]`: `npm run images` skončí chybou a nic nezapíše |
 
 Pozn.: když Astro při buildu padá na zápisu telemetrie (sandbox, CI bez domovského
@@ -2633,6 +2644,10 @@ nepovinný), `CHECK_TOKEN` (spotřeba minut Actions a nastavení rep, nepovinný
   uzlu): `evaluatePageTexts` ve `scripts/lib/page-check.mjs`, stejná pravidla jako `npm run check:images` u buildu,
   hlášky česky (nejvýš 10, pak „… a dalších N“). Když se web nepodařilo načíst, tahle kontrola se přeskočí
   (chybu ohlásí kontrola obrázků).
+- že vložené skripty týchž stránek (všech, i s `noindex`: mřížka je i na „Můj výběr“) najdou svůj prvek a `data-view`
+  mřížky je platné nastavení: `evaluateInlineScripts` ve `scripts/lib/inline-targets.mjs`, stejná pravidla jako
+  `npm run check:images` u buildu (bez nich galerie, „Nejnovější“ nebo náhodný úvodní obraz nefungují), hlášky česky
+  (nejvýš 10); bez načteného webu se přeskočí.
 - že minuty GitHub Actions soukromých rep za tento měsíc nedocházejí (`evaluateMinutes`, `MINUTE_LIMITS`): GitHub Free
   má 2000 minut měsíčně jen pro soukromá repa (veřejná běží zdarma), po jejich vyčerpání GitHub běhy zastaví do dalšího
   měsíce. Čte přehled spotřeby účtu (`/users/<vlastník>/settings/billing/usage?year=&month=`) s tokenem `CHECK_TOKEN`
@@ -2678,7 +2693,8 @@ pipeline (`scripts/lib/codes.mjs`, úroveň `health`): `token-chybi`, `token-nep
 nepodařilo načíst). Problémy textů stránek mají kód každý (`titulek-chybi`, `stejny-titulek`, `popis-stranky-chybi`,
 `stejny-popis-stranky`, `dlouhy-popis-stranky`, `jsonld-chybi`, `jsonld-neplatny`, `jsonld-neni-objekt`,
 `jsonld-bez-contextu`, `jsonld-prazdny-graf`, `jsonld-bez-typu`); jsou to přímo kódy `pageProblems`, takže je
-vypisuje i `npm run check:images`.
+vypisuje i `npm run check:images`. Stejně vložené skripty (`skript-bez-prvku`, `skript-bere-predchozi-prvek`,
+`data-view-neplatny`, kódy `inlineScriptProblems`).
 
 **Zkušební běh zpracování** (`.github/workflows/dry-run.yml` v tomto repu): každou neděli (den před
 týdenní kontrolou), po změně pipeline (`scripts/process-images.mjs`, `scripts/pull-request.mjs`,

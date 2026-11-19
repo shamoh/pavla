@@ -1,9 +1,9 @@
 // One of several candidates at random, per visit: the cover of the home page and of a collection
 // (the newest works of the author's selection, see coverCandidates in works.mjs).
 //
-// The page renders every candidate as a child of the box with `data-pick` (the first one visible, the others
-// `hidden`, their images lazy, so hidden ones are never loaded) and runs applyRandomPick right after the box as an
-// inline script: it shows a random candidate before the page is painted, so nothing flickers. Without JavaScript the
+// The page renders every candidate as a child of the box (`data-pick-box`) with `data-pick` (the first one visible, the
+// others `hidden`, their images lazy, so hidden ones are never loaded) and runs applyRandomPick after the box as an
+// inline script (on the nearest box before it, pickBoxBefore): it shows a random candidate before the page is painted, so nothing flickers. Without JavaScript the
 // first candidate stays.
 // Optionally the box names a list (`data-pick-exclude="<selector>"`) whose cards (`data-id`) should not repeat the
 // shown candidate, showing at most `data-pick-show` of the rest (the home page: the newest works below the cover).
@@ -31,8 +31,23 @@ export function applyRandomPick(box, random = Math.random) {
   return id;
 }
 
-/** The inline script placed right after a box: runs applyRandomPick on it. */
-export const randomPickScript = `(${applyRandomPick.toString()})(document.currentScript.previousElementSibling);`;
+/** The attribute of the box the inline script runs on (Cover.astro). */
+export const PICK_BOX_ATTRIBUTE = 'data-pick-box';
+
+/**
+ * The box an inline random pick runs on: the nearest element before `script` with data-pick-box, null when there is
+ * none. Not just the element right before the script: a component may put its own script or element after the box.
+ */
+export function pickBoxBefore(script) {
+  var element = script.previousElementSibling;
+  while (element && !element.hasAttribute('data-pick-box')) element = element.previousElementSibling;
+
+  return element;
+}
+
+/** The inline script placed after a box: runs applyRandomPick on it (pickBoxBefore). */
+export const randomPickScript =
+  `(function () {\n${pickBoxBefore}\nvar box = pickBoxBefore(document.currentScript);\nif (box) (${applyRandomPick})(box);\n})();`;
 
 /**
  * Which of `ids` (a list below the cover, e.g. the newest works) are hidden in the HTML, before the script runs:

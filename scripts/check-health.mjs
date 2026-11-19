@@ -17,6 +17,7 @@ import { collectSettings, compareSnapshots, settingsSnapshot } from './lib/repo-
 import { findUnknownAttributes, findUnknownTechniques, findUntranslatedTags } from './lib/content.mjs';
 import { checkSiteImages, evaluateSiteImages } from './lib/site-check.mjs';
 import { evaluatePageTexts } from './lib/page-check.mjs';
+import { evaluateInlineScripts } from './lib/inline-targets.mjs';
 import {
   DRY_RUNS, evaluateCheckToken, evaluateDeploy, evaluateGameAnalyses, evaluateGamePlan, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure,
 } from './lib/health.mjs';
@@ -114,6 +115,9 @@ const siteImages = await guarded('obrázky webu', async () => {
 // The same pages have their own titles and descriptions and valid structured data (as npm run check:images checks
 // a build); not checked when the site could not be read.
 const pageTexts = evaluatePageTexts(site?.html ?? null);
+// Their inline scripts find their elements and every data-view is valid JSON (as npm run check:images checks a build),
+// on all pages read, also those with noindex.
+const inlineScripts = evaluateInlineScripts(site?.html ?? null);
 
 // The plan of the days of the game Detail dne on the deployed site reaches at least a week ahead (no game page = not checked).
 const gamePlan = await guarded('plán hry Detail dne', async () => {
@@ -186,7 +190,7 @@ const settings = !monthly ? evaluateSettings(null, { reason: 'jen první ponděl
       return evaluateSettings(results);
     });
 
-const report = formatReport(token, checkTokenState, runs, dryRun, deploy, pr, unknown, techniques, translations, siteImages, pageTexts, gamePlan, gameAnalyses, sizes, minutes, settings);
+const report = formatReport(token, checkTokenState, runs, dryRun, deploy, pr, unknown, techniques, translations, siteImages, pageTexts, inlineScripts, gamePlan, gameAnalyses, sizes, minutes, settings);
 console.log(report.text);
 if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, report.text);
 // codes: "[token-vyprsi] [obrazky-chybi]" for the title of the issue (e-mails filtered by code)

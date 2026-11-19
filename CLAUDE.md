@@ -145,7 +145,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - `featured: true` = výběr autorky: `★` za názvem na kartě, na stránce díla vedle `<h1>` na pravém okraji v úrovni prvního řádku (mimo něj, v bloku `.title` s flex;
   `FeaturedStar.astro`, barva `var(--ink)`, nikdy v textu `<h1>`, `<title>`, JSON-LD ani bublině), filtr „Výběr autorky“ (`?featured=1`) a kandidáti úvodních obrazů
   (`coverCandidates`, `FEATURED_PICK` = 10 nejnovějších vybraných): úvodní obraz bez vlastní fotky a `cover`
-  (`Cover.astro`, vede na zobrazené dílo); stránka ukáže náhodného skriptem `scripts/lib/random-pick.mjs`
+  (`Cover.astro`, vede na zobrazené dílo); stránka ukáže náhodného skriptem `scripts/lib/random-pick.mjs` (krabička `data-pick-box`, `pickBoxBefore`)
   (vložený, bez přeblikávání), `og:image` je vždy první kandidát. Web pipeline (`coverSource`) musí vybírat stejně.
 - Text o roce: `roky/<rok>.yaml` obsahového repa (`YEAR_SCHEMA`, `scripts/lib/years.mjs`), kostru pipeline založí
   ke každému roku s díly; veřejná kopie `content/roky/<rok>.yaml` (`text`, `description`, `cover`, `aspect`, `focus`), web `getYear`.
@@ -208,7 +208,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   v `.grid.balanced`, pořadí karet `gridCards`) po každé změně zobrazených děl a šířky; konec a pořadí sloupců
   `site.config.yaml` `home.columns` a `gallery.columns`, každé zvlášť (`maxGap`, `maxTop`, `order`; `columnsFor`, `columnSettings`,
   `columnPlan`, `orderColumns`); zapamatované zobrazení před vykreslením
-  vložený skript `viewScript` za mřížkou (funkce zkopírované jako text = bez importů a uzávěrů, všechny vkládané funkce i úvodní stránky
+  vložený skript `viewScript` za mřížkou (mřížku najde `viewGridBefore` = nejbližší předchozí prvek s `data-view`, komponenta smí za mřížku vložit vlastní skript; funkce zkopírované jako text = bez importů a uzávěrů, všechny vkládané funkce i úvodní stránky
   jen ve `view-layout.mjs`: dev server přepisuje volání importovaných funkcí a kopie ve stránce by spadla).
   Úvodní stránka „Nejnovější“: stejná zobrazení bez stránkování, výchozí střední dlaždice (`scripts/lib/home-view.mjs`, `HOME_DEFAULT_VIEW`),
   počet děl podle zobrazení v `site.config.yaml` `home.recent` (`wide` / `tablet` do 1100 px / `phone` do 640 px, `homeRecent`, `HOME_SCREENS`; = stejná výška), v URL jen jiné
@@ -323,7 +323,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   „Zkušební běh zpracování“ (`.github/workflows/dry-run.yml`, každou neděli na testovacích datech, nic nepushne)
   prochází tytéž kroky: změna kroků zpracování obsahu = stejná změna ve `dry-run.yml`.
   Týdenní kontrola (token, selhané běhy, zkušební běh, nasazení, čekající PR, neznámé atributy, chybějící obrázky
-  nasazeného webu `scripts/lib/site-check.mjs`, texty a JSON-LD jeho stránek `evaluatePageTexts`, velikost obou rep
+  nasazeného webu `scripts/lib/site-check.mjs`, texty a JSON-LD jeho stránek `evaluatePageTexts`, vložené skripty všech jeho stránek `evaluateInlineScripts`, velikost obou rep
   a nasazeného webu proti limitům GitHubu `evaluateSizes` (od 70 % `blizi-se-limit`), minuty Actions soukromých rep
   `evaluateMinutes` (`CHECK_TOKEN`; `dochazeji-minuty`, `placene-minuty`), první pondělí v měsíci
   nastavení obou rep proti uloženým exportům `evaluateSettings` (`compareSnapshots`, `nastaveni-se-zmenilo`); hlášky `pageProblems`
@@ -373,7 +373,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Patička nese verzi buildu `vRR.MMDD.HHMM` (pražský čas) s bublinou (datum, commit): `scripts/lib/build-version.mjs`.
 - „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` jen `npm test` + `npm run build`
   + `npm run check:images` (obrázky, úplnost mapy webu `unlistedPages`, unikátní titulky a popisy a platné JSON-LD
-  `pageProblems`; rychlé). Stejný název nebo popis dvou děl řeší web sám (`workPageTitle`, `workPageDescription`).
+  `pageProblems`, vložené skripty najdou svůj prvek a `data-view` mřížky je platné nastavení (`keys`, `views`, `tiles`) `inlineScriptProblems`; rychlé). Vložený skript nad prvkem před sebou vždy hledá prvek
+  podle značky (`INLINE_TARGETS`: `viewGridBefore`/`data-view`, `pickBoxBefore`/`data-pick-box`), nikdy `previousElementSibling` skriptu. Stejný název nebo popis dvou děl řeší web sám (`workPageTitle`, `workPageDescription`).
   U každého PR běží vždy: job `check` je povinná kontrola rulesetu na `main`, na kterou čeká auto-merge aktualizací
   obsahu (správce má výjimku pro přímé pushe). Job `check` nepřejmenovávat, jinak se auto-merge zasekne.
   Web z testovacích dat se na GitHubu nestaví (pomalé, nikde se nezveřejňuje): před commitem změn webu nebo pipeline

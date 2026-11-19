@@ -33,7 +33,7 @@ const href = crop && link ? crop.href : undefined;
     )}
   </div>
 ) : cover.kind === 'random' ? (
-  <div class:list={['cover', 'whole', cls]} data-pick-exclude={exclude} data-pick-show={show}>
+  <div class:list={['cover', 'whole', cls]} data-pick-box data-pick-exclude={exclude} data-pick-show={show}>
     {cover.works.map((w, i) =>
       link ? (
         <a class="pick" href={workUrl(w)} data-pick data-id={w.id} hidden={i > 0}><Picture work={w} sizes={sizes} eager={eager && i === 0} tooltip /></a>

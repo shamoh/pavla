@@ -68,7 +68,7 @@ export function viewSetup({ defaultView, linkKeys, keys, columns }) {
   };
 }
 
-// ---- inlined (viewScript, homeScript) ----
+// ---- inlined (viewScript, homeScript; inlineScript adds viewGridBefore) ----
 
 /**
  * The view { view, tile } for the address `search`: a link decides (a view in it, or any of setup.linkKeys: page 2
@@ -320,9 +320,24 @@ export function startHome(grid) {
   return state;
 }
 
-/** Source of an inline script that defines `fns` and calls `start` with the element right before the script. */
+/** The attribute of the grid an inline view script starts (its setup as JSON). */
+export const VIEW_GRID_ATTRIBUTE = 'data-view';
+
+/**
+ * The grid an inline view script starts: the nearest element before `script` with data-view, null when there is none.
+ * Not just the element right before the script: a component may put its own script right after the grid (WorkGrid.astro
+ * does, for the hearts of favourites), and the grid would then go without its view and its switch.
+ */
+export function viewGridBefore(script) {
+  var element = script.previousElementSibling;
+  while (element && !element.hasAttribute('data-view')) element = element.previousElementSibling;
+
+  return element;
+}
+
+/** Source of an inline script that defines `fns` and calls `start` with the grid before the script (viewGridBefore). */
 export const inlineScript = (fns, start) =>
-  `(function () {\n${fns.map(String).join('\n')}\n${start.name}(document.currentScript.previousElementSibling);\n})();`;
+  `(function () {\n${[...fns, viewGridBefore].map(String).join('\n')}\nvar grid = viewGridBefore(document.currentScript);\nif (grid) ${start.name}(grid);\n})();`;
 
 /** The inline script right after a gallery grid. */
 export const viewScript = inlineScript([viewOf, showViewOf, startView], startView);

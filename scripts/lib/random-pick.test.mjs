@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyRandomPick, hiddenInList, randomPickScript } from './random-pick.mjs';
+import { PICK_BOX_ATTRIBUTE, applyRandomPick, hiddenInList, pickBoxBefore, randomPickScript } from './random-pick.mjs';
+import { fakeElement, runInlineScript } from './test-support/inline-script-dom.mjs';
 
 /** A minimal element: attributes, children, the hidden flag. */
 function el(attrs = {}, children = []) {
@@ -48,8 +49,35 @@ test('hiddenInList matches the page before the script runs', () => {
   assert.deepEqual(hiddenInList([], undefined, 6), []);
 });
 
-test('randomPickScript is the function itself, run on the element right before the script', () => {
-  assert.match(randomPickScript, /^\(function applyRandomPick\(box, random = Math\.random\)/);
-  assert.match(randomPickScript, /\)\(document\.currentScript\.previousElementSibling\);$/);
+test('randomPickScript: self-contained, runs the function itself on the box found by pickBoxBefore', () => {
+  assert.doesNotThrow(() => new Function(randomPickScript));
+  assert.match(randomPickScript, /\(function applyRandomPick\(box, random = Math\.random\)/);
+  assert.match(randomPickScript, /var box = pickBoxBefore\(document\.currentScript\);/);
+  assert.doesNotMatch(randomPickScript, /currentScript\.previousElementSibling/, 'never just the element right before it');
   assert.doesNotMatch(randomPickScript, /\bimport\b|=>/, 'self-contained, plain functions');
+  assert.match(String(pickBoxBefore), new RegExp(`'${PICK_BOX_ATTRIBUTE}'`), 'looks for the attribute the box carries');
+});
+
+/** A box of the random cover with candidates `ids`, as Cover.astro renders it. */
+const pickBox = (ids) => fakeElement({
+  attributes: { [PICK_BOX_ATTRIBUTE]: '' },
+  children: ids.map((id, i) => Object.assign(fakeElement({ attributes: { 'data-pick': '', 'data-id': id } }), { hidden: i > 0 })),
+});
+const shownIds = (box) => box.children.filter((c) => !c.hidden).map((c) => c.getAttribute('data-id'));
+
+test('pickBoxBefore: the nearest earlier sibling with data-pick-box, or null', () => {
+  const box = pickBox(['a', 'b']);
+  const other = fakeElement({ tagName: 'SCRIPT', previous: box });
+  assert.equal(pickBoxBefore(fakeElement({ tagName: 'SCRIPT', previous: box })), box);
+  assert.equal(pickBoxBefore(fakeElement({ tagName: 'SCRIPT', previous: other })), box, 'past a script after the box');
+  assert.equal(pickBoxBefore(fakeElement({ tagName: 'SCRIPT', previous: fakeElement() })), null);
+  assert.equal(pickBoxBefore(fakeElement({ tagName: 'SCRIPT' })), null);
+});
+
+test('randomPickScript in a page: shows exactly one candidate, also with a script between the box and it', () => {
+  const right = runInlineScript(randomPickScript, [pickBox(['a', 'b', 'c'])]).grid;
+  assert.equal(shownIds(right).length, 1);
+  const between = runInlineScript(randomPickScript, [pickBox(['a', 'b', 'c']), fakeElement({ tagName: 'SCRIPT', attributes: { type: 'module' } })]).grid;
+  assert.equal(shownIds(between).length, 1);
+  assert.doesNotThrow(() => runInlineScript(randomPickScript, [fakeElement({ tagName: 'P' })]), 'no box = does nothing');
 });
