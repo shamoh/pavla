@@ -772,17 +772,18 @@ stránka je `src/pages/detail-dne/index.astro`, hra v prohlížeči `src/lib/det
   parametr `day` událostí GA, Diagnostika, postup hráče (kola a `played` pod `roundKey` „2026-320:easy“, poslední den série `lastDay`
   „2026-320“). Hráč ho vidí jako „Detail dne 2026#320“ (`dayLabel`): v nadpisu, bublině dlaždice archivu, kartě konce dne („Den 2026#310
   máš za sebou.“) a sdílení. Uvnitř hra počítá dny od začátku hry (`GAME_EPOCH`, série, archiv, měsíce); klíč dne jen na hranici.
-  Nad úrovněmi řádek „‹ Archiv · 3. listopadu · zbývá 10 z 30 💧 › Dnes“ (jen v archivu, přepnutí dne
+  Nad úrovněmi řádek „‹ Archiv · 3. listopadu · zbývá 10 z 90 💧 › Dnes“ (jen v archivu, přepnutí dne
   je navigace, během kola se nic nehne). Za den archivu poloviční kapky bez bonusu série a série ani poslední den se nemění
   (`finishRound`, `dropsFor`). Sdílení z archivu posílá adresu s `?den=`.
-- **Strop archivu** (`archiveRoom`): z archivu se za jeden skutečný den započte nejvýš 30 💧 (aby nový hráč nepřeskočil desítky
+- **Strop archivu** (`archiveRoom`): z archivu se za jeden skutečný den započte nejvýš 90 💧 (`archiveCap` = `ARCHIVE_DAYS_A_DAY` = 3 archivní dny
+  se všemi úrovněmi napoprvé, 3 × (5 + 10 + 15), tolik jako jeden dokonalý skutečný den s plnou sérií; aby nový hráč nepřeskočil desítky
   hodností dohráním roku archivu najednou); co je navíc, propadne, obraz do sbírky přibude vždy. Postup si drží `archiveDay`
   (klíč dne, kdy se kapky z archivu braly) a `archiveDrops`, kolo nad stropem má v `played` i `capped` (kolik kapek propadlo).
-  Hráč strop vidí: v řádku archivu „zbývá 30 z 30 💧“ (tlumeně), od poloviny žlutě, vyčerpaný červeně „strop 30 💧 dnes vyčerpán“
+  Hráč strop vidí: v řádku archivu „zbývá 90 z 90 💧“ (tlumeně), od poloviny žlutě, vyčerpaný červeně „strop 90 💧 dnes vyčerpán“
   (na telefonu pod datem na vlastním řádku, nikdy se neusekne), v bublině co to znamená (`archiveRoomTitle`: hrát může dál,
   obrazy přibývají do sbírky, kapky z archivu dnes už ne, zítra zase); v řádku pokusů „za 10 💧 (strop)“, když strop dá míň, než by kolo
   dalo; na konci „+10 💧 (strop archivu)“ a v kartě výsledku červeně „Strop archivu: započteno 10 z 15 💧.“, s nulou
-  „Strop archivu: dnes už bez kapek, další zítra.“ (`cappedText`, v bublině `archiveRoomTitle`; s nulou bez „+0 💧“ u verdiktu); v poznámce sekce Archiv „Z archivu se za den započte nejvýš 30 💧, dnes ještě 20.“, vyčerpaný červeně „Dnešních 30 💧 z archivu už máš, další až zítra.“ (krátké, aby se vešly do jednoho řádku odstavce, `p` má `max-width: 62ch`; bublina jako v řádku archivu).
+  „Strop archivu: dnes už bez kapek, další zítra.“ (`cappedText`, v bublině `archiveRoomTitle`; s nulou bez „+0 💧“ u verdiktu); v poznámce sekce Archiv „Z archivu se za den započte nejvýš 90 💧, dnes ještě 20.“, vyčerpaný červeně „Dnešních 30 💧 z archivu už máš, další až zítra.“ (krátké, aby se vešly do jednoho řádku odstavce, `p` má `max-width: 62ch`; bublina jako v řádku archivu).
 - **Hodnosti** (`gameRanks`, `gameRank`): 22 hodností od „Vylitý kelímek“ (0) po „Druhé oko autorky“ (149 800 💧). Prahy = kapky
   hráče, který každý den uhodne všechny tři úrovně napoprvé (od 6. dne série 90 💧 denně), na konci dne 1, 3, 6, 10, 15, 22, 32, 46,
   66, 96, 136, 196, 286, 406, 586 a pak každých 180 dní (test to přepočítává): ze začátku po dnech, pak po týdnech, pak po měsících,

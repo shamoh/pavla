@@ -967,13 +967,24 @@ export function gameRank(drops) {
   return { index, title: ranks[index][1], next: ranks[index + 1][0], nextTitle: ranks[index + 1][1] };
 }
 
+/** How many days of the archive, every level solved at the first guess, fill the cap of one real day (archiveCap). */
+export const ARCHIVE_DAYS_A_DAY = 3;
+
+/**
+ * The most drops the archive gives in one real day: ARCHIVE_DAYS_A_DAY days of the archive with every level solved at the first guess
+ * (half drops, each level times its multiplier: 5 + 10 + 15 = 30 a day, so 90), as much as one perfect real day with a full series.
+ */
+export function archiveCap(levels = gameLevels()) {
+  return ARCHIVE_DAYS_A_DAY * levels.reduce((sum, level) => sum + dropsFor(0, 0, true, level.drops), 0);
+}
+
 /**
  * The drops the archive may still give today (`today` = the day of the game now): `{ cap, used, left }`. The days of the archive
- * count into the rank only up to `cap` drops a day, so a new player cannot leap many ranks by playing a year of the archive at once;
- * over it the rounds give no drops (the works still go into the collection).
+ * count into the rank only up to `cap` drops a day (archiveCap), so a new player cannot leap many ranks by playing a year of the
+ * archive at once; over it the rounds give no drops (the works still go into the collection).
  */
 export function archiveRoom(progress, today, epoch) {
-  const cap = 30;
+  const cap = archiveCap();
   const todayKey = roundKey(today, '', epoch).slice(0, -1);
   const used = progress.archiveDay === todayKey ? progress.archiveDrops ?? 0 : 0;
   return { cap, used, left: Math.max(0, cap - used) };
