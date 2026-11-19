@@ -53,7 +53,7 @@ export const SHARE_COPY = 'copy';
 
 /** Names of the own events; their parameters must be registered as custom dimensions in GA (see README). */
 export const EVENTS = {
-  filter: 'gallery_filter', // tag (picked tags joined by a comma), technique, year, collection, status, featured, q (only the active ones), results
+  filter: 'gallery_filter', // tag (picked tags joined by a comma), technique, year, collection, status, featured, favorites, q (only the active ones), results
   fler: 'fler_click', // work_id, work_title
   instagram: 'instagram_click', // "Obraz na Instagramu" of a work: work_id, work_title
   share: 'share', // "Sdílet" of a work (GA's recommended event): method (pinterest, facebook, whatsapp, native, copy), work_id, work_title
@@ -62,13 +62,16 @@ export const EVENTS = {
   palette: 'palette_change', // palette: the chosen colours (papir, pergamen, noc, auto)
   view: 'view_change', // the view of works switched: listing (home, gallery), view (grid, tiles-s, tiles-m, tiles-l)
   image: 'image_view', // a picture shown in the viewer of a work: work_id, work_title, image, image_kind, method
-  cinema: 'cinema_open', // the cinema of a listing opened: listing (gallery, year, collection), results, interval, method (button, link)
+  cinema: 'cinema_open', // the cinema of a listing opened: listing (gallery, year, collection, selection), results, interval, method (button, link)
   cinemaClose: 'cinema_close', // the cinema closed: listing, reason (CINEMA_CLOSE_REASONS), seconds, shown (works shown)
   gameStart: 'game_start', // the first guess of a round of Detail dne: level, day, archive, look (gameEventParams); of a quiz of a visitor source quiz, level, look, work_id (quizEventParams)
   gameEnd: 'game_end', // a round of Detail dne over: level, day, archive, look, solved, misses, drops, streak, work_id, work_title; of a quiz + solved, misses
   code: 'code_open', // a work opened by its code in the header (CodeJump.astro): work_id, method (CODE_METHODS)
-  appInstall: 'app_install', // "Nainstalovat aplikaci" in the footer and the app installed: method (INSTALL_METHODS of app-install.mjs)
+  appInstall: 'app_install', // "Nainstalovat" in the footer and the app installed: method (INSTALL_METHODS of app-install.mjs)
   more: 'more_click', // a click under a work: the clicked work_id, work_title; method (MORE_METHODS); the page = the work it was under
+  favoriteAdd: 'favorite_add', // a heart: a work added to the favourites: work_id, work_title, source (FAVORITE_SOURCES of favorites.mjs)
+  favoriteRemove: 'favorite_remove', // a heart: a work removed from the favourites: work_id, work_title, source
+  favoritesOpen: 'favorites_open', // "Můj výběr" opened by a link: results (works), own (yes = all of them liked here)
 };
 
 /**

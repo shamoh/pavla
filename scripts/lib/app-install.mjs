@@ -5,7 +5,7 @@
 //   (/_astro/) cache first, pictures and fonts stale-while-revalidate (at once from the cache, refreshed behind).
 //   Every build has its own version, so a deploy drops the old pages and files; pictures stay (APP_CACHES.images,
 //   at most IMAGE_CACHE_LIMIT, the oldest go first).
-// - Installing: installMode says what the footer button "Nainstalovat aplikaci" does (src/lib/app-install.ts):
+// - Installing: installMode says what the footer button "Nainstalovat" does (src/lib/app-install.ts):
 //   the browser's own prompt (Android, Chrome, Edge), a short how-to for iPhone/iPad (Share → Add to Home Screen)
 //   or for another phone browser (its menu), nothing on a computer without a prompt or inside the installed app.
 // - Inside the installed app (display-mode standalone) the header has "←" (iPhone has no Back of its own there).
@@ -144,7 +144,7 @@ self.addEventListener('fetch', (event) => {
 }
 
 /**
- * What "Nainstalovat aplikaci" does (`hidden` = no button): `prompt` = the browser's own install dialog
+ * What "Nainstalovat" does (`hidden` = no button): `prompt` = the browser's own install dialog
  * (beforeinstallprompt: Android, Chrome, Edge), `ios` = how-to for iPhone and iPad (no prompt there, every browser
  * installs through Share), `menu` = how-to for another phone browser (Firefox, Samsung: their menu), hidden inside the
  * installed app and on a computer without a prompt (nothing to offer there).

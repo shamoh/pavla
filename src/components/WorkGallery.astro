@@ -6,6 +6,7 @@ import { type Work, collectionUrl, colourChoices, config, getCollections, getYea
 import { DEFAULT_VIEW, NO_COLLECTION, NO_COLLECTION_TITLE, TILE_SIZE_STORAGE_KEY, VIEW_STORAGE_KEY, czechOrder, statusOptions, yearFilterOptions } from '../../scripts/lib/gallery-filter.mjs';
 import { columnsFor, viewScript, viewSetup } from '../../scripts/lib/view-layout.mjs';
 import { overviewLink, yearCounts, yearOptions } from '../../scripts/lib/collection-filter.mjs';
+import { HEART_ICON, SELECTION_PATH } from '../../scripts/lib/favorites.mjs';
 
 interface Props { works: Work[]; year?: number; collection?: string }
 // `year` set: a year page (/tvorba/2026/), the year filter is replaced by links.
@@ -115,8 +116,12 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   <div class="chips" id="chips" role="group" aria-label="Témata (lze vybrat víc najednou)">
     <button type="button" data-filter="tag" data-value="" aria-pressed="true">Vše</button>
     {tags.map(([t, n]) => <button type="button" data-filter="tag" data-value={t} aria-pressed="false">#{t} <small>{n}</small></button>)}
-    <!-- one block after the tags, at the right edge: how many works, "× Zrušit filtry" while a filter is on, "▶ Promítat" -->
+    <!-- one block after the tags, at the right edge: the box "only my favourites" (a filter, ?favorites=1) and "♥ Moje
+         oblíbené (N)" (the favourites among the shown works, a link to "Můj výběr"; too many for a link = a grey count),
+         how many works, "× Zrušit filtry" while a filter is on, "▶ Promítat" -->
     <span class="count-group">
+      <label class="mine-filter" data-favorites-filter hidden title="Jen moje oblíbené"><input type="checkbox" name="favorites" value="1" aria-label="Jen moje oblíbené" /></label>
+      <a class="mine-link" data-favorites-link hidden><svg viewBox="0 0 24 24" aria-hidden="true" set:html={HEART_ICON} /><span>Moje oblíbené (<span data-favorites-count>0</span>)</span></a>
       <span class="muted" id="count" aria-live="polite">{works.length} děl</span>
       <button type="button" class="reset-link" data-filters-reset hidden><span aria-hidden="true">×</span> Zrušit filtry</button>
       <a class="play-link" data-cinema-open href="?cinema=random" title="Vybraná díla jedno po druhém přes celou obrazovku"><span aria-hidden="true">▶</span> Promítat</a>
@@ -129,7 +134,7 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
 </form>
 </div>
 
-<WorkGrid works={works} place="gallery" eager={3} cinema id="grid" data-listing={listing} data-page-sizes={JSON.stringify({ grid: pageSizes, tiles: tilePageSizes })} data-view={JSON.stringify(setup)} />
+<WorkGrid works={works} place="gallery" eager={3} cinema id="grid" data-selection={url(SELECTION_PATH)} data-listing={listing} data-page-sizes={JSON.stringify({ grid: pageSizes, tiles: tilePageSizes })} data-view={JSON.stringify(setup)} />
 <script is:inline set:html={viewScript} />
 <p class="muted empty" id="empty" hidden>Tomuhle výběru nic neodpovídá.</p>
 <Pager pageSizes={pageSizes} total={works.length} views />
@@ -162,6 +167,9 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   import { exactId, normalizeQuery } from '../../scripts/lib/search.mjs';
   import { selectCombobox } from '../lib/combobox';
   import { BAR_START, activeFilters, filteredCount, scrollBar, withoutFilter, withoutFilters, worksCount } from '../../scripts/lib/filter-bar.mjs';
+  import { FAVORITES_LINK_MAX, OVER_LINK_TITLE, SELECTION_PARAM, favoritesLinkState, shownFavorites } from '../../scripts/lib/favorites.mjs';
+  import { FAVORITES_ON } from '../../scripts/lib/gallery-filter.mjs';
+  import { favorites, onFavoritesChange } from '../lib/favorites';
 
   // The year links stay on one line, older years behind "2017–2003 ▾" (src/lib/year-row.ts).
   const yearRow = document.getElementById('years');
@@ -179,10 +187,13 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     const d = c.dataset;
     return {
       search: d.search!, tags: tagsOf(c), technique: d.technique!, colors: (d.colors ?? '').split(' ').filter(Boolean), year: d.year!,
-      collection: d.collection!, status: d.status!, featured: d.featured === '1',
+      collection: d.collection!, status: d.status!, featured: d.featured === '1', favorite: false,
     };
   };
   const works = cards.map(workOf);
+  // which works are the visitor's favourites (the filter ?favorites=1), again after every change of them
+  const markFavorites = () => { const liked = new Set(favorites()); cards.forEach((c, i) => { works[i].favorite = liked.has(c.dataset.id!); }); };
+  markFavorites();
   // The search in titles and descriptions next to the heading (SearchField.astro, on every page with a gallery).
   const searchInput = document.getElementById('works-search') as HTMLInputElement | null;
   // "Enter otevře obraz" under the field: shown exactly when Enter would open a work (the same exactId).
@@ -199,6 +210,33 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   // (?…&cinema=random), so they can be copied; a plain click opens it here
   const playButtons = [...document.querySelectorAll<HTMLAnchorElement>('[data-cinema-open]')];
   const pager = document.getElementById('pager')!;
+  // "♥ Moje oblíbené (N)": the favourites among all the works of the filters (every page), in their order, a link to
+  // "Můj výběr" with them (favoritesLinkState); more than fit a link = a grey count with a tooltip; none = nothing
+  const mineLink = document.querySelector<HTMLAnchorElement>('[data-favorites-link]')!;
+  const mineCount = mineLink.querySelector<HTMLElement>('[data-favorites-count]')!;
+  let matchingIds: string[] = [];
+  function renderMine() {
+    const mine = favoritesLinkState(shownFavorites(favorites(), matchingIds), { page: grid.dataset.selection!, param: SELECTION_PARAM, max: FAVORITES_LINK_MAX });
+    mineLink.hidden = mine.kind === 'none';
+    mineCount.textContent = String(mine.count);
+    mineLink.classList.toggle('off', mine.kind === 'over');
+    if (mine.href) { mineLink.href = mine.href; mineLink.title = 'Obrazy, které se mi líbí, z těch zobrazených; odkaz jde poslat dál'; mineLink.removeAttribute('aria-disabled'); }
+    else { mineLink.removeAttribute('href'); mineLink.title = OVER_LINK_TITLE; mineLink.setAttribute('aria-disabled', 'true'); }
+  }
+  // the box before it: only the favourites (a filter like "Doporučené", it works over the cap of the link too); shown while
+  // some of the works of the other filters are favourites, or while it is on (to be turned off)
+  const favoritesFilter = document.querySelector<HTMLElement>('[data-favorites-filter]')!;
+  const favoritesBox = favoritesFilter.querySelector('input')!;
+  function renderFavoritesFilter() {
+    favoritesBox.checked = state.favorites === FAVORITES_ON;
+    const [choice] = facetChoices(works, state, 'favorites', [FAVORITES_ON]);
+    favoritesFilter.hidden = !favoritesBox.checked && choice.count === 0;
+  }
+  onFavoritesChange(() => {
+    markFavorites();
+    // with the filter on a work taken out of the favourites leaves the list at once
+    if (state.favorites) apply(); else { renderMine(); renderFavoritesFilter(); }
+  });
   // Page sizes of each view (big pictures, tiles); `pageSizes` = those of the current view.
   const sizes: { grid: number[]; tiles: number[] } = JSON.parse(grid.dataset.pageSizes!);
   const perPageLabel = document.getElementById('per-page');
@@ -282,6 +320,9 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   /** Shows the works of the current state and writes it to the URL; returns how many works match. */
   function apply() {
     const matching = cards.filter((_, i) => matchesFilters(works[i], state));
+    matchingIds = matching.map((c) => c.dataset.id!);
+    renderMine();
+    renderFavoritesFilter();
     const { page, pages, start, end } = paginate(matching.length, state.page, pageSizeOf(state, pageSizes));
     state.page = page;
     showViewOf(grid, setup, state);
@@ -483,6 +524,7 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     state = stateFromForm(state, [
       ...selects.map((k) => ({ key: k, value: select(k)!.value, off: select(k)!.disabled })),
       ...(featuredBox ? [{ key: 'featured', value: featuredBox.checked ? FEATURED_ON : '', off: featuredBox.disabled }] : []),
+      { key: 'favorites', value: favoritesBox.checked ? FAVORITES_ON : '', off: false },
     ]);
     state.page = pageAfterFilterChange(state.page);
     trackFilter(apply());
@@ -673,6 +715,18 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
     display: flex; gap: 12px; align-items: center; white-space: nowrap; font-size: 0.9rem;
   }
   .reset-link { font-size: 0.9rem; }
+  /* "♥ Moje oblíbené (N)" before the count: a link to "Můj výběr"; too many for a link = grey with a dashed border and a tooltip */
+  .mine-link {
+    flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--ink); text-decoration: none;
+    border: 1px solid var(--line); border-radius: 99px; padding: 3px 12px 3px 10px; white-space: nowrap;
+  }
+  .mine-link svg { width: 14px; height: 14px; fill: var(--heart); stroke: var(--heart); stroke-width: 2; stroke-linejoin: round; }
+  .mine-link:hover { border-color: var(--ink); }
+  .mine-link.off { color: var(--ink-soft); border-style: dashed; cursor: help; }
+  .mine-link.off:hover { border-color: var(--line); }
+  .mine-link[hidden] { display: none; }
+  .mine-filter { display: inline-flex; align-items: center; margin-right: -6px; cursor: pointer; }
+  .mine-filter[hidden] { display: none; }
   /* "▶ Promítat": the works of the filters over the whole screen (Cinema.astro); in the bar only "▶". */
   .play-link, .bar-play {
     flex: none; font: inherit; font-size: 0.9rem; color: var(--ink); background: transparent; cursor: pointer; text-decoration: none;
@@ -701,7 +755,8 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   .filters.floating .reset-link { display: none; }
   /* On a phone the open filters come from the bottom, within reach of the thumb, above "Napište mi". */
   @media (max-width: 700px) {
-    .filters.floating { top: auto; bottom: 0; z-index: 45; max-height: 75vh; border-radius: 12px 12px 0 0; border-top: 1px solid var(--line); }
+    .filters.floating { top: auto; bottom: 0; z-index: 45; max-height: 75vh; border-radius: 12px 12px 0 0; border-top: 1px solid var(--line); }    /* a phone: with "♥ Moje oblíbené" the block may wrap, the count and „Promítat“ stay together at the right edge */
+    .count-group { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
   }
   @media (prefers-reduced-motion: reduce) { .filter-bar, .filter-bar.shown { transition: none; } }
   /* less room above and under the line between the filters and the works */

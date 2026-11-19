@@ -8,6 +8,7 @@
 import { config } from '../lib/site';
 import { cinemaPalettes, cinemaSettings } from '../../scripts/lib/cinema.mjs';
 import { scopedPaletteCss } from '../../scripts/lib/palettes.mjs';
+import { HEART_ICON, favoriteLabel } from '../../scripts/lib/favorites.mjs';
 interface Props { collections: Record<string, { title: string; url: string }> }
 const { collections } = Astro.props;
 ---
@@ -15,7 +16,7 @@ const { collections } = Astro.props;
   {/* AVIF where the browser can, else WebP, else JPEG (cinemaSources) */}
   <figure class="cinema-layer current"><picture><source type="image/avif" /><source type="image/webp" /><img alt="" draggable="false" /></picture></figure>
   <figure class="cinema-layer"><picture><source type="image/avif" /><source type="image/webp" /><img alt="" draggable="false" /></picture></figure>
-  <a class="cinema-caption"><span class="cinema-title"></span><span class="cinema-star" role="img" title="Výběr autorky" aria-label="Výběr autorky" hidden>★</span><span class="cinema-meta"></span><span class="cinema-sale"></span><span class="cinema-text"></span></a>
+  <a class="cinema-caption"><span class="cinema-title"></span><span class="cinema-star" role="img" title="Výběr autorky" aria-label="Výběr autorky" hidden>★</span><button type="button" class="cinema-heart" data-heart="" data-heart-own data-heart-key="L" aria-pressed="false" aria-label={`${favoriteLabel(false)} (L)`} title={`${favoriteLabel(false)} (L)`}><svg viewBox="0 0 24 24" aria-hidden="true" set:html={HEART_ICON} /></button><span class="cinema-meta"></span><span class="cinema-sale"></span><span class="cinema-text"></span></a>
   <div class="cinema-top cinema-controls">
     <a class="cinema-collection" hidden>Kolekce: <span class="cinema-collection-title"></span></a>
     <div class="cinema-buttons">
@@ -74,6 +75,14 @@ const { collections } = Astro.props;
      on sale says nothing; both only with the caption */
   :global(.cinema-star) { flex: none; margin-left: -0.9em; font-size: 1rem; align-self: flex-start; padding-top: 0.2em; }
   :global(.cinema-star[hidden]) { display: none; }
+  /* the heart of the favourites right after the title and the star (src/lib/favorites.ts); the key L does the same */
+  :global(.cinema .cinema-heart) { flex: none; align-self: center; padding: 4px; margin: 0 -0.6em 0 -0.7em; border: 0; background: none; color: var(--heart); line-height: 0; }
+  :global(.cinema .cinema-heart:hover), :global(.cinema .cinema-heart[aria-pressed]) { background: none; color: var(--heart); border: 0; }
+  :global(.cinema-heart svg) { width: 22px; height: 22px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; transition: transform .15s ease; }
+  :global(.cinema-heart.on svg) { fill: currentColor; }
+  :global(.cinema-heart:hover svg) { transform: scale(1.12); }
+  :global(.cinema-heart.beat svg) { animation: cinema-heart-beat .35s ease; }
+  @keyframes cinema-heart-beat { 40% { transform: scale(1.35); } }
   :global(.cinema-sale) { flex: none; align-self: center; white-space: nowrap; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border: 1px solid var(--line); border-radius: 99px; color: var(--ink-soft); }
   :global(.cinema-sale:empty) { display: none; }
   :global(.cinema-caption:hover .cinema-title) { text-decoration: underline; text-underline-offset: 4px; }

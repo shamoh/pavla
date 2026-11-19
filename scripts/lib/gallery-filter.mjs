@@ -55,9 +55,14 @@ export function yearFilterOptions(years) {
 /** Former status filter values, still accepted in shared links: old value → current one. */
 export const STATUS_ALIASES = { available: 'unsold' };
 
-export const FILTER_KEYS = ['tag', 'technique', 'year', 'collection', 'status', 'color', 'featured', 'q'];
+export const FILTER_KEYS = ['tag', 'technique', 'year', 'collection', 'status', 'color', 'featured', 'favorites', 'q'];
 /** Value of `featured` when the visitor shows only the author's selection ("Výběr autorky", ?featured=1). */
 export const FEATURED_ON = '1';
+/**
+ * Value of `favorites` when the visitor shows only the own favourite works (the box before "♥ Moje oblíbené", ?favorites=1;
+ * scripts/lib/favorites.mjs). The favourites are in the visitor's browser: the same link shows another visitor theirs.
+ */
+export const FAVORITES_ON = '1';
 /**
  * Value of `collection` for the works in no collection ("žádná", ?collection=none). Collection slugs come from
  * Czech names (slugify), so none is ever "none".
@@ -79,7 +84,7 @@ const inCollection = (collection, picked) => !picked || (picked === NO_COLLECTIO
 
 /**
  * True when a work ({ search or title + description, tags, technique, colors (the ids of its colours, workColourIds),
- * year as string, collection, status, featured })
+ * year as string, collection, status, featured, favorite = one of the visitor's favourites)
  * passes every active filter, the search (`q`) in its title and description too (`search`: searchText, from the card).
  */
 export function matchesFilters(work, state) {
@@ -91,6 +96,7 @@ export function matchesFilters(work, state) {
     inCollection(work.collection, state.collection) &&
     (!state.status || (STATUS_FILTERS[state.status]?.(work.status) ?? true)) &&
     (!state.featured || work.featured === true) &&
+    (!state.favorites || work.favorite === true) &&
     matchesQuery(work.search ?? searchText(work), state.q)
   );
 }
@@ -119,7 +125,7 @@ export function tagChoices(tags, shownTags, picked) {
 }
 
 /** The filters with one picked option each (selects and the author's selection switch), besides the tags. */
-export const FACETS = ['technique', 'year', 'collection', 'status', 'color', 'featured'];
+export const FACETS = ['technique', 'year', 'collection', 'status', 'color', 'featured', 'favorites'];
 
 /**
  * The options of filter `key` a work ({ technique, colors, year, collection, status, featured }) falls under: one technique,
@@ -129,6 +135,7 @@ export const FACETS = ['technique', 'year', 'collection', 'status', 'color', 'fe
 export function facetValues(work, key) {
   if (key === 'status') return Object.keys(STATUS_FILTERS).filter((k) => STATUS_FILTERS[k](work.status));
   if (key === 'featured') return work.featured ? [FEATURED_ON] : [];
+  if (key === 'favorites') return work.favorite ? [FAVORITES_ON] : [];
   if (key === 'collection') return [work.collection || NO_COLLECTION];
   if (key === 'color') return work.colors ?? [];
   return work[key] ? [String(work[key])] : [];
@@ -197,6 +204,7 @@ export function stateFromParams(params, pageSizes = DEFAULT_PAGE_SIZES) {
   state.status = STATUS_ALIASES[state.status] ?? state.status;
   if (!(state.status in STATUS_FILTERS)) state.status = '';
   if (state.featured !== FEATURED_ON) state.featured = '';
+  if (state.favorites !== FAVORITES_ON) state.favorites = '';
   return { ...state, ...pagingFromParams(params, pageSizes), view: viewFromParams(params), tile: tileSizeFromParams(params) };
 }
 

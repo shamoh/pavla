@@ -1,0 +1,107 @@
+---
+// "Můj výběr" (/tvorba/vyber/, scripts/lib/favorites.mjs): the works of a link (?obrazy=a,b,c, from "♥ Moje oblíbené" of a
+// gallery, maybe sent by someone else), or without one the visitor's own favourites. Every work of the site is in the page,
+// hidden; the script shows those of the selection in the order of the gallery, in the view remembered for the gallery.
+// A link to copy (the share sheet on a phone), "▶ Promítat" = the cinema of the selection. Not for search engines
+// (noindex, no sitemap).
+import Base from '../../layouts/Base.astro';
+import WorkGrid from '../../components/WorkGrid.astro';
+import Cinema from '../../components/Cinema.astro';
+import { collectionUrl, config, getCollections, getWorks } from '../../lib/site';
+import { DEFAULT_VIEW, TILE_SIZE_STORAGE_KEY, VIEW_STORAGE_KEY } from '../../../scripts/lib/gallery-filter.mjs';
+import { columnsFor, viewSetup } from '../../../scripts/lib/view-layout.mjs';
+import { EVENTS } from '../../../scripts/lib/analytics.mjs';
+
+const works = getWorks();
+const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile'], keys: { view: VIEW_STORAGE_KEY, tile: TILE_SIZE_STORAGE_KEY }, columns: columnsFor(config, 'gallery') });
+const collections = Object.fromEntries(getCollections().map((c) => [c.slug, { title: c.title, url: collectionUrl(c.slug) }]));
+---
+<Base title="Můj výběr" description="Výběr obrazů, které se mi líbí: odkaz jde poslat dál." noindex>
+  <h1>Můj výběr</h1>
+  <div class="selection-head" id="selection-head" hidden>
+    <p class="lead"><span id="selection-count"></span><span id="selection-note"> Odkaz na tuhle stránku jde poslat dál.</span></p>
+    <span class="actions">
+      <button type="button" class="pill" id="selection-copy" data-share-link data-track={EVENTS.share} data-title="Můj výběr">Zkopírovat odkaz</button>
+      <span class="muted copied" data-share-status role="status"></span>
+      <button type="button" class="pill play" id="selection-play" title="Vybraná díla jedno po druhém přes celou obrazovku"><span aria-hidden="true">▶</span> Promítat</button>
+    </span>
+  </div>
+  <p class="muted" id="selection-empty" hidden>Zatím tu nic není. Srdíčkem u obrazu si ho přidáte do oblíbených.</p>
+  <noscript><p class="muted">Výběr se ukáže jen se zapnutým JavaScriptem.</p></noscript>
+  <WorkGrid works={works} place="gallery" heartSource="selection" hidden={works.map(() => true)} cinema id="grid" data-view={JSON.stringify(setup)} />
+  <Cinema collections={collections} />
+</Base>
+
+<style>
+  .selection-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: -8px 0 28px; }
+  .selection-head[hidden] { display: none; }
+  .lead { margin: 0; color: var(--ink-soft); }
+  /* the link and "▶ Promítat" at the right edge (under the text on a phone) */
+  .actions { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .pill {
+    font: inherit; font-size: 0.9rem; color: var(--ink); background: transparent; cursor: pointer; white-space: nowrap;
+    border: 1px solid var(--line); border-radius: 99px; padding: 3px 12px;
+  }
+  .pill:hover { border-color: var(--ink); }
+  .pill[hidden] { display: none; }
+  .play span { font-size: 0.8em; margin-right: 2px; }
+  .copied { font-size: 0.85rem; }
+</style>
+
+<script>
+  import { SELECTION_PARAM, FAVORITES_LINK_MAX, favoritesOpenParams, selectionFromSearch, selectionLink, shownFavorites, worksWord } from '../../../scripts/lib/favorites.mjs';
+  import { EVENTS, cinemaCloseParams, cinemaOpenParams, trackEvent } from '../../../scripts/lib/analytics.mjs';
+  import { cinemaFromParams, CINEMA_STORAGE_KEYS } from '../../../scripts/lib/cinema.mjs';
+  import { balanceGrid, gridCards, showViewOf, viewOf } from '../../../scripts/lib/view-layout.mjs';
+  import { type CinemaWork, createCinema } from '../../lib/cinema';
+  import { applyShareButtons } from '../../lib/share-button';
+  import { favorites } from '../../lib/favorites';
+
+  const grid = document.getElementById('grid') as HTMLElement;
+  const cards = gridCards(grid) as HTMLAnchorElement[];
+  const allIds = cards.map((c) => c.dataset.id!);
+  const stored = (key: string) => { try { return localStorage.getItem(key); } catch { return null; } };
+  const linked = new URLSearchParams(location.search).has(SELECTION_PARAM);
+  // a link decides; without one the visitor's own favourites (in the order of the gallery)
+  const ids: string[] = linked ? selectionFromSearch(location.search, { param: SELECTION_PARAM, knownIds: allIds }) : shownFavorites(favorites(), allIds);
+  const picked = new Set(ids);
+  const shown = cards.filter((c) => picked.has(c.dataset.id!));
+  for (const c of cards) c.hidden = !picked.has(c.dataset.id!);
+
+  const setup = JSON.parse(grid.dataset.view!);
+  showViewOf(grid, setup, viewOf(location.search, stored(setup.keys.view), stored(setup.keys.tile), setup));
+  balanceGrid(grid, setup.columns);
+  addEventListener('resize', () => requestAnimationFrame(() => balanceGrid(grid, setup.columns)));
+  document.fonts?.ready.then(() => balanceGrid(grid, setup.columns));
+
+  const head = document.getElementById('selection-head')!;
+  const copy = document.getElementById('selection-copy') as HTMLButtonElement;
+  head.hidden = shown.length === 0;
+  document.getElementById('selection-empty')!.hidden = shown.length > 0;
+  document.getElementById('selection-count')!.textContent = `${worksWord(shown.length)}.`;
+  // the address to send on: the works shown (the link may have named unknown ones); too many for a link = none
+  const link = selectionLink(shown.map((c) => c.dataset.id!), { page: location.pathname, param: SELECTION_PARAM, max: linked ? Infinity : FAVORITES_LINK_MAX });
+  copy.hidden = !link;
+  document.getElementById('selection-note')!.hidden = !link;
+  if (link) {
+    copy.dataset.url = new URL(link, location.href).href;
+    if (!linked) history.replaceState(history.state, '', link);
+  }
+  applyShareButtons();
+  if (linked) trackEvent(EVENTS.favoritesOpen, favoritesOpenParams(ids, favorites()));
+
+  // "▶ Promítat": the cinema of the selection (no address of its own: closing it leaves the page as it was)
+  const cinemaRoot = document.getElementById('cinema')!;
+  const cinemaConf = JSON.parse(cinemaRoot.dataset.settings!);
+  const cinema = createCinema(cinemaRoot, cinemaConf, JSON.parse(cinemaRoot.dataset.collections!), {
+    shown: () => {},
+    closed: (reason, run) => trackEvent(EVENTS.cinemaClose, cinemaCloseParams({ listing: 'selection', reason, ...run })),
+    shared: (method) => trackEvent(EVENTS.share, { method, source: 'cinema', work_id: cinema.current ?? '' }),
+  });
+  const play = document.getElementById('selection-play')!;
+  play.addEventListener('click', () => {
+    const list: CinemaWork[] = shown.map((c) => ({ id: c.dataset.id!, collection: c.dataset.collection!, ...JSON.parse(c.dataset.cinema!) }));
+    const interval = cinemaFromParams(new URLSearchParams(), cinemaConf, stored(CINEMA_STORAGE_KEYS.interval)).interval;
+    if (cinema.open(list, null, interval, 'button')) trackEvent(EVENTS.cinema, cinemaOpenParams({ listing: 'selection', results: list.length, interval, method: 'button' }));
+  });
+</script>

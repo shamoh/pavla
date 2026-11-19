@@ -12,6 +12,7 @@ import { formatSizeCm, isOnSale } from './works.mjs';
 import { balanceColumns, columnCount, columnPlan, columnsFor, orderColumns } from './view-layout.mjs';
 import { homeRecent } from './home-view.mjs';
 import { MARK_ICONS, SALE_ICONS, tileMarksFor } from './tile-marks.mjs';
+import { FAVORITES_LINK_MAX, FAVORITES_STORE, SELECTION_PARAM, ownSelection, readFavorites, selectionFromSearch, selectionLink, shownFavorites, toggleFavorite } from './favorites.mjs';
 import {
   aimRotation, cameraAngles, cameraFromAngles, circleRatio, facingDeg, fitCamera, fitCameraToLines, insidePolygon, ledgeDepth, lineMisfit, lineY,
   planPlacement, polygonDistance, project, quadFits, sceneCamera, sceneWindow, segmentDistance, tiltDeg, unit, unproject, workQuad,
@@ -20,7 +21,7 @@ import { CINEMA_STORAGE_KEYS, captionMode, cinemaFromParams, intervalLabel, cine
 import { VIEWER_TEXT_MAX, autoHide } from './work-viewer.mjs';
 import { ownText } from './rich-text.mjs';
 import { summarize } from './seo.mjs';
-import { PALETTES, paletteCss } from './palettes.mjs';
+import { PALETTES, paletteCss, scopedPaletteCss } from './palettes.mjs';
 import { SAMPLE_PICKS, SAMPLE_SIZE, gameData, prepareGame } from './detail-game-data.mjs';
 import { gamePageHtml } from './detail-game-page.mjs';
 import { AFFINITY_WEIGHTS, GAME_AFFINITY_SCALE, GAME_AFFINITY_WEIGHTS, techniqueFamily, workDistance } from './affinity.mjs';
@@ -45,6 +46,7 @@ export const PROTOTYPES = {
   'detail-kviz.html': 'detail-quiz.html',
   'detail-vzorek.html': 'detail-sample.html',
   'barvy.html': 'colors.html',
+  'oblibene.html': 'favorites.html',
 };
 
 /** The functions of the site a prototype calculates with, copied into it by their source text (self-contained ones). */
@@ -64,6 +66,8 @@ export const PROTOTYPE_FUNCTIONS = [
   rgbToOklab, oklabToOklch, paperOf, balancePalette, nearestFamily, familyShares, paletteMood, paletteDistance, colourDistance,
   // how alike two works are (scripts/lib/affinity.mjs), always called with its weights (its default is a constant of the module)
   techniqueFamily, workDistance,
+  // the favourite works of a visitor (scripts/lib/favorites.mjs, a prototype so far)
+  readFavorites, toggleFavorite, shownFavorites, selectionLink, selectionFromSearch, ownSelection,
 ];
 
 /**
@@ -156,11 +160,15 @@ export function prototypeConfig(config) {
     cinemaKeys: CINEMA_STORAGE_KEYS,
     // the palettes of the site: their CSS (data-palette on <html>) and the switcher
     paletteCss: paletteCss(),
+    // the palettes of the cinema, on its own element (Cinema.astro)
+    cinemaPaletteCss: scopedPaletteCss('.cinema'),
     palettes: PALETTES.map((p) => ({ id: p.id, label: p.label })),
     // the colours of the filter „Barva“ (site.config.yaml gallery.colors, a prototype so far)
     colours: colourSettings(config),
     // the weights of how alike two works are: the similar works and the game (scripts/lib/affinity.mjs)
     affinity: { similar: AFFINITY_WEIGHTS, game: GAME_AFFINITY_WEIGHTS, gameScale: GAME_AFFINITY_SCALE },
+    // the favourites: where the browser keeps them, the parameter of "Můj výběr" and the most works in its link
+    favorites: { store: FAVORITES_STORE, param: SELECTION_PARAM, linkMax: FAVORITES_LINK_MAX },
   };
 }
 

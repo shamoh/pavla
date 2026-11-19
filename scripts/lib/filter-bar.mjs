@@ -12,7 +12,8 @@ export const HIDE_AFTER = 8;
 
 /**
  * The active filters in the order of the form, [{ key, value, text }]: picked tags ("#krajina"), then technique, year,
- * collection and status by `label(key, value)` (the text of the option), the author's selection as "doporučené",
+ * collection and status by `label(key, value)` (the text of the option), the author's selection as "doporučené", the own
+ * favourites as "oblíbené",
  * the search in titles as the query in quotes („ranní mlha“).
  */
 export function activeFilters(state, label) {
@@ -20,6 +21,7 @@ export function activeFilters(state, label) {
     ...state.tag.map((t) => ({ key: 'tag', value: t, text: `#${t}` })),
     ...['technique', 'year', 'collection', 'status', 'color'].filter((k) => state[k]).map((k) => ({ key: k, value: state[k], text: label(k, state[k]) })),
     ...(state.featured ? [{ key: 'featured', value: state.featured, text: 'doporučené' }] : []),
+    ...(state.favorites ? [{ key: 'favorites', value: state.favorites, text: 'oblíbené' }] : []),
     ...(state.q ? [{ key: 'q', value: state.q, text: `„${state.q}“` }] : []),
   ];
 }
@@ -35,14 +37,14 @@ export function withoutFilter(state, { key, value }) {
 
 /**
  * The state after "Zrušit filtry": every filter of the form off (tags, technique, colour, year and collection where they are
- * selects, status, the author's selection, the search), back to the first page; the view, the tile size, the page
+ * selects, status, the author's selection, the own favourites, the search), back to the first page; the view, the tile size, the page
  * size and "Zobrazit vše" stay. The year of a year page and the collection of a collection page are their address, not
  * filters of the state, so they stay too.
  */
 export function withoutFilters(state) {
   return {
     ...state,
-    tag: [], technique: '', color: '', year: '', collection: '', status: '', featured: '', q: '',
+    tag: [], technique: '', color: '', year: '', collection: '', status: '', featured: '', favorites: '', q: '',
     page: pageAfterFilterChange(state.page),
   };
 }

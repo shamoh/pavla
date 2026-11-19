@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="cs" data-palette="papir">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Oblíbené obrazy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<style id="palettes"></style>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Work Sans', system-ui, sans-serif; }
+  a { color: inherit; }
+  /* ---- tuning bar (not part of the site) ---- */
+  .tune { position: sticky; top: 0; z-index: 10; background: var(--paper-2); border-bottom: 1px solid var(--line); font-size: .84rem; }
+  .tune .row { max-width: 1320px; margin: 0 auto; padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+  .tune h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; font-size: 1.4rem; margin: 0 auto 0 0; }
+  .group { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); flex-wrap: wrap; }
+  .group button { font: inherit; font-size: .82rem; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; cursor: pointer; }
+  .group button[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .group input[type='range'] { width: 110px; accent-color: var(--accent); }
+  .group output { min-width: 3em; color: var(--ink); }
+  .log { max-width: 1320px; margin: 0 auto; padding: 0 16px 8px; font: .78rem/1.5 ui-monospace, monospace; color: var(--ink-soft); min-height: 1.5em; }
+  .log b { color: var(--ink); font-weight: 500; }
+
+  /* ---- the site ---- */
+  main { max-width: 1320px; margin: 0 auto; padding: 16px 48px 80px; }
+  main.phone { max-width: 390px; padding: 16px; border-inline: 1px dashed var(--line); }
+  .tabs { display: flex; gap: 18px; margin: 4px 0 18px; font-size: .9rem; }
+  .tabs button { font: inherit; background: none; border: 0; padding: 0 0 4px; color: var(--ink-soft); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tabs button[aria-pressed='true'] { color: var(--ink); border-color: var(--ink); }
+  h2.page { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 400; font-size: clamp(2rem, 5vw, 3rem); margin: 0 0 12px; }
+  .lead { color: var(--ink-soft); max-width: 62ch; margin: 0 0 16px; }
+
+  /* the bar of the gallery: filters left, the count group right (WorkGallery.astro .count-group) */
+  .filters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 24px; font-size: .9rem; }
+  .filters label { display: grid; gap: 3px; color: var(--ink-soft); font-size: .78rem; }
+  .filters select { font: inherit; font-size: .9rem; color: var(--ink); background: var(--paper); border: 1px solid var(--line); padding: 4px 6px; }
+  .count-group { margin-left: auto; display: flex; gap: 12px; align-items: center; white-space: nowrap; }
+  .muted { color: var(--ink-soft); }
+  .pill { font: inherit; font-size: .9rem; color: var(--ink); background: transparent; text-decoration: none; border: 1px solid var(--line); border-radius: 99px; padding: 3px 12px; white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .pill:hover { border-color: var(--ink); }
+  .pill svg { width: 14px; height: 14px; color: var(--heart); }
+  .pill.off { color: var(--ink-soft); border-style: dashed; cursor: help; }
+  .pill.off:hover { border-color: var(--line); }
+
+  /* cards: big pictures (3 columns with texts) or tiles (no texts) */
+  .grid { columns: 3 260px; column-gap: 40px; }
+  .grid.tiles { columns: 6 150px; column-gap: 12px; }
+  main.phone .grid { columns: 1; }
+  main.phone .grid.tiles { columns: 2; }
+  .card { display: block; break-inside: avoid; margin-bottom: 36px; text-decoration: none; color: inherit; }
+  .grid.tiles .card { margin-bottom: 12px; }
+  .grid.tiles .meta { display: none; }
+  .pic { position: relative; display: block; container-type: inline-size; }
+  .pic img { display: block; width: 100%; height: auto; box-shadow: var(--shadow-soft); background: var(--paper-2); transition: transform .25s ease; }
+  .pic.cutout img { box-shadow: none; background: none; filter: var(--drop-soft); }
+  .card:hover .pic img { transform: translateY(-3px); }
+  .meta { display: block; margin-top: 10px; }
+  .meta .title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.3rem; }
+  .meta .sub { display: block; font-size: .85rem; color: var(--ink-soft); }
+  .star { font-size: .6em; vertical-align: .25em; margin-left: .3em; }
+
+  /* the heart over a card picture: a silhouette with a rim of the paper colour (as the tile marks), in the top right
+     corner; full = a favourite, always shown; the outline only while the pointer is over the card (never without a mouse) */
+  .heart-btn { position: absolute; top: 0; right: 0; padding: var(--heart-inset); background: none; border: 0; cursor: pointer; color: var(--heart); line-height: 0; display: none; }
+  .heart-btn svg { width: clamp(18px, calc(var(--heart-share) * 1cqi), 28px); height: auto; overflow: visible; filter: drop-shadow(0 0 1px var(--paper)) drop-shadow(0 0 1.5px var(--paper)) drop-shadow(0 0 3px var(--paper)); transition: transform .15s ease; }
+  .heart-btn:hover svg { transform: scale(1.12); }
+  .heart-btn.on { display: block; }
+  .grid:not(.touch) .card:hover .heart-btn, .heart-btn:focus-visible { display: block; }
+  .grid.tiles .heart-btn svg { width: clamp(14px, calc(var(--heart-share) * 1cqi), 22px); }
+  .grid.tiles { --heart-inset: 4px; }
+  .heart-btn.pop svg { animation: pop .35s ease; }
+  @keyframes pop { 40% { transform: scale(1.35); } }
+
+  /* the page of a work (src/pages/tvorba/[section]/[work].astro): picture left, title with ★ and the heart right */
+  .work { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+  main.phone .work { grid-template-columns: 1fr; gap: 20px; }
+  .work img { width: 100%; height: auto; box-shadow: var(--shadow-deep); }
+  .work .title { display: flex; align-items: first baseline; gap: .3em; font-family: 'Cormorant Garamond', Georgia, serif; font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.15; margin: 0 0 .4em; }
+  .work .title h3 { flex: 1; font: inherit; margin: 0; }
+  .work .marks { display: flex; gap: .25em; align-items: center; position: relative; top: -.42em; font-size: .6em; line-height: 1; }
+  .work .marks.below { flex-direction: column; gap: .35em; }
+  .work .heart-big { font: inherit; background: none; border: 0; padding: 4px; margin: -4px; cursor: pointer; color: var(--heart); line-height: 0; }
+  .work .heart-big svg { width: .9em; height: .9em; overflow: visible; transition: transform .15s ease; }
+  .work .heart-big:hover svg { transform: scale(1.12); }
+  .work .heart-big.pop svg { animation: pop .35s ease; }
+  .work .like-line { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: .9rem; color: var(--ink); background: none; border: 1px solid var(--line); border-radius: 99px; padding: 3px 12px 3px 9px; cursor: pointer; margin: -6px 0 18px; }
+  .work .like-line svg { width: 15px; height: 15px; color: var(--heart); }
+  .work dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: .92rem; margin: 0; }
+  .work dt { color: var(--ink-soft); }
+  .work dd { margin: 0; }
+  .steps { display: flex; justify-content: space-between; margin-top: 28px; font-size: .9rem; }
+  .steps button { font: inherit; background: none; border: 0; color: var(--ink); cursor: pointer; padding: 0; }
+
+  .empty { color: var(--ink-soft); padding: 40px 0; }
+  .home-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .home-head a { font-size: .9rem; }
+
+  /* the cinema (Cinema.astro, simplified): its own palette (cinema.palette), the work as large as fits, the caption over
+     its bottom with the ★ and the heart, ‹ › and × in the controls; the heart either in the caption or among the buttons */
+  .cinema { position: fixed; inset: 0; z-index: 20; background: var(--paper); color: var(--ink); display: grid; place-items: center; }
+  .cinema[hidden] { display: none; }
+  .cinema img { max-width: 92vw; max-height: 84vh; width: auto; height: auto; box-shadow: var(--shadow-deep); }
+  .cinema .caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 24px 18px; text-align: center; background: linear-gradient(transparent, var(--paper) 60%); font-size: .95rem; display: flex; justify-content: center; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .cinema .caption .t { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.5rem; }
+  .cinema .caption .m { color: var(--ink-soft); }
+  .cinema .top { position: absolute; top: 14px; right: 16px; display: flex; gap: 8px; }
+  .cinema .top button, .cinema .nav { font: inherit; font-size: .88rem; color: var(--ink); background: color-mix(in srgb, var(--paper) 80%, transparent); border: 1px solid var(--line); border-radius: 99px; padding: 4px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .cinema .nav { position: absolute; top: 50%; font-size: 1.6rem; padding: 2px 14px 6px; }
+  .cinema .prev { left: 16px; } .cinema .next { right: 16px; }
+  .cinema .heart-c { font: inherit; background: none; border: 0; padding: 4px; cursor: pointer; color: var(--heart); line-height: 0; align-self: center; }
+  .cinema .heart-c svg, .cinema .top svg { width: 20px; height: 20px; color: var(--heart); transition: transform .15s ease; }
+  .cinema .heart-c:hover svg { transform: scale(1.12); }
+  .cinema .pop svg { animation: pop .35s ease; }
+  .cinema .toast { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); background: var(--paper-2); border: 1px solid var(--line); border-radius: 99px; padding: 6px 16px; font-size: .9rem; opacity: 0; transition: opacity .3s; pointer-events: none; display: inline-flex; gap: 8px; align-items: center; }
+  .cinema .toast svg { width: 16px; height: 16px; color: var(--heart); }
+  .cinema .toast.on { opacity: 1; }
+  .cinema .keys { position: absolute; top: 18px; left: 18px; font-size: .78rem; color: var(--ink-soft); }
+  .copy-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 24px; }
+  .copy-row .push { margin-left: auto; }
+  .copy-row input { flex: 1; min-width: 200px; max-width: 640px; font: inherit; font-size: .82rem; color: var(--ink); background: var(--paper-2); border: 1px solid var(--line); padding: 5px 8px; }
+</style>
+</head>
+<body>
+<div class="tune">
+  <div class="row">
+    <h1>Oblíbené obrazy</h1>
+    <div class="group" role="group" id="palette">Paleta</div>
+    <div class="group" role="group" id="colour">Srdce
+      <button data-colour="ink">barva písma</button><button data-colour="error">terakota</button><button data-colour="accent">akcent</button>
+    </div>
+    <div class="group" role="group" id="view">Zobrazení
+      <button data-view="grid">velké obrazy</button><button data-view="tiles">dlaždice</button>
+    </div>
+    <label class="group"><input type="checkbox" id="phone" /> Telefon (úzké, bez myši)</label>
+  </div>
+  <div class="row">
+    <div class="group" role="group" id="place">Na stránce díla
+      <button data-place="below">pod hvězdičkou</button><button data-place="beside">vedle hvězdičky</button><button data-place="line">pod nadpisem s textem</button>
+    </div>
+    <label class="group">Strop odkazu <input type="range" id="max" min="5" max="300" step="5" /> <output id="max-out"></output></label>
+    <div class="group" role="group" id="over">Nad stropem
+      <button data-over="hide">skrýt</button><button data-over="grey">šedě s bublinou</button>
+    </div>
+    <div class="group" role="group" id="cinema-place">V promítání
+      <button data-cinema-place="caption">v popisku</button><button data-cinema-place="top">v horní liště</button>
+    </div>
+    <div class="group" role="group">Oblíbené
+      <button data-fill="3">náhodně 3</button><button data-fill="40">náhodně 40</button><button data-fill="all">všechny</button><button data-fill="0">smazat</button>
+    </div>
+  </div>
+  <p class="log" id="log" title="Události, které by šly do Google Analytics"></p>
+</div>
+<main id="main">
+  <nav class="tabs" id="tabs">
+    <button data-tab="home">Úvod</button><button data-tab="gallery">Tvorba</button><button data-tab="work">Stránka díla</button><button data-tab="selection">Můj výběr</button>
+  </nav>
+  <section id="page"></section>
+</main>
+<div class="cinema" id="cinema" hidden role="dialog" aria-label="Promítání obrazů"></div>
+<style id="cinema-palettes"></style>
+<script>
+  // Filled by npm run prototypes (scripts/lib/prototypes.mjs): the works, the path to their pictures, the settings of
+  // site.config.yaml with the palettes, and the functions of scripts/lib/favorites.mjs as text.
+  const DATA = /*DATA*/{};
+/*FUNCTIONS*/
+  const WORKS = DATA.works;
+  const PUBLIC = DATA.public;
+  const CONFIG = DATA.config;
+  const F = CONFIG.favorites;
+  const $ = (id) => document.getElementById(id);
+  $('palettes').textContent = CONFIG.paletteCss;
+  $('cinema-palettes').textContent = CONFIG.cinemaPaletteCss;
+  const byId = new Map(WORKS.map((w) => [w.id, w]));
+  const esc = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const HEART = '<path d="M12 20.4s-7.4-4.5-9.2-9.1C1.6 8.2 3.5 5 6.7 4.7c2-.2 3.8.9 5.3 2.8 1.5-1.9 3.3-3 5.3-2.8 3.2.3 5.1 3.5 3.9 6.6-1.8 4.6-9.2 9.1-9.2 9.1z"/>';
+  const heart = (on) => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round">${HEART}</svg>`;
+
+  // ---- the tuning, remembered in this browser (not the favourites: those are FAVORITES_STORE, as on the site) ----
+  const TUNING_KEY = 'pavla.prototype.favorites';
+  const tuning = { palette: 'papir', colour: 'error', view: 'grid', phone: false, place: 'below', max: F.linkMax, over: 'grey', cinemaPlace: 'caption', tab: 'gallery', year: '', technique: '', work: WORKS[0]?.id, ...(() => { try { return JSON.parse(localStorage.getItem(TUNING_KEY)) ?? {}; } catch { return {}; } })() };
+  const keep = () => { try { localStorage.setItem(TUNING_KEY, JSON.stringify(tuning)); } catch {} };
+  let favorites = (() => { try { return readFavorites(localStorage.getItem(F.store)); } catch { return []; } })();
+  const save = () => { try { localStorage.setItem(F.store, JSON.stringify(favorites)); } catch {} };
+  // another tab (or the site itself in another window) changed them
+  addEventListener('storage', (e) => { if (e.key === F.store) { favorites = readFavorites(e.newValue); render(); } });
+
+  // the events of Google Analytics: shown in the bar, never sent
+  const events = [];
+  function track(name, params) {
+    events.unshift(`<b>${name}</b> ${Object.entries(params).map(([k, v]) => `${k}=${esc(v)}`).join(' ')}`);
+    $('log').innerHTML = events.slice(0, 4).join(' · ');
+  }
+
+  function toggle(id, source, button) {
+    const next = toggleFavorite(favorites, id);
+    favorites = next.list;
+    save();
+    track(next.added ? 'favorite_add' : 'favorite_remove', { work_id: id, source });
+    render();
+    if (show) paintCinema();
+    // the same heart again after the render: a short beat when one was added
+    if (next.added) document.querySelector(`[data-heart="${id}"][data-source="${source}"]`)?.classList.add('pop');
+    return next.added;
+  }
+
+  // ---- the selection from the address: ?obrazy=… opens "Můj výběr" (as /tvorba/vyber/ would) ----
+  const opened = selectionFromSearch(location.search, { param: F.param, knownIds: WORKS.map((w) => w.id) });
+  if (location.search.includes(`${F.param}=`)) {
+    tuning.tab = 'selection';
+    track('favorites_open', { count: opened.length, own: ownSelection(opened, favorites) ? 'yes' : 'no' });
+  }
+
+  function card(work, source) {
+    const base = `${PUBLIC}/${work.folder}/`;
+    const on = favorites.includes(work.id);
+    return `<a class="card" href="#" data-open="${work.id}" title="${esc(work.title)}">
+      <span class="pic${work.transparent ? ' cutout' : ''}">
+        <img srcset="${work.widths.map((w) => `${base}${w}.webp ${w}w`).join(', ')}" sizes="${tuning.view === 'tiles' ? 180 : 420}px" src="${base}${work.widths[0]}.webp" width="1000" height="${Math.round(1000 * work.ratio)}" alt="${esc(work.title)}" loading="lazy" />
+        <button type="button" class="heart-btn${on ? ' on' : ''}" data-heart="${work.id}" data-source="${source}" title="${on ? 'Odebrat z oblíbených' : 'Přidat do oblíbených'}" aria-label="${on ? 'Odebrat z oblíbených' : 'Přidat do oblíbených'}" aria-pressed="${on}">${heart(on)}</button>
+      </span>
+      <span class="meta"><span class="title">${esc(work.title)}${work.featured ? '<span class="star" title="Výběr autorky">★</span>' : ''}</span><span class="sub">${esc(work.sub)}</span></span>
+    </a>`;
+  }
+  const grid = (works, source) => `<div class="grid${tuning.view === 'tiles' ? ' tiles' : ''}${tuning.phone ? ' touch' : ''}">${works.map((w) => card(w, source)).join('')}</div>`;
+  const selectionPage = location.pathname;
+
+  function galleryPage() {
+    const years = [...new Set(WORKS.map((w) => w.year))].sort((a, b) => b - a);
+    const techniques = [...new Set(WORKS.map((w) => w.technique).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'cs'));
+    const shown = WORKS.filter((w) => (!tuning.year || String(w.year) === tuning.year) && (!tuning.technique || w.technique === tuning.technique));
+    const liked = shownFavorites(favorites, shown.map((w) => w.id));
+    const link = selectionLink(liked, { page: selectionPage, param: F.param, max: tuning.max });
+    let mine = '';
+    if (link) mine = `<a class="pill" href="${link}" title="Obrazy, které se mi líbí, z těch zobrazených: odkaz jde poslat dál">${heart(true)} Moje oblíbené (${liked.length})</a>`;
+    else if (liked.length && tuning.over === 'grey') mine = `<span class="pill off" title="Zužte filtr, výběr je příliš velký na odkaz (${liked.length} oblíbených, nejvýš ${tuning.max})">${heart(true)} Moje oblíbené (${liked.length})</span>`;
+    return `<h2 class="page">Tvorba</h2>
+      <div class="filters">
+        <label>Rok <select data-filter="year"><option value="">vše</option>${years.map((y) => `<option${String(y) === tuning.year ? ' selected' : ''}>${y}</option>`).join('')}</select></label>
+        <label>Technika <select data-filter="technique"><option value="">vše</option>${techniques.map((t) => `<option${t === tuning.technique ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
+        <span class="count-group">${mine}<span class="muted">${shown.length} děl</span><button type="button" class="pill" data-cinema-ids="${shown.map((w) => w.id).join(',')}">▶ Promítat</button></span>
+      </div>
+      ${grid(shown, 'gallery')}`;
+  }
+
+  function workPage() {
+    const index = Math.max(0, WORKS.findIndex((w) => w.id === tuning.work));
+    const work = WORKS[index];
+    if (!work) return '<p class="empty">Žádná díla.</p>';
+    const on = favorites.includes(work.id);
+    const label = on ? 'Odebrat z oblíbených' : 'Přidat do oblíbených';
+    const star = work.featured ? '<span title="Výběr autorky">★</span>' : '';
+    const big = `<button type="button" class="heart-big" data-heart="${work.id}" data-source="work" title="${label}" aria-label="${label}" aria-pressed="${on}">${heart(on)}</button>`;
+    const title = tuning.place === 'line'
+      ? `<div class="title"><h3>${esc(work.title)}</h3>${star ? `<span class="marks">${star}</span>` : ''}</div>
+         <button type="button" class="like-line" data-heart="${work.id}" data-source="work" aria-pressed="${on}">${heart(on)} ${on ? 'V mých oblíbených' : 'Líbí se mi'}</button>`
+      : `<div class="title"><h3>${esc(work.title)}</h3><span class="marks ${tuning.place}">${star}${big}</span></div>`;
+    const base = `${PUBLIC}/${work.folder}/`;
+    const prev = WORKS[index - 1];
+    const next = WORKS[index + 1];
+    return `<div class="work">
+        <img srcset="${work.widths.map((w) => `${base}${w}.webp ${w}w`).join(', ')}" sizes="800px" src="${base}${work.widths[0]}.webp" alt="${esc(work.title)}" />
+        <div>${title}
+          <dl><dt>Technika</dt><dd>${esc(work.technique)}</dd>${work.size ? `<dt>Rozměr</dt><dd>${esc(work.size)}</dd>` : ''}<dt>Vzniklo</dt><dd>${work.date}</dd>${work.collectionTitle ? `<dt>Kolekce</dt><dd>${esc(work.collectionTitle)}</dd>` : ''}<dt>Kód</dt><dd>${work.id}</dd></dl>
+        </div>
+      </div>
+      <div class="steps">${prev ? `<button data-step="${prev.id}">← ${esc(prev.title)}</button>` : '<span></span>'}${next ? `<button data-step="${next.id}">${esc(next.title)} →</button>` : ''}</div>`;
+  }
+
+  function selection() {
+    // opened by a link = its works; otherwise (the tab of the prototype) all own favourites, as the link from "Tvorba" without filters
+    const ids = location.search.includes(`${F.param}=`) ? opened : shownFavorites(favorites, WORKS.map((w) => w.id));
+    const works = ids.map((id) => byId.get(id));
+    const link = selectionLink(ids, { page: selectionPage, param: F.param, max: Infinity });
+    const address = link ? new URL(link, location.href).href : '';
+    return `<h2 class="page">Můj výběr</h2>
+      ${works.length ? `<p class="lead">${works.length} ${works.length === 1 ? 'obraz' : works.length < 5 ? 'obrazy' : 'obrazů'}. Odkaz na tuhle stránku jde poslat dál.</p>
+      <div class="copy-row"><input readonly value="${esc(address)}" aria-label="Odkaz na výběr" /><button type="button" class="pill" data-copy>Zkopírovat odkaz</button><button type="button" class="pill push" data-cinema-ids="${ids.join(',')}">▶ Promítat</button><span class="muted" id="copied" role="status"></span></div>
+      ${grid(works, 'selection')}` : '<p class="empty">Zatím tu nic není. Srdíčkem u obrazu si ho přidáte do oblíbených.</p>'}`;
+  }
+
+  // the home page "Nejnovější": the newest works in its default view (medium tiles, home.recent of a wide screen)
+  function homePage() {
+    const recent = WORKS.slice(0, tuning.phone ? CONFIG.recent.phone.m : CONFIG.recent.wide.m);
+    const saved = tuning.view;
+    tuning.view = 'tiles';
+    const html = `<div class="home-head"><h2 class="page">Nejnovější</h2><a href="#" data-tab-link="gallery">Celá tvorba →</a></div>${grid(recent, 'home')}`;
+    tuning.view = saved;
+    return html;
+  }
+
+  // ---- the cinema of a listing: ‹ › or ← →, L = the heart of the shown work, Esc closes ----
+  let show = null; // { ids, at }
+  let toastTimer = 0;
+  function openCinema(ids) {
+    if (!ids.length) return;
+    show = { ids, at: 0 };
+    $('cinema').hidden = false;
+    paintCinema();
+  }
+  function closeCinema() { show = null; $('cinema').hidden = true; }
+  function paintCinema() {
+    const work = byId.get(show.ids[show.at]);
+    const on = favorites.includes(work.id);
+    const label = on ? 'Odebrat z oblíbených (L)' : 'Přidat do oblíbených (L)';
+    const base = `${PUBLIC}/${work.folder}/`;
+    const heartButton = `<button type="button" class="heart-c" data-heart="${work.id}" data-source="cinema" title="${label}" aria-label="${label}" aria-pressed="${on}">${heart(on)}</button>`;
+    const cinema = $('cinema');
+    cinema.dataset.palette = CONFIG.cinema.palette ?? 'noc';
+    cinema.innerHTML = `<img srcset="${work.widths.map((w) => `${base}${w}.webp ${w}w`).join(', ')}" sizes="92vw" src="${base}${work.widths.at(-1)}.webp" alt="${esc(work.title)}" />
+      <span class="keys">${show.at + 1} / ${show.ids.length} · ← → · L = srdce · Esc</span>
+      <div class="caption"><span class="t">${esc(work.title)}</span>${work.featured ? '<span title="Výběr autorky">★</span>' : ''}${tuning.cinemaPlace === 'caption' ? heartButton : ''}<span class="m">${esc(work.sub)}</span></div>
+      <div class="top">${tuning.cinemaPlace === 'top' ? `<button type="button" data-heart="${work.id}" data-source="cinema" title="${label}" aria-pressed="${on}">${heart(on)} ${on ? 'Oblíbené' : 'Líbí se mi'}</button>` : ''}<button type="button" data-close title="Zavřít (Esc)">×</button></div>
+      <button type="button" class="nav prev" data-move="-1" aria-label="Předchozí (←)">‹</button><button type="button" class="nav next" data-move="1" aria-label="Další (→)">›</button>
+      <div class="toast" id="toast" role="status"></div>`;
+  }
+  function toast(added) {
+    const t = $('toast');
+    t.innerHTML = `${heart(added)} ${added ? 'Přidáno do oblíbených' : 'Odebráno z oblíbených'}`;
+    t.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => $('toast')?.classList.remove('on'), 1600);
+  }
+  $('cinema').addEventListener('click', (e) => {
+    const h = e.target.closest('[data-heart]');
+    if (h) { toast(toggle(h.dataset.heart, 'cinema')); return; }
+    const move = e.target.closest('[data-move]');
+    if (move) { show.at = (show.at + Number(move.dataset.move) + show.ids.length) % show.ids.length; paintCinema(); return; }
+    if (e.target.closest('[data-close]')) closeCinema();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!show || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'Escape') closeCinema();
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { show.at = (show.at + (e.key === 'ArrowLeft' ? -1 : 1) + show.ids.length) % show.ids.length; paintCinema(); }
+    else if (e.key === 'l' || e.key === 'L') { e.preventDefault(); toast(toggle(show.ids[show.at], 'cinema')); }
+  });
+
+  function render() {
+    document.documentElement.dataset.palette = tuning.palette;
+    document.documentElement.style.setProperty('--heart', `var(--${tuning.colour})`);
+    document.documentElement.style.setProperty('--heart-share', '9');
+    document.documentElement.style.setProperty('--heart-inset', '6px');
+    $('main').classList.toggle('phone', tuning.phone);
+    $('phone').checked = tuning.phone;
+    $('max').value = String(tuning.max);
+    $('max-out').textContent = `${tuning.max} děl`;
+    for (const [group, key] of [['palette', 'palette'], ['colour', 'colour'], ['view', 'view'], ['place', 'place'], ['over', 'over'], ['cinema-place', 'cinemaPlace']]) {
+      for (const b of $(group).querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset[key] === tuning[key]));
+    }
+    for (const b of $('tabs').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.tab === tuning.tab));
+    $('page').innerHTML = tuning.tab === 'home' ? homePage() : tuning.tab === 'work' ? workPage() : tuning.tab === 'selection' ? selection() : galleryPage();
+    keep();
+  }
+
+  for (const p of CONFIG.palettes) {
+    const b = document.createElement('button');
+    b.dataset.palette = p.id;
+    b.textContent = p.label;
+    $('palette').append(b);
+  }
+  document.querySelector('.tune').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    for (const key of ['palette', 'colour', 'view', 'place', 'over', 'cinemaPlace']) if (b.dataset[key]) tuning[key] = b.dataset[key];
+    if (b.dataset.fill) {
+      const ids = WORKS.map((w) => w.id).sort(() => Math.random() - 0.5);
+      favorites = b.dataset.fill === 'all' ? WORKS.map((w) => w.id) : ids.slice(0, Number(b.dataset.fill));
+      save();
+    }
+    render();
+  });
+  $('phone').addEventListener('change', (e) => { tuning.phone = e.target.checked; render(); });
+  $('max').addEventListener('input', (e) => { tuning.max = Number(e.target.value); render(); });
+  $('tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tab]');
+    if (!b) return;
+    tuning.tab = b.dataset.tab;
+    // leaving an opened selection: back to the plain prototype address
+    if (location.search) history.replaceState(null, '', location.pathname);
+    render();
+  });
+  $('page').addEventListener('change', (e) => {
+    const filter = e.target.closest('[data-filter]');
+    if (filter) { tuning[filter.dataset.filter] = filter.value; render(); }
+  });
+  $('page').addEventListener('click', (e) => {
+    const h = e.target.closest('[data-heart]');
+    if (h) { e.preventDefault(); e.stopPropagation(); toggle(h.dataset.heart, h.dataset.source); return; }
+    const open = e.target.closest('[data-open]');
+    if (open) { e.preventDefault(); tuning.work = open.dataset.open; tuning.tab = 'work'; if (location.search) history.replaceState(null, '', location.pathname); render(); scrollTo(0, 0); return; }
+    const play = e.target.closest('[data-cinema-ids]');
+    if (play) { openCinema(play.dataset.cinemaIds.split(',').filter(Boolean)); return; }
+    const tabLink = e.target.closest('[data-tab-link]');
+    if (tabLink) { e.preventDefault(); tuning.tab = tabLink.dataset.tabLink; render(); return; }
+    const step = e.target.closest('[data-step]');
+    if (step) { tuning.work = step.dataset.step; render(); return; }
+    if (e.target.closest('[data-copy]')) {
+      const input = document.querySelector('.copy-row input');
+      navigator.clipboard?.writeText(input.value).then(() => { $('copied').textContent = 'Zkopírováno'; }, () => { input.select(); });
+      track('share', { method: 'copy', source: 'selection' });
+    }
+  });
+  render();
+</script>
+</body>
+</html>

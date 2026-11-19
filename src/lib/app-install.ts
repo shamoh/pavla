@@ -1,4 +1,4 @@
-// The site as an app (scripts/lib/app-install.mjs): the service worker, "Nainstalovat aplikaci" in the footer with its
+// The site as an app (scripts/lib/app-install.mjs): the service worker, "Nainstalovat" in the footer with its
 // how-to dialog, and "←" in the header of the installed app. Run on every page from Base.astro.
 import {
   backTarget, buildAssets, GAME_OFFLINE_KEY, gameOfflineFiles, INSTALL_HELP, INSTALL_METHODS, installMode, isIos, isoDay, SW_FILE,
@@ -25,7 +25,7 @@ function serviceWorker() {
   else addEventListener('load', register, { once: true });
 }
 
-/** "Nainstalovat aplikaci": the browser's prompt when it offers one, else the how-to of the phone, else nothing. */
+/** "Nainstalovat": the browser's prompt when it offers one, else the how-to of the phone, else nothing. */
 function installButton() {
   const button = document.querySelector<HTMLButtonElement>('[data-app-install]');
   const dialog = document.querySelector<HTMLDialogElement>('[data-app-help]');

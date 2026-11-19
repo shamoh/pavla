@@ -8,24 +8,24 @@
  * The palettes, in the order of the switcher. `scheme`: light or dark (form controls, scrollbars of the browser).
  * Tokens: paper = background, paper2 = surfaces (chips, hover), ink = text, inkSoft = quiet text, line = rules and
  * borders, accent = links and highlights, ok = "for sale", error = form errors, todo = a surface waiting for the visitor (a level
- * of the game not played yet), a pale yellow.
+ * of the game not played yet), a pale yellow, heart = the hearts of the favourite works (scripts/lib/favorites.mjs), a warm red.
  * `picture`: how pictures lift off the page: `shadow` = strength of their (black) shadow, 1 = as on light paper;
  * `edge` = a hairline around them (CSS colour) where a shadow alone would not show the edge (dark paper), or null.
  */
 export const PALETTES = [
   {
     id: 'papir', label: 'Papír', scheme: 'light',
-    colors: { paper: '#f7f4ee', paper2: '#efeae0', ink: '#2b2724', inkSoft: '#6d655c', line: '#ddd5c7', accent: '#487282', ok: '#4b7556', error: '#a4513c', todo: '#f4e7b8' },
+    colors: { paper: '#f7f4ee', paper2: '#efeae0', ink: '#2b2724', inkSoft: '#6d655c', line: '#ddd5c7', accent: '#487282', ok: '#4b7556', error: '#a4513c', todo: '#f4e7b8', heart: '#b3443a' },
     picture: { shadow: 1, edge: null },
   },
   {
     id: 'pergamen', label: 'Pergamen', scheme: 'light',
-    colors: { paper: '#ece2cc', paper2: '#e2d6bb', ink: '#2e2720', inkSoft: '#62574a', line: '#cfbf9e', accent: '#3a6573', ok: '#41683a', error: '#99442f', todo: '#ecd895' },
+    colors: { paper: '#ece2cc', paper2: '#e2d6bb', ink: '#2e2720', inkSoft: '#62574a', line: '#cfbf9e', accent: '#3a6573', ok: '#41683a', error: '#99442f', todo: '#ecd895', heart: '#a63d33' },
     picture: { shadow: 1.2, edge: null },
   },
   {
     id: 'noc', label: 'Noc', scheme: 'dark',
-    colors: { paper: '#1c1a18', paper2: '#252220', ink: '#ece6dc', inkSoft: '#a89f93', line: '#3a3531', accent: '#8fb7c4', ok: '#93bf9c', error: '#e0937d', todo: '#3b331c' },
+    colors: { paper: '#1c1a18', paper2: '#252220', ink: '#ece6dc', inkSoft: '#a89f93', line: '#3a3531', accent: '#8fb7c4', ok: '#93bf9c', error: '#e0937d', todo: '#3b331c', heart: '#e8806f' },
     picture: { shadow: 2.2, edge: 'rgb(255 255 255 / 0.08)' },
   },
 ];
@@ -38,8 +38,8 @@ export const PALETTE_KEY = 'pavla.palette';
 /** CSS custom property of a token: inkSoft -> --ink-soft, paper2 -> --paper-2. */
 export const tokenVar = (token) => `--${token.replace(/([a-z])([A-Z0-9])/g, '$1-$2').toLowerCase()}`;
 
-/** Text tokens that must be readable on the background (WCAG AA for normal text: 4.5 : 1). */
-export const TEXT_TOKENS = ['ink', 'inkSoft', 'accent', 'ok', 'error'];
+/** Text tokens (and the heart, a small mark) that must be readable on the background (WCAG AA for normal text: 4.5 : 1). */
+export const TEXT_TOKENS = ['ink', 'inkSoft', 'accent', 'ok', 'error', 'heart'];
 export const MIN_CONTRAST = 4.5;
 
 /** WCAG contrast ratio of two #rrggbb colours (1 … 21). */

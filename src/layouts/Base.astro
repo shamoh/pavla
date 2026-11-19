@@ -12,13 +12,14 @@ import PalettePicker from '../components/PalettePicker.astro';
 import NameShades from '../components/NameShades.astro';
 import { skipHeaderScope, skipHeaderScript } from '../../scripts/lib/skip-header.mjs';
 import { splashScreens } from '../../scripts/lib/splash.mjs';
+import { SELECTION_PATH } from '../../scripts/lib/favorites.mjs';
 
 /**
  * `type`: og:type ('article' for a work); `noindex`: a page search engines should leave out (404), without canonical;
  * `jsonLd`: structured data of the page (scripts/lib/seo.mjs graphLd), null for none.
  * `message`: what a message from this page is about (scripts/lib/messages.mjs; default: the page by its title),
  * `messagePanel`: false on the contact page, which has the form itself; `messageLauncher`: false = the panel and the footer
- * link "Napsat k této stránce" without the launcher in the corner (the game, where it would cover the play).
+ * link "Napište mi" without the launcher in the corner (the game, where it would cover the play).
  */
 interface Props {
   title?: string; description?: string; image?: ShareImage; type?: 'website' | 'article'; noindex?: boolean; jsonLd?: object | null;
@@ -38,7 +39,7 @@ const ogImage = image ? new URL(image.src, site.url).href : undefined;
 const canonical = new URL(Astro.url.pathname, site.url).href;
 // "Napište mi": the panel in the corner and the footer link (to the contact page without JavaScript).
 const withMessages = Boolean(messages.mode) && messagePanel;
-// "Obrazy na prodej": the show of the works on sale (the cinema of the gallery), only while there are some.
+// "Na prodej": the show of the works on sale (the cinema of the gallery), only while there are some; "Výběr" = the author's selection.
 const onSale = hasWorksOnSale();
 const featured = hasFeaturedWorks();
 const messageContext = Astro.props.message !== undefined ? Astro.props.message : pageContext(Astro.url.pathname, title ?? site.title);
@@ -124,14 +125,16 @@ const skipScope = skipHeaderScope(Astro.url.pathname, import.meta.env.BASE_URL);
         <PalettePicker />
       </span>
       <span class="links">
-        {onSale && <a href={url(saleShowPath('footer'))} title="Obrazy na prodej jeden po druhém přes celou obrazovku">Obrazy na prodej</a>}
-        {featured && <a href={url(featuredShowPath('footer'))} title="Obrazy z mého výběru jeden po druhém přes celou obrazovku">Moje nejmilejší</a>}
+        <!-- shown by the script below only to a visitor with some favourites (src/lib/favorites.ts) -->
+        <a href={url(SELECTION_PATH)} title="Obrazy, které jste si označili srdcem" data-favorites-footer hidden>Oblíbené</a>
+        {onSale && <a href={url(saleShowPath('footer'))} title="Obrazy na prodej jeden po druhém přes celou obrazovku">Na prodej</a>}
+        {featured && <a href={url(featuredShowPath('footer'))} title="Moje nejmilejší obrazy jeden po druhém přes celou obrazovku">Výběr</a>}
         {site.instagram && <a href={`https://www.instagram.com/${site.instagram}/`} rel="me">Instagram</a>}
         {site.pinterest && <a href={pinterestProfileLink(site.pinterest)} rel="me">Pinterest</a>}
         {site.fler && <a href={site.fler}>Fler</a>}
-        {withMessages && <a href={url(contactLink(messageContext))} data-message-open="">Napsat k této stránce</a>}
+        {withMessages && <a href={url(contactLink(messageContext))} data-message-open="" title="Napsat mi zprávu k této stránce">Napište mi</a>}
         <!-- Shown by src/lib/app-install.ts only where the site can be installed and is not yet -->
-        <button type="button" class="app-install" data-app-install="" hidden>Nainstalovat aplikaci</button>
+        <button type="button" class="app-install" data-app-install="" hidden title="Nainstalovat web jako aplikaci">Nainstalovat</button>
       </span>
     </footer>
     <dialog class="app-help" data-app-help="" aria-labelledby="app-help-title">
@@ -145,6 +148,15 @@ const skipScope = skipHeaderScope(Astro.url.pathname, import.meta.env.BASE_URL);
 </html>
 
 <script>
+  // "Oblíbené" in the footer: only while the visitor has some favourites, again after every change (here or in another tab)
+  import { favorites, onFavoritesChange } from '../lib/favorites';
+  const favoritesLink = document.querySelector<HTMLElement>('[data-favorites-footer]');
+  const showFavoritesLink = () => { if (favoritesLink) favoritesLink.hidden = favorites().length === 0; };
+  showFavoritesLink();
+  onFavoritesChange(showFavoritesLink);
+</script>
+
+<script>
   // Statistics: clicks on elements marked with data-track (buttons of a work), see scripts/lib/analytics.mjs.
   import { trackEvent, trackedClick } from '../../scripts/lib/analytics.mjs';
   // Links back to a listing (data-return) open it with the filters the visitor left it with; pages outside the
@@ -152,7 +164,7 @@ const skipScope = skipHeaderScope(Astro.url.pathname, import.meta.env.BASE_URL);
   import { applyReturnLinks } from '../lib/page-return';
 
   applyReturnLinks();
-  // The site as an app: service worker, "Nainstalovat aplikaci", "←" in the installed app.
+  // The site as an app: service worker, "Nainstalovat", "←" in the installed app.
   import '../lib/app-install';
 
   document.addEventListener('click', (e) => {
@@ -232,7 +244,7 @@ const skipScope = skipHeaderScope(Astro.url.pathname, import.meta.env.BASE_URL);
   }
   .app-back:hover { border-color: var(--ink); }
   .app-back:focus-visible, .app-install:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-  /* "Nainstalovat aplikaci" looks like the other links of the footer. */
+  /* "Nainstalovat" looks like the other links of the footer. */
   .app-install {
     font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
     text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px;

@@ -6,7 +6,7 @@ import { ALL_PAGES, FEATURED_ON, NO_COLLECTION, czechOrder, galleryFilterPath, g
 } from './gallery-filter.mjs';
 
 const work = (status, extra = {}) => ({ tags: ['krajina'], technique: 'akvarel', year: '2026', collection: '', status, ...extra });
-const all = { tag: [], technique: '', color: '', year: '', collection: '', status: '', featured: '', q: '' };
+const all = { tag: [], technique: '', color: '', year: '', collection: '', status: '', featured: '', favorites: '', q: '' };
 const allState = { ...all, page: 1, perPage: null, view: 'grid', tile: 'm' };
 const statuses = ['available', 'reserved', 'sold', 'gifted', 'not-for-sale'];
 const passing = (state) => statuses.filter((s) => matchesFilters(work(s), { ...all, ...state }));
@@ -59,9 +59,20 @@ test('stateFromParams reads every filter and drops an unknown status', () => {
 
 test('stateToParams leaves out empty filters and round-trips any combination', () => {
   assert.equal(stateToParams(all).toString(), '');
-  const state = { tag: ['řeka a mlha'], technique: 'akvarel', color: '', year: '2025', collection: 'plener', status: 'gone', featured: '1', q: 'mlha', page: 3, perPage: 48, view: 'tiles', tile: 'l' };
+  const state = { tag: ['řeka a mlha'], technique: 'akvarel', color: '', year: '2025', collection: 'plener', status: 'gone', featured: '1', favorites: '1', q: 'mlha', page: 3, perPage: 48, view: 'tiles', tile: 'l' };
   assert.equal(stateToParams({ ...all, technique: 'akvarel', status: 'kept' }).toString(), 'technique=akvarel&status=kept');
   assert.deepEqual(stateFromParams(new URLSearchParams(stateToParams(state).toString())), state);
+});
+
+test('the own favourites as a filter: ?favorites=1 only, a work passes when it is one of them', () => {
+  assert.equal(stateFromParams(new URLSearchParams('favorites=1')).favorites, '1');
+  assert.equal(stateFromParams(new URLSearchParams('favorites=yes')).favorites, '');
+  const work = { tags: [], technique: 'akvarel', year: '2025', collection: '', status: 'not-for-sale', search: '' };
+  assert.equal(matchesFilters({ ...work, favorite: true }, { ...all, favorites: '1' }), true);
+  assert.equal(matchesFilters({ ...work, favorite: false }, { ...all, favorites: '1' }), false);
+  assert.equal(matchesFilters({ ...work, favorite: false }, all), true);
+  assert.deepEqual(facetValues({ ...work, favorite: true }, 'favorites'), ['1']);
+  assert.deepEqual(facetValues(work, 'favorites'), []);
 });
 
 test('page: read from and written to the URL only when > 1, bad values mean page 1', () => {

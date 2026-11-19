@@ -20,7 +20,7 @@ export const SIMILAR_COUNT = 6;
 export const SIMILAR_TILE_SIZE = 'm';
 
 /** An empty filter of the gallery (gallery-filter.mjs stateFromParams without any value). */
-const EMPTY = { tag: [], technique: '', color: '', year: '', collection: '', status: '', featured: '', q: '' };
+const EMPTY = { tag: [], technique: '', color: '', year: '', collection: '', status: '', featured: '', favorites: '', q: '' };
 
 /** The criteria of a work, most general first: its technique, its tags (in its order). */
 function criteria(work) {

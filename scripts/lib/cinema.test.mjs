@@ -138,10 +138,10 @@ test('lingerMs: a move or a swipe keeps the work at least the shortest interval,
 });
 
 test('cinemaHint: keys with a mouse and a keyboard, swipes with a finger; its own key in the tab', () => {
-  assert.equal(cinemaHint(false), '← → listovat · ↓ obraz · ↑ kolekce');
+  assert.equal(cinemaHint(false), '← → listovat · ↓ obraz · ↑ kolekce · L oblíbené');
   assert.match(cinemaHint(true), /^tahem do stran listovat · dolů obraz · nahoru kolekce$/);
-  assert.equal(cinemaHint(false, 'window'), '← → listovat · ↓ obraz · ↑ kolekce · klik nebo F = celá obrazovka', 'not in the whole screen yet');
-  assert.equal(cinemaHint(false, 'full'), '← → listovat · ↓ obraz · ↑ kolekce · F = celá obrazovka / okno', 'in it: how to leave it');
+  assert.equal(cinemaHint(false, 'window'), '← → listovat · ↓ obraz · ↑ kolekce · L oblíbené · klik nebo F = celá obrazovka', 'not in the whole screen yet');
+  assert.equal(cinemaHint(false, 'full'), '← → listovat · ↓ obraz · ↑ kolekce · L oblíbené · F = celá obrazovka / okno', 'in it: how to leave it');
   assert.equal(cinemaHint(true, 'full'), cinemaHint(true), 'a finger has no F');
   assert.equal(fullscreenHint(false), 'klik nebo F = celá obrazovka');
   assert.equal(fullscreenHint(true), 'ťuknutí = celá obrazovka');

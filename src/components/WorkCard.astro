@@ -9,12 +9,14 @@ import { CARD_IMAGE_SIZES } from '../../scripts/lib/gallery-filter.mjs';
 import { cinemaCard } from '../../scripts/lib/cinema.mjs';
 import { keepTogether } from '../../scripts/lib/typography.mjs';
 import { EVENTS } from '../../scripts/lib/analytics.mjs';
+import { HEART_ICON, favoriteLabel } from '../../scripts/lib/favorites.mjs';
 // `sizes`: of the picture, the big pictures by default (tiles are narrower, WorkGrid.astro); `marks`: the mark settings
 // of the place (tileMarksFor), none = no marks (cards outside a grid of works, e.g. on the 404 page, never show tiles).
 // `cinema`: the card carries what the cinema of its listing shows (data-cinema, cinemaCard; the gallery only).
 // `track`: a click on the card is the statistics event more_click with this method (MORE_METHODS; under a work).
-interface Props { work: Work; marks?: ReturnType<typeof tileMarks>; eager?: boolean; hidden?: boolean; sizes?: string; cinema?: boolean; track?: string }
-const { work, marks, eager, hidden, sizes = CARD_IMAGE_SIZES, cinema = false, track } = Astro.props;
+// `heart`: the heart of the favourites over the picture, with where it is for the statistics (FAVORITE_SOURCES; src/lib/favorites.ts).
+interface Props { work: Work; marks?: ReturnType<typeof tileMarks>; eager?: boolean; hidden?: boolean; sizes?: string; cinema?: boolean; track?: string; heart?: string }
+const { work, marks, eager, hidden, sizes = CARD_IMAGE_SIZES, cinema = false, track, heart } = Astro.props;
 const cinemaData = cinema ? JSON.stringify(cinemaCard(work, { url: workUrl(work), base: url(workImagePath(work)), size: formatSize(work.size_cm) ?? '', statusLabel })) : undefined;
 // Marks over the picture, shown only with tiles (site.config.yaml home/gallery.tileMarks): with big pictures the title has the star
 // and the card the status chip. Decorative: the tooltip of the picture and the hidden texts tell the same.
@@ -46,6 +48,11 @@ const shownMarks = marks ? workMarks({ featured: Boolean(work.featured), onSale:
         <svg viewBox="0 0 24 24" set:html={MARK_ICONS[m.icon]} />
       </span>
     ))}
+    {heart && (
+      <button type="button" class="heart" data-heart={work.id} data-heart-source={heart} data-work-title={work.title} aria-pressed="false" aria-label={favoriteLabel(false)} title={favoriteLabel(false)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true" set:html={HEART_ICON} />
+      </button>
+    )}
   </span>
   <span class="meta">
     <span class="title">{keepTogether(work.title)}<FeaturedStar featured={work.featured} /></span>
@@ -77,6 +84,27 @@ const shownMarks = marks ? workMarks({ featured: Boolean(work.featured), onSale:
   /* A second mark in the same corner: next to the first one, towards the middle. */
   .mark.tl.beside, .mark.bl.beside { left: calc(var(--inset) + var(--size) * 1.35); }
   .mark.tr.beside, .mark.br.beside { right: calc(var(--inset) + var(--size) * 1.35); }
+  /* The heart of the favourites (src/lib/favorites.ts): top right over the picture, in the colour of the palette (--heart)
+     with a rim of the paper like the marks. A favourite = full, always shown; an outline only while a mouse is over the
+     card (a phone has none: there a work is added on its page). Hidden without JavaScript (html.hearts). */
+  .heart {
+    display: none; position: absolute; top: 0; right: 0; z-index: 1; padding: 6px; margin: 0; border: 0; background: none;
+    color: var(--heart); cursor: pointer; line-height: 0;
+  }
+  .heart svg {
+    width: clamp(18px, 9cqi, 28px); height: auto; overflow: visible; transition: transform .15s ease;
+    fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round;
+    filter: drop-shadow(0 0 1px var(--paper)) drop-shadow(0 0 1.5px var(--paper)) drop-shadow(0 0 3px var(--paper));
+  }
+  .heart.on svg { fill: currentColor; }
+  .heart:hover svg { transform: scale(1.12); }
+  .heart:global(.beat) svg { animation: heart-beat .35s ease; }
+  @keyframes heart-beat { 40% { transform: scale(1.35); } }
+  :global(html.hearts) .heart.on { display: block; }
+  @media (hover: hover) { :global(html.hearts) .card:hover .heart { display: block; } }
+  :global(.grid.tiles) .heart { padding: 4px; }
+  :global(.grid.tiles) .heart svg { width: clamp(14px, 9cqi, 22px); }
+  @media (prefers-reduced-motion: reduce) { .heart svg { transition: none; } .heart:global(.beat) svg { animation: none; } }
   .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-top: 12px; }
   .title { font-family: var(--serif); font-size: 1.35rem; width: 100%; line-height: 1.2; }
   .sub { font-size: 0.85rem; color: var(--ink-soft); }

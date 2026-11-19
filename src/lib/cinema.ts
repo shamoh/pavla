@@ -6,7 +6,8 @@
 // a link to its page. "Barvy: …" switches the colours of the cinema (its own, cinema.palette = Noc by default,
 // remembered apart from those of the pages); "Celá obrazovka" while the browser has not gone to the whole screen by
 // itself (opened by a link). The pictures are AVIF where the browser can (<picture>, cinemaSources), else WebP, else
-// JPEG. Keys: ← → step, Space pause, ↓ the page of the work, ↑ its collection, Esc closes. A finger (or the mouse)
+// JPEG. Keys: ← → step, Space pause, ↓ the page of the work, ↑ its collection, L the heart of the favourites (src/lib/favorites.ts;
+// also its button after the title in the caption), Esc closes. A finger (or the mouse)
 // moves the work along and brings its neighbour (src/lib/follow-swipe.ts); a finger up = its collection, down = the
 // page of the work, like ↑ ↓. The screen stays on while it runs (Screen Wake Lock). Where it is in the address, the
 // history and the statistics of the show is up to the gallery (the hooks).
@@ -17,6 +18,7 @@ import { paletteEventParams } from '../../scripts/lib/palettes.mjs';
 import { copiedText } from '../../scripts/lib/share.mjs';
 import { keepTogether } from '../../scripts/lib/typography.mjs';
 import { followSwipe } from './follow-swipe';
+import { beat, onFavoritesChange, paintHearts, toggleStoredFavorite } from './favorites';
 
 /** A work of the show: its id and collection (slug, '' without) with the data-cinema of its card (cinemaCard). */
 export interface CinemaWork {
@@ -62,6 +64,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
   const paletteStore = storage(CINEMA_STORAGE_KEYS.palette);
   const palettes: { id: string; label: string }[] = JSON.parse(root.dataset.palettes!);
   const paletteButton = $<HTMLButtonElement>('.cinema-palette');
+  const heartButton = $<HTMLButtonElement>('.cinema-heart');
 
   type Show = { works: CinemaWork[]; order: string[]; index: number; interval: number; paused: boolean; full: boolean; shown: number; since: number };
   let show: Show | null = null;
@@ -191,6 +194,8 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     $('.cinema-text').textContent = w.text;
     caption.href = w.url;
     caption.title = w.text;
+    heartButton.dataset.heart = w.id;
+    paintHearts(root);
     const c = collections[w.collection];
     toCollection.hidden = !c;
     if (c) {
@@ -199,6 +204,18 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     }
     captionShown();
   }
+
+  // ---- the heart of the favourites: its button in the caption (a link: the click stays here) and the key L ----
+  function toggleHeart() {
+    if (!show) return;
+    const w = work(show.index);
+    const added = toggleStoredFavorite(w.id, 'cinema', w.title);
+    if (added) beat(heartButton);
+    say(added ? '♥ Přidáno do oblíbených' : 'Odebráno z oblíbených');
+    linger();
+  }
+  heartButton.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggleHeart(); });
+  onFavoritesChange(() => paintHearts(root));
 
   // ---- the show ----
   function schedule(ms = show ? show.interval * 1000 : 0) {
@@ -367,6 +384,7 @@ export function createCinema(root: HTMLElement, settings: CinemaSettings, collec
     if (e.key === ' ' && !target?.closest('button, a')) { e.preventDefault(); togglePause(); fullscreen(); return; }
     if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); return; }
     if (e.key === '?') { e.preventDefault(); showHint(); return; }
+    if (e.key === 'l' || e.key === 'L') { e.preventDefault(); toggleHeart(); return; }
     const act: Record<string, () => void> = {
       ArrowLeft: () => step(-1),
       ArrowRight: () => step(1),

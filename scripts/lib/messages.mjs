@@ -134,7 +134,7 @@ export function web3formsBody(accessKey, site, { type, text, email }, context) {
 }
 
 /**
- * The footer link "Napsat k této stránce" for browsers without JavaScript: the contact page with the context in
+ * The footer link "Napište mi" for browsers without JavaScript: the contact page with the context in
  * the query (stranka = address, nazev = title, obraz = id of a work), e.g. /kontakt/?stranka=%2Ftvorba%2F&nazev=Tvorba.
  */
 export function contactLink(context) {

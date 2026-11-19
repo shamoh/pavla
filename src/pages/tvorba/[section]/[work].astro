@@ -18,6 +18,7 @@ import { defaultType, mailtoLink, workContext } from '../../../../scripts/lib/me
 import { MOCKUPS_NOTE, mockupCaption, mockupsHeading, viewId, workCaption } from '../../../../scripts/lib/work-viewer.mjs';
 import { cinemaSettings } from '../../../../scripts/lib/cinema.mjs';
 import { keepTogether } from '../../../../scripts/lib/typography.mjs';
+import { HEART_ICON, favoriteLabel } from '../../../../scripts/lib/favorites.mjs';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -116,7 +117,7 @@ const story = textHtml(work.text);
     )}
     <div class="info">
       <div class="head">
-        <div class="title"><h1>{keepTogether(work.title)}</h1><FeaturedStar featured={work.featured} /></div>
+        <div class="title"><h1>{keepTogether(work.title)}</h1><span class="marks"><FeaturedStar featured={work.featured} /><button type="button" class="heart" data-heart={work.id} data-heart-source="work" data-work-title={work.title} aria-pressed="false" aria-label={favoriteLabel(false)} title={favoriteLabel(false)}><svg viewBox="0 0 24 24" aria-hidden="true" set:html={HEART_ICON} /></button></span></div>
         <dl>
           <dt>Technika</dt><dd><a href={url(galleryFilterPath('technique', work.technique))} title={galleryLinkTitle('technique', work.technique)}>{work.technique}</a></dd>
           {work.support && <><dt>Podklad</dt><dd>{work.support}</dd></>}
@@ -246,9 +247,12 @@ const story = textHtml(work.text);
 </Base>
 <script>
   import { applyCopyButtons, applyShareButtons } from '../../../lib/share-button';
+  import { startHearts } from '../../../lib/favorites';
   import { pageArrow } from '../../../../scripts/lib/work-viewer.mjs';
   applyShareButtons();
   applyCopyButtons();
+  // the heart of the favourites at the title (src/lib/favorites.ts)
+  startHearts();
   // ← / → on the page: the previous / next work, as the links at the bottom (pageArrow: never while typing, with a
   // modifier or in an open dialog; ↑ ↓ keep scrolling the page)
   document.addEventListener('keydown', (e) => {
@@ -475,7 +479,18 @@ const story = textHtml(work.text);
      level with the first line, however long the title is (never alone on a line of its own). */
   .info .title { display: flex; align-items: first baseline; gap: 0.3em; font-family: var(--serif); font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.15; margin: 0 0 0.4em; }
   .info .title h1 { flex: 1; font-size: inherit; margin: 0; }
-  .info .title :global(.star) { margin-left: 0; vertical-align: baseline; position: relative; top: -0.42em; }
+  /* The star and under it the heart of the favourites (src/lib/favorites.ts; in the place of the star without one): one
+     column at the right edge, the star level with the first line as before. The heart is hidden without JavaScript. */
+  .info .title .marks { flex: none; display: flex; flex-direction: column; align-items: center; gap: 0.1em; font-size: 0.6em; position: relative; top: -0.42em; }
+  .info .title :global(.star) { margin-left: 0; font-size: 1em; vertical-align: baseline; }
+  .info .title .heart { display: none; padding: 0.15em; margin: -0.15em; border: 0; background: none; color: var(--heart); cursor: pointer; line-height: 0; font: inherit; }
+  :global(html.hearts) .info .title .heart { display: block; }
+  .info .title .heart svg { width: 0.95em; height: 0.95em; overflow: visible; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; transition: transform .15s ease; }
+  .info .title .heart.on svg { fill: currentColor; }
+  .info .title .heart:hover svg { transform: scale(1.12); }
+  .info .title .heart:global(.beat) svg { animation: heart-beat .35s ease; }
+  @keyframes heart-beat { 40% { transform: scale(1.35); } }
+  @media (prefers-reduced-motion: reduce) { .info .title .heart svg { transition: none; } .info .title .heart:global(.beat) svg { animation: none; } }
   dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; font-size: 0.93rem; margin: 0 0 20px; }
   dt { color: var(--ink-soft); }
   /* the permanent code of the work: a quiet catalogue number, a link to its short address */

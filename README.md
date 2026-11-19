@@ -93,6 +93,7 @@ pavla/                                      (toto repo, veřejné)
 | `/tvorba/kolekce/plener-sumava-2026/` | kolekce: název, popis, úvodní fotka a její díla s filtry |
 | `/tvorba/2026/rano-u-rybnika-k3f9a/` | detail díla |
 | `/tvorba/k3f9a/` | trvalý krátký odkaz, přesměruje na detail |
+| `/tvorba/vyber/?obrazy=k3f9a,…` | „Můj výběr“: díla z odkazu, bez `obrazy` vlastní oblíbené návštěvníka (`noindex`, mimo mapu webu; viz *Oblíbené obrazy*) |
 | `/o-mne/`, `/kontakt/` | stránky s texty ze `stranky/` a fotkami z `fotky/` obsahového repa |
 | `/kurzy/` | obecná textová stránka, jen když obsahové repo má `stranky/kurzy.yaml` |
 | `/sitemap.xml` | mapa webu: kanonická adresa každé stránky (bez krátkých odkazů a 404) |
@@ -480,7 +481,7 @@ text), `empty_text` = velká věta prázdného webu, dokud není žádné dílo 
 `empty_closing` = menší formátovaná věta pod ní, kostra i doplnění do existujícího souboru dostane
 `homeEmptyClosing(site.instagram)` (odkaz na Instagram ze `site.config.yaml`, předává ho `prepareHome`), prázdné = nic.
 Vyzkoušení: `demo-content/_index.yaml` (nadpis „Testovací nadpis / na dva řádky“), `/`; „▶ Moje nejmilejší“ otevře
-promítání děl s `featured: true` (stejně „Moje nejmilejší“ v patičce; adresa pak bez `from`, v konzoli
+promítání děl s `featured: true` (stejně „Výběr“ v patičce; adresa pak bez `from`, v konzoli
 `[analytics] cinema_open` s `method: "home"` / `"footer"`); `button_show: ""` tlačítko schová; prázdný web jen unit testy.
 
 ### Texty stránek (`stranky/`)
@@ -929,6 +930,21 @@ pro Instagram z `mockups/instagram/` (`prototypeScenes`), takže prototyp ukazuj
 - `detail-efekty.html`: pro zvolenou úroveň, obraz a výřez všechny kombinace deformací a barev vedle sebe po pokusech (s kapkami a silou) nebo „Na více obrazech“ (první pokus na šesti obrazech úrovně, šipky posouvají dál) a v různých velikostech výřezu; u kombinace z katalogu `gameLooks` jméno vzhledu a jeho úroveň; zaškrtávátko u každé kombinace říká, zda se v úrovni losuje (výchozí z katalogu, řádek „Kombinace“ k přepsání do katalogu, samotná hra ho nečte); posuvníky mlhy, rozteče a teček rastru, bloku mozaiky, vln a posunu barev (paměť `pavla.prototype.detailEffects.v3`, výpis hodnot pro `effectSettings`; mlha a vlny v % okna).
 - `detail-kviz.html` (šablona `detail-quiz.html`): základ budoucího editoru kvízu pro návštěvníky. Obraz (šipky), obtížnost, velikost výřezu (6–30 %, výchozí podle úrovně), ťuknutí do obrazu přesune výřez (vždy uvnitř obrazu, `gameFrame`), „Vybrat místo za mě“ střídá místa, která by pro úroveň vybrala hra (`prepareGame`; bez nich zašedlé); pět vzhledů úrovně jako náhledy prvního pokusu a „Co uvidí hráč“ = všechny pokusy vybraného vzhledu s kapkami. Místo vybrané hrou se drží dál od okrajů jako ve hře, ručně vybrané jen uvnitř obrazu. Paměť `pavla.prototype.detailQuiz`. Falešné náhledy a odkaz pro sdílení zatím nemá.
 - `detail-vzorek.html` (šablona `detail-sample.html`): pevný vzorek 12 obrazů (`SAMPLE_SIZE`, `representativeSample` v `prepareGame`: nejvíc odlišné barvami, množstvím kresby a technikou, z děl, která jsou odpovědí ve všech úrovních), u každého malý celý obraz s rámečkem výřezu, který by hra v úrovni vybrala; „všech pět, první pokus“ = vzhledy úrovně vedle sebe, nebo jeden vzhled ve všech pokusech s kapkami. U každého obrazu výběr „Vyměnit obraz“ (díla, která jsou odpovědí ve všech úrovních), řádek „Vzorek: …“ s id k zapsání do `SAMPLE_PICKS` v `scripts/lib/prototypes.mjs` (ty jdou do vzorku první, zbytek se dopočítá), „Obnovit automatický výběr“. Paměť `pavla.prototype.detailSample`. Okna kreslí všechny tři pomocné stránky stejně (`windowHtml`).
+- `oblibene.html` (šablona `favorites.html`, prototyp oblíbených, na webu viz *Oblíbené obrazy*): oblíbené obrazy návštěvníka, jen v prohlížeči
+  (`localStorage` `FAVORITES_STORE` = `pavla.favorites`, bez účtu a služeb; logika `scripts/lib/favorites.mjs`). Záložky webu: „Úvod“ (Nejnovější ve výchozích
+  středních dlaždicích, počet `home.recent`, srdce jako v galerii),
+  „Tvorba“ (filtry Rok a Technika, srdce vpravo nahoře na obrázku karty: plné = oblíbené, vždy vidět; obrysové jen při najetí
+  myší, klik přidá / odebere, `toggleFavorite`; vlevo vedle „N děl ▶ Promítat“ odkaz „♥ Moje oblíbené (N)“ = oblíbené ze
+  zobrazených děl `shownFavorites` v pořadí galerie; bez nich nebo nad strop odkazu `FAVORITES_LINK_MAX` (100 děl, ~600 znaků)
+  odkaz není, `selectionLink`; nad stropem šedý počet s bublinou „Zužte filtr, výběr je příliš velký na odkaz“), „Stránka díla“ (srdce u titulku pod ★ / vedle ★ / pod nadpisem s textem „Líbí se mi“),
+  „Můj výběr“ (stránka s díly z adresy `?obrazy=a,b,c`, `SELECTION_PARAM`, `selectionFromSearch`: jen známá díla, každé jednou;
+  odkaz ke zkopírování, příjemce vidí svá vlastní srdce). „▶ Promítat“ (galerie i výběr) otevře zjednodušené promítání
+  v jeho paletě (`cinema.palette`, `cinemaPaletteCss`): ← → Esc, srdce v popisku za názvem a ★, nebo v horní liště, klávesa **L**
+  ho přepne s krátkou hláškou „Přidáno do oblíbených“ / „Odebráno z oblíbených“ (i se skrytým popiskem). Ladění: paleta, barva srdce (písmo / terakota `--error` / akcent),
+  velké obrazy / dlaždice, srdce v promítání v popisku / v horní liště, „Telefon“ (úzká stránka bez najetí myší: jen plná srdce), strop odkazu, nad stropem šedě s bublinou
+  (výchozí) / skrýt, naplnit oblíbené náhodně. Řádek pod laděním ukazuje události, které by šly do GA (nic se neposílá):
+  `favorite_add` / `favorite_remove` (`work_id`, `source` = `gallery` / `home` / `work` / `selection` / `cinema`, `FAVORITE_SOURCES`), `favorites_open`
+  (`count`, `own` = výběr jsou vlastní oblíbené, `ownSelection`). Ladění si prohlížeč pamatuje (`pavla.prototype.favorites`).
 - `barvy.html` (šablona `colors.html`, prototyp, na webu ani v pipeline zatím nic): barvy obrazů (`scripts/lib/colors.mjs`)
   ze 160px WebP každého díla (`prototypeColors`, bez okraje listu a bez průhledného pozadí): papír z pásu u okraje
   (`paperFromEdge`, jen světlý a skoro šedý; obloha se za papír nebere), každý pixel vyvážený podle papíru v mřížce odstín ×
@@ -1081,8 +1097,8 @@ hodnoty hledal prototyp `promitani.html`, viz *Prototypy*):
   odkaz na promítání nechá každému jeho vlastní zobrazení; po zavření se adresa vrátí k galerii, jak ji návštěvník má; každé další dílo adresu přepíše. Otevření tlačítkem přidá záznam historie (Zpět promítání
   zavře), odkaz otevře promítání rovnou na tom díle (dílo mimo výpis = náhodný začátek, prázdný výpis = bez
   promítání), `cinema=random` (`CINEMA_RANDOM`, `cinemaFirst`) začne kterýmkoli dílem a adresa pak jmenuje to promítané.
-  Promítání odkazem z webu: „Obrazy na prodej“ = díla na prodej `/tvorba/?status=unsold&cinema=random&from=…`
-  (`saleShowPath`, jen když nějaké dílo na prodej je, `hasWorksOnSale`), „Moje nejmilejší“ = výběr autorky
+  Promítání odkazem z webu: „Na prodej“ (patička; na Kontaktu „Obrazy na prodej“) = díla na prodej `/tvorba/?status=unsold&cinema=random&from=…`
+  (`saleShowPath`, jen když nějaké dílo na prodej je, `hasWorksOnSale`), „Výběr“ (patička) = výběr autorky
   `/tvorba/?featured=1&cinema=random&from=…` (`featuredShowPath`, jen když nějaké dílo s `featured: true` je,
   `hasFeaturedWorks`). Obojí je nenápadný odkaz v patičce každé stránky (`from=footer`; Kontakt je nemá, adresy
   tam patří jen ke kontaktu); výběr autorky navíc
@@ -1090,14 +1106,52 @@ hodnoty hledal prototyp `promitani.html`, viz *Prototypy*):
   něj; `from=home`). Parametr `from` (`CINEMA_FROM`, `CINEMA_LINK_SOURCES`) jen pojmenuje odkaz webu pro událost
   `cinema_open` (`method` `home` / `footer` / `shortcut` = zkratka „Promítat“ ikony na ploše, `cinemaLinkMethod`; které promítání, ukáže adresa stránky);
   galerie ho z adresy hned smaže, do sdíleného odkazu se nedostane. Ze stránky díla nebo kolekce (popisek, ↓, ↑) vede Zpět zpátky do promítání na stejné dílo.
+- **Srdce oblíbených** v popisku hned za názvem (a ★) a klávesa **L** přidá nebo odebere promítané dílo z oblíbených
+  s hláškou „♥ Přidáno do oblíbených“ / „Odebráno z oblíbených“ (i se skrytým popiskem; viz *Oblíbené obrazy*).
 - **Nápověda:** první otevření promítání v kartě prohlížeče ukáže ovládání a na `HINT_MS` (4 s) hlášku „← → listovat
-  · ↓ obraz · ↑ kolekce“, na dotykové obrazovce „tahem do stran listovat · dolů obraz · nahoru kolekce“ (`cinemaHint`); otevřené odkazem
+  · ↓ obraz · ↑ kolekce · L oblíbené“, na dotykové obrazovce „tahem do stran listovat · dolů obraz · nahoru kolekce“ (`cinemaHint`); otevřené odkazem
   (kde prohlížeč celou obrazovku umí) navíc „· klik nebo F = celá obrazovka“ / „· ťuknutí = celá obrazovka“
   (`fullscreenHint`), a to při každém otevření odkazem, po první nápovědě v kartě už jen tahle část;
   pamatuje se jen v kartě (`sessionStorage` `pavla.cinema.hinted`), nová karta ji ukáže znovu.
 - **Paměť** (`CINEMA_STORAGE_KEYS`): poloha popisků `pavla.cinema.captions`, zvolený čas `pavla.cinema.interval`
   (odkaz s `interval` má přednost) a barvy promítání `pavla.cinema.palette`.
 - Statistiky: `cinema_open`, `cinema_close`, `share` a `palette_change` se `source: cinema` (viz *Návštěvnost*).
+
+### Oblíbené obrazy (♥)
+
+Návštěvník si srdcem označí obrazy, které se mu líbí. Oblíbené jsou **jen v jeho prohlížeči** (`localStorage`
+`pavla.favorites` = seznam kódů děl, `FAVORITES_STORE`), bez účtu, bez služeb a bez cookies; v jiném prohlížeči nebo
+po smazání dat webu nejsou. Logika `scripts/lib/favorites.mjs`, prohlížeč `src/lib/favorites.ts` (všechna srdce díla
+na stránce i v jiných kartách ukazují totéž, `storage`); bez JavaScriptu žádná srdce nejsou.
+
+- **Karty** (galerie, rok, kolekce, úvodní stránka „Nejnovější“, „Můj výběr“; velké obrazy i dlaždice, `WorkCard.astro`):
+  srdce vpravo nahoře na obrázku v barvě palety `--heart` s lemem barvy papíru (jako značky dlaždic). Plné = oblíbené,
+  vidět vždy; obrysové jen při najetí myší na kartu (`@media (hover: hover)`), klik přidá / odebere (kartu neotevře).
+  Na telefonu jsou vidět jen plná srdce, přidává se na stránce díla. Vpravo nahoře u dlaždic nesmí být značka
+  (`tileMarks` rohy `tl` a `br`).
+- **Stránka díla:** srdce pod ★ u titulku (bez ★ na jejím místě), nápověda „Přidat do oblíbených“ / „Odebrat z oblíbených“.
+- **Promítání:** srdce v popisku za názvem a klávesa **L** (viz *Promítání*).
+- **Filtr „Jen moje oblíbené“:** zaškrtávátko těsně před „♥ Moje oblíbené (N)“ zúží galerii na oblíbené (jako „Doporučené“
+  výběr autorky; `?favorites=1`, `FAVORITES_ON`, čip „oblíbené“ v liště filtrů, „Zrušit filtry“ ho vypne, v `gallery_filter`
+  parametr `favorites`). Funguje i nad stropem odkazu. Je vidět, když jsou mezi díly ostatních filtrů nějaké oblíbené, nebo
+  když je zapnutý. Oblíbené jsou v prohlížeči: stejný odkaz s `favorites=1` ukáže jinému návštěvníkovi jeho oblíbené
+  (k poslání výběru slouží „Můj výběr“). Odebrané srdce se zapnutým filtrem dílo hned schová.
+- **„♥ Moje oblíbené (N)“** v galerii vlevo vedle „N děl ▶ Promítat“: oblíbené ze **všech děl podle filtrů** (ne jen
+  stránky) v pořadí galerie (`shownFavorites`), odkaz na „Můj výběr“ s nimi (`favoritesLinkState`). Bez oblíbených
+  mezi zobrazenými se neukáže; nad `FAVORITES_LINK_MAX` (100 děl, ~600 znaků adresy, bezpečně pod tím, co udrží
+  messengery a e-mail) je šedý s čárkovaným okrajem a bublinou „Zužte filtr, výběr je příliš velký na odkaz“ (`OVER_LINK_TITLE`).
+- **Patička:** první odkaz „Oblíbené“ vede na `/tvorba/vyber/` (vlastní oblíbené); jen když návštěvník nějaké oblíbené má
+  (skript v `Base.astro`, po každé změně i z jiné karty).
+- **„Můj výběr“** `/tvorba/vyber/?obrazy=<id>,<id>…` (`SELECTION_PATH`, `SELECTION_PARAM`, `src/pages/tvorba/vyber.astro`,
+  `noindex`, mimo mapu webu): díla z adresy (neznámé kódy vynechá, každé jednou, `selectionFromSearch`) v pořadí galerie,
+  v zobrazení zapamatovaném pro galerii; „N obrazů. Odkaz na tuhle stránku jde poslat dál.“, vpravo „Zkopírovat odkaz“
+  (na telefonu nabídka sdílení) a „▶ Promítat“ (promítání výběru, bez vlastní adresy). Kdo odkaz dostane, vidí na
+  kartách svá vlastní srdce. Bez `obrazy` ukáže vlastní oblíbené a adresu s nimi zapíše bez načtení stránky (`history.replaceState`), aby šla
+  zkopírovat z adresního řádku; nad stropem zůstane bez `obrazy` a bez „Zkopírovat odkaz“; prázdný výběr = „Zatím tu nic není. Srdíčkem u obrazu si ho přidáte do oblíbených.“
+- **Statistiky:** `favorite_add`, `favorite_remove` (`work_id`, `work_title`, `source` = `gallery` / `home` / `selection` /
+  `work` / `cinema`, `FAVORITE_SOURCES`), `favorites_open` (výběr otevřený odkazem: `results`, `own` = `yes`, když jsou
+  to vlastní oblíbené), `cinema_open` / `cinema_close` s `listing: selection` (viz *Návštěvnost*).
+- Hledáno v prototypu `oblibene.html` (viz *Prototypy*).
 
 ### Stránkování
 
@@ -1558,7 +1612,7 @@ v `demo-content/`, zobrazené přes `npm run demo`.
 | obecná textová stránka jen se souborem (`optional`), v mapě webu | `demo-content/stranky/kurzy.yaml`; `/kurzy/`, `/sitemap.xml` |
 | texty hry a vlastního kvízu z yaml | `demo-content/stranky/detail-dne.yaml` (`work_link: Zahrát si s tímhle obrazem`, `quiz_copy: Poslat odkaz dál`, `editor_title: Vyrob kvíz z obrazu`, vlastní `quiz_drops_text`); odkaz pod „Sdílet“ na stránce díla, tlačítko a rámeček na `/detail-dne/muj/`, titulek editoru `/detail-dne/muj-kviz/`, `.demo/content/export/stranky/README.md` („Detail dne“) |
 | nadpis úvodní stránky na dva řádky (`heading`) | `demo-content/_index.yaml`; `/` |
-| tlačítko „▶ Moje nejmilejší“ (`button_show`), „Moje nejmilejší“ v patičce a zkratka „Promítat“ v manifestu = promítání výběru autorky (`method` `home` / `footer` / `shortcut`) | `demo-content/_index.yaml`, díla s `featured: true`; `/`; `button_show: ""` jen unit testy |
+| tlačítko „▶ Moje nejmilejší“ (`button_show`), „Výběr“ v patičce a zkratka „Promítat“ v manifestu = promítání výběru autorky (`method` `home` / `footer` / `shortcut`) | `demo-content/_index.yaml`, díla s `featured: true`; `/`; `button_show: ""` jen unit testy |
 | doporučení „vzorová věta z kostry“ (`sampleAdvice`) | v kopii testovacích dat nastav `text` kolekce na „Toto je moje nejvíc nejoblíbenější kolekce.“ a spusť `npm run demo:prepare` (log `? advice:`), pak `git checkout demo-content/` |
 | doporučení v souhrnu běhu: bez štítků, popis s malým písmenem a bez tečky / popisky detailů bez tečky / na prodej bez mockupů / text kolekce bez tečky / popis a popisek fotky bez tečky | Rozpracovaný obraz / Ráno u rybníka, Pivoňky / Máky, Bouřka nad polem, Modravské slatě, Pivoňky / Město 2026 / fotky stránek |
 | zrušení filtrů | `/tvorba/`: vyber techniku a štítek, vpravo „N z 60 děl × Zrušit filtry“; klik vrátí všechna díla i „60 děl“ a 1. stránku, dlaždice a počet na stránku zůstanou. `/tvorba/2025/`: rok zůstane. Lišta po posunu: se dvěma filtry „Zrušit vše“, s jedním ne. Panel „Upravit“: „Zrušit filtry“ vedle „Hotovo“. |
@@ -2158,7 +2212,7 @@ Web se dá nainstalovat do telefonu, tabletu i počítače a otevírá se pak z 
 prohlížeče, ikona, jméno „Pavla“, zkratky (viz „Ikona webu“). Všechno je v `scripts/lib/app-install.mjs`
 (logika s testy), `src/lib/app-install.ts` (prohlížeč, spouští ho `Base.astro` na každé stránce) a `src/pages/sw.js.ts`.
 
-- **Instalace:** tlačítko „Nainstalovat aplikaci“ na konci odkazů v patičce, jen kde dává smysl (`installMode`):
+- **Instalace:** tlačítko „Nainstalovat“ na konci odkazů v patičce, jen kde dává smysl (`installMode`):
   - Android, Chrome, Edge (prohlížeč nabídl instalaci událostí `beforeinstallprompt`) = vlastní dialog prohlížeče;
     lištu instalace prohlížeče web nepotlačuje,
   - iPhone a iPad (`isIos`; každý prohlížeč tam instaluje přes Sdílet) = okno s návodem „Sdílet → Přidat na plochu“
@@ -2217,7 +2271,7 @@ prohlížeče, ikona, jméno „Pavla“, zkratky (viz „Ikona webu“). Všech
   Každá událost (i zobrazení stránky) nese `display_mode` (`DISPLAY_MODES`): `app` = nainstalovaná aplikace, `browser` =
   prohlížeč (`gtag('set', …)` v `gtagConfigScript`).
 - **Vyzkoušení:** `npm run demo:build`, pak `SITE_DATA_DIR=.demo/site npx astro preview` (testovací data, bez statistik).
-  V Chrome: v patičce je „Nainstalovat aplikaci“, DevTools → *Application* → *Manifest* (instalovatelnost, ikony, zkratky)
+  V Chrome: v patičce je „Nainstalovat“, DevTools → *Application* → *Manifest* (instalovatelnost, ikony, zkratky)
   a *Service workers* (`/sw.js` aktivní), *Cache storage* (`pavla-pages-…`, `pavla-files-…`, `pavla-images`). Prohlédnout
   `/tvorba/`, pak *Network* → *Offline*: `/tvorba/?tag=voda` se otevře s filtrem, neviděná `/o-mne/` ukáže „Bez připojení“.
   Tlačítko „←“ a návod pro iPhone: DevTools → *Rendering* → emulace `display-mode: standalone`, resp. zařízení iPhone
@@ -2242,7 +2296,7 @@ Návštěvník může napsat z každé stránky; zprávu doručí [Web3Forms](ht
     Esc panel schová (s textem) nebo zavře. Na telefonu je panel spodní „šuplík“ (velký přes celou výšku).
   - Je to vždy tentýž formulář, změnou velikosti se text neztratí.
 - **Detail dne**: štítek vpravo dole by zakrýval hru, a tak tam není (`messageLauncher={false}` v `Base.astro`,
-  `launcher` v `MessagePanel.astro`, `data-launcher="off"`, ani vysvětlivka); panel otevře odkaz „Napsat k této stránce“
+  `launcher` v `MessagePanel.astro`, `data-launcher="off"`, ani vysvětlivka); panel otevře odkaz „Napište mi“ v patičce
   v patičce. Štítek se ukáže jen se schovanou rozepsanou zprávou, aby nezůstala ztracená.
 - **Souvislost**: zpráva nese stránku, odkud vznikla („K obrazu: Ovce (2026)“, „Ke stránce: Kolekce“), křížkem jde
   odebrat. Do e-mailu jde předmět `[pavla-web] <typ>: <obraz (id) nebo stránka>`, adresa stránky a u obrazu jeho id;
@@ -2255,7 +2309,7 @@ Návštěvník může napsat z každé stránky; zprávu doručí [Web3Forms](ht
   zavření záložky ji smaže, nikam se neposílá); nese i souvislost, odkud začala, a velikost panelu.
 - **Po odeslání**: poděkování v panelu, koncept se smaže, panel se za 4 s schová; událost `message_sent` (GA).
   Při chybě text zůstane a ukáže se e-mail `site.email` jako náhradní cesta.
-- **Bez JavaScriptu**: odkaz „Napsat k této stránce“ v patičce vede na Kontakt se souvislostí v adrese
+- **Bez JavaScriptu**: odkaz „Napište mi“ v patičce vede na Kontakt se souvislostí v adrese
   (`/kontakt/?stranka=…&nazev=…&obraz=<id>`); formulář odešle přímo na Web3Forms a ti vrátí návštěvníka
   na `/kontakt/odeslano/` (poděkování, `noindex`, není v mapě webu).
 - **Spam**: skryté pole `botcheck` (vyplní ho jen robot; zpráva se pak „odešle“ naoko a nic neodejde).
@@ -2277,9 +2331,9 @@ Návštěvník si v patičce vybere barvy webu: **Automaticky** (podle světléh
 **Papír** (světlá), **Pergamen** (zažloutlý papír) nebo **Noc** (tmavá). Volba se pamatuje v `localStorage`
 (`pavla.palette`, nic uloženo = Automaticky) a platí na všech stránkách.
 
-- **Palety** jsou jen v `scripts/lib/palettes.mjs` (`PALETTES`): `id`, `label`, `scheme` (`light`/`dark`), devět barev
+- **Palety** jsou jen v `scripts/lib/palettes.mjs` (`PALETTES`): `id`, `label`, `scheme` (`light`/`dark`), deset barev
   (`paper` pozadí, `paper2` plochy, `ink` text, `inkSoft` tlumený text, `line` linky, `accent` odkazy a zvýraznění,
-  `ok` „k prodeji“, `error` chyby formuláře, `todo` světle žlutá plocha toho, co na návštěvníka čeká, teď neodehraná úroveň hry) a `picture` (síla stínu obrazů `shadow`, 1 = jako na Papíru; `edge` =
+  `ok` „k prodeji“, `error` chyby formuláře, `todo` světle žlutá plocha toho, co na návštěvníka čeká, teď neodehraná úroveň hry, `heart` teplá červená srdcí oblíbených) a `picture` (síla stínu obrazů `shadow`, 1 = jako na Papíru; `edge` =
   jemná linka kolem obrazu na tmavém podkladu, jinak `null`). Z nich vznikne CSS (proměnné `--paper`, `--ink-soft`…,
   `--shadow-soft` pro karty galerie, `--shadow-deep` pro úvodní obraz a dílo, `--paper-blend` podle `scheme`)
   i kroužky přepínače. Zaškrtávátka (`input[type=checkbox]`, teď „Doporučené“ v galerii) kreslí web sám z palety
@@ -2332,13 +2386,14 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | značky na úvodní stránce | `/`: v dlaždicích jen hvězdička (menší, průsvitnější), žádné košíky (`home.tileMarks`); galerie beze změny. |
 | doba běhu pipeline | `npm run demo:prepare`: pod každým přegenerovaným dílem řádek `  ⏱ … · total N s`, na konci `⏱ run: checks … · drafts … · works … · … · total …` (fáze pod 0,05 s chybí); druhé spuštění bez změn díla nepřegeneruje a nenakreslí znovu ani náhledy draftů (celý běh ~10 s, `.demo/site/.previews/` je prázdná). |
 | velikosti v kontrole automatiky | `node scripts/check-health.mjs` (bez tokenů; za proxy `NODE_USE_ENV_PROXY=1`): řádek „Velikost: repo webu … MB (… % z 1000 MB) · obsahové repo nezjištěno · nasazený web (GitHub Pages) … MB …“ a „Minuty GitHub Actions nebyly zkontrolovány (chybí secret CHECK_TOKEN …)“; s `CHECK_TOKEN=<token> ` před příkazem (a `--settings`, `REPO=<obsahové repo>`, `SETTINGS_DIR=<obsahové repo>/docs/github-nastaveni` = i porovnání nastavení) řádek „Minuty Actions soukromých rep za tento měsíc: N z 2000 …“. |
+| oblíbené | `npm run demo`, `/tvorba/`: najeď myší na obraz, vpravo nahoře obrysové srdce, klik ho naplní (karta se neotevře) a vlevo od „N děl“ přibude „♥ Moje oblíbené (1)“; filtr, který dílo vyřadí, odkaz schová; odkaz otevře `/tvorba/vyber/?obrazy=…` s „1 obraz“, „Zkopírovat odkaz“ a „▶ Promítat“; v promítání `L` srdce přepne s hláškou; na stránce díla srdce pod ★ (bez ★ na jejím místě); v telefonu (nástroje pro vývojáře) obrysová srdce nejsou; jiná karta prohlížeče ukáže změnu hned; v konzoli (úroveň Verbose) `[analytics] favorite_add` / `favorite_remove` / `favorites_open` |
 | promítání | `npm run demo`, `/tvorba/?tag=voda` → „▶ Promítat“: celá obrazovka, adresa `?tag=voda&cinema=<id>`, díla se po 15 s prolnou; pohyb myši ukáže ovládání („Kolekce: …“, 5 s … 3 min, pauza, Popisky, Odkaz, ×), za 3 s zmizí. „45 s“ → `&interval=45` a pamatuje se (nové promítání začne na 45 s), „15 s“ ho z adresy smaže. ← →, mezerník (hláška „Pozastaveno“), tah myší (dílo jde s myší, sousední vedle), ↓ stránka díla a Zpět vrátí promítání na stejné dílo, Esc zavře a Zpět po „▶ Promítat“ také. Popisky: „na chvíli“ zmizí po 4 s, „stále“, „skryté“ (s nimi i ★ a „K PRODEJI“: Máky mají obojí, díla v soukromé sbírce nic); pohyb myši ukáže popisek i ve „skryté“. Čas „5 s“, po 4 s pohnout myší: dílo zůstane ještě 5 s. Pravé tlačítko na „▶ Promítat“ → kopírovat odkaz (`…&cinema=random`). S dlaždicemi (`?view=tiles`) adresa promítání `view` nemá, po zavření ho galerie zase ukáže. Patička „Obrazy na prodej“ → promítání `?status=unsold` od náhodného díla, v nové kartě s nápovědou „← → listovat · ↓ obraz · ↑ kolekce · klik nebo F = celá obrazovka“ (podruhé v téže kartě jen „klik nebo F = celá obrazovka“; F přepne do celé obrazovky a zase zpět do okna; klávesa ? i „?“ v ovládání ukáže nápovědu znovu). Promítání je v barvách Noc, i když web je Papír; „Barvy: …“ je přepíná (Papír, Pergamen, Noc, podle systému), patička webu zůstane beze změny a nové promítání začne v posledních zvolených. Na telefonu (DevTools, zařízení s dotykem) tah prstem nahoru otevře kolekci díla, dolů stránku díla. Odkaz `/tvorba/?cinema=<id>&interval=5` otevře promítání rovnou (celá obrazovka až po prvním kliknutí, v ovládání „Celá obrazovka“, v DevTools → Network se načítají `….avif`). Prohlížeč fotek díla (Ráno u rybníka): tah myší posouvá obrázek a vedle něj detail; F celá obrazovka s popiskem přes spodek (popisek vlevo, „1 / 5“ u pravého okraje), → další detail, F zpět do okna; barvy prohlížeče podle palety v patičce. Na stránce díla (zavřený prohlížeč) ← / → otevře předchozí / další dílo z odkazů dole, v poli zprávy na Kontaktu šipky jen posouvají kurzor. V konzoli (Verbose) `[analytics] cinema_open` / `cinema_close`. |
 | hra Detail dne | `npm run demo`, `/detail-dne/`: tři úrovně (v testovacích datech má Lehká jen 3 obrazy, opakují se), ťukni na špatný náhled (výřez se oddálí, efekt zeslábne, nic se neposune), pak na správný (obraz se odhalí, kapky, verdikt zezelená, karta výsledku pod náhledy se zeleným „✓ …“ a jedním řádkem „Obraz · Kolekce · Sdílet“, klik na odhalený obraz otevře stránku díla; prohra = červené „✗ Tentokrát ne“); po obnovení stránky stav zůstane; neodehrané úrovně jsou světle žluté; na konci stránky (nad patičkou) sekce „Diagnostika“ s hádankou a krokem; dole v „Archiv“ klikni na dlaždici 3. 11.: adresa `?den=2026-307`, nad úrovněmi „Archiv · 3. listopadu · poloviční kapky“, za první tip polovina kapek (Lehká 5), série se nezmění, u dne v archivu zezelená / zčervená puntík; po všech třech úrovních karta napíše „Den 2026#307 máš za sebou“ a odkaz „V archivu na tebe čeká ještě … ↓“ posune stránku k archivu, „Dnes“ vrátí dnešek a adresu bez `?den`; `?den=999` = dnešek; v konzoli (Verbose) `[analytics] game_start` / `game_end`; v nástrojích pro vývojáře v režimu telefonu (390 × 664) jsou výřez i všechny náhledy na obrazovce; zdrojový kód stránky má `noindex`. Skutečná data: `npm run build && npx astro preview`, `/detail-dne/`. |
 | vlastní kvíz Můj Detail dne | `npm run demo:build && npx astro preview` s `SITE_DATA_DIR=.demo/site`: na stránce díla pod „Sdílet“ odkaz „Udělat z obrazu Detail dne“ (u `demo-kocka-na-plotu` s `game: false` není); editor: přepni obtížnost, ťukni do obrazu (rámeček se přesune), u díla s vynechanými místy (`demo-jablka-na-stole`) šrafy a výřez do nich červeně se zakázaným sdílením, „Vybrat místo za mě“, vyber zkreslení (živé náhledy), „Zahrát si ho“: adresa se zkrátí na `/detail-dne/muj/`, obnovení stránky hraje dál, po konci kola všech 9 náhledů odkazuje na stránky děl; useknutá adresa = hláška; `/detail-dne/muj/` bez adresy = návod. |
 | plán dnů hry Detail dne | `npm run demo` vypíše „Detail dne: plan updated (game/detail-dne/details.json, game/detail-dne/2026.json), … days up to …; pictures analysed N, kept 0, removed 0“ (soubory v `.demo/site/game/detail-dne/`: dny od 1. 11. 2026 do dneška + 14 po letech, jeden řádek na den a na dílo, detaily děl s čísly, `analysis/<id>.json` rozbor každého obrázku); druhý `npm run demo` týž den = „plan unchanged, …; pictures analysed 0, kept N, removed 0“ (žádný obrázek se znovu nerozebírá); po smazání jednoho `analysis/<id>.json` další běh rozebere jen ten; `npm run demo:build`, `/detail-dne/`, v „Diagnostika“ řádek „Hádanka: z plánu dnů, detail #…“; po smazání složky a novém `npm run demo:build` „spočítaná pro den“ (stejná hádanka, protože dny do zítřka plán zapisuje tak, jak je hra počítala). Archiv roku: `DETAIL_DNE_YEAR=2028 SITE_DATA_DIR=.demo/site npx astro build` vyrobí `/detail-dne/plan/2026.json`, `data.json` má prázdné `plan.days` a `plan.archive: [2026]`; `npx astro preview`, `/detail-dne/?den=3` načte ten soubor a hraje den z plánu |
 | Moje sbírka (Detail dne) | `/detail-dne/` uhodni úroveň: obraz přibude do „Moje sbírka“ s tečkami v barvách výřezu, bublina s názvem; další uhodnutý je první; bez uhodnutého věta „Každý uhodnutý obraz sem přibude…“; od 13 obrazů tlačítko „Celá sbírka“ / „Jen nejnovější“ (nejsnáz v prototypu: `npm run prototypes`, `.prototypes/detail-dne.html`, „Ladění prototypu“ → Sbírka po týdnu / měsíci / čtvrt roce / roce) |
 | Detail dne na úvodní stránce | `npm run demo`, `/`: pod úvodním obrazem sekce „Detail dne“ se třemi výřezy (stejné jako ve hře při prvním pokusu) a „Lehká · až 10 💧“; klik na Těžkou otevře `/detail-dne/` v Těžké a adresa je pak bez `?uroven`; jeden špatný tip a návrat na `/`: Těžká ukáže pohled po omylu a „rozehráno“, vedle nadpisu „🔥 Série 1“; uhodnutá úroveň ukáže celý obraz s ✓ a názvem; po všech třech řádek „Den 2026#… máš za sebou ✓ ✓ ✗“, tři malé obrazy a „V archivu čeká ještě … →“ (vede na `/detail-dne/#archiv`); v hlavním menu „Detail dne“, i na 320 px na jednom řádku; `.demo/site/dist/detail-dne/dnes.json` a `og-….jpg` (tři výřezy na papíře), ve zdroji `/detail-dne/` `og:image` a žádné `noindex`, stránka v `sitemap.xml`. |
-| prototypy | `npm run prototypes` a `open .prototypes/zarovnani-sloupcu.html`, `open .prototypes/znacky-dlazdic.html`: posuvníky začínají na hodnotách ze `site.config.yaml`, „Nastavení“ přepne na úvodní stránku / galerii. `open .prototypes/detail-vzorek.html`: přepni úroveň, každý obraz vzorku ukáže pět vzhledů; vyber jeden vzhled, uvidíš jeho pokusy; rámeček ani žádný pohled nesahá na okraj ani k podpisu; vyměň obraz výběrem pod ním, řádek „Vzorek“ se změní, „Obnovit automatický výběr“ ho vrátí. `detail-dne.html` v telefonu (nástroje pro vývojáře, 390 × 664): výřez i všechny náhledy jsou na obrazovce, po omylu ani po výhře se nic neposune, karta výsledku přijde pod náhledy, pod hrou Archiv, Moje sbírka a Diagnostika jako na webu. `open .prototypes/detail-kviz.html`: ťukni do obrazu, rámeček a všechny náhledy se přesunou; změň obtížnost, nabídne se jiných pět vzhledů a výřez její velikosti; klikni na vzhled, „Co uvidí hráč“ ukáže jeho pokusy. V `detail-dne.html` je nad pokusy jméno vzhledu dne. `open .prototypes/detail-efekty.html`: změň úroveň, obraz a posuvníky, všechna okna se změní najednou; v posledním pokusu každé kombinace je výřez bez efektu; přepni na „Na více obrazech“ a zaškrtni kombinaci, řádek „Kombinace“ se hned změní a po obnovení stránky zůstane. `open .prototypes/detail-dne.html`: přepínej úrovně Lehká, Střední, Těžká; ťukni na špatný náhled (výřez se oddálí, deformace zeslábne, náhled zešedne, v lehké úrovni někdy nápověda vyřadí další a na nich je napsané proč), pak na správný (obraz se odhalí, padají kapky, přibudou kapky a obraz ve sbírce, karta „✓ …“ s „Obraz · Kolekce · Sdílet“), „Sdílet“ (bez názvu obrazu), po obnovení stránky zůstane stav; „← den“ a „den →“ v ladění otevře jiný den (i budoucí), Vzhled „Mozaika“ změní výřez i řádek pokusů, Sbírka „po měsíci“ naplní Moje sbírka; hra na webu i v prototypu je týž kód (po změně `src/lib/detail-game.ts` nebo `src/styles/detail-game.css` stačí `npm run prototypes`). `open .prototypes/kamera-scen.html`: hrany stolů a stojanu protažené až za fotku, kroužek (průsečík hran) a křížek (úběžník kamery) leží u sebe a čárkované hrany díla do nich míří; „Z rohů listu“ je od sebe vzdálí, „Z hran“ je vrátí; u stojanu úhel spodní hrany díla proti liště skoro 0°; „Vyrovnat natočení“ ho změní, zaškrtni „ohnisko drží velikost listu“ a posuň ohnisko: list zůstane stejně velký, změní se perspektiva mřížky; „Pomocné čáry“ je schovají a ukážou dílo čistě, „Obnovit doporučené“ po rozladění posuvníků vrátí kameru ze `scenes.yaml`; „jen díla, která se nevejdou“ nechá v seznamu jen díla hlášená „Ke kontrole“ (na skutečných datech tři velká díla na stolech); zkopírovaný řádek `camera` vlož do `mockups/instagram/scenes.yaml` a `npm run demo:prepare` vyrobí scény s ní. `open .prototypes/barvy.html` (vygenerovaná stránka, ne šablona `scripts/prototypes/colors.html`, ta je bez dat): „Filtr Barva“ → „zelená“ (seznam nebo kolečko) zúží obrazy, posuvník podílu je přidá či ubere; změna `gallery.colors` v `site.config.yaml` a nový `npm run prototypes` změní nabídku barev; „Podobné obrazy“ → klik na obraz ukáže nejbližší, posuvníky vah změní pořadí. `promitani.html`: „▶ Promítat“, pohyb myši ukáže ovládání, ← → ↑ ↓ Esc, tažení myší, `L` ladění; adresa se mění v `#`. Testovací data: `npm run demo:prepare`, `SITE_DATA_DIR=.demo/site npm run prototypes -- .demo/prototypes`. |
+| prototypy | `npm run prototypes` a `open .prototypes/zarovnani-sloupcu.html`, `open .prototypes/znacky-dlazdic.html`: posuvníky začínají na hodnotách ze `site.config.yaml`, „Nastavení“ přepne na úvodní stránku / galerii. `open .prototypes/detail-vzorek.html`: přepni úroveň, každý obraz vzorku ukáže pět vzhledů; vyber jeden vzhled, uvidíš jeho pokusy; rámeček ani žádný pohled nesahá na okraj ani k podpisu; vyměň obraz výběrem pod ním, řádek „Vzorek“ se změní, „Obnovit automatický výběr“ ho vrátí. `detail-dne.html` v telefonu (nástroje pro vývojáře, 390 × 664): výřez i všechny náhledy jsou na obrazovce, po omylu ani po výhře se nic neposune, karta výsledku přijde pod náhledy, pod hrou Archiv, Moje sbírka a Diagnostika jako na webu. `open .prototypes/detail-kviz.html`: ťukni do obrazu, rámeček a všechny náhledy se přesunou; změň obtížnost, nabídne se jiných pět vzhledů a výřez její velikosti; klikni na vzhled, „Co uvidí hráč“ ukáže jeho pokusy. V `detail-dne.html` je nad pokusy jméno vzhledu dne. `open .prototypes/detail-efekty.html`: změň úroveň, obraz a posuvníky, všechna okna se změní najednou; v posledním pokusu každé kombinace je výřez bez efektu; přepni na „Na více obrazech“ a zaškrtni kombinaci, řádek „Kombinace“ se hned změní a po obnovení stránky zůstane. `open .prototypes/detail-dne.html`: přepínej úrovně Lehká, Střední, Těžká; ťukni na špatný náhled (výřez se oddálí, deformace zeslábne, náhled zešedne, v lehké úrovni někdy nápověda vyřadí další a na nich je napsané proč), pak na správný (obraz se odhalí, padají kapky, přibudou kapky a obraz ve sbírce, karta „✓ …“ s „Obraz · Kolekce · Sdílet“), „Sdílet“ (bez názvu obrazu), po obnovení stránky zůstane stav; „← den“ a „den →“ v ladění otevře jiný den (i budoucí), Vzhled „Mozaika“ změní výřez i řádek pokusů, Sbírka „po měsíci“ naplní Moje sbírka; hra na webu i v prototypu je týž kód (po změně `src/lib/detail-game.ts` nebo `src/styles/detail-game.css` stačí `npm run prototypes`). `open .prototypes/kamera-scen.html`: hrany stolů a stojanu protažené až za fotku, kroužek (průsečík hran) a křížek (úběžník kamery) leží u sebe a čárkované hrany díla do nich míří; „Z rohů listu“ je od sebe vzdálí, „Z hran“ je vrátí; u stojanu úhel spodní hrany díla proti liště skoro 0°; „Vyrovnat natočení“ ho změní, zaškrtni „ohnisko drží velikost listu“ a posuň ohnisko: list zůstane stejně velký, změní se perspektiva mřížky; „Pomocné čáry“ je schovají a ukážou dílo čistě, „Obnovit doporučené“ po rozladění posuvníků vrátí kameru ze `scenes.yaml`; „jen díla, která se nevejdou“ nechá v seznamu jen díla hlášená „Ke kontrole“ (na skutečných datech tři velká díla na stolech); zkopírovaný řádek `camera` vlož do `mockups/instagram/scenes.yaml` a `npm run demo:prepare` vyrobí scény s ní. `open .prototypes/barvy.html` (vygenerovaná stránka, ne šablona `scripts/prototypes/colors.html`, ta je bez dat): „Filtr Barva“ → „zelená“ (seznam nebo kolečko) zúží obrazy, posuvník podílu je přidá či ubere; změna `gallery.colors` v `site.config.yaml` a nový `npm run prototypes` změní nabídku barev; „Podobné obrazy“ → klik na obraz ukáže nejbližší, posuvníky vah změní pořadí. `promitani.html`: „▶ Promítat“, pohyb myši ukáže ovládání, ← → ↑ ↓ Esc, tažení myší, `L` ladění; adresa se mění v `#`. `open .prototypes/oblibene.html`: najeď myší na obraz, vpravo nahoře obrysové srdce, klik ho naplní a „♥ Moje oblíbené (N)“ vedle počtu děl přibude; filtr Rok ho zúží; posuvník „Strop odkazu“ pod počet oblíbených odkaz schová (nebo zašedí); odkaz otevře „Můj výběr“ s adresou `?obrazy=…`; po „Telefon“ obrysová srdce nejsou; „Stránka díla“ přepíná umístění srdce u titulku; „Úvod“ má srdce na dlaždicích Nejnovější; „▶ Promítat“ a klávesa L přepne srdce promítaného obrazu s hláškou; řádek pod laděním ukazuje události GA. Testovací data: `npm run demo:prepare`, `SITE_DATA_DIR=.demo/site npm run prototypes -- .demo/prototypes`. |
 | značky na dlaždicích | `/tvorba/?view=tiles`: obrazy z výběru autorky mají vlevo nahoře hvězdičku, obrazy na prodej vpravo dole košík; `−` na malé dlaždice: košíky zmizí, hvězdičky zůstanou; `+` na velké: značky větší (nejvýš 22 px). Přepni paletu Noc: značky světlé s tmavým lemem. Velké obrazy: žádné značky, hvězdička u názvu a štítek „K prodeji“. Totéž na úvodní stránce. Zkus `tileMarks.sale.icon: tag` nebo `sale.corner: tl` v `site.config.yaml` (košík vedle hvězdičky). |
 | dlaždice | `/tvorba/`: vpravo dole ikona „Dlaždice“: malé obrazy bez textů, 36 na stránku, „Na stránku“ nabízí 36 / 72 / 144, v URL `?view=tiles`; z 4. stránky velkých obrazů skočí na 2. stránku dlaždic (stejné první dílo). Zvol 72, přepni na velké obrazy a zpět: každé zobrazení si pamatuje svůj počet. Změň filtr, dlaždice zůstanou. Otevři `/tvorba/` znovu bez parametrů → dlaždice a `?view=tiles` (paměť); `/tvorba/?view=grid` → velké obrazy (odkaz má přednost); „Velké obrazy“ paměť smaže (DevTools → Local Storage → `pavla.gallery.view`). Na šířce telefonu 3 sloupce. |
 | štítky v bublině | `/tvorba/`: najeď myší na obraz se štítky, bublina má řádek `#štítek …` česky podle abecedy. |
@@ -2760,13 +2815,16 @@ analytics:
   | `message_sent` | odeslaná zpráva z formuláře (Kontakt nebo panel „Napište mi“, viz *Zprávy od návštěvníků*) | `message_type` (`greeting`, `work`, `purchase`, `collaboration`, `bug`, `other`), u zprávy k obrazu `work_id`, `work_title` |
   | `palette_change` | návštěvník v patičce přepne barvy webu (jen skutečná změna, ne opakovaný klik na tutéž); i „Barvy: …“ v promítání | `palette` (`papir`, `pergamen`, `noc`, `auto`); z promítání `source: cinema` |
   | `view_change` | návštěvník přepne zobrazení děl (velké obrazy / dlaždice) nebo velikost dlaždic, na úvodní stránce i v galerii (`viewEventParams`) | `listing` (`home`, `gallery`), `view` (`grid`, `tiles-s`, `tiles-m`, `tiles-l`) |
-  | `cinema_open` | promítání výpisu otevřené (`cinemaOpenParams`) | `listing` (`gallery`, `year`, `collection`), `results` (kolik děl promítá), `interval` (s), `method` (`CINEMA_OPEN_METHODS`: `button` „▶ Promítat“, `link` adresa s `cinema`, `home` tlačítko „▶ Moje nejmilejší“ na úvodní stránce, `footer` „Obrazy na prodej“ / „Moje nejmilejší“ v patičce, `shortcut` zkratka „Promítat“ ikony na ploše telefonu) |
+  | `cinema_open` | promítání výpisu otevřené (`cinemaOpenParams`) | `listing` (`gallery`, `year`, `collection`, `selection` = „Můj výběr“), `results` (kolik děl promítá), `interval` (s), `method` (`CINEMA_OPEN_METHODS`: `button` „▶ Promítat“, `link` adresa s `cinema`, `home` tlačítko „▶ Moje nejmilejší“ na úvodní stránce, `footer` „Obrazy na prodej“ / „Moje nejmilejší“ v patičce, `shortcut` zkratka „Promítat“ ikony na ploše telefonu) |
   | `cinema_close` | promítání zavřené nebo opuštěné na stránku díla či kolekce (`cinemaCloseParams`) | `listing`, `reason` (`CINEMA_CLOSE_REASONS`: `button` ×, `esc` Esc nebo konec celé obrazovky, `back` Zpět, `work` stránka díla, `collection` kolekce), `seconds`, `shown` (kolik děl ukázalo) |
   | `game_start` | první tip v kole hry Detail dne (otevření stránky měří zobrazení stránky; `gameEventParams`); ve vlastním kvízu `source: quiz`, `level`, `look`, `work_id` (`quizEventParams`) | `level` (`easy`, `medium`, `hard`; do 2026-11-16 `lehka`, `stredni`, `tezka`), `day` (klíč dne `2026-320`, `dayId`; do 2026-11-16 číslo od prvního dne, např. `15`), `archive` (`yes` = den z archivu, `no` = dnešek), `look` (vzhled dne z `gameLooks`, např. `mosaic`) |
   | `game_end` | kolo hry Detail dne skončilo (uhádnuté nebo po posledním pokusu); ve vlastním kvízu jako jeho `game_start` a `solved`, `misses` | jako `game_start` a `solved` (`yes` / `no`), `misses` (omyly), `drops` (získané kapky), `streak` (série dnů po kole), `work_id`, `work_title` (hádaný obraz) |
   | `code_open` | obraz otevřený podle kódu z pole `#` v hlavičce (`codeEvent`, jen když obraz existuje) | `work_id`, `method` (`CODE_METHODS`: `paste` = vložený kód otevřel obraz hned, `enter` = potvrzený Enterem / „Přejít“) |
-  | `app_install` | tlačítko „Nainstalovat aplikaci“ v patičce a nainstalovaná aplikace (`src/lib/app-install.ts`) | `method` (`INSTALL_METHODS`: `accepted` / `dismissed` odpověď na dialog instalace, `help_ios` / `help_menu` ukázaný návod, `installed` aplikace nainstalovaná) |
+  | `app_install` | tlačítko „Nainstalovat“ v patičce a nainstalovaná aplikace (`src/lib/app-install.ts`) | `method` (`INSTALL_METHODS`: `accepted` / `dismissed` odpověď na dialog instalace, `help_ios` / `help_menu` ukázaný návod, `installed` aplikace nainstalovaná) |
   | `more_click` | klik pod dílem: na kartu v „Související obrazy“ nebo „Podobné obrazy“, nebo na odkaz „Podobných obrazů“ do galerie (stránka události = dílo, pod kterým byl) | `work_id`, `work_title` (kliknuté dílo, u odkazu nic), `method` (`MORE_METHODS`: `related`, `similar`, `similar_filter`) |
+  | `favorite_add` | srdce: dílo přidané do oblíbených (`favoriteEventParams`) | `work_id`, `work_title`, `source` (`FAVORITE_SOURCES`: `gallery` karta galerie, roku či kolekce, `home` úvodní stránka, `selection` „Můj výběr“, `work` stránka díla, `cinema` promítání, i klávesou L) |
+  | `favorite_remove` | srdce: dílo odebrané z oblíbených | jako `favorite_add` |
+  | `favorites_open` | „Můj výběr“ otevřený odkazem s `?obrazy=` (`favoritesOpenParams`) | `results` (kolik děl ukazuje), `own` (`yes` = všechna jsou oblíbená v tomto prohlížeči, tedy vlastní výběr; `no` = cizí, poslaný) |
   | `image_view` | každý obrázek ukázaný v prohlížeči fotek na stránce díla (`imageEventParams`): otevření i každé listování; Zpět/Vpřed jen při jiném obrázku | `work_id`, `work_title`, `image` (kotva obrázku: `obraz`, `detail-<jméno>`, `mockup-<scéna>`), `image_kind` (`main`, `detail`, `mockup`), `method` (`IMAGE_METHODS`: `open` klik na stránce, `arrow` šipka prohlížeče, `swipe` tah, `key` klávesa ←/→, `link` stránka otevřená s kotvou, `history` Zpět/Vpřed) |
 
   Tlačítka nesou `data-track="<událost>"`, `data-work-id` a `data-work-title`; posluchač kliků je v `Base.astro`,
@@ -2784,6 +2842,7 @@ analytics:
   | Rok | `year` | Filtr roku v galerii nebo na přehledu kolekcí (gallery_filter). |
   | Kolekce | `collection` | Filtr kolekce v galerii (gallery_filter): slug kolekce, none = díla bez kolekce. |
   | Stav filtru | `status` | Filtr stavu v galerii (gallery_filter): unsold = na prodej, kept = ještě mám, gone = už nemám. |
+  | Jen oblíbené | `favorites` | Zaškrtnutý filtr jen mých oblíbených obrazů v galerii (gallery_filter): 1. |
   | Výběr autorky | `featured` | Zapnutý přepínač Doporučené (výběr autorky) v galerii (gallery_filter). |
   | Hledání | `q` | Text hledání v galerii nebo v přehledu kolekcí (gallery_filter). |
   | ID díla | `work_id` | Trvalý kód díla (např. g4psg) u událostí díla: Fler, Instagram, sdílení, e-mail, zpráva, prohlížeč fotek, kód. |
@@ -2791,18 +2850,19 @@ analytics:
   | Způsob | `method` | Jak: share, image_view, cinema_open, code_open, more_click, app_install (accepted, dismissed, help_ios, installed…); hodnoty v README webu. |
   | Typ zprávy | `message_type` | Typ odeslané zprávy (message_sent): greeting, work, purchase, collaboration, bug, other. |
   | Barvy webu | `palette` | Barvy zvolené v patičce (palette_change): papir, pergamen, noc, auto. |
-  | Výpis | `listing` | Kde: view_change home = úvodní stránka, gallery = galerie; cinema_open/close gallery, year, collection. |
+  | Výpis | `listing` | Kde: view_change home = úvodní stránka, gallery = galerie; cinema_open/close gallery, year, collection, selection (Můj výběr). |
   | Zobrazení | `view` | Nové zobrazení děl (view_change): grid = velké obrazy, tiles-s / tiles-m / tiles-l = dlaždice malé / střední / velké. |
   | Obrázek | `image` | Obrázek v prohlížeči fotek díla (image_view): obraz, detail-<jméno>, mockup-<scéna>; stejně jako kotva v adrese. |
   | Doba obrazu | `interval` | Promítání (cinema_open): kolik sekund zůstane každé dílo. |
   | Důvod zavření | `reason` | Promítání (cinema_close): button, esc, back, work = na stránku díla, collection = na kolekci. |
-  | Odkud | `source` | share, palette_change, game_*: cinema = promítání, game = výsledek Detailu dne, quiz = vlastní kvíz; prázdné = jinde (u game_* denní hra). |
+  | Odkud | `source` | share, palette_change, game_*: cinema, game, quiz; favorite_*: gallery, home, selection, work, cinema; prázdné = jinde. |
   | Úroveň hry | `level` | Detail dne (game_start, game_end, share): easy, medium, hard (Lehká, Střední, Těžká; do 2026-11-16 lehka, stredni, tezka). |
   | Den hry | `day` | Detail dne: klíč dne `2026-320` = rok a pořadí dne v roce (`dayId`, v nadpisu „2026#320“; do 2026-11-16 číslo od prvního dne hry). |
   | Archiv | `archive` | Detail dne: yes = den z archivu (poloviční kapky), no = dnešní hádanka. |
   | Vzhled | `look` | Detail dne: vzhled výřezu dne (gameLooks), např. clear, mosaic, dream. |
   | Uhádnuto | `solved` | Detail dne (game_end): yes = obraz uhádnutý, no = došly pokusy. |
   | Režim zobrazení | `display_mode` | U každé události: app = web otevřený jako nainstalovaná aplikace (z plochy), browser = v prohlížeči. |
+  | Vlastní výběr | `own` | „Můj výběr“ otevřený odkazem (favorites_open): yes = vlastní oblíbené, no = výběr poslaný někým jiným. |
   | Druh obrázku | `image_kind` | Druh obrázku v prohlížeči fotek (image_view): main = celý obraz, detail = detailní fotka, mockup = vizualizace v interiéru. |
 
   A *Vlastní metriky → Vytvořit*: `results` (Počet výsledků filtru, jednotka Standardní, popis: „Kolik děl (na přehledu

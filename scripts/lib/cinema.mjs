@@ -103,7 +103,7 @@ export const featuredShowPath = (from) => showPath('featured', FEATURED_ON, from
 export const CINEMA_HINT_KEY = 'pavla.cinema.hinted';
 export const HINT_MS = 4000;
 export function cinemaHint(touch, screen = '') {
-  const moves = touch ? 'tahem do stran listovat · dolů obraz · nahoru kolekce' : '← → listovat · ↓ obraz · ↑ kolekce';
+  const moves = touch ? 'tahem do stran listovat · dolů obraz · nahoru kolekce' : '← → listovat · ↓ obraz · ↑ kolekce · L oblíbené';
   if (screen === 'window') return `${moves} · ${fullscreenHint(touch)}`;
   if (screen === 'full' && !touch) return `${moves} · F = celá obrazovka / okno`;
   return moves;
