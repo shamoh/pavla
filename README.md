@@ -468,7 +468,8 @@ text: |
   `yearSkeletonText`) a všechny popisy roků srovnává podle schématu jako ostatní popisy.
 - Veřejná kopie (`text`, `description`, `cover`, `aspect`, `focus`) jde do `content/roky/<rok>.yaml`; web ji načte
   přes `getYear` (`src/lib/site.ts`, odstavce `paragraphs`). Prázdný text se nezobrazí. Popis pro vyhledávače:
-  `description`, jinak text, jinak „Akvarely a kresby z roku …“.
+  `description`, jinak text, jinak `site.yearDescription` ze `site.config.yaml` (`{year}` = rok, `{author}` = `site.author`;
+  u Pavly „Akvarely a kresby z roku {year} – {author}.“, bez klíče „Tvorba z roku {year} – {author}.“, `yearPageDescription`).
 - Jiný soubor v `roky/` než `<rok>.yaml` a `<rok>.jpg` nebo fotka roku bez díla zastaví běh chybou; texty viz
   *Texty popisů*.
 
@@ -2179,7 +2180,8 @@ používají tyto názvy; dokud fotka neexistuje, na stránce prostě chybí:
 | `kontakt.jpg` | Kontakt, vedle formuláře (pod formulářem i fotkou je přes celou šířku řádek s e-mailem, Instagramem, Pinterestem a Flerem vlevo a „Žiji a maluji“ vpravo; na telefonu pod sebou), oříznutá na šířku 3:2 podle `focus` (fotka 3:2 zůstane celá); bílý okraj přechází do papíru stránky (`blendEdge={10}`) |
 
 Kontakt ukazuje z `site.config.yaml` e-mail (`site.email`), Instagram (`site.instagram`, jako `@účet`), Pinterest
-(`site.pinterest`, jako `@uživatel` z adresy profilu `pinterestHandle`, nepoznaná adresa = „Pavla na Pinterestu“),
+(`site.pinterest`, jako `@uživatel` z adresy profilu `pinterestHandle`, nepoznaná adresa = „<křestní jméno ze `site.author`> na Pinterestu“,
+`pinterestContactText`),
 obchůdek na Fleru (`site.fler`) a místo, kde autorka žije a maluje (`site.location`, „Žiji a maluji“); prázdná hodnota
 = položka chybí. Každý odkaz má bublinu, kam vede („Napsat mi e-mail“, „Můj profil na Instagramu“, „Moje obrazy
 na Pinterestu“, „Můj obchůdek na Fleru“). Adresy jsou ve třech odstínech,
@@ -2308,6 +2310,8 @@ Návštěvník může napsat z každé stránky; zprávu doručí [Web3Forms](ht
     Všechny zprávy jdou na tuto jednu adresu; třídění (např. přeposlání hlášení chyb) řeší filtr v poště.
     Prázdný = žádný formulář: Kontakt ukáže jen adresy a u díla zůstane „Napsat autorce“ (`mailto:`).
     Neplatný klíč (ne UUID) zastaví build chybou.
+  - `subjectTag`: značka na začátku předmětu každého e-mailu z webu (`[pavla-web] …`), aby šly zprávy filtrovat;
+    platí pro odeslané zprávy, zprávu bez JavaScriptu i odkazy `mailto:` (`messageSubject`, `formSubject`). Prázdná = `web`.
 - **Kontakt** (`/kontakt/`): formulář přímo na stránce, pod ním kontakty na jednom řádku.
 - **Ostatní stránky**: štítek „Napište mi“ vpravo dole (na telefonu jen ikona, při posouvání dolů se schová,
   nahoru se vrátí); při první návštěvě záložky na pár vteřin vysvětlivka, jinak při najetí myší. Otevře panel:
@@ -2319,7 +2323,7 @@ Návštěvník může napsat z každé stránky; zprávu doručí [Web3Forms](ht
   `launcher` v `MessagePanel.astro`, `data-launcher="off"`, ani vysvětlivka); panel otevře odkaz „Napište mi“ v patičce
   v patičce. Štítek se ukáže jen se schovanou rozepsanou zprávou, aby nezůstala ztracená.
 - **Souvislost**: zpráva nese stránku, odkud vznikla („K obrazu: Ovce (2026)“, „Ke stránce: Kolekce“), křížkem jde
-  odebrat. Do e-mailu jde předmět `[pavla-web] <typ>: <obraz (id) nebo stránka>`, adresa stránky a u obrazu jeho id;
+  odebrat. Do e-mailu jde předmět `[<subjectTag>] <typ>: <obraz (id) nebo stránka>` (u Pavly `[pavla-web] …`), adresa stránky a u obrazu jeho id;
   odesílatel je „Web <adresa webu>“ (`messageSender`, např. „Web pavla.kramolis.cz“), aby zpráva nevypadala jako od autorky.
 - **Typy zpráv** (`MESSAGE_TYPES`): Pozdrav nebo vzkaz · Dotaz na obraz · Zájem o koupi · Spolupráce, výstava, plenér ·
   Chyba na webu · Něco jiného. Předvybraný: na detailu díla na prodej „Zájem o koupi“, jinak u díla „Dotaz na obraz“,
@@ -2618,7 +2622,9 @@ Lokální `npm run images` funguje dál stejně. Jen nekombinuj obojí najednou:
 běhu, nebo nech pracovat automatiku.
 
 **Týdenní kontrola automatiky** běží v obsahovém repu, kód je tady: `scripts/check-health.mjs` (volání API,
-čtení popisů) a `scripts/lib/health.mjs` (vyhodnocení, české zprávy). Proměnné: `TOKEN` (token pro zápis do
+čtení popisů) a `scripts/lib/health.mjs` (vyhodnocení, české zprávy). Repo webu, které kontroluje (běhy, nasazení,
+pull request, velikost, nastavení) a které jmenují její zprávy, je `site.repository` ze `site.config.yaml` (`vlastník/jméno`,
+bez něj kontrola skončí chybou; funkce `health.mjs` ho dostávají jako `siteRepo`, bez něj píšou obecně „repo webu“). Proměnné: `TOKEN` (token pro zápis do
 tohoto repa), `RUNS_TOKEN` a `REPO` (běhy workflow obsahového repa), `CONTENT_DIR` (checkout popisů,
 nepovinný), `CHECK_TOKEN` (spotřeba minut Actions a nastavení rep, nepovinný),
 `SETTINGS_DIR` (uložené exporty nastavení `<jméno repa>.json`, nepovinný). Kontroluje:
@@ -2787,7 +2793,8 @@ Co web dělá, aby mu vyhledávače rozuměly (`scripts/lib/seo.mjs`, `src/layou
   případně zkrátí, aby se vše vešlo do 160 znaků; `workPageDescription`). Název a text na stránce se nemění.
   Hlídá to `npm run check:images` (viz *Kontrola obrázků postaveného webu*).
 - **Strukturovaná data** (schema.org jako JSON-LD v `<script type="application/ld+json">`, `graphLd`):
-  úvod = web (`WebSite`) a autorka (`Person` s portrétem, odkazy na Instagram a Fler a místem `homeLocation` ze `site.location`), O mně = `ProfilePage`,
+  úvod = web (`WebSite`) a autorka (`Person` s portrétem, odkazy na Instagram a Fler, místem `homeLocation` ze `site.location`,
+  popisem `site.authorDescription` a tématy `site.knowsAbout` ze `site.config.yaml`; prázdné = pole chybí), O mně = `ProfilePage`,
   Kontakt = `ContactPage`, dílo = `VisualArtwork` (název, popis, obrázek, technika, podklad, rozměry v cm, datum,
   autorka, klíčová slova `keywords` = štítky díla, druh díla `artform` podle techniky: `malba` / `kresba` / `grafika`,
   neznámá technika žádný, `artform` v `scripts/lib/seo.mjs`, a `sameAs` = odkazy `instagram` a `fler` díla, tedy tentýž

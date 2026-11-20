@@ -47,13 +47,22 @@ export function contextLabel(context) {
   return `Ke stránce: ${context.title || context.path}`;
 }
 
-/** Subject of the e-mail, e.g. "[pavla-web] Dotaz na obraz: Ovce (v39nd)" or "[pavla-web] Chyba na webu: Kolekce". */
-export function messageSubject(typeId, context) {
+/** The tag of the subjects when site.config.yaml has no `messages.subjectTag`. */
+export const SUBJECT_TAG = 'web';
+
+/**
+ * Subject of the e-mail, starting with the tag of the site (`messages.subjectTag`, so a mail filter finds them), e.g.
+ * "[pavla-web] Dotaz na obraz: Ovce (v39nd)" or "[pavla-web] Chyba na webu: Kolekce".
+ */
+export function messageSubject(typeId, context, tag = SUBJECT_TAG) {
   const label = messageType(typeId).label;
-  if (!context) return `[pavla-web] ${label}`;
+  if (!context) return `[${tag}] ${label}`;
   const about = context.kind === 'work' ? `${context.title} (${context.id})` : context.title || context.path;
-  return `[pavla-web] ${label}: ${about}`;
+  return `[${tag}] ${label}: ${about}`;
 }
+
+/** Subject of a message sent without JavaScript (the form posts itself to Web3Forms, no type or context known). */
+export const formSubject = (tag = SUBJECT_TAG) => `[${tag}] Zpráva z webu`;
 
 /** A plausible e-mail address (the browser checks it too; this is the same rule for the draft and the tests). */
 export const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s ?? '').trim());
@@ -95,12 +104,15 @@ export function messagesMode(config, { demo }) {
 }
 
 /**
- * Everything about messages for this build, from `messages` in site.config.yaml: { mode (see messagesMode), accessKey }.
- * The key is only put into the pages when messages are live (the preview of the test data has none).
+ * Everything about messages for this build, from `messages` in site.config.yaml: { mode (see messagesMode), accessKey,
+ * subjectTag (SUBJECT_TAG when not set) }. The key is only put into the pages when messages are live (the preview of
+ * the test data has none).
  */
 export function messagesSettings(config, { demo }) {
   const mode = messagesMode(config, { demo });
-  return { mode, accessKey: mode === 'live' ? config.accessKey : '' };
+  const tag = String(config?.subjectTag ?? '').trim();
+
+  return { mode, accessKey: mode === 'live' ? config.accessKey : '', subjectTag: tag || SUBJECT_TAG };
 }
 
 /** Parameters of the message_sent event (scripts/lib/analytics.mjs EVENTS.message): the kind and the work, if any. */
@@ -115,14 +127,15 @@ export function messageEventParams({ type, context }) {
 export const messageSender = (site) => `Web ${new URL(site.url).host}`;
 
 /**
- * The JSON body for Web3Forms. `site`: { title, url }; `fields`: { type, text, email }; `context` as above.
- * Fields other than the Web3Forms ones (access_key, subject, from_name, replyto, botcheck) show up in the e-mail as they are.
+ * The JSON body for Web3Forms. `site`: { title, url }; `fields`: { type, text, email }; `context` as above; `tag` of the
+ * subject (messageSubject). Fields other than the Web3Forms ones (access_key, subject, from_name, replyto, botcheck)
+ * show up in the e-mail as they are.
  */
-export function web3formsBody(accessKey, site, { type, text, email }, context) {
+export function web3formsBody(accessKey, site, { type, text, email }, context, tag = SUBJECT_TAG) {
   const mail = String(email ?? '').trim();
   return {
     access_key: accessKey,
-    subject: messageSubject(type, context),
+    subject: messageSubject(type, context, tag),
     from_name: messageSender(site),
     ...(mail && { replyto: mail, 'E-mail': mail }),
     'O čem': messageType(type).label,
@@ -174,6 +187,6 @@ export function contextFromQuery(params) {
  * A mailto: link with the same subject as a sent message ("[pavla-web] Dotaz na obraz: Ovce (v39nd)"), so the mail
  * filter treats both alike: the address on the contact page and "Napsat autorce" of a work when there is no form.
  */
-export function mailtoLink(email, typeId, context) {
-  return `mailto:${email}?subject=${encodeURIComponent(messageSubject(typeId, context))}`;
+export function mailtoLink(email, typeId, context, tag = SUBJECT_TAG) {
+  return `mailto:${email}?subject=${encodeURIComponent(messageSubject(typeId, context, tag))}`;
 }

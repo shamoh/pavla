@@ -79,7 +79,7 @@ function bindForm(form: HTMLFormElement, store: Store, onSent: () => void): Form
   const emailHint = q<HTMLElement>('[data-msg-email-hint]');
   const status = q<HTMLElement>('[data-msg-status]');
   const submit = q<HTMLButtonElement>('button[type="submit"]');
-  const { mode, accessKey, siteTitle, siteUrl, siteEmail } = form.dataset;
+  const { mode, accessKey, siteTitle, siteUrl, siteEmail, subjectTag } = form.dataset;
 
   const error = (field: string, message = '') => {
     form.querySelector<HTMLElement>(`[data-error-for="${field}"]`)!.textContent = message;
@@ -119,7 +119,7 @@ function bindForm(form: HTMLFormElement, store: Store, onSent: () => void): Form
     status.textContent = 'Odesílám…';
     try {
       // A robot ticked the hidden box: look like it worked, send nothing.
-      if (!trap.checked && mode === 'live') await send(accessKey!, { title: siteTitle!, url: siteUrl! }, d);
+      if (!trap.checked && mode === 'live') await send(accessKey!, { title: siteTitle!, url: siteUrl! }, d, subjectTag);
       else await new Promise((r) => setTimeout(r, 600));
       if (!trap.checked) trackEvent(EVENTS.message, messageEventParams(d));
       showDone(mode === 'live' || trap.checked
@@ -156,11 +156,11 @@ function bindForm(form: HTMLFormElement, store: Store, onSent: () => void): Form
   };
 }
 
-async function send(accessKey: string, site: { title: string; url: string }, d: Draft) {
+async function send(accessKey: string, site: { title: string; url: string }, d: Draft, subjectTag?: string) {
   const res = await fetch(WEB3FORMS_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(web3formsBody(accessKey, site, d, d.context)),
+    body: JSON.stringify(web3formsBody(accessKey, site, d, d.context, subjectTag || undefined)),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok || !body.success) throw new Error(body.message || `Web3Forms: ${res.status}`);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FEED_UTM, PIN_DESCRIPTION_CHARS, clip, pinterestHandle, pinterestProfileLink, withParams, feedImages, pinDescription, pinKeywords, pinSaveUrl, pinterestFeed } from './pinterest.mjs';
+import { FEED_UTM, PIN_DESCRIPTION_CHARS, clip, pinterestHandle, pinterestProfileLink, withParams, feedImages, pinDescription, pinKeywords, pinSaveUrl, pinterestContactText, pinterestFeed } from './pinterest.mjs';
 
 test('clip: whitespace collapsed, cut after a whole word with "…"', () => {
   assert.equal(clip('  Ráno   u\nrybníka ', 100), 'Ráno u rybníka');
@@ -90,4 +90,16 @@ test('pinterestHandle: the user name of the profile, any form of its address; el
   for (const bad of ['', undefined, 'pavlakramolisova', 'https://cz.pinterest.com/', 'https://example.com/pavlakramolisova/']) {
     assert.equal(pinterestHandle(bad), '', String(bad));
   }
+});
+
+test('pinterestContactText: "@<user name>" of the profile, a plain phrase without one', () => {
+  const author = 'Pavla Kramolišová';
+  assert.equal(pinterestContactText({ author, pinterest: 'https://cz.pinterest.com/pavlakramolisova/' }), '@pavlakramolisova');
+  assert.equal(pinterestContactText({ author, pinterest: 'https://example.test/' }), 'Pavla na Pinterestu');
+});
+
+test('pinterestContactText of another author: her first name, without an author a generic word', () => {
+  assert.equal(pinterestContactText({ author: 'Kateřina Nová', pinterest: '' }), 'Kateřina na Pinterestu');
+  assert.equal(pinterestContactText({ author: '  ', pinterest: '' }), 'Profil na Pinterestu');
+  assert.equal(pinterestContactText({}), 'Profil na Pinterestu');
 });

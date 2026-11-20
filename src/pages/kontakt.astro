@@ -8,17 +8,16 @@ import { getPage, messages, site } from '../lib/site';
 import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
 import { EVENTS } from '../../scripts/lib/analytics.mjs';
 import { mailtoLink } from '../../scripts/lib/messages.mjs';
-import { pinterestHandle, pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
+import { pinterestContactText, pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
 
 // Where to find me: e-mail, profiles and the shop (the ones set in site.config.yaml), in this order; each shows its
 // address or account (Pinterest as @<user name> like Instagram; given name, surname and the rest in three shades,
 // NameShades) and says in its tooltip where it leads.
-const pinterestUser = pinterestHandle(site.pinterest);
 const links = [
-  site.email && { label: 'E-mail', href: mailtoLink(site.email, 'greeting', null), text: site.email, title: 'Napsat mi e-mail', track: EVENTS.email },
+  site.email && { label: 'E-mail', href: mailtoLink(site.email, 'greeting', null, messages.subjectTag), text: site.email, title: 'Napsat mi e-mail', track: EVENTS.email },
   site.instagram && { label: 'Instagram', href: `https://www.instagram.com/${site.instagram}/`, text: `@${site.instagram}`, title: 'Můj profil na Instagramu', rel: 'me' },
   site.pinterest && {
-    label: 'Pinterest', href: pinterestProfileLink(site.pinterest), text: pinterestUser ? `@${pinterestUser}` : 'Pavla na Pinterestu',
+    label: 'Pinterest', href: pinterestProfileLink(site.pinterest), text: pinterestContactText(site),
     title: 'Moje obrazy na Pinterestu', rel: 'me',
   },
   site.fler && { label: 'Obchůdek', href: site.fler, text: 'Fler', title: 'Můj obchůdek na Fleru' },

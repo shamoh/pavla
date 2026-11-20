@@ -7,7 +7,7 @@ import WorkGallery from '../../../components/WorkGallery.astro';
 import SearchField from '../../../components/SearchField.astro';
 import Cover from '../../../components/Cover.astro';
 import { coverShareImage, getWorks, getYear, getYears, site, workUrl, type Work } from '../../../lib/site';
-import { breadcrumbLd, collectionPageLd, graphLd } from '../../../../scripts/lib/seo.mjs';
+import { breadcrumbLd, collectionPageLd, graphLd, yearPageDescription } from '../../../../scripts/lib/seo.mjs';
 
 export function getStaticPaths() {
   const works = getWorks();
@@ -21,7 +21,7 @@ const { year, works, redirect } = Astro.props;
 const target = redirect && workUrl(redirect);
 // Year page: the author's text about the year (optional) and its cover (roky/<year>.yaml of the content repository).
 const yearPage = year ? getYear(year) : undefined;
-const yearDescription = yearPage?.description || `Akvarely a kresby z roku ${year} – ${site.author}.`;
+const yearDescription = yearPageDescription(yearPage, year, site);
 const jsonLd = year ? graphLd(
   collectionPageLd(site, { path: `/tvorba/${year}/`, name: `Tvorba ${year}`, description: yearDescription, items: works!, itemPath: (w: Work) => `/tvorba/${w.year}/${w.key}/` }),
   breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Tvorba', path: '/tvorba/' }, { name: String(year), path: `/tvorba/${year}/` }]),

@@ -26,17 +26,23 @@ export function parseExpiration(header) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/**
+ * The name of the repository of the site in the texts ("pavla" of `siteRepo` "shamoh/pavla", site.repository of
+ * site.config.yaml); "webu" without one, so "README repa webu" still reads well.
+ */
+const shortRepo = (siteRepo) => (siteRepo ? siteRepo.split('/').pop() : 'webu');
+
 /** `status`: HTTP status of an API call made with the token; `expiration`: its expiry header. */
 /**
  * The token of the read-only checks (CHECK_TOKEN) from an authenticated answer of the API. `status`: 0 = not set, which
  * is fine (the checks that need it say they were skipped); it is optional, so a failure names what stops working.
  */
-export function evaluateCheckToken({ status, expiration, now = new Date(), warnDays = 14 }) {
+export function evaluateCheckToken({ status, expiration, now = new Date(), warnDays = 14, siteRepo }) {
   const stops = 'Minuty Actions a nastavení rep se bez něj nezkontrolují.';
   const renew = 'U tokenu zvol Regenerate token a přepiš secret CHECK_TOKEN v obsahovém repu.';
   if (status === 0) return { ok: true, message: 'Token CHECK_TOKEN není nastavený.' };
   if (status === 401) return { ok: false, message: `Token CHECK_TOKEN je neplatný nebo už vypršel. ${stops} ${renew} [kontrolni-token-neplatny]` };
-  if (status !== 200) return { ok: false, message: `Kontrola tokenu CHECK_TOKEN selhala (HTTP ${status}). Token možná nemá přístup k repu shamoh/pavla. [kontrolni-token-nedostupny]` };
+  if (status !== 200) return { ok: false, message: `Kontrola tokenu CHECK_TOKEN selhala (HTTP ${status}). Token možná nemá přístup k repu ${siteRepo || 'webu'}. [kontrolni-token-nedostupny]` };
   const date = parseExpiration(expiration);
   if (!date) return { ok: true, message: 'Token CHECK_TOKEN funguje a nemá nastavenou dobu platnosti.' };
   const daysLeft = Math.floor((date.getTime() - now.getTime()) / DAY);
@@ -47,20 +53,25 @@ export function evaluateCheckToken({ status, expiration, now = new Date(), warnD
   return { ok: true, daysLeft, message: `Token CHECK_TOKEN funguje, vyprší ${when} (za ${daysLeft} dní).` };
 }
 
-export function evaluateToken({ status, expiration, now = new Date(), warnDays = 14 }) {
-  if (status === 0) return { ok: false, message: 'Secret PAVLA_TOKEN není nastavený. [token-chybi]' };
+/**
+ * PAVLA_TOKEN from the answer of the API (see evaluateCheckToken); `siteRepo` = the repository of the site it writes to.
+ * A failed check carries `renew`: the steps to renew the token (formatReport adds them to the report).
+ */
+export function evaluateToken({ status, expiration, now = new Date(), warnDays = 14, siteRepo }) {
+  const renew = renewTokenText(siteRepo);
+  if (status === 0) return { ok: false, renew, message: 'Secret PAVLA_TOKEN není nastavený. [token-chybi]' };
   if (status === 401) {
-    return { ok: false, message: 'Token PAVLA_TOKEN je neplatný nebo už vypršel. Automatické zpracování obsahu nefunguje. [token-neplatny]' };
+    return { ok: false, renew, message: 'Token PAVLA_TOKEN je neplatný nebo už vypršel. Automatické zpracování obsahu nefunguje. [token-neplatny]' };
   }
   if (status !== 200) {
-    return { ok: false, message: `Kontrola tokenu PAVLA_TOKEN selhala (HTTP ${status}). Token možná nemá přístup k repu shamoh/pavla. [token-nedostupny]` };
+    return { ok: false, renew, message: `Kontrola tokenu PAVLA_TOKEN selhala (HTTP ${status}). Token možná nemá přístup k repu ${siteRepo || 'webu'}. [token-nedostupny]` };
   }
   const date = parseExpiration(expiration);
   if (!date) return { ok: true, message: 'Token PAVLA_TOKEN funguje a nemá nastavenou dobu platnosti.' };
   const daysLeft = Math.floor((date.getTime() - now.getTime()) / DAY);
   const when = date.toISOString().slice(0, 10);
   if (daysLeft < warnDays) {
-    return { ok: false, daysLeft, message: `Token PAVLA_TOKEN vyprší ${when} (za ${Math.max(0, daysLeft)} dní). Je potřeba ho obnovit. [token-vyprsi]` };
+    return { ok: false, daysLeft, renew, message: `Token PAVLA_TOKEN vyprší ${when} (za ${Math.max(0, daysLeft)} dní). Je potřeba ho obnovit. [token-vyprsi]` };
   }
   return { ok: true, daysLeft, message: `Token PAVLA_TOKEN funguje, vyprší ${when} (za ${daysLeft} dní).` };
 }
@@ -163,7 +174,7 @@ export const GAME_ANALYSIS_LIMITS = { maxBytes: 25_000_000, maxAverage: 60_000 }
  * `files`: the sizes in bytes of the files of the kept analyses (null when they could not be read). Not ok over a limit of
  * GAME_ANALYSIS_LIMITS; the message always tells the total, the count and the average, to follow how they grow.
  */
-export function evaluateGameAnalyses(files, limits = GAME_ANALYSIS_LIMITS) {
+export function evaluateGameAnalyses(files, limits = GAME_ANALYSIS_LIMITS, { siteRepo } = {}) {
   if (files === null) return { ok: true, message: 'Rozbory obrázků hry Detail dne nebyly zkontrolovány.' };
   if (!files.length) return { ok: true, message: 'Rozbory obrázků hry Detail dne v repu webu zatím nejsou (zapíše je první běh „Zpracování obsahu“).' };
   const total = files.reduce((sum, bytes) => sum + bytes, 0);
@@ -178,7 +189,7 @@ export function evaluateGameAnalyses(files, limits = GAME_ANALYSIS_LIMITS) {
   return {
     ok: false,
     message: `Uložené rozbory obrázků hry Detail dne jsou velké: ${told}, ${over.join(', ')}. [rozbory-hry-velke]\n`
-      + 'Repo webu s nimi roste s každým novým obrazem. Co s tím: README repa pavla, „Rozbor obrázků“ (méně míst na úroveň, '
+      + `Repo webu s nimi roste s každým novým obrazem. Co s tím: README repa ${shortRepo(siteRepo)}, „Rozbor obrázků“ (méně míst na úroveň, `
       + 'zaokrouhlit barvy, jen potřebná pole).',
   };
 }
@@ -218,14 +229,14 @@ export function evaluateUnknownAttributes(found) {
  * `found`: ["<technique>: <files>"] from findUnknownTechniques, or null when the content was not available to check.
  * Not ok when a work has a technique without an art form for search engines (a new technique needs a rule).
  */
-export function evaluateUnknownTechniques(found) {
+export function evaluateUnknownTechniques(found, { siteRepo } = {}) {
   if (found === null) return { ok: true, message: 'Techniky obrazů nebyly zkontrolovány (obsah není k dispozici).' };
   if (!found.length) return { ok: true, message: 'Každá technika má druh díla pro vyhledávače.' };
   return {
     ok: false,
     message: `Nová technika bez druhu díla (vyhledávače nepoznají, jestli je to malba, kresba, nebo grafika): [nova-technika]\n`
       + found.map((f) => `- ${f}`).join('\n')
-      + '\nDoplň pravidlo do ARTFORMS v scripts/lib/seo.mjs (repo pavla), nebo oprav překlep v technice.',
+      + `\nDoplň pravidlo do ARTFORMS v scripts/lib/seo.mjs (repo ${shortRepo(siteRepo)}), nebo oprav překlep v technice.`,
   };
 }
 
@@ -234,14 +245,14 @@ export function evaluateUnknownTechniques(found) {
  * Not ok when a technique or a tag of any work has no English word for Instagram or Pinterest: added before the work
  * goes there, the post and the pin have it in English from the start.
  */
-export function evaluateUntranslatedTags(found) {
+export function evaluateUntranslatedTags(found, { siteRepo } = {}) {
   if (found === null) return { ok: true, message: 'Překlady štítků nebyly zkontrolovány (obsah není k dispozici).' };
   if (!found.length) return { ok: true, message: 'Každý štítek a technika má anglický překlad pro Instagram i Pinterest.' };
   return {
     ok: false,
     message: `Štítky nebo techniky bez anglického překladu pro Instagram a Pinterest: [preklad-chybi]\n`
       + found.map((f) => `- ${f}`).join('\n')
-      + '\nDoplň překlad do site.config.yaml (repo pavla): instagramPost.en (hashtag bez mezer) a pinterestKeywords.en (slova s mezerami).',
+      + `\nDoplň překlad do site.config.yaml (repo ${shortRepo(siteRepo)}): instagramPost.en (hashtag bez mezer) a pinterestKeywords.en (slova s mezerami).`,
   };
 }
 
@@ -260,9 +271,9 @@ const megabytes = (bytes) => `${Math.round(bytes / MB)} MB`;
  * site (its Pages artifact) }, each null when it could not be read. Not ok when any of them reaches `warnShare` of its
  * limit; the message always lists all of them with their share, to follow how they grow.
  */
-export function evaluateSizes(sizes, limits = SIZE_LIMITS) {
+export function evaluateSizes(sizes, limits = SIZE_LIMITS, { siteRepo } = {}) {
   const items = [
-    ['repo webu (shamoh/pavla)', sizes.site, limits.repoBytes],
+    [`repo webu${siteRepo ? ` (${siteRepo})` : ''}`, sizes.site, limits.repoBytes],
     ['obsahové repo', sizes.content, limits.repoBytes],
     ['nasazený web (GitHub Pages)', sizes.pages, limits.siteBytes],
   ];
@@ -357,7 +368,7 @@ export function evaluateMinutes(items, isPrivate, { now = new Date(), limits = M
  * compared this time (`reason`: why). Not ok when a repository differs from its stored export: a setting changed by
  * mistake (auto-merge off, the ruleset gone) breaks the automation silently; a change made on purpose = export again.
  */
-export function evaluateSettings(results, { reason = '' } = {}) {
+export function evaluateSettings(results, { reason = '', siteRepo } = {}) {
   if (results === null) return { ok: true, message: `Nastavení rep nebylo porovnáno${reason ? ` (${reason})` : ''}.` };
   const changed = results.filter((r) => r.diffs?.length || r.noSnapshot);
   if (!changed.length) return { ok: true, message: `Nastavení rep odpovídá uloženému exportu (${results.map((r) => r.repo).join(', ')}).` };
@@ -368,22 +379,24 @@ export function evaluateSettings(results, { reason = '' } = {}) {
         ? `- ${r.repo}: uložený export chybí`
         : `- ${r.repo}:\n${r.diffs.slice(0, 20).map((d) => `  - ${d}`).join('\n')}${r.diffs.length > 20 ? `\n  - … a dalších ${r.diffs.length - 20}` : ''}`)).join('\n')
       + '\nNeměl ho nikdo měnit? Vrať ho v Settings repa. Změna byla záměrná? Obnov export: '
-      + '`node scripts/repo-settings.mjs <repo> --out <docs/github-nastaveni/<jméno>.md>` (repo pavla) a commitni ho.',
+      + `\`node scripts/repo-settings.mjs <repo> --out <docs/github-nastaveni/<jméno>.md>\` (repo ${shortRepo(siteRepo)}) a commitni ho.`,
   };
 }
 
-export const RENEW_TOKEN = [
+/** The steps to renew PAVLA_TOKEN, the token writing to the repository of the site `siteRepo`. */
+export const renewTokenText = (siteRepo) => [
   'Jak token obnovit:',
   '',
   '1. GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens,',
-  '   u tokenu pro shamoh/pavla zvol Regenerate token (nebo vytvoř nový se stejnými oprávněními:',
+  `   u tokenu pro ${siteRepo || 'repo webu'} zvol Regenerate token (nebo vytvoř nový se stejnými oprávněními:`,
   '   Contents a Pull requests, Read and write).',
   '2. Obsahové repo (to, ve kterém je tato kontrola) → Settings → Secrets and variables → Actions → PAVLA_TOKEN → Update, vlož nový token.',
   '3. Actions → Kontrola automatiky → Run workflow, ať se ověří, že je vše v pořádku.',
 ].join('\n');
 
 /**
- * Markdown report for the run page and the issue. `token` is the first check; renew steps follow when it fails.
+ * Markdown report for the run page and the issue. `token` is the first check; its renew steps (`renew` of evaluateToken)
+ * follow when it fails.
  * `codes`: the codes of the failed checks (and of the problems they list), each once in order, for the title of the
  * issue ("Automatika webu potřebuje pozornost [token-vyprsi] [obrazky-chybi]"), so e-mails can be filtered by them.
  */
@@ -396,6 +409,6 @@ export function formatReport(token, ...checks) {
     '',
     ...all.map((c) => `- ${c.ok ? '✓' : '✗'} ${c.message.replace(/\n/g, '\n  ')}`),
   ];
-  if (!token.ok) lines.push('', RENEW_TOKEN);
+  if (!token.ok) lines.push('', token.renew ?? renewTokenText());
   return { ok, codes, text: lines.join('\n') + '\n' };
 }

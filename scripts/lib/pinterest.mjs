@@ -31,6 +31,18 @@ export function pinterestHandle(profile) {
 }
 
 /**
+ * The text of the Pinterest link on the contact page: "@<user name>" of the profile, otherwise "<first name of the
+ * author> na Pinterestu" ("Pavla na Pinterestu"), without an author "Profil na Pinterestu".
+ */
+export function pinterestContactText(site) {
+  const user = pinterestHandle(site.pinterest);
+  if (user) return `@${user}`;
+  const firstName = String(site.author ?? '').trim().split(/\s+/)[0];
+
+  return `${firstName || 'Profil'} na Pinterestu`;
+}
+
+/**
  * The former name of the pin image in the folder of a work's page (public/tvorba/<year>/<slug>-<id>/); the pipeline
  * now writes pin-<hash>.jpg (named in info.json), this one only for folders made before.
  */

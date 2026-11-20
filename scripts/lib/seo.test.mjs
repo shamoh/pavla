@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import YAML from 'yaml';
 import {
   artform, artworkLd, workPageLd, gamePageLd, authorId, imageObjectLd, breadcrumbLd, collectionPageLd, graphLd, jsonLdText, personLd, robotsTxt, summarize,
-  tagKeywords, verificationMeta, websiteLd, workDescription, workPageDescription, workPageTitle,
+  tagKeywords, verificationMeta, websiteLd, workDescription, workPageDescription, workPageTitle, yearPageDescription, YEAR_DESCRIPTION, fillTemplate,
 } from './seo.mjs';
 
 const site = { url: 'https://web.test', title: 'Pavla Kramolišová', tagline: 'Akvarely a kresby', author: 'Pavla Kramolišová', instagram: 'pavla.k', fler: '' };
@@ -184,4 +186,35 @@ test('workPageLd: an ItemPage about the work, relatedLink only with related work
   assert.equal(ld.mainEntity['@id'], `${ld.url}#dilo`);
   assert.deepEqual(ld.relatedLink, [`${ld.url.replace('/tvorba/2026/ovce-v39nd/', '')}/tvorba/2025/pf2025-chqmf/`]);
   assert.equal('relatedLink' in workPageLd(site, { path: '/tvorba/2026/ovce-v39nd/', name: 'Ovce' }), false);
+});
+
+// The real site (site.config.yaml): what search engines get about the author and the year pages stays as it was.
+const realSite = YAML.parse(fs.readFileSync(new URL('../../site.config.yaml', import.meta.url), 'utf8')).site;
+test('personLd and yearPageDescription of the real site', () => {
+  const person = personLd(realSite);
+  assert.equal(person.name, 'Pavla Kramolišová');
+  assert.equal(person.description, 'Amatérská malířka, která maluje pro radost, hlavně akvarelem; na procházkách skicuje i tužkou a brush penem.');
+  assert.deepEqual(person.knowsAbout, ['akvarel', 'kresba', 'skicování', 'plenér']);
+  assert.equal(yearPageDescription(undefined, 2026, realSite), 'Akvarely a kresby z roku 2026 – Pavla Kramolišová.');
+  assert.equal(yearPageDescription({ description: '' }, 2025, realSite), 'Akvarely a kresby z roku 2025 – Pavla Kramolišová.');
+  assert.equal(yearPageDescription({ description: 'Rok plenérů.' }, 2025, realSite), 'Rok plenérů.', 'the own description wins');
+});
+
+test('personLd and yearPageDescription of another site: its own words, generic ones or none without them', () => {
+  const kacka = { url: 'https://kacka.test', title: 'Kateřina', tagline: 'Kresby', author: 'Kateřina Nová' };
+  const bare = personLd(kacka);
+  assert.equal('description' in bare, false, 'no description without site.authorDescription');
+  assert.equal('knowsAbout' in bare, false, 'no topics without site.knowsAbout');
+  assert.equal('knowsAbout' in personLd({ ...kacka, knowsAbout: [] }), false, 'an empty list = none');
+  const own = personLd({ ...kacka, authorDescription: 'Kreslí perem.', knowsAbout: ['kresba'] });
+  assert.equal(own.description, 'Kreslí perem.');
+  assert.deepEqual(own.knowsAbout, ['kresba']);
+  assert.equal(yearPageDescription(undefined, 2027, kacka), 'Tvorba z roku 2027 – Kateřina Nová.');
+  assert.equal(YEAR_DESCRIPTION, 'Tvorba z roku {year} – {author}.');
+  assert.equal(yearPageDescription(null, 2027, { ...kacka, yearDescription: 'Kresby {author}, rok {year}.' }), 'Kresby Kateřina Nová, rok 2027.');
+});
+
+test('fillTemplate: each known {name} filled in, also repeated; an unknown one stays', () => {
+  assert.equal(fillTemplate('{year}/{year} {who}', { year: 2026 }), '2026/2026 {who}');
+  assert.equal(fillTemplate('bez značek', { year: 1 }), 'bez značek');
 });

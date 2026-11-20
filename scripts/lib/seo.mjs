@@ -88,19 +88,36 @@ export function workPageDescription(work, works, site) {
   return `${/[.!?…]$/.test(lead) ? lead : `${lead}.`} ${suffix}`;
 }
 
-/** The author: Pavla, with her profiles elsewhere (Instagram, Fler) so search engines join them. */
+/**
+ * The author, with her profiles elsewhere (Instagram, Fler) so search engines join them; her description and topics
+ * (`site.authorDescription`, `site.knowsAbout` of site.config.yaml) only when set.
+ */
 export function personLd(site, { image } = {}) {
   return {
     '@type': 'Person',
     '@id': authorId(site),
     name: site.author,
     url: absolute(site, '/o-mne/'),
-    description: 'Amatérská malířka, která maluje pro radost, hlavně akvarelem; na procházkách skicuje i tužkou a brush penem.',
-    knowsAbout: ['akvarel', 'kresba', 'skicování', 'plenér'],
+    ...(site.authorDescription && { description: site.authorDescription }),
+    ...(site.knowsAbout?.length && { knowsAbout: site.knowsAbout }),
     ...(site.location && { homeLocation: { '@type': 'Place', name: site.location, address: { '@type': 'PostalAddress', addressLocality: site.location, addressCountry: 'CZ' } } }),
     ...(image && { image }),
     sameAs: [site.instagram && `https://www.instagram.com/${site.instagram}/`, site.pinterest, site.fler].filter(Boolean),
   };
+}
+
+/** The description of a year page when site.config.yaml has no `site.yearDescription`. */
+export const YEAR_DESCRIPTION = 'Tvorba z roku {year} – {author}.';
+
+/** `template` with each "{name}" replaced by `values[name]`; an unknown name stays as it is. */
+export const fillTemplate = (template, values) => String(template).replace(/\{(\w+)\}/g, (all, name) => (name in values ? String(values[name]) : all));
+
+/**
+ * The description of a year page: the author's own one (roky/<year>.yaml), otherwise `site.yearDescription`
+ * (or YEAR_DESCRIPTION) with {year} and {author} filled in.
+ */
+export function yearPageDescription(yearPage, year, site) {
+  return yearPage?.description || fillTemplate(site.yearDescription || YEAR_DESCRIPTION, { year, author: site.author });
 }
 
 /** The site as a whole, written by the author, in Czech. */

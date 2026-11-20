@@ -6,6 +6,12 @@ site:
   title: Pavla Kramolišová
   tagline: Akvarely pro radost
   author: Pavla Kramolišová
+  # Autorka pro vyhledávače (strukturovaná data Person na každé stránce): jedna věta o ní a čím se zabývá; prázdné = nic
+  authorDescription: Amatérská malířka, která maluje pro radost, hlavně akvarelem; na procházkách skicuje i tužkou a brush penem.
+  knowsAbout: [akvarel, kresba, skicování, plenér]
+  # Popis stránky roku pro vyhledávače, když roky/<rok>.yaml nemá vlastní; {year} = rok, {author} = author
+  yearDescription: Akvarely a kresby z roku {year} – {author}.
+  repository: shamoh/pavla               # repo webu na GitHubu (vlastník/jméno), čte ho týdenní kontrola automatiky
   email: pavla@kramolis.cz
   location: Roztoky                       # kde Pavla žije a maluje, zobrazí se v Kontaktu; prázdné = nic
   instagram: pavla.kramolisova
@@ -27,6 +33,8 @@ messages:
   # e-mailem. accessKey = klíč z web3forms.com (veřejný, říká jen, kam zprávu doručit). Prázdné = bez formuláře
   # (Kontakt ukáže jen adresu). Web z testovacích dat ukáže vždy jen náhled, který nic neodesílá.
   accessKey: 667747d9-fb8d-4d52-9af7-d622adef05a0
+  # Značka na začátku předmětu e-mailu („[pavla-web] Dotaz na obraz: …“), aby šly zprávy z webu filtrovat; prázdné = „web“
+  subjectTag: pavla-web
 
 instagramPost:
   # Text příspěvku na Instagram (README.md ve složce díla v export/instagram/, jen díla s meta_instagram: true):

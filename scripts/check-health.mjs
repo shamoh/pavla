@@ -22,12 +22,15 @@ import {
   DRY_RUNS, evaluateCheckToken, evaluateDeploy, evaluateGameAnalyses, evaluateGamePlan, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure,
 } from './lib/health.mjs';
 
-const SITE_REPO = 'shamoh/pavla';
+const config = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
+// The repository of the site (site.repository of site.config.yaml), e.g. "shamoh/pavla".
+const SITE_REPO = config.site.repository;
+if (!SITE_REPO) throw new Error('site.config.yaml: site.repository (owner/name of the repository of the site) is missing');
 const PR_BRANCH = 'obsah/aktualizace';
 
-// shamoh/pavla is public: its data is read without a token, so these checks do not depend on PAVLA_TOKEN.
+// The repository of the site is public: its data is read without a token, so these checks do not depend on PAVLA_TOKEN.
 const api = (path, token) => fetch(`https://api.github.com${path}`, {
-  headers: { ...(token && { Authorization: `Bearer ${token}` }), Accept: 'application/vnd.github+json', 'User-Agent': 'pavla-health-check' },
+  headers: { ...(token && { Authorization: `Bearer ${token}` }), Accept: 'application/vnd.github+json', 'User-Agent': 'site-health-check' },
 });
 /** The failure of an answer, with its reason and the permission a refused token lacks. */
 const failure = async (res) => new Error(httpFailure(res.status, await res.text(), res.headers.get('x-accepted-github-permissions')));
@@ -40,7 +43,7 @@ const json = async (path, token) => {
 const graphql = async (query, token) => {
   const res = await fetch('https://api.github.com/graphql', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'pavla-health-check' },
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'site-health-check' },
     body: JSON.stringify({ query }),
   });
   if (!res.ok) throw await failure(res);
@@ -62,10 +65,10 @@ const arg = (name, fallback) => (args.includes(name) ? Number(args[args.indexOf(
 const textArg = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 
 let token;
-if (!process.env.TOKEN) token = evaluateToken({ status: 0 });
+if (!process.env.TOKEN) token = evaluateToken({ status: 0, siteRepo: SITE_REPO });
 else {
-  const res = await api('/repos/shamoh/pavla', process.env.TOKEN);
-  token = evaluateToken({ status: res.status, expiration: res.headers.get('github-authentication-token-expiration'), warnDays: arg('--days', 14) });
+  const res = await api(`/repos/${SITE_REPO}`, process.env.TOKEN);
+  token = evaluateToken({ status: res.status, expiration: res.headers.get('github-authentication-token-expiration'), warnDays: arg('--days', 14), siteRepo: SITE_REPO });
 }
 
 const runs = await guarded('běhy „Zpracování obsahu“', async () => {
@@ -73,7 +76,7 @@ const runs = await guarded('běhy „Zpracování obsahu“', async () => {
   return evaluateRuns(data.workflow_runs, { days: arg('--run-days', 7) });
 });
 
-// The weekly dry run of the workflow on the test data runs in the public pavla repo (.github/workflows/dry-run.yml).
+// The weekly dry run of the workflow on the test data runs in the public repository of the site (.github/workflows/dry-run.yml).
 const dryRun = await guarded('zkušební běhy zpracování', async () => {
   const data = await json(`/repos/${SITE_REPO}/actions/workflows/dry-run.yml/runs?branch=main&per_page=30`);
   return evaluateRuns(data.workflow_runs, { days: arg('--run-days', 7), workflow: DRY_RUNS });
@@ -95,14 +98,13 @@ const unknown = process.env.CONTENT_DIR
   ? await guarded('popisy obrazů', async () => evaluateUnknownAttributes(await findUnknownAttributes(process.env.CONTENT_DIR)))
   : evaluateUnknownAttributes(null);
 const techniques = process.env.CONTENT_DIR
-  ? await guarded('techniky obrazů', async () => evaluateUnknownTechniques(await findUnknownTechniques(process.env.CONTENT_DIR)))
+  ? await guarded('techniky obrazů', async () => evaluateUnknownTechniques(await findUnknownTechniques(process.env.CONTENT_DIR), { siteRepo: SITE_REPO }))
   : evaluateUnknownTechniques(null);
-const config = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
 // every work, also those not on Instagram or Pinterest yet: the translation is there before it goes there
 const translations = process.env.CONTENT_DIR
   ? await guarded('překlady štítků', async () => evaluateUntranslatedTags(await findUntranslatedTags(process.env.CONTENT_DIR, {
     Instagram: config.instagramPost?.en, Pinterest: config.pinterestKeywords?.en,
-  })))
+  }), { siteRepo: SITE_REPO }))
   : evaluateUntranslatedTags(null);
 
 // Every image the pages of the deployed site refer to exists (a deploy without images, a pipeline that removed some).
@@ -132,7 +134,7 @@ const gamePlan = await guarded('plán hry Detail dne', async () => {
 const gameAnalyses = await guarded('rozbory obrázků hry Detail dne', async () => {
   const tree = await json(`/repos/${SITE_REPO}/git/trees/main?recursive=1`);
   if (tree.truncated) return evaluateGameAnalyses(null);
-  return evaluateGameAnalyses(tree.tree.filter((e) => e.type === 'blob' && /^game\/detail-dne\/analysis\/[^/]+\.json$/.test(e.path)).map((e) => e.size));
+  return evaluateGameAnalyses(tree.tree.filter((e) => e.type === 'blob' && /^game\/detail-dne\/analysis\/[^/]+\.json$/.test(e.path)).map((e) => e.size), undefined, { siteRepo: SITE_REPO });
 });
 
 // Sizes against the limits of GitHub: `size` of a repository is in KiB (its whole history), the deployed site is its
@@ -143,7 +145,7 @@ const sizes = await guarded('velikosti rep a webu', async () => {
     .catch(() => null))?.artifacts?.[0]?.size_in_bytes ?? null;
   return evaluateSizes({
     site: await repoBytes(SITE_REPO), content: process.env.REPO ? await repoBytes(process.env.REPO, process.env.RUNS_TOKEN) : null, pages: await pagesBytes(),
-  });
+  }, undefined, { siteRepo: SITE_REPO });
 });
 
 // Minutes of GitHub Actions of this month (the billing usage report of the owner's account): only private repositories
@@ -152,7 +154,7 @@ const checkToken = process.env.CHECK_TOKEN;
 let checkTokenState = evaluateCheckToken({ status: 0 });
 if (checkToken) {
   const res = await api(`/repos/${SITE_REPO}`, checkToken);
-  checkTokenState = evaluateCheckToken({ status: res.status, expiration: res.headers.get('github-authentication-token-expiration'), warnDays: arg('--days', 14) });
+  checkTokenState = evaluateCheckToken({ status: res.status, expiration: res.headers.get('github-authentication-token-expiration'), warnDays: arg('--days', 14), siteRepo: SITE_REPO });
 }
 const minutes = checkToken
   ? await guarded('minuty GitHub Actions', async () => {
@@ -187,7 +189,7 @@ const settings = !monthly ? evaluateSettings(null, { reason: 'jen první ponděl
         const current = await collectSettings(repo, get, (query) => graphql(query, checkToken));
         results.push(saved ? { repo, diffs: compareSnapshots(saved, settingsSnapshot(current), current.errors) } : { repo, noSnapshot: true });
       }
-      return evaluateSettings(results);
+      return evaluateSettings(results, { siteRepo: SITE_REPO });
     });
 
 const report = formatReport(token, checkTokenState, runs, dryRun, deploy, pr, unknown, techniques, translations, siteImages, pageTexts, inlineScripts, gamePlan, gameAnalyses, sizes, minutes, settings);

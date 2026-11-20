@@ -287,7 +287,7 @@ export const analyticsId = measurementIdFor(config.analytics, { production: impo
  * test data without a key (the form works, nothing is sent), null = no form; the keys are public by design.
  */
 export const messages = messagesSettings(config.messages, { demo: Boolean(process.env.SITE_DATA_DIR) }) as {
-  mode: 'live' | 'preview' | null; accessKey: string;
+  mode: 'live' | 'preview' | null; accessKey: string; subjectTag: string;
 };
 
 /** Years that have at least one published work, newest first. */

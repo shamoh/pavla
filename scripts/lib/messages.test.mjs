@@ -1,14 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import YAML from 'yaml';
 import {
   MESSAGE_TYPES, contactLink, contextFromQuery, contextLabel, defaultType, isAccessKey, messageEventParams, messageSubject, messageType,
   mailtoLink, messagesMode, messagesSettings, needsEmail, pageContext, sitePath,
-  messageSender, validateMessage, web3formsBody, workContext,
+  SUBJECT_TAG, formSubject, messageSender, validateMessage, web3formsBody, workContext,
 } from './messages.mjs';
 
 const KEY = '0f8a6c2e-1b3d-4e5f-9a7b-2c4d6e8f0a1b';
 const ovce = workContext({ title: 'Ovce', id: 'v39nd', year: 2026, onSale: false }, '/tvorba/2026/ovce-v39nd/');
 const site = { title: 'Pavla Kramolišová', url: 'https://web.test' };
+// The tag of the real site (site.config.yaml messages.subjectTag): its subjects stay as they were.
+const TAG = messagesSettings(YAML.parse(fs.readFileSync(new URL('../../site.config.yaml', import.meta.url), 'utf8')).messages, { demo: false }).subjectTag;
 
 test('message types: unique ids, a question about a work and a purchase need an address', () => {
   assert.equal(new Set(MESSAGE_TYPES.map((t) => t.id)).size, MESSAGE_TYPES.length);
@@ -28,9 +32,9 @@ test('contextLabel and messageSubject say what the message is about', () => {
   assert.equal(contextLabel(pageContext('/tvorba/kolekce/', 'Kolekce')), 'Ke stránce: Kolekce');
   assert.equal(contextLabel(pageContext('/x/', '')), 'Ke stránce: /x/', 'a page without a title is named by its address');
   assert.equal(contextLabel(null), null);
-  assert.equal(messageSubject('work', ovce), '[pavla-web] Dotaz na obraz: Ovce (v39nd)');
-  assert.equal(messageSubject('bug', pageContext('/tvorba/kolekce/', 'Kolekce')), '[pavla-web] Chyba na webu: Kolekce');
-  assert.equal(messageSubject('greeting', null), '[pavla-web] Pozdrav nebo vzkaz');
+  assert.equal(messageSubject('work', ovce, TAG), '[pavla-web] Dotaz na obraz: Ovce (v39nd)');
+  assert.equal(messageSubject('bug', pageContext('/tvorba/kolekce/', 'Kolekce'), TAG), '[pavla-web] Chyba na webu: Kolekce');
+  assert.equal(messageSubject('greeting', null, TAG), '[pavla-web] Pozdrav nebo vzkaz');
 });
 
 test('validateMessage: text is required, the address must look right and is required only where an answer is needed', () => {
@@ -52,7 +56,7 @@ test('messagesMode: the real site with a key = live, without = no form; the test
 });
 
 test('web3formsBody: subject, reply-to and the page; no address = no reply-to', () => {
-  const body = web3formsBody(KEY, site, { type: 'work', text: ' Je ještě volný? ', email: 'a@b.cz' }, ovce);
+  const body = web3formsBody(KEY, site, { type: 'work', text: ' Je ještě volný? ', email: 'a@b.cz' }, ovce, TAG);
   assert.equal(body.access_key, KEY);
   assert.equal(body.subject, '[pavla-web] Dotaz na obraz: Ovce (v39nd)');
   assert.equal(body.from_name, 'Web web.test', 'the site, not the author, is the sender');
@@ -82,9 +86,9 @@ test('contactLink and contextFromQuery: the context survives the trip to the con
 });
 
 test('messagesSettings: the key goes into the pages only when messages are live', () => {
-  assert.deepEqual(messagesSettings({ accessKey: KEY }, { demo: false }), { mode: 'live', accessKey: KEY });
-  assert.deepEqual(messagesSettings({ accessKey: KEY }, { demo: true }), { mode: 'preview', accessKey: '' }, 'the preview has no key');
-  assert.deepEqual(messagesSettings({ accessKey: '' }, { demo: false }), { mode: null, accessKey: '' });
+  assert.deepEqual(messagesSettings({ accessKey: KEY }, { demo: false }), { mode: 'live', accessKey: KEY, subjectTag: SUBJECT_TAG });
+  assert.deepEqual(messagesSettings({ accessKey: KEY }, { demo: true }), { mode: 'preview', accessKey: '', subjectTag: SUBJECT_TAG }, 'the preview has no key');
+  assert.deepEqual(messagesSettings({ accessKey: '' }, { demo: false }), { mode: null, accessKey: '', subjectTag: SUBJECT_TAG });
 });
 
 test('messageEventParams: the kind, and the work when the message is about one', () => {
@@ -94,8 +98,8 @@ test('messageEventParams: the kind, and the work when the message is about one',
 });
 
 test('mailtoLink: the same subject as a sent message, encoded', () => {
-  assert.equal(mailtoLink('a@b.cz', 'greeting', null), `mailto:a@b.cz?subject=${encodeURIComponent('[pavla-web] Pozdrav nebo vzkaz')}`);
-  const link = mailtoLink('a@b.cz', 'work', ovce);
+  assert.equal(mailtoLink('a@b.cz', 'greeting', null, TAG), `mailto:a@b.cz?subject=${encodeURIComponent('[pavla-web] Pozdrav nebo vzkaz')}`);
+  const link = mailtoLink('a@b.cz', 'work', ovce, TAG);
   assert.equal(decodeURIComponent(link.split('subject=')[1]), '[pavla-web] Dotaz na obraz: Ovce (v39nd)');
 });
 
@@ -113,4 +117,22 @@ test('contextFromQuery and web3formsBody never point the e-mail to another site'
   const body = web3formsBody(KEY, site, { type: 'bug', text: 'x', email: '' }, pageContext('/\\evil.test/', 'X'));
   assert.equal(body['Stránka'], undefined, 'a forged context from the draft does not make a link either');
   assert.equal(web3formsBody(KEY, site, { type: 'bug', text: 'x', email: '' }, pageContext('/tvorba/', 'Tvorba'))['Stránka'], 'https://web.test/tvorba/');
+});
+
+test('formSubject: the subject of a message sent without JavaScript', () => {
+  assert.equal(formSubject(TAG), '[pavla-web] Zpráva z webu');
+});
+
+test('the tag of the subjects comes from messages.subjectTag; "web" when it is not set', () => {
+  assert.equal(SUBJECT_TAG, 'web');
+  assert.equal(messagesSettings({ accessKey: KEY, subjectTag: 'kacka-web' }, { demo: false }).subjectTag, 'kacka-web');
+  assert.equal(messagesSettings({ accessKey: KEY, subjectTag: '  ' }, { demo: false }).subjectTag, 'web', 'blank = not set');
+  assert.equal(messagesSettings(undefined, { demo: false }).subjectTag, 'web');
+  assert.equal(messageSubject('greeting', null), '[web] Pozdrav nebo vzkaz');
+  assert.equal(messageSubject('work', ovce, 'kacka-web'), '[kacka-web] Dotaz na obraz: Ovce (v39nd)');
+  assert.equal(web3formsBody(KEY, site, { type: 'greeting', text: 'Ahoj', email: '' }, null, 'kacka-web').subject, '[kacka-web] Pozdrav nebo vzkaz');
+  assert.equal(web3formsBody(KEY, site, { type: 'greeting', text: 'Ahoj', email: '' }, null).subject, '[web] Pozdrav nebo vzkaz');
+  assert.equal(decodeURIComponent(mailtoLink('a@b.cz', 'greeting', null).split('subject=')[1]), '[web] Pozdrav nebo vzkaz');
+  assert.equal(formSubject(), '[web] Zpráva z webu');
+  assert.equal(formSubject('kacka-web'), '[kacka-web] Zpráva z webu');
 });

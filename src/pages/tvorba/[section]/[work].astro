@@ -68,7 +68,7 @@ const path = `/tvorba/${work.year}/${work.key}/`;
 // A message from this page is about the work: a question, or interest in buying when it is for sale.
 const message = workContext({ ...work, onSale: isOnSale(work.status) }, path);
 // Without the form: an e-mail with the same subject as a message would have.
-const mail = site.email && mailtoLink(site.email, defaultType(message), message);
+const mail = site.email && mailtoLink(site.email, defaultType(message), message, messages.subjectTag);
 // "Sdílet": links to share the work (Pinterest saves its pin, or the share image, with a link to this page)
 const pageUrl = new URL(path, site.url).href;
 const shares = shareLinks({

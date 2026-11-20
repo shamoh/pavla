@@ -1,8 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import YAML from 'yaml';
 import {
   DRY_RUNS, GAME_ANALYSIS_LIMITS, GAME_PLAN_MIN_DAYS, MINUTE_LIMITS, SIZE_LIMITS, evaluateCheckToken, evaluateDeploy, evaluateGameAnalyses, evaluateGamePlan, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure, parseExpiration, permissionsText,
 } from './health.mjs';
+
+// The repository of the site is named by site.repository of site.config.yaml; these are the exact texts of the real site.
+const SITE_REPO = YAML.parse(fs.readFileSync(new URL('../../site.config.yaml', import.meta.url), 'utf8')).site.repository;
 
 test('httpFailure: the reason of GitHub when it gives one, otherwise only the status', () => {
   assert.equal(httpFailure(403, '{"message":"Resource not accessible by personal access token"}'), 'HTTP 403: Resource not accessible by personal access token');
@@ -251,7 +256,7 @@ test('evaluateUntranslatedTags: a word without an English one is listed with whe
 });
 
 test('evaluateSizes: fine below 70 % of the limits, the sizes and shares always listed', () => {
-  const r = evaluateSizes({ site: 332_300_000, content: 501_000_000, pages: 155_000_000 });
+  const r = evaluateSizes({ site: 332_300_000, content: 501_000_000, pages: 155_000_000 }, SIZE_LIMITS, { siteRepo: SITE_REPO });
   assert.equal(r.ok, true);
   assert.equal(r.message, 'Velikost: repo webu (shamoh/pavla) 332 MB (33 % z 1000 MB) · obsahové repo 501 MB (50 % z 1000 MB)'
     + ' · nasazený web (GitHub Pages) 155 MB (16 % z 1000 MB).');
@@ -266,7 +271,7 @@ test('evaluateSizes: from 70 % of a limit it fails with the code and names what 
 });
 
 test('evaluateSizes: a size that could not be read is listed as such and never fails the check', () => {
-  const r = evaluateSizes({ site: null, content: 10 * 1e6, pages: undefined });
+  const r = evaluateSizes({ site: null, content: 10 * 1e6, pages: undefined }, SIZE_LIMITS, { siteRepo: SITE_REPO });
   assert.equal(r.ok, true);
   assert.match(r.message, /repo webu \(shamoh\/pavla\) nezjištěno · obsahové repo 10 MB \(1 % z 1000 MB\) · nasazený web \(GitHub Pages\) nezjištěno/);
   assert.equal(evaluateSizes({ site: 600, content: 600, pages: 600 }, { repoBytes: 1000, siteBytes: 1000, warnShare: 0.5 }).ok, false);
@@ -349,4 +354,40 @@ test('evaluateGamePlan: the plan of the game on the site reaches a week ahead; n
   assert.match(evaluateGamePlan({ epoch: '2026-11-01' }, { now }).message, /\[plan-hry-chybi\]/, 'data without a plan (an older build)');
   assert.deepEqual(evaluateGamePlan(null), { ok: true, message: 'Plán hry Detail dne nebyl zkontrolován (web hru nemá).' });
   assert.equal(evaluateGamePlan(game(18), { now: new Date('2026-11-15T23:30:00Z') }).message.includes('ještě 3 dní'), true, 'the day in Prague (already the 16th)');
+});
+
+test('the texts naming the repository of the site, for shamoh/pavla', () => {
+  assert.equal(evaluateToken({ status: 500, siteRepo: SITE_REPO }).message,
+    'Kontrola tokenu PAVLA_TOKEN selhala (HTTP 500). Token možná nemá přístup k repu shamoh/pavla. [token-nedostupny]');
+  assert.equal(evaluateCheckToken({ status: 500, siteRepo: SITE_REPO }).message,
+    'Kontrola tokenu CHECK_TOKEN selhala (HTTP 500). Token možná nemá přístup k repu shamoh/pavla. [kontrolni-token-nedostupny]');
+  assert.match(evaluateGameAnalyses(Array(1200).fill(22_000), GAME_ANALYSIS_LIMITS, { siteRepo: SITE_REPO }).message,
+    /\nRepo webu s nimi roste s každým novým obrazem\. Co s tím: README repa pavla, „Rozbor obrázků“/);
+  assert.match(evaluateUnknownTechniques(['koláž: tvorba/a.yaml'], { siteRepo: SITE_REPO }).message,
+    /\nDoplň pravidlo do ARTFORMS v scripts\/lib\/seo\.mjs \(repo pavla\), nebo oprav překlep v technice\.$/);
+  assert.match(evaluateUntranslatedTags(['„motýl“ (Instagram): tvorba/a.yaml'], { siteRepo: SITE_REPO }).message,
+    /\nDoplň překlad do site\.config\.yaml \(repo pavla\): instagramPost\.en/);
+  assert.match(evaluateSizes({ site: 1, content: 1, pages: 1 }, SIZE_LIMITS, { siteRepo: SITE_REPO }).message, /^Velikost: repo webu \(shamoh\/pavla\) 0 MB/);
+  assert.match(evaluateSettings([{ repo: 'x/y', noSnapshot: true }], { siteRepo: SITE_REPO }).message,
+    /`node scripts\/repo-settings\.mjs <repo> --out <docs\/github-nastaveni\/<jméno>\.md>` \(repo pavla\) a commitni ho\.$/);
+  const report = formatReport(evaluateToken({ status: 401, siteRepo: SITE_REPO })).text;
+  assert.match(report, /\n {3}u tokenu pro shamoh\/pavla zvol Regenerate token \(nebo vytvoř nový se stejnými oprávněními:\n/);
+});
+
+test('the texts naming the repository of the site follow site.repository; without it they say "webu"', () => {
+  const siteRepo = 'nova/kacka';
+  assert.match(evaluateToken({ status: 500, siteRepo }).message, /přístup k repu nova\/kacka\. \[token-nedostupny\]$/);
+  assert.match(evaluateToken({ status: 500 }).message, /přístup k repu webu\. \[token-nedostupny\]$/);
+  assert.match(evaluateCheckToken({ status: 500, siteRepo }).message, /přístup k repu nova\/kacka\./);
+  assert.match(evaluateGameAnalyses(Array(1200).fill(22_000), GAME_ANALYSIS_LIMITS, { siteRepo }).message, /README repa kacka,/);
+  assert.match(evaluateGameAnalyses(Array(1200).fill(22_000)).message, /README repa webu,/);
+  assert.match(evaluateUnknownTechniques(['koláž: a.yaml'], { siteRepo }).message, /\(repo kacka\)/);
+  assert.match(evaluateUntranslatedTags(['„motýl“: a.yaml']).message, /\(repo webu\)/);
+  assert.match(evaluateSizes({ site: 1, content: 1, pages: 1 }, SIZE_LIMITS, { siteRepo }).message, /^Velikost: repo webu \(nova\/kacka\) 0 MB/);
+  assert.match(evaluateSizes({ site: 1, content: 1, pages: 1 }).message, /^Velikost: repo webu 0 MB/);
+  assert.match(evaluateSettings([{ repo: 'x/y', noSnapshot: true }], { siteRepo }).message, /\(repo kacka\) a commitni ho\.$/);
+  assert.match(formatReport(evaluateToken({ status: 401, siteRepo })).text, /u tokenu pro nova\/kacka zvol Regenerate token/);
+  assert.match(formatReport(evaluateToken({ status: 401 })).text, /u tokenu pro repo webu zvol Regenerate token/);
+  assert.match(formatReport({ ok: false, message: 'token bad' }).text, /u tokenu pro repo webu zvol/, 'a failed token check without its steps gets the generic ones');
+  assert.equal(evaluateToken({ status: 200, expiration: null, siteRepo }).renew, undefined, 'a working token needs no steps');
 });
