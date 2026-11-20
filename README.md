@@ -1839,11 +1839,13 @@ nejdřív snímek s popiskem, pak panorama, scéna, detaily; README složky to t
     tam (rohy listu, rekvizity, volná plocha, světlo); test `instagram.test.mjs` hlídá, že obě fotky mají stejný
     rozměr a že se do stolů vejdou díla běžných velikostí.
   - Zadání, se kterými generátor scény vyrobil, jsou v `mockups/instagram/README.md`, i s porovnáním se spočítanou
-    kamerou. Test „the cameras of the scenes agree with the prompts of the generator“ (`PROMPTED_CAMERAS`) hlídá, že
-    kamera ze `sceneCamera` zůstane v rozsahu zadání (krátce ho má každá scéna v `scenes.yaml` jako `prompt`,
-    ukazuje ho prototyp `kamera-scen.html`): výška nad stolem nebo lištou ±25 %, zenit ±5° (stojan ±7°),
-    strana, ze které se dívá, a pootočení nakresleného listu ±5°. Co generátor nedodržel (u tmavého stolu strana
-    a pootočení listu), se nekontroluje. Kamera jen z rohů listu by test nesplnila u žádné scény.
+    kamerou. Krátce ho má každá scéna v `scenes.yaml` jako `prompt` (ukazuje ho prototyp `kamera-scen.html`) a to,
+    co z něj generátor dodržel, jako čísla `promptCamera` (`zenithDeg` [od, do], nepovinně `heightCm`,
+    `zenithToleranceDeg`, `azimuthDeg` [od, do], `sheetDeg`, `fromAbove`). Test scén každého webu hlídá, že scéna
+    s `prompt` má i `promptCamera` a že kamera ze `sceneCamera` zůstane v jeho rozsahu (`promptCameraProblems`):
+    výška nad stolem nebo lištou ±25 %, zenit ±5° (nebo `zenithToleranceDeg`, stojan 7°), strana, ze které se dívá,
+    a pootočení nakresleného listu ±5°; neznámý klíč je chyba. Co generátor nedodržel (u tmavého stolu strana
+    a pootočení listu), se do `promptCamera` nepíše. Kamera jen z rohů listu by test nesplnila u žádné scény.
 - **Panorama pro karusel** (`pano-1.jpg` … `pano-<N>.jpg`, `panoramaSlides`, `renderPanorama`): dílo přes celou
   výšku N snímků 4:5 vedle sebe (okraj `padding`), rozřezané na hranách snímků, na papíru první palety, bez textu. Karusel
   na Instagramu při listování stojí snímky těsně vedle sebe, takže dílo plynule ubíhá a je vidět mnohem větší než na
@@ -2994,8 +2996,8 @@ staví, kontroluje a prototypuje testovací web.
 
 Testy kódu berou nastavení, písma, scény a ikonu testovacího webu (`scripts/lib/test-support/demo-site.mjs`), nikdy
 skutečného. Kontroly dat webu (úplné scény, plátna, ikony, favicon) běží nad testovacím webem i nad webem `SITE_DIR`
-(`checkedSiteDirs`). Kontroly vázané na Pavliny scény ateliéru (jejich jména, kamery podle zadání generátoru
-`PROMPTED_CAMERAS`, velikosti jejích děl) běží jen nad webem `SITE_DIR` (`realSiteDir`).
+(`checkedSiteDirs`), včetně kamer scén ateliéru podle zadání generátoru (`promptCamera`). Kontroly vázané na Pavliny
+scény ateliéru (jejich jména, velikosti jejích děl) běží jen nad webem `SITE_DIR` (`realSiteDir`).
 
 ## Vývoj
 

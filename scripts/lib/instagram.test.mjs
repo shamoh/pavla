@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import {
   PAPER_DEFAULTS, captionFacts, captionLayout, circleRatio, detailLayout, detailSuffixes, fitCamera, focalPx, gridLayout, gridPosts, gridSuffixes, renderGrid, fitText, hashtag, homography, insetWork, instagramPost, instagramSuffixes, untranslatedWords, ledgeDepth, lineY, loadFonts, loadInstagramScenes, noise2, paperOf, project, unproject,
   panoramaSlides, EDGE_KINDS, facingDeg, panoramaSuffixes, planPlacement, quadFits, scenePlacement, renderCaption, renderPanorama, renderScene, renderStory, sceneGeometry, sceneWindow, siteHost,
-  sceneCamera, cameraFromAngles, cameraAngles, fitCameraToLines, lineMisfit, storyLayout, textPath, tiltDeg, workQuad,
+  sceneCamera, cameraFromAngles, cameraPlace, promptCameraProblems, cameraAngles, fitCameraToLines, lineMisfit, storyLayout, textPath, tiltDeg, workQuad,
 } from './instagram.mjs';
 import { PALETTES } from './palettes.mjs';
 import { sitePaths } from './site-dir.mjs';
@@ -596,6 +596,9 @@ async function checkStudioScene(s) {
     if (s.lines) assert.ok(cam.source === 'camera' || cam.lineRms < 5, `${s.name}: edges ${cam.lineRms} px from their vanishing points`);
     if (s.camera) for (const key of ['focalMm', 'zenithDeg', 'azimuthDeg', 'distanceCm']) assert.equal(typeof s.camera[key], 'number', `${s.name}: camera.${key}`);
     for (const c of s.circles ?? []) assert.ok(c.length === 4 && c[2] > c[0] && c[3] > c[1], `${s.name}: circle`);
+    // a generated scene keeps its prompt: the short text (prompt) and what of it the generator kept to (promptCamera)
+    assert.equal(Boolean(s.promptCamera), Boolean(s.prompt), `${s.name}: prompt and promptCamera together`);
+    assert.deepEqual(promptCameraProblems(s, cam), [], `${s.name}: the camera agrees with the prompt of the generator`);
     if (s.mode === 'lie') {
       assert.ok(Array.isArray(s.bounds) && s.bounds.length === 4 && s.center, s.name);
       assert.ok([1, -1].includes(s.tiltSign), s.name);
@@ -605,34 +608,28 @@ async function checkStudioScene(s) {
   }
 }
 
-// What the prompts of mockups/instagram/README.md asked the generator for (only what it kept to): the height of the
-// camera above the table (or the ledge) ±25 % (it hangs on the size of the drawn sheet), the zenith ±5° (±7° for the
-// rough "about 20 degrees" of the easel), the side (azimuth) and the turn of the drawn sheet ±5°.
-const PROMPTED_CAMERAS = {
-  // the dark table: the generator turned the sheet by -32° (asked 6°) and looks from the right (asked from the left)
-  'stul-tmavy': { heightCm: 45, zenithDeg: [50, 55] },
-  // the light table: with its edges across and along (at right angles) the camera is a long lens from far away, 142 cm
-  // high (asked 70), a little from the left (asked from the right), the sheet not turned (asked -5°); only the tilt holds
-  'stul-svetly': { zenithDeg: [30, 35] },
-  stojan: { heightCm: 20, zenithDeg: [20, 20], azimuthDeg: [45, 135], sheetDeg: 0, above: true },
-};
-
-test('the cameras of the scenes of the real site agree with the prompts of the generator', async () => {
-  const scenes = await realStudioScenes();
-  assert.deepEqual(Object.keys(PROMPTED_CAMERAS), scenes.map((s) => s.name), 'every scene has its prompt');
-  for (const s of scenes) assert.match(s.prompt ?? '', /\d+ cm nad/, `${s.name}: prompt in scenes.yaml`);
-  for (const s of scenes) {
-    const want = PROMPTED_CAMERAS[s.name], cam = sceneCamera(s), { R, t } = cam;
-    // the camera in the plane of the sheet: x right, y down the sheet, z away from the camera
-    const C = [0, 1, 2].map((j) => -(R[0][j] * t[0] + R[1][j] * t[1] + R[2][j] * t[2]));
-    const height = s.mode === 'stand' ? s.sheetCm[1] - C[1] : -C[2];
-    const tol = s.mode === 'stand' ? 7 : 5;
-    if (want.heightCm) assert.ok(Math.abs(height / want.heightCm - 1) <= 0.25, `${s.name}: ${height.toFixed(1)} cm high, asked ${want.heightCm}`);
-    assert.ok(cam.zenithDeg >= want.zenithDeg[0] - tol && cam.zenithDeg <= want.zenithDeg[1] + tol, `${s.name}: zenith ${cam.zenithDeg.toFixed(1)}`);
-    if (want.azimuthDeg) assert.ok(cam.azimuthDeg >= want.azimuthDeg[0] && cam.azimuthDeg <= want.azimuthDeg[1], `${s.name}: azimuth ${cam.azimuthDeg.toFixed(1)}`);
-    if (want.sheetDeg !== undefined) assert.ok(Math.abs((cam.sheetDeg ?? 0) - want.sheetDeg) <= 5, `${s.name}: sheet turned ${cam.sheetDeg.toFixed(1)}°`);
-    if (want.above) assert.ok(C[1] < s.sheetCm[1] / 2, `${s.name}: seen from above`);
-  }
+test('promptCameraProblems: the computed camera within what the prompt asked, else a message for each miss', async () => {
+  const scene = (await loadInstagramScenes(DEMO_SITE.instagramScenes)).scenes.find((s) => s.name === 'stojan');
+  const cam = sceneCamera(scene), place = cameraPlace(scene, cam);
+  assert.ok(place.fromAbove && place.heightCm > 10 && place.heightCm < 30, `${place.heightCm}`);
+  const asking = (promptCamera) => promptCameraProblems({ ...scene, promptCamera }, cam);
+  assert.deepEqual(promptCameraProblems({ ...scene, promptCamera: undefined }, cam), [], 'no prompt, nothing to check');
+  const exact = { heightCm: +place.heightCm.toFixed(1), zenithDeg: [cam.zenithDeg, cam.zenithDeg], azimuthDeg: [cam.azimuthDeg - 1, cam.azimuthDeg + 1], sheetDeg: Math.round(cam.sheetDeg ?? 0), fromAbove: true };
+  assert.deepEqual(asking(exact), []);
+  // the edges of the tolerances: height ±25 %, zenith ±5° (or zenithToleranceDeg), sheet ±5°
+  assert.deepEqual(asking({ ...exact, heightCm: place.heightCm / 1.24, zenithDeg: [cam.zenithDeg + 4.9, cam.zenithDeg + 10], sheetDeg: (cam.sheetDeg ?? 0) + 4.9 }), []);
+  assert.match(asking({ ...exact, heightCm: place.heightCm / 1.3 }).join(), /cm high, asked/);
+  assert.match(asking({ ...exact, zenithDeg: [cam.zenithDeg + 6, cam.zenithDeg + 10] }).join(), /zenith .* ±5°/);
+  assert.deepEqual(asking({ ...exact, zenithDeg: [cam.zenithDeg + 6, cam.zenithDeg + 10], zenithToleranceDeg: 7 }), []);
+  assert.match(asking({ ...exact, azimuthDeg: [-90, -45] }).join(), /azimuth/);
+  assert.match(asking({ ...exact, sheetDeg: (cam.sheetDeg ?? 0) + 6 }).join(), /sheet turned/);
+  assert.equal(asking({ ...exact, heightCm: 1, zenithDeg: [80, 85], sheetDeg: 30 }).length, 3, 'every miss');
+  // a camera from below the middle of the sheet
+  assert.match(promptCameraProblems({ ...scene, promptCamera: { zenithDeg: [0, 90], fromAbove: true } }, { ...cam, t: [cam.t[0], cam.t[1] - 1000, cam.t[2]] }).join(), /not above/);
+  // a typo or a wrong shape is a problem, never a check quietly skipped
+  assert.match(asking({ ...exact, heigthCm: 20 }).join(), /unknown promptCamera\.heigthCm/);
+  assert.match(asking({ heightCm: 20 }).join(), /zenithDeg must be/);
+  assert.match(asking({ zenithDeg: [20, 20], azimuthDeg: 90 }).join(), /azimuthDeg must be/);
 });
 
 test('the scenes of the real site take every featured size of the site without covering props', async () => {

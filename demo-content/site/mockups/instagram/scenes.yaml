@@ -29,6 +29,11 @@
 #                 Najdou se a doladí v prototypu kamera-scen.html (npm run prototypes).
 #   prompt        (nepovinné) co chtělo zadání generátoru po kameře, krátce (celá zadání v README.md); prototyp
 #                 kamera-scen.html ho ukáže vedle spočítané výšky a polohy kamery
+#   promptCamera  (s prompt povinné) z toho jen to, co generátor dodržel, jako čísla; test hlídá, že kamera spočítaná
+#                 z fotky zůstane v rozsahu (promptCameraProblems): zenithDeg [od, do] úhel od kolmice na list
+#                 (= 90° − „dolů o“), ±5° nebo zenithToleranceDeg; heightCm výška nad stolem / lištou ±25 %;
+#                 azimuthDeg [od, do] odkud (0 = zepředu, 90 = zprava); sheetDeg pootočení listu ±5°;
+#                 fromAbove: true = shora. Co generátor nedodržel, nepsat (a uvést v tabulce v README.md).
 #   camera        (nepovinné) kamera nastavená ručně, přebije všechno nahoře (rohy, focalMm, circles); najdi ji
 #                 v prototypu kamera-scen.html (npm run prototypes) a zkopíruj odtud:
 #                 { focalMm, zenithDeg úhel od kolmice na list, azimuthDeg odkud (0 = zepředu od spodní hrany,
@@ -73,6 +78,9 @@
 - name: stul-svetly
   label: Světlý stůl (vestoje)
   prompt: kamera 70 cm nad stolem, dolů 55–60°, mírně zprava; list pootočený o −5°
+  promptCamera: { zenithDeg: [30, 35] }                                    # jen sklon: hrany stolu dávají teleobjektiv
+                                                                           # z dálky (142 cm místo 70), mírně zleva, list
+                                                                           # nepootočený (chtěl −5°)
   sheetCm: [40, 30]
   corners: { tl: [157, 633], tr: [850, 551], br: [957, 1011], bl: [202, 1113] }
   mode: lie
@@ -114,6 +122,7 @@
 - name: stojan
   label: Stojan
   prompt: kamera 20 cm nad lištou, 20° od čelního pohledu, zprava, mírně shora
+  promptCamera: { heightCm: 20, zenithDeg: [20, 20], zenithToleranceDeg: 7, azimuthDeg: [45, 135], sheetDeg: 0, fromAbove: true }
   sheetCm: [40, 30]
   corners: { tl: [341, 405], tr: [994, 448], br: [940, 995], bl: [278, 878] }
   mode: stand

@@ -397,6 +397,61 @@ export function sceneCamera(scene) {
 }
 
 /**
+ * Where the camera `cam` of `scene` stands, in cm of the plane of the sheet (x right, y down the sheet, z away from the
+ * camera): `heightCm` above the table (lie) or above the ledge (stand), `fromAbove` = it looks down at the sheet from
+ * above its middle.
+ */
+export function cameraPlace(scene, cam) {
+  const { R, t } = cam;
+  const C = [0, 1, 2].map((j) => -(R[0][j] * t[0] + R[1][j] * t[1] + R[2][j] * t[2]));
+  const SH = scene.sheetCm[1];
+
+  return { heightCm: scene.mode === 'stand' ? SH - C[1] : -C[2], fromAbove: C[1] < SH / 2 };
+}
+
+/** The keys of `promptCamera` in scenes.yaml (what the prompt of the generator asked of the camera). */
+export const PROMPT_CAMERA_KEYS = ['heightCm', 'zenithDeg', 'zenithToleranceDeg', 'azimuthDeg', 'sheetDeg', 'fromAbove'];
+
+/** How far the computed camera may be from its prompt: the height ±25 % (it hangs on the size of the drawn sheet), the
+ * zenith ±5° unless the scene says otherwise, the turn of the sheet ±5°. */
+export const PROMPT_CAMERA_TOLERANCE = { height: 0.25, zenithDeg: 5, sheetDeg: 5 };
+
+const isRange = (v) => Array.isArray(v) && v.length === 2 && v.every(Number.isFinite) && v[0] <= v[1];
+
+/**
+ * Where the camera computed from the photo of `scene` (sceneCamera) leaves what the prompt of its generator asked
+ * (`promptCamera` in scenes.yaml, only what the generator kept to): a list of messages, empty = agrees (or no prompt).
+ * `promptCamera`: zenithDeg [from, to] (from the perpendicular to the sheet, = 90° − "down by"), optional heightCm,
+ * zenithToleranceDeg, azimuthDeg [from, to], sheetDeg, fromAbove: true.
+ */
+export function promptCameraProblems(scene, cam = sceneCamera(scene)) {
+  const want = scene.promptCamera;
+  if (!want) return [];
+  const unknown = Object.keys(want).filter((key) => !PROMPT_CAMERA_KEYS.includes(key));
+  if (unknown.length) return unknown.map((key) => `${scene.name}: unknown promptCamera.${key}`);
+  if (!isRange(want.zenithDeg)) return [`${scene.name}: promptCamera.zenithDeg must be [from, to]`];
+  if (want.azimuthDeg !== undefined && !isRange(want.azimuthDeg)) return [`${scene.name}: promptCamera.azimuthDeg must be [from, to]`];
+  const { heightCm, fromAbove } = cameraPlace(scene, cam);
+  const slack = want.zenithToleranceDeg ?? PROMPT_CAMERA_TOLERANCE.zenithDeg;
+  const problems = [];
+  if (want.heightCm !== undefined && Math.abs(heightCm / want.heightCm - 1) > PROMPT_CAMERA_TOLERANCE.height) {
+    problems.push(`${scene.name}: camera ${heightCm.toFixed(1)} cm high, asked ${want.heightCm}`);
+  }
+  if (cam.zenithDeg < want.zenithDeg[0] - slack || cam.zenithDeg > want.zenithDeg[1] + slack) {
+    problems.push(`${scene.name}: zenith ${cam.zenithDeg.toFixed(1)}°, asked ${want.zenithDeg.join('–')}° ±${slack}°`);
+  }
+  if (want.azimuthDeg && (cam.azimuthDeg < want.azimuthDeg[0] || cam.azimuthDeg > want.azimuthDeg[1])) {
+    problems.push(`${scene.name}: azimuth ${cam.azimuthDeg.toFixed(1)}°, asked ${want.azimuthDeg.join('–')}°`);
+  }
+  if (want.sheetDeg !== undefined && Math.abs((cam.sheetDeg ?? 0) - want.sheetDeg) > PROMPT_CAMERA_TOLERANCE.sheetDeg) {
+    problems.push(`${scene.name}: sheet turned ${(cam.sheetDeg ?? 0).toFixed(1)}°, asked ${want.sheetDeg}°`);
+  }
+  if (want.fromAbove && !fromAbove) problems.push(`${scene.name}: camera not above the middle of the sheet`);
+
+  return problems;
+}
+
+/**
  * A sheet standing on a ledge: its lower edge is hidden behind the front rail, so the plane goes further down than
  * the visible sheet. How far (cm of the plane): the side edges of the sheet reach the top edge of the rail and go
  * `sinkPx` further (into the groove); the mean of both sides.

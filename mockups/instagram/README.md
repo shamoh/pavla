@@ -13,8 +13,9 @@ s čím porovnat kameru spočítanou z hran.
 
 Generátor nestaví 3D scénu, zadání bere jen jako přání. Kamera se proto počítá z fotky (`sceneCamera`: hrany `lines`
 míří do úběžníků, nakreslený list určí místo a měřítko). Zadání slouží jako nezávislá kontrola: test
-`instagram.test.mjs` („the cameras of the scenes agree with the prompts of the generator“) hlídá, že spočítaná kamera
-zůstane v rozsahu zadání. Kde generátor zadání nedodržel, test to nekontroluje a tabulka to uvádí.
+scén ateliéru v `instagram.test.mjs` hlídá, že spočítaná kamera
+zůstane v rozsahu zadání, zapsaného u scény v `scenes.yaml` jako čísla `promptCamera` (`promptCameraProblems`). Kde
+generátor zadání nedodržel, `promptCamera` to nemá a tabulka to uvádí.
 
 | Scéna | Zadání | Spočítáno z hran (2026-10) | Kontroluje test |
 |---|---|---|---|
@@ -113,5 +114,5 @@ blurred background only in the top part.
 2. Do `scenes.yaml` zapiš rohy listu `corners` a hrany stolu nebo stojanu `lines` (v prototypu `kamera-scen.html`
    je jde táhnout myší a zkopírovat), rekvizity a volnou plochu.
 3. Zadání sem, krátce co chtělo po kameře do `scenes.yaml` jako `prompt` (prototyp ho ukáže vedle spočítané kamery)
-   a jeho hodnoty do testu „the cameras of the scenes agree with the prompts of the generator“.
-   Co generátor nedodržel, do testu nepiš a uveď v tabulce výše.
+   a jeho hodnoty jako `promptCamera` (popis klíčů v hlavičce `scenes.yaml`).
+   Co generátor nedodržel, do `promptCamera` nepiš a uveď v tabulce výše.
