@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import sharp from 'sharp';
 import { SPLASH_DEVICES, SPLASH_SCHEMES, renderSplash, splashLayout, splashPalette, splashScreens } from './splash.mjs';
 import { loadFonts } from './instagram.mjs';
+import { DEMO_SITE } from './test-support/demo-site.mjs';
 
 test('splashScreens: every device upright, iPads also on their side, each light and dark, all names different', () => {
   const screens = splashScreens();
@@ -30,8 +31,8 @@ test('splashLayout: the icon, the name and the tagline in the middle, inside the
 });
 
 test('renderSplash: the size of the screen, paper of the palette at the corner, ink in the middle of the name', async () => {
-  const homeSvg = await fs.readFile(new URL('../../home-screen-icon.svg', import.meta.url));
-  const fonts = await loadFonts();
+  const homeSvg = await fs.readFile(DEMO_SITE.homeScreenIcon);
+  const fonts = await loadFonts(DEMO_SITE.fonts);
   for (const scheme of SPLASH_SCHEMES) {
     const png = await renderSplash({ width: 375, height: 667, scheme }, { homeSvg, fonts, title: 'Pavla Kramolišová', tagline: 'Akvarely pro radost' });
     const meta = await sharp(png).metadata();

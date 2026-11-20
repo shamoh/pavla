@@ -1,8 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import YAML from 'yaml';
 import { MARK_CORNERS, MARK_ICONS, MARK_PLACES, SALE_ICONS, TILE_MARK_DEFAULTS, tileMarks, tileMarksFor, workMarks } from './tile-marks.mjs';
+import { demoSiteConfig } from './test-support/demo-site.mjs';
 
 test('tileMarks: the chosen defaults, site.config.yaml holds them', () => {
   assert.deepEqual(tileMarks(undefined), TILE_MARK_DEFAULTS);
@@ -11,7 +10,7 @@ test('tileMarks: the chosen defaults, site.config.yaml holds them', () => {
     featured: { corner: 'tl', tiles: ['s', 'm', 'l'] },
     sale: { corner: 'br', icon: 'cart', tiles: ['m', 'l'] },
   });
-  const config = YAML.parse(fs.readFileSync(new URL('../../site.config.yaml', import.meta.url), 'utf8'));
+  const config = demoSiteConfig();
   assert.deepEqual(tileMarksFor(config, 'gallery'), TILE_MARK_DEFAULTS, 'the gallery has the defaults');
   assert.deepEqual(tileMarksFor(config, 'home'), {
     ...TILE_MARK_DEFAULTS, size: 8, min: 10, opacity: 60, sale: { ...TILE_MARK_DEFAULTS.sale, tiles: [] },

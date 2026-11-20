@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import { CANVAS_DEFAULTS, canvasFrame, composeMockup, cropWindow, fits, frameGeometry, hashIndex, loadScenes, pickScenes, placement, renderMockup } from './mockups.mjs';
+import { sitePaths } from './site-dir.mjs';
+import { DEMO_SITE, checkedSiteDirs } from './test-support/demo-site.mjs';
 
 const scene = (name, group, maxCm = [100, 80], extra = {}) => ({
   name, group, maxCm, frameCm: 2, pxPerCm: 10, anchor: { x: 1200, bottom: 800 }, standing: ['shelf', 'desk'].includes(group), ...extra,
@@ -125,8 +127,12 @@ test('cropWindow never crops tighter than the minimum share, never wider than th
   assert.equal(cropWindow(2400, 1600, { left: 0, top: 0, width: 2000, height: 1000 }).width, 2400);
 });
 
-test('every scene in mockups/scenes.yaml is complete and its file loads', async () => {
-  const { scenes: real } = await loadScenes();
+test('every scene in mockups/scenes.yaml of each site is complete and its file loads', async () => {
+  for (const siteDir of checkedSiteDirs()) await checkScenes(siteDir);
+});
+
+async function checkScenes(siteDir) {
+  const { scenes: real } = await loadScenes(sitePaths(siteDir).mockups);
   assert.ok(real.length >= 4);
   const groups = new Set(real.map((s) => s.group));
   for (const g of ['living', 'wall', 'hallway', 'shelf', 'desk']) assert.ok(groups.has(g), `no scene in group ${g}`);
@@ -137,10 +143,10 @@ test('every scene in mockups/scenes.yaml is complete and its file loads', async 
     const { width, height } = await sharp(s.path).metadata();
     assert.ok(s.anchor.x > 0 && s.anchor.x < width && s.anchor.bottom > 0 && s.anchor.bottom < height, s.name);
   }
-});
+}
 
 test('renderMockup produces an image in the scene aspect ratio', async () => {
-  const { scenes: real } = await loadScenes();
+  const { scenes: real } = await loadScenes(DEMO_SITE.mockups);
   const master = await sharp({ create: { width: 400, height: 300, channels: 3, background: '#4f7a8a' } }).jpeg().toBuffer();
   const out = await renderMockup(master, [40, 30], real[0]);
   const { width, height } = await sharp(out).metadata();
@@ -149,14 +155,15 @@ test('renderMockup produces an image in the scene aspect ratio', async () => {
 });
 
 test('renderMockup with an aspect returns that aspect', async () => {
-  const { scenes: real } = await loadScenes();
+  const { scenes: real } = await loadScenes(DEMO_SITE.mockups);
   const master = await sharp({ create: { width: 300, height: 400, channels: 3, background: '#c98' } }).jpeg().toBuffer();
   const { width, height } = await sharp(await renderMockup(master, [24, 32], real[0], { aspect: 4 / 5 })).metadata();
   assert.ok(Math.abs(width / height - 0.8) < 0.01);
 });
 
-test('every canvas of a scene in mockups/scenes.yaml has only known keys and sane values', async () => {
-  const { scenes: real } = await loadScenes();
+test('every canvas of a scene in mockups/scenes.yaml of each site has only known keys and sane values', async () => {
+  const real = [];
+  for (const siteDir of checkedSiteDirs()) real.push(...(await loadScenes(sitePaths(siteDir).mockups)).scenes);
   for (const s of real) {
     for (const key of Object.keys(s.canvas ?? {})) assert.ok(key in CANVAS_DEFAULTS, `${s.name}: canvas.${key}`);
     const c = canvasFrame(s);
@@ -165,7 +172,7 @@ test('every canvas of a scene in mockups/scenes.yaml has only known keys and san
 });
 
 test('a canvas hangs without a mat: its middle is the work, a bare canvas has no frame around it', async () => {
-  const { scenes: real } = await loadScenes();
+  const { scenes: real } = await loadScenes(DEMO_SITE.mockups);
   const sideboard = real.find((s) => s.name === 'komoda');
   assert.equal(canvasFrame(sideboard).frameCm, 0, 'komoda: a bare canvas');
   const master = await sharp({ create: { width: 700, height: 500, channels: 3, background: '#ff00ff' } }).jpeg().toBuffer();
@@ -185,7 +192,7 @@ test('a canvas hangs without a mat: its middle is the work, a bare canvas has no
 });
 
 test('renderMockup of a canvas keeps the aspect of the scene', async () => {
-  const { scenes: real } = await loadScenes();
+  const { scenes: real } = await loadScenes(DEMO_SITE.mockups);
   const master = await sharp({ create: { width: 700, height: 500, channels: 3, background: '#4f7a8a' } }).jpeg().toBuffer();
   const out = await renderMockup(master, [70, 50], real[0], { edge: 'canvas' });
   const { width, height } = await sharp(out).metadata();
@@ -194,7 +201,7 @@ test('renderMockup of a canvas keeps the aspect of the scene', async () => {
 });
 
 test('occluders keep the original photo in front of the work', async () => {
-  const { scenes: real } = await loadScenes();
+  const { scenes: real } = await loadScenes(DEMO_SITE.mockups);
   const desk = real.find((s) => s.occluders?.length);
   assert.ok(desk, 'a scene with occluders');
   const master = await sharp({ create: { width: 300, height: 400, channels: 3, background: '#ff00ff' } }).jpeg().toBuffer();

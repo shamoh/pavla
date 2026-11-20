@@ -17,9 +17,11 @@ import { WORK_FIELDS } from './lib/works.mjs';
 import { COLLECTION_FIELDS } from './lib/collections.mjs';
 import { WORK_SCHEMA, homeEmptyClosing } from './lib/schema.mjs';
 import { PHOTO_FIELDS } from './lib/photos.mjs';
-import { CODE_ROOT, sitePaths } from './lib/site-dir.mjs';
+import { sitePaths } from './lib/site-dir.mjs';
+import { DEMO_SITE_DIR, demoSiteConfig } from './lib/test-support/demo-site.mjs';
 
-const siteConfig = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
+// the settings of the test site (demo-content/site/), never those of a real site
+const siteConfig = demoSiteConfig();
 // Small web widths keep the test fast.
 const config = {
   ...siteConfig,
@@ -56,9 +58,9 @@ const instaPaths = (folder, sized, ...more) => insta(sized, ...more).map((f) => 
 let tmp, contentDir, siteDir;
 const exists = (p) => fs.access(p).then(() => true, () => false);
 const quiet = () => {};
-// the mockup scenes and fonts of the real site (the temporary site folder has none)
-const { mockups: realScenesDir, fonts: realFontsDir } = sitePaths(CODE_ROOT);
-const opts = (over = {}) => ({ contentDir, siteDir, config, scenesDir: realScenesDir, instagramScenesDir, fontsDir: realFontsDir, log: quiet, ...over });
+// the mockup scenes and fonts of the test site (the temporary site folder has none)
+const { mockups: siteScenesDir, fonts: siteFontsDir } = sitePaths(DEMO_SITE_DIR);
+const opts = (over = {}) => ({ contentDir, siteDir, config, scenesDir: siteScenesDir, instagramScenesDir, fontsDir: siteFontsDir, log: quiet, ...over });
 
 // The content repository has no year folders: `year` only documents the date of the work.
 async function addWork(year, slug, yaml, { image = true, collection = '' } = {}) {
@@ -488,10 +490,9 @@ test('mockups: only works with mockups: true get them, whatever their status', a
 });
 
 test('mockups: a change of the mockup scenes regenerates only the works with mockups', async () => {
-  // a copy of the real scenes, so that their scenes.yaml can change
+  // a copy of the scenes of the test site, so that their scenes.yaml can change
   const scenesDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-scenes-'));
-  const real = new URL('../mockups/', import.meta.url);
-  for (const f of await fs.readdir(real)) if (/\.(jpg|yaml)$/.test(f)) await fs.copyFile(new URL(f, real), path.join(scenesDir, f));
+  for (const f of await fs.readdir(siteScenesDir)) if (/\.(jpg|yaml)$/.test(f)) await fs.copyFile(path.join(siteScenesDir, f), path.join(scenesDir, f));
   const yaml = (title, extra) => `title: ${title}\ndate: 2026-06-14\nsize_cm: [40, 30]\n${extra}`;
   await addWork('2026', 's-mockupy', yaml('S mockupy', 'mockups: true\n'));
   await addWork('2026', 'bez-mockupu', yaml('Bez mockupů', 'mockups: false\n'));

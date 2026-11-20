@@ -1,18 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import YAML from 'yaml';
 import {
   MESSAGE_TYPES, contactLink, contextFromQuery, contextLabel, defaultType, isAccessKey, messageEventParams, messageSubject, messageType,
   mailtoLink, messagesMode, messagesSettings, needsEmail, pageContext, sitePath,
   SUBJECT_TAG, formSubject, messageSender, validateMessage, web3formsBody, workContext,
 } from './messages.mjs';
+import { demoSiteConfig } from './test-support/demo-site.mjs';
 
 const KEY = '0f8a6c2e-1b3d-4e5f-9a7b-2c4d6e8f0a1b';
 const ovce = workContext({ title: 'Ovce', id: 'v39nd', year: 2026, onSale: false }, '/tvorba/2026/ovce-v39nd/');
 const site = { title: 'Pavla Kramolišová', url: 'https://web.test' };
 // The tag of the real site (site.config.yaml messages.subjectTag): its subjects stay as they were.
-const TAG = messagesSettings(YAML.parse(fs.readFileSync(new URL('../../site.config.yaml', import.meta.url), 'utf8')).messages, { demo: false }).subjectTag;
+const TAG = messagesSettings(demoSiteConfig().messages, { demo: false }).subjectTag;
 
 test('message types: unique ids, a question about a work and a purchase need an address', () => {
   assert.equal(new Set(MESSAGE_TYPES.map((t) => t.id)).size, MESSAGE_TYPES.length);

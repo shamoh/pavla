@@ -1,11 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import YAML from 'yaml';
 import {
   artform, artworkLd, workPageLd, gamePageLd, authorId, imageObjectLd, breadcrumbLd, collectionPageLd, graphLd, jsonLdText, personLd, robotsTxt, summarize,
   tagKeywords, verificationMeta, websiteLd, workDescription, workPageDescription, workPageTitle, yearPageDescription, YEAR_DESCRIPTION, fillTemplate,
 } from './seo.mjs';
+import { demoSiteConfig } from './test-support/demo-site.mjs';
 
 const site = { url: 'https://web.test', title: 'Pavla Kramolišová', tagline: 'Akvarely a kresby', author: 'Pavla Kramolišová', instagram: 'pavla.k', fler: '' };
 const work = { title: 'Ovce', key: 'ovce-v39nd', year: 2026, date: new Date('2026-09-26'), technique: 'akvarel', size_cm: [42, 30], status: 'not-for-sale' };
@@ -189,7 +188,7 @@ test('workPageLd: an ItemPage about the work, relatedLink only with related work
 });
 
 // The real site (site.config.yaml): what search engines get about the author and the year pages stays as it was.
-const realSite = YAML.parse(fs.readFileSync(new URL('../../site.config.yaml', import.meta.url), 'utf8')).site;
+const realSite = demoSiteConfig().site;
 test('personLd and yearPageDescription of the real site', () => {
   const person = personLd(realSite);
   assert.equal(person.name, 'Pavla Kramolišová');

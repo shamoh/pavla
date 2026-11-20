@@ -1,5 +1,5 @@
 // Prototype pages for trying out how the works are shown (and the cameras of the Instagram scenes) (npm run prototypes, scripts/prototypes.mjs): standalone HTML
-// files over the site data (content/ and public/ of the site, or of the test data with SITE_DATA_DIR) that take their
+// files over the site data (content/ and public/ of the site, or of the test data with SITE_DIR=.demo/site) that take their
 // pictures straight from public/ and the calculations of the site as their source text, so a prototype always shows
 // what the site would. The templates are in scripts/prototypes/*.html, with placeholders filled here.
 import fs from 'node:fs';

@@ -1,6 +1,6 @@
 // Writes the prototype pages (scripts/lib/prototypes.mjs) over the site data: npm run prototypes [-- <folder>].
 //   npm run prototypes                                   the real data of this repo (content/, public/) into .prototypes/
-//   SITE_DATA_DIR=.demo/site npm run prototypes          the test data (npm run demo:prepare first)
+//   SITE_DIR=.demo/site npm run prototypes               the test data (npm run demo:prepare first)
 // Open the written files straight from the disk (open .prototypes/zarovnani-sloupcu.html); they load the pictures from
 // public/ of the data, so they work only next to it.
 import path from 'node:path';
@@ -11,8 +11,9 @@ import { planWorks, readPlan } from './lib/game-plan.mjs';
 import { readSiteConfig, siteDirectory, sitePaths } from './lib/site-dir.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+// the site and its data: SITE_DIR (scripts/lib/site-dir.mjs), e.g. .demo/site for the test data
 const siteDir = siteDirectory();
-const dataRoot = process.env.SITE_DATA_DIR ? path.resolve(root, process.env.SITE_DATA_DIR) : siteDir;
+const dataRoot = siteDir;
 const outDir = path.resolve(process.argv[2] ?? path.join(root, '.prototypes'));
 const config = readSiteConfig(siteDir);
 const { scenes } = await loadInstagramScenes(sitePaths(siteDir).instagramScenes);

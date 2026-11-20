@@ -5,8 +5,8 @@
 // and has its own title and description and valid structured data (pageProblems, scripts/lib/page-check.mjs),
 // and every link to a page ends with a slash (slashlessLinks, scripts/lib/page-links.mjs), and every inline script that
 // runs on an element before it finds it and every data-view is a valid grid setup (inlineScriptProblems, scripts/lib/inline-targets.mjs).
-// Usage:  npm run check:images                     dist/ of this repo
-//         SITE_DATA_DIR=.demo/site npm run check:images   the site built from the test data (npm run demo:build)
+// Usage:  npm run check:images                     dist/ of the site folder (SITE_DIR, this repo by default)
+//         SITE_DIR=.demo/site npm run check:images   the site built from the test data (npm run demo:build)
 //         npm run check:images -- <folder>          any other built site
 // Exit code 1 when an image or a page is missing, a page is missing in the sitemap or has a problem in its texts,
 // a link to a page lacks its trailing slash, or an inline script misses its element.
@@ -22,7 +22,7 @@ import { inlineProblemText, inlineScriptProblems } from './lib/inline-targets.mj
 import { siteDirectory, sitePaths } from './lib/site-dir.mjs';
 
 const sitePlaces = sitePaths(siteDirectory());
-const distDir = path.resolve(process.argv[2] ?? (process.env.SITE_DATA_DIR ? path.join(process.env.SITE_DATA_DIR, 'dist') : sitePlaces.dist));
+const distDir = path.resolve(process.argv[2] ?? sitePlaces.dist);
 try {
   await fs.access(path.join(distDir, 'index.html'));
 } catch {

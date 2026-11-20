@@ -1,7 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import YAML from 'yaml';
 import {
   HOME_DEFAULT_VIEW, HOME_RECENT, HOME_SCREENS, HOME_START, HOME_TILE_SIZE_STORAGE_KEY, HOME_VIEW_STORAGE_KEY,
   homeMost, homeRecent, homeRemember, homeScreen, homeScript, homeSearch, homeSetup, homeShownCount,
@@ -9,6 +7,7 @@ import {
 import { viewOf } from './view-layout.mjs';
 import { TILE_SIZE_STORAGE_KEY, VIEW_STORAGE_KEY } from './gallery-filter.mjs';
 import { fakeCard, fakeElement, plain, runInlineScript } from './test-support/inline-script-dom.mjs';
+import { demoSiteConfig } from './test-support/demo-site.mjs';
 
 const setup = homeSetup(homeRecent(), 'cov01');
 const of = (search, view = null, tile = null) => viewOf(search, view, tile, setup);
@@ -70,7 +69,7 @@ test('home counts: per view and screen, fewer on smaller ones, from site.config.
   assert.deepEqual(homeRecent({ wide: { s: 72 } }).tablet, HOME_RECENT.tablet, 'a missing screen is the default');
   assert.equal(homeMost(homeRecent({ tablet: { m: 80 } })), 80);
   for (const bad of [0, -3, 2.5, '30']) assert.throws(() => homeRecent({ tablet: { m: bad } }), /home\.recent\.tablet\.m/, String(bad));
-  const config = YAML.parse(fs.readFileSync(new URL('../../site.config.yaml', import.meta.url), 'utf8'));
+  const config = demoSiteConfig();
   assert.deepEqual(homeRecent(config.home?.recent), HOME_RECENT, 'site.config.yaml holds the documented counts');
 });
 

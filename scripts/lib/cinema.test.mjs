@@ -1,11 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import YAML from 'yaml';
 import {
   CAPTION_MODES, CINEMA_DEFAULTS, CINEMA_STORAGE_KEYS, CINEMA_RANDOM, CINEMA_HINT_KEY, cinemaHint, fullscreenHint, cinemaFirst, lingerMs, pinchedIn, swipeEnd, cinemaRunCounts, LISTING_LIST_TITLE, SELECTION_LIST_TITLE, saleShowPath, featuredShowPath, favoritesShowPath, CINEMA_FROM, captionMode, cinemaCard, cinemaPalette, cinemaPalettes, cinemaSources, cinemaFromParams, intervalLabel, cinemaSettings, cinemaToParams, dragStep, fitBox, imageWidth, shuffledOrder, wrapIndex,
 } from './cinema.mjs';
 import { FAVORITES_ON, FEATURED_ON, filtersToParams, stateFromParams } from './gallery-filter.mjs';
+import { demoSiteConfig } from './test-support/demo-site.mjs';
 
 const settings = cinemaSettings({});
 
@@ -26,7 +25,7 @@ test('cinemaSettings: the defaults, own values over them, bad values are errors;
   assert.throws(() => cinemaSettings({ cinema: { swipe: { fraction: 0 } } }), /swipe.fraction/);
   assert.equal(cinemaSettings({}).swipe.pinch, 0.6, 'the default pinch');
   for (const pinch of [0, 1, 1.5, -0.2, '0.5']) assert.throws(() => cinemaSettings({ cinema: { swipe: { pinch } } }), /swipe.pinch/, String(pinch));
-  const config = YAML.parse(fs.readFileSync(new URL('../../site.config.yaml', import.meta.url), 'utf8'));
+  const config = demoSiteConfig();
   assert.doesNotThrow(() => cinemaSettings(config));
 });
 

@@ -20,11 +20,7 @@ import YAML from 'yaml';
 import { ownText } from './rich-text.mjs';
 import { captionFacts } from './works.mjs';
 import { keepTogether } from './typography.mjs';
-import { CODE_ROOT, sitePaths } from './site-dir.mjs';
 
-// The studio scenes and fonts of the site in the root of the code (the real site); a run of the pipeline passes its own.
-export const INSTAGRAM_SCENES_DIR = sitePaths(CODE_ROOT).instagramScenes;
-export const FONTS_DIR = sitePaths(CODE_ROOT).fonts;
 
 /** Export suffixes after "<slug>-<id>" for the given palettes and scenes (details are added by the caller). */
 export const instagramSuffixes = (paletteIds, sceneNames) => [
@@ -599,8 +595,11 @@ export function sceneWindow(W, H, quad, { cropTop = 0.5, minFill = 0, maxZoom = 
 
 // ---------------------------------------------------------------- loading
 
-/** Scenes from scenes.yaml (+ its text for the fingerprint of a work); images are loaded on first use. */
-export async function loadInstagramScenes(dir = INSTAGRAM_SCENES_DIR) {
+/**
+ * Scenes from scenes.yaml in `dir` (the studio scenes of a site, sitePaths(siteDir).instagramScenes) (+ its text for the
+ * fingerprint of a work); images are loaded on first use.
+ */
+export async function loadInstagramScenes(dir) {
   const text = await fs.readFile(path.join(dir, 'scenes.yaml'), 'utf8');
   const scenes = await Promise.all(YAML.parse(text).map(async (s) => {
     const sheetPath = path.join(dir, `${s.name}-list.jpg`);
@@ -624,8 +623,8 @@ async function imagesOf(scene) {
   return sceneImages.get(scene);
 }
 
-/** The fonts of the site (bundled in fonts/, so the captions look the same everywhere). */
-export async function loadFonts(dir = FONTS_DIR) {
+/** The fonts of a site in `dir` (sitePaths(siteDir).fonts, bundled, so the captions look the same everywhere). */
+export async function loadFonts(dir) {
   const load = async (file) => {
     const b = await fs.readFile(path.join(dir, file));
     return opentype.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.length));

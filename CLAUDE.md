@@ -16,6 +16,11 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - **Složka webu** (`scripts/lib/site-dir.mjs`, `SITE_DIR`, výchozí kořen repa): `site.config.yaml`, `fonts/`, `mockups/`,
   `home-screen-icon.svg`, `public/`, `content/`, `game/`, `binary.lock`, `dist/`. Cesty k nim jen přes `sitePaths`
   (`readSiteConfig`), nikdy natvrdo z kořene kódu; ve `src/` kořen kódu z `process.cwd()` (build moduly přibalí jinam).
+  Načítání scén a písem nemá výchozí složku. Testovací web má vlastní složku `demo-content/site/` (`demo: true` =
+  `isDemoSite`: bez analytiky, formulář jen náhled), `npm run demo` ji složí do `.demo/site/` (`assembleSite`),
+  `SITE_DIR=.demo/site` s ní staví a kontroluje. Testy kódu jen nad testovacím webem
+  (`scripts/lib/test-support/demo-site.mjs`); kontroly dat webu nad `checkedSiteDirs`, Pavliny scény ateliéru `realSiteDir`.
+  Nová scéna nebo binární soubor testovacího webu jen nutné minimum (historie gitu je navždy).
 - **Toto repo je veřejné, obsah je v odděleném soukromém obsahovém repu.** Jeho název, cestu ani odkazy na něj
   sem nikdy nepiš (kód, komentáře, README, CLAUDE.md, commity, texty pull requestů); piš jen „obsahové repo“
   / „the content repository“. Odkazy vedou jen z obsahového repa sem, nikdy obráceně. Lokálně ho pipeline najde
@@ -411,7 +416,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `WATERMARK_LOOK` je v otisku díla na prodej).
 - Mockupy musí držet reálné měřítko podle `size_cm`.
 - Před commitem: `npm test`, `npm run build` a `npm run demo:build` musí projít; `npm run check:images` (a pro testovací
-  web `SITE_DATA_DIR=.demo/site npm run check:images`) ověří, že žádný obrázek, na který stránky odkazují, nechybí.
+  web `SITE_DIR=.demo/site npm run check:images`) ověří, že žádný obrázek, na který stránky odkazují, nechybí.
 - Odkazy na stránky webu vždy s lomítkem na konci (`/tvorba/`, `/tvorba/kolekce/?…`; GitHub Pages jinak přesměruje, dev server
   stránku obslouží bez něj): v kódu psát s lomítkem, texty obsahu přes `withTrailingSlash` (`scripts/lib/page-links.mjs`),
   `check:images` (`slashlessLinks`) odkaz bez lomítka odmítne. Stránky Tvorby a hra Detail dne se otevřou pod hlavičkou (`SKIP_HEADER_SCOPES`, `skipHeaderScript`; hra sama po vykreslení,

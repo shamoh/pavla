@@ -10,6 +10,8 @@ import {
   sceneCamera, cameraFromAngles, cameraAngles, fitCameraToLines, lineMisfit, storyLayout, textPath, tiltDeg, workQuad,
 } from './instagram.mjs';
 import { PALETTES } from './palettes.mjs';
+import { sitePaths } from './site-dir.mjs';
+import { DEMO_SITE, checkedSiteDirs, realSiteDir } from './test-support/demo-site.mjs';
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`);
 const square = [[100, 100], [500, 100], [500, 400], [100, 400]];
@@ -431,7 +433,7 @@ test('sceneWindow: 4:5 window, spare height cut by cropTop, small works zoom in 
 });
 
 test('textPath and fitText: the site fonts, Czech letters, no NaN, ellipsis when too long', async () => {
-  const fonts = await loadFonts();
+  const fonts = await loadFonts(DEMO_SITE.fonts);
   const t = textPath(fonts.serif, 'Bobří hráz – Malý a Velký Roklan', 20, 45, 40);
   assert.ok(t.d.length > 100 && !t.d.includes('NaN'));
   assert.ok(textPath(fonts.sans, 'akvarel · 30 × 30 cm · 2026', 0, 0, 22, 1).width > textPath(fonts.sans, 'akvarel · 30 × 30 cm · 2026', 0, 0, 22).width);
@@ -453,7 +455,7 @@ test('insetWork cuts the given percentage off every side', async () => {
 });
 
 test('renderCaption: 4:5 on the paper of the palette, the work above the caption', async () => {
-  const fonts = await loadFonts();
+  const fonts = await loadFonts(DEMO_SITE.fonts);
   for (const p of PALETTES) {
     const buf = await renderCaption({
       art: await artwork(), work: { title: 'Bobří hráz', technique: 'akvarel', size_cm: [30, 30] }, year: '2026', host: 'pavla.kramolis.cz',
@@ -556,11 +558,27 @@ test('renderScene: the edge of the work (meta_edge): its side repeats its edge c
   await fs.rm(dir, { recursive: true, force: true });
 });
 
-test('the scenes of the studio: complete settings and both photos with the same framing', async () => {
-  const { scenes, text } = await loadInstagramScenes();
-  assert.ok(text.length > 0);
+test('the scenes of the studio of each site: complete settings and both photos with the same framing', async () => {
+  for (const siteDir of checkedSiteDirs()) {
+    const { scenes, text } = await loadInstagramScenes(sitePaths(siteDir).instagramScenes);
+    assert.ok(text.length > 0);
+    for (const s of scenes) await checkStudioScene(s);
+  }
+});
+
+// The studio scenes of the real site: these three, made from the prompts of its mockups/instagram/README.md (its own
+// data, not the code: a check of the site, see docs of the steps towards more sites).
+const realStudioScenes = async () => (await loadInstagramScenes(sitePaths(realSiteDir()).instagramScenes)).scenes;
+
+test('the scenes of the studio of the real site: its three scenes, the two tables turn a work opposite ways', async () => {
+  const scenes = await realStudioScenes();
   assert.deepEqual(scenes.map((s) => s.name), ['stul-tmavy', 'stul-svetly', 'stojan']);
-  for (const s of scenes) {
+  const tables = scenes.filter((s) => s.mode === 'lie');
+  assert.equal(new Set(tables.map((s) => s.tiltSign)).size, 2, 'the two tables turn a work opposite ways');
+});
+
+async function checkStudioScene(s) {
+  {
     const sheet = await sharp(s.sheetPath).metadata(), bg = await sharp(s.path).metadata();
     assert.deepEqual([bg.width, bg.height], [sheet.width, sheet.height], `${s.name}: same size`);
     for (const [x, y] of Object.values(s.corners)) assert.ok(x >= 0 && y >= 0 && x < sheet.width && y < sheet.height, `${s.name}: corner inside`);
@@ -585,9 +603,7 @@ test('the scenes of the studio: complete settings and both photos with the same 
       assert.ok(s.ledge && s.axis, s.name);
     }
   }
-  const tables = scenes.filter((s) => s.mode === 'lie');
-  assert.equal(new Set(tables.map((s) => s.tiltSign)).size, 2, 'the two tables turn a work opposite ways');
-});
+}
 
 // What the prompts of mockups/instagram/README.md asked the generator for (only what it kept to): the height of the
 // camera above the table (or the ledge) ±25 % (it hangs on the size of the drawn sheet), the zenith ±5° (±7° for the
@@ -601,8 +617,8 @@ const PROMPTED_CAMERAS = {
   stojan: { heightCm: 20, zenithDeg: [20, 20], azimuthDeg: [45, 135], sheetDeg: 0, above: true },
 };
 
-test('the cameras of the scenes agree with the prompts of the generator', async () => {
-  const { scenes } = await loadInstagramScenes();
+test('the cameras of the scenes of the real site agree with the prompts of the generator', async () => {
+  const scenes = await realStudioScenes();
   assert.deepEqual(Object.keys(PROMPTED_CAMERAS), scenes.map((s) => s.name), 'every scene has its prompt');
   for (const s of scenes) assert.match(s.prompt ?? '', /\d+ cm nad/, `${s.name}: prompt in scenes.yaml`);
   for (const s of scenes) {
@@ -619,8 +635,8 @@ test('the cameras of the scenes agree with the prompts of the generator', async 
   }
 });
 
-test('the scenes take every featured size of the site without covering props', async () => {
-  const { scenes } = await loadInstagramScenes();
+test('the scenes of the real site take every featured size of the site without covering props', async () => {
+  const scenes = await realStudioScenes();
   for (const s of scenes.filter((x) => x.mode === 'lie')) {
     const geo = sceneGeometry(s);
     for (const [size, id] of [[[30, 30], 'jujn2'], [[38, 29], 'gh8r2'], [[42, 30], 'v39nd'], [[30, 42], 'rk9ct'], [[21, 15], 'uw9vh']]) {
@@ -730,7 +746,7 @@ test('storyLayout: the work and the caption between the free zones, room for the
 test('renderStory: 9:16 on the paper, the work in the middle, the free zones empty', async () => {
   const buf = await renderStory({
     art: await artwork(), work: { title: 'Bobří hráz', technique: 'akvarel', size_cm: [40, 30] }, year: '2026', host: 'pavla.kramolis.cz',
-    colors: PALETTES[0].colors, fonts: await loadFonts(), config,
+    colors: PALETTES[0].colors, fonts: await loadFonts(DEMO_SITE.fonts), config,
   });
   const { data, info } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
   assert.deepEqual([info.width, info.height], [1080, 1920]);
@@ -743,7 +759,7 @@ test('renderStory: 9:16 on the paper, the work in the middle, the free zones emp
 
 test('renderCaption: other sizes (the pin, 2:3) and XMP when given', async () => {
   const buf = await renderCaption({
-    art: await artwork(), work: { title: 'Ráno' }, year: '2026', host: 'pavla.kramolis.cz', colors: PALETTES[0].colors, fonts: await loadFonts(),
+    art: await artwork(), work: { title: 'Ráno' }, year: '2026', host: 'pavla.kramolis.cz', colors: PALETTES[0].colors, fonts: await loadFonts(DEMO_SITE.fonts),
     config: { width: 1000, height: 1500, padding: 0.04, quality: 90 }, xmp: '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/></x:xmpmeta>',
   });
   const meta = await sharp(buf).metadata();
@@ -760,7 +776,7 @@ test('captionLayout: the caption at the bottom edge, or snug right under the wor
 
 test('renderCaption snug: a wide work has its caption right under it, paper below', async () => {
   const art = await sharp({ create: { width: 900, height: 300, channels: 3, background: '#c83c3c' } }).png().toBuffer();
-  const fonts = await loadFonts();
+  const fonts = await loadFonts(DEMO_SITE.fonts);
   const rows = async (snug) => {
     const buf = await renderCaption({
       art, work: { title: 'Oblaka', technique: 'akvarel' }, year: '2019', host: 'pavla.kramolis.cz', colors: PALETTES[0].colors, fonts,
@@ -818,7 +834,7 @@ test('renderGrid: tiles 3:4 that join up across the gap, a preview with the gaps
   const config = { width: 1080, padding: 0.025, quality: 95, grid: { gapPx: 40 } };
   const { tiles, preview, layout } = await renderGrid({
     art, work: { title: 'Slať', technique: 'akvarel', size_cm: [30, 42] }, year: '2026', host: 'pavla.kramolis.cz',
-    colors: PALETTES[0].colors, fonts: await loadFonts(), grid: { cols: 3, rows: 3 }, config,
+    colors: PALETTES[0].colors, fonts: await loadFonts(DEMO_SITE.fonts), grid: { cols: 3, rows: 3 }, config,
   });
   assert.equal(tiles.length, 9);
   for (const t of tiles) { const m = await sharp(t).metadata(); assert.deepEqual([m.width, m.height], [1080, 1440]); }

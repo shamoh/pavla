@@ -2,10 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import fs from 'node:fs';
+import path from 'node:path';
 import {
   APPLE_SIZE, ICO_SIZES, MANIFEST_SHORTCUTS, screenshotSize, MANIFEST_SIZES, SHORTCUT_ICON_SIZE, makeFavicons, manifestIconFile, packIco, renderIcon,
   shortcutIconFile, webManifest,
 } from './favicons.mjs';
+import { CODE_ROOT } from './site-dir.mjs';
+import { checkedSiteDirs } from './test-support/demo-site.mjs';
 
 const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="20" fill="#6f9bb8"/></svg>');
 
@@ -83,18 +86,20 @@ test('webManifest: name, short name under the icon, colours, relative addresses,
   assert.equal('description' in webManifest({ title: 'X' }, '#fff'), false, 'no tagline, no description');
 });
 
-test('the committed icons exist for every file of the manifest and the home screen SVG is the source', () => {
-  const root = new URL('../../', import.meta.url);
-  const shortcuts = MANIFEST_SHORTCUTS.flatMap(({ id }) => [`scripts/shortcut-icons/${id}.svg`, `public/${shortcutIconFile(id)}`]);
-  for (const file of ['home-screen-icon.svg', 'public/apple-touch-icon.png', ...MANIFEST_SIZES.map((s) => `public/${manifestIconFile(s)}`), ...shortcuts]) {
-    assert.ok(fs.existsSync(new URL(file, root)), file);
+test('the committed icons exist for every file of the manifest and the home screen SVG is the source, in each site', () => {
+  for (const { id } of MANIFEST_SHORTCUTS) assert.ok(fs.existsSync(path.join(CODE_ROOT, 'scripts/shortcut-icons', `${id}.svg`)), id);
+  for (const siteDir of checkedSiteDirs()) {
+    const files = ['home-screen-icon.svg', 'public/apple-touch-icon.png', ...MANIFEST_SIZES.map((s) => `public/${manifestIconFile(s)}`), ...MANIFEST_SHORTCUTS.map(({ id }) => `public/${shortcutIconFile(id)}`)];
+    for (const file of files) assert.ok(fs.existsSync(path.join(siteDir, file)), `${siteDir}: ${file}`);
   }
 });
 
 test('favicon.svg: the sheet of paper turns dark in the dark mode of the browser', () => {
-  const favicon = fs.readFileSync(new URL('../../public/favicon.svg', import.meta.url), 'utf8');
-  assert.match(favicon, /@media \(prefers-color-scheme: dark\)\{\.sheet\{/);
-  assert.match(favicon, /<rect class="sheet"/);
+  for (const siteDir of checkedSiteDirs()) {
+    const favicon = fs.readFileSync(path.join(siteDir, 'public/favicon.svg'), 'utf8');
+    assert.match(favicon, /@media \(prefers-color-scheme: dark\)\{\.sheet\{/, siteDir);
+    assert.match(favicon, /<rect class="sheet"/, siteDir);
+  }
 });
 
 test('webManifest: screenshots for the install dialog, phones and a computer, sizes within what Chrome accepts', () => {

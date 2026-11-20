@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import { loadFonts } from './instagram.mjs';
 import { WATERMARK_LOOK, watermarkSvg } from './watermark.mjs';
+import { DEMO_SITE } from './test-support/demo-site.mjs';
 
 test('watermarkSvg: the name bottom right, light letters over a soft dark shadow, no NaN', async () => {
-  const { serif } = await loadFonts();
+  const { serif } = await loadFonts(DEMO_SITE.fonts);
   const svg = watermarkSvg({ width: 2000, height: 1500, text: 'Pavla Kramolišová', font: serif, opacity: 0.9, shadow: 0.6 });
   assert.ok(!svg.includes('NaN'));
   assert.match(svg, /<feGaussianBlur stdDeviation="[\d.]+"\/>/);
@@ -19,7 +20,7 @@ test('watermarkSvg: the name bottom right, light letters over a soft dark shadow
 });
 
 test('watermarkSvg reads on light and dark backgrounds: light letters with a darker rim', async () => {
-  const { serif } = await loadFonts();
+  const { serif } = await loadFonts(DEMO_SITE.fonts);
   for (const background of ['#ffffff', '#202020']) {
     const svg = watermarkSvg({ width: 800, height: 600, text: 'Pavla Kramolišová', font: serif });
     // encoded first, like the exports

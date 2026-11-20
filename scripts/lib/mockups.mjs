@@ -7,17 +7,15 @@ import path from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
 import { validSize } from './works.mjs';
-import { CODE_ROOT, sitePaths } from './site-dir.mjs';
 
-/** The mockup scenes of the site in the root of the code (the real site); a run of the pipeline passes its own. */
-export const SCENES_DIR = sitePaths(CODE_ROOT).mockups;
 
 /** Works whose longer side is at most this many cm are "small": shelf instead of a second wall. */
 export const SMALL_CM = 35;
 /** Used when a work has no size yet (drafts); a common watercolour format. */
 export const DEFAULT_SIZE_CM = [30, 40];
 
-export async function loadScenes(dir = SCENES_DIR) {
+/** The mockup scenes of a site from scenes.yaml in `dir` (sitePaths(siteDir).mockups). */
+export async function loadScenes(dir) {
   const text = await fs.readFile(path.join(dir, 'scenes.yaml'), 'utf8');
   return { scenes: YAML.parse(text).map((s) => ({ ...s, path: path.join(dir, s.file) })), text };
 }

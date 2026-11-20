@@ -11,7 +11,7 @@ import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
 import { QUIZ_LINE_KEYS } from '../../scripts/lib/schema.mjs';
 import { HOME_BUTTON, HOME_EMPTY_TEXT, HOME_HEADING, HOME_SHOW_BUTTON, HOME_TEXT, UNCOLLECTED_TEXT, homeEmptyClosing } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
-import { readSiteConfig, siteDirectory } from '../../scripts/lib/site-dir.mjs';
+import { isDemoSite, readSiteConfig, siteDirectory } from '../../scripts/lib/site-dir.mjs';
 import { NO_COLLECTION_TITLE } from '../../scripts/lib/gallery-filter.mjs';
 import { sortCollections } from '../../scripts/lib/collection-filter.mjs';
 import { measurementIdFor } from '../../scripts/lib/analytics.mjs';
@@ -24,10 +24,12 @@ import { execSync } from 'node:child_process';
 
 // The repository, not the bundled module (the build moves it): the root of the code is the working directory.
 const root = process.cwd();
-/** The folder of the site (SITE_DIR, scripts/lib/site-dir.mjs): its settings, fonts, icons and data. */
+/**
+ * The folder of the site (SITE_DIR, scripts/lib/site-dir.mjs): its settings, fonts, icons and data (content/ and
+ * public/); .demo/site for the test data (npm run demo).
+ */
 export const siteDir = siteDirectory({ codeRoot: root });
-// Generated data (content/ and public/): the folder of the site, .demo/site for the test data (npm run demo).
-const dataRoot = process.env.SITE_DATA_DIR ? path.resolve(root, process.env.SITE_DATA_DIR) : siteDir;
+const dataRoot = siteDir;
 /** Where the site data lies (content/ and public/), for pages that read its files themselves (the game Detail dne). */
 export const siteDataRoot = dataRoot;
 
@@ -283,13 +285,13 @@ export const marks = { home: tileMarksFor(config, 'home'), gallery: tileMarksFor
 /** The colours a visitor can pick in the filter „Barva“ and the share a work needs (site.config.yaml gallery.colors). */
 export const colourChoices = colourSettings(config);
 
-export const analyticsId = measurementIdFor(config.analytics, { production: import.meta.env.PROD, demo: Boolean(process.env.SITE_DATA_DIR) });
+export const analyticsId = measurementIdFor(config.analytics, { production: import.meta.env.PROD, demo: isDemoSite(config) });
 
 /**
  * Messages from visitors (scripts/lib/messages.mjs messagesSettings): `mode` 'live' = sent by Web3Forms, 'preview' = the
  * test data without a key (the form works, nothing is sent), null = no form; the keys are public by design.
  */
-export const messages = messagesSettings(config.messages, { demo: Boolean(process.env.SITE_DATA_DIR) }) as {
+export const messages = messagesSettings(config.messages, { demo: isDemoSite(config) }) as {
   mode: 'live' | 'preview' | null; accessKey: string; subjectTag: string;
 };
 

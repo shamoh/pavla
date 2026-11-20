@@ -3,10 +3,9 @@ import assert from 'node:assert/strict';
 import {
   COLUMN_DEFAULTS, COLUMN_ORDERS, COLUMN_PLACES, VIEW_GRID_ATTRIBUTE, VIEW_KINDS, balanceColumns, columnCount, columnPlan, columnSettings, columnsFor, inlineScript, orderColumns, viewOf, viewScript, viewSetup,
 } from './view-layout.mjs';
-import fs from 'node:fs';
-import YAML from 'yaml';
 import { CARD_IMAGE_SIZES, DEFAULT_VIEW, TILE_SIZE_STORAGE_KEY, VIEW_STORAGE_KEY, viewImageSizes } from './gallery-filter.mjs';
 import { fakeCard, fakeElement, plain, runInlineScript } from './test-support/inline-script-dom.mjs';
+import { demoSiteConfig } from './test-support/demo-site.mjs';
 
 // The gallery: big pictures by default, a link with a view, tile size, page or page size decides.
 const gallery = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 'page', 'perPage'], keys: { view: VIEW_STORAGE_KEY, tile: TILE_SIZE_STORAGE_KEY } });
@@ -137,7 +136,7 @@ test('columnSettings: defaults, site.config.yaml, bad values stop the build', ()
   }
   assert.throws(() => columnSettings({ maxgap: 3 }), /unknown maxgap/);
   assert.deepEqual(gallery.columns, COLUMN_DEFAULTS, 'every grid setup carries them');
-  const config = YAML.parse(fs.readFileSync(new URL('../../site.config.yaml', import.meta.url), 'utf8'));
+  const config = demoSiteConfig();
   for (const place of COLUMN_PLACES) assert.deepEqual(columnsFor(config, place), COLUMN_DEFAULTS, `site.config.yaml ${place}.columns`);
 });
 

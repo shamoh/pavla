@@ -3,9 +3,12 @@
 // completely apart from it:
 //   demo-content/               source: a made-up content repository (its YAML, the marker demo-content.yaml)
 //                               + images.yaml (recipe of the images, no binary files in git)
+//   demo-content/site/          source of the folder of the test site (scripts/lib/site-dir.mjs): its own
+//                               site.config.yaml (demo: true), fonts, mockup scenes, icons
 //   .demo/content/              a content repository built from demo-content/ (YAML copies + rendered images)
-//   .demo/site/                 generated site data (content/, public/) and the built site (dist/)
-// The real content (the content repository) and this repo's content/ and public/ are never touched.
+//   .demo/site/                 the folder of the test site: demo-content/site/ + generated data (content/, public/,
+//                               game/) and the built site (dist/); SITE_DIR=.demo/site builds and checks it
+// The real content (the content repository) and the real site (its folder) are never touched.
 //
 // Usage:  npm run demo:prepare   prepare .demo/ only
 //         node scripts/demo.mjs --content-only   only .demo/content (no pipeline run), for the dry run of the
@@ -15,7 +18,7 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import YAML from 'yaml';
 import { recipeProblems, renderDemoImages } from './lib/demo-images.mjs';
 import { INDEX_FILE } from './lib/content.mjs';
@@ -23,9 +26,8 @@ import { DEMO_MARKER } from './lib/demo.mjs';
 import { PAGES_SUBDIR } from './lib/pages.mjs';
 import { OUTPUT_ROOTS } from './lib/site-images.mjs';
 import { run } from './process-images.mjs';
-import { sitePaths } from './lib/site-dir.mjs';
+import { CODE_ROOT, readSiteConfig, sitePaths } from './lib/site-dir.mjs';
 
-const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT_SUBDIRS = ['tvorba', 'fotky', 'roky', PAGES_SUBDIR];
 /** Files in the root of the content: the home page and the marker of the test data. */
 const CONTENT_FILES = [INDEX_FILE, DEMO_MARKER];
@@ -45,20 +47,42 @@ async function listYaml(dir, rel = '') {
   return out;
 }
 
+/** What the source of a site folder holds (copied as a whole, folders replaced), besides the files of public/. */
+export const SITE_SOURCE_ENTRIES = (paths) => [paths.config, paths.homeScreenIcon, paths.fonts, paths.mockups];
+
+/**
+ * Makes `target` the folder of a site from its source `source`: settings, icon, fonts and mockup scenes replaced,
+ * the static files of public/ copied next to the generated data (never the domain CNAME nor generated folders).
+ */
+export async function assembleSite(source, target) {
+  const from = sitePaths(source);
+  const to = sitePaths(target);
+  const entries = SITE_SOURCE_ENTRIES(from);
+  const targets = SITE_SOURCE_ENTRIES(to);
+  await fs.mkdir(to.public, { recursive: true });
+  for (const [i, entry] of entries.entries()) {
+    await fs.rm(targets[i], { recursive: true, force: true });
+    await fs.cp(entry, targets[i], { recursive: true });
+  }
+  for (const e of await fs.readdir(from.public, { withFileTypes: true }).catch(() => [])) {
+    if (e.isFile() && e.name !== 'CNAME' && !GENERATED_PUBLIC.has(e.name)) await fs.copyFile(path.join(from.public, e.name), path.join(to.public, e.name));
+  }
+}
+
 /**
  * Prepares the test data and runs the pipeline on them. Returns the pipeline result
- * ({ ok: false, problems } when the recipe is broken). Options: demoDir, outDir, siteDir (this repo), config, log,
+ * ({ ok: false, problems } when the recipe is broken). Options: demoDir, outDir, siteSource (source of the folder
+ * of the test site, demo-content/site/), config (default: its site.config.yaml), log,
  * contentOnly (only build .demo/content, do not run the pipeline; returns { ok: true, contentDir }).
  */
 export async function prepareDemo({
-  demoDir = path.join(siteRoot, 'demo-content'),
-  outDir = path.join(siteRoot, '.demo'),
-  siteDir = siteRoot,
+  demoDir = path.join(CODE_ROOT, 'demo-content'),
+  outDir = path.join(CODE_ROOT, '.demo'),
+  siteSource = path.join(demoDir, 'site'),
   config,
   log = console.log,
   contentOnly = false,
 } = {}) {
-  config ??= YAML.parse(await fs.readFile(sitePaths(siteDir).config, 'utf8'));
   const recipe = YAML.parse(await fs.readFile(path.join(demoDir, 'images.yaml'), 'utf8')) ?? {};
   const broken = recipeProblems(recipe);
   if (broken.length) return { ok: false, problems: broken, created: [], assigned: [], processed: 0, skipped: 0, missing: [], pruned: [] };
@@ -78,19 +102,12 @@ export async function prepareDemo({
   await renderDemoImages(recipe, contentDir);
   if (contentOnly) return { ok: true, problems: [], contentDir };
 
-  // 2. static files of the site (favicon …) next to the generated test data; not the domain (CNAME)
-  const publicDir = path.join(dataDir, 'public');
-  await fs.mkdir(publicDir, { recursive: true });
-  for (const e of await fs.readdir(path.join(siteDir, 'public'), { withFileTypes: true })) {
-    if (e.isFile() && e.name !== 'CNAME' && !GENERATED_PUBLIC.has(e.name)) await fs.copyFile(path.join(siteDir, 'public', e.name), path.join(publicDir, e.name));
-  }
+  // 2. the folder of the test site: its settings, icons, fonts and scenes next to the generated test data
+  await assembleSite(siteSource, dataDir);
+  config ??= readSiteConfig(dataDir);
 
-  // 3. the same pipeline as for the real content, but it must only see test data
-  const places = sitePaths(siteDir);
-  const result = await run({
-    contentDir, siteDir: dataDir, config, log, dataset: 'demo', gamePlan: true,
-    scenesDir: places.mockups, instagramScenesDir: places.instagramScenes, fontsDir: places.fonts,
-  });
+  // 3. the same pipeline as for the real content, but it must only see test data and the test site
+  const result = await run({ contentDir, siteDir: dataDir, config, log, dataset: 'demo', gamePlan: true });
 
   // 4. ids and skeletons written by the pipeline go back to demo-content/, so they stay stable
   for (const f of await listYaml(contentDir)) {

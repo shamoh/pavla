@@ -1,13 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import YAML from 'yaml';
 import {
   DRY_RUNS, GAME_ANALYSIS_LIMITS, GAME_PLAN_MIN_DAYS, MINUTE_LIMITS, SIZE_LIMITS, evaluateCheckToken, evaluateDeploy, evaluateGameAnalyses, evaluateGamePlan, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure, parseExpiration, permissionsText,
 } from './health.mjs';
+import { demoSiteConfig } from './test-support/demo-site.mjs';
 
 // The repository of the site is named by site.repository of site.config.yaml; these are the exact texts of the real site.
-const SITE_REPO = YAML.parse(fs.readFileSync(new URL('../../site.config.yaml', import.meta.url), 'utf8')).site.repository;
+const SITE_REPO = demoSiteConfig().site.repository;
 
 test('httpFailure: the reason of GitHub when it gives one, otherwise only the status', () => {
   assert.equal(httpFailure(403, '{"message":"Resource not accessible by personal access token"}'), 'HTTP 403: Resource not accessible by personal access token');
