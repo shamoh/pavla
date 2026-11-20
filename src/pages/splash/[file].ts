@@ -1,17 +1,17 @@
 // Launch screens of the installed app on iPhone and iPad (/splash/apple-splash-<scheme>-<w>x<h>.png), drawn while
 // the site is built from the home screen icon and the fonts of the site (scripts/lib/splash.mjs).
 import fs from 'node:fs/promises';
-import path from 'node:path';
-import { site } from '../../lib/site';
+import { site, siteDir } from '../../lib/site';
 import { renderSplash, splashScreens } from '../../../scripts/lib/splash.mjs';
 import { loadFonts } from '../../../scripts/lib/instagram.mjs';
+import { sitePaths } from '../../../scripts/lib/site-dir.mjs';
 
-// The repository, not the bundled module (the build moves it): the icon and the fonts are read from there.
-const root = process.cwd();
+// The icon and the fonts of the site, from the folder of the site.
+const paths = sitePaths(siteDir);
 let shared: Promise<{ homeSvg: Buffer; fonts: Awaited<ReturnType<typeof loadFonts>> }> | null = null;
 const inputs = () => (shared ??= (async () => ({
-  homeSvg: await fs.readFile(path.join(root, 'scripts/home-screen-icon.svg')),
-  fonts: await loadFonts(path.join(root, 'fonts')),
+  homeSvg: await fs.readFile(paths.homeScreenIcon),
+  fonts: await loadFonts(paths.fonts),
 }))());
 
 export function getStaticPaths() {

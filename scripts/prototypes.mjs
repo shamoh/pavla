@@ -3,19 +3,19 @@
 //   SITE_DATA_DIR=.demo/site npm run prototypes          the test data (npm run demo:prepare first)
 // Open the written files straight from the disk (open .prototypes/zarovnani-sloupcu.html); they load the pictures from
 // public/ of the data, so they work only next to it.
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import YAML from 'yaml';
 import { prepareGame, prototypeColors, prototypeWorks, writePrototypes } from './lib/prototypes.mjs';
 import { loadInstagramScenes } from './lib/instagram.mjs';
 import { planWorks, readPlan } from './lib/game-plan.mjs';
+import { readSiteConfig, siteDirectory, sitePaths } from './lib/site-dir.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const dataRoot = process.env.SITE_DATA_DIR ? path.resolve(root, process.env.SITE_DATA_DIR) : root;
+const siteDir = siteDirectory();
+const dataRoot = process.env.SITE_DATA_DIR ? path.resolve(root, process.env.SITE_DATA_DIR) : siteDir;
 const outDir = path.resolve(process.argv[2] ?? path.join(root, '.prototypes'));
-const config = YAML.parse(fs.readFileSync(path.join(root, 'site.config.yaml'), 'utf8'));
-const { scenes } = await loadInstagramScenes();
+const config = readSiteConfig(siteDir);
+const { scenes } = await loadInstagramScenes(sitePaths(siteDir).instagramScenes);
 // the game as the site prepares it (the works with their colour profile) and the whole plan of its days (every year at once)
 const game = { ...await prepareGame(await planWorks(dataRoot, config), dataRoot), plan: { ...await readPlan(dataRoot), archive: [] } };
 const colors = await prototypeColors(prototypeWorks(dataRoot), dataRoot);

@@ -17,6 +17,7 @@ import { WORK_FIELDS } from './lib/works.mjs';
 import { COLLECTION_FIELDS } from './lib/collections.mjs';
 import { WORK_SCHEMA, homeEmptyClosing } from './lib/schema.mjs';
 import { PHOTO_FIELDS } from './lib/photos.mjs';
+import { CODE_ROOT, sitePaths } from './lib/site-dir.mjs';
 
 const siteConfig = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
 // Small web widths keep the test fast.
@@ -55,7 +56,9 @@ const instaPaths = (folder, sized, ...more) => insta(sized, ...more).map((f) => 
 let tmp, contentDir, siteDir;
 const exists = (p) => fs.access(p).then(() => true, () => false);
 const quiet = () => {};
-const opts = (over = {}) => ({ contentDir, siteDir, config, instagramScenesDir, log: quiet, ...over });
+// the mockup scenes and fonts of the real site (the temporary site folder has none)
+const { mockups: realScenesDir, fonts: realFontsDir } = sitePaths(CODE_ROOT);
+const opts = (over = {}) => ({ contentDir, siteDir, config, scenesDir: realScenesDir, instagramScenesDir, fontsDir: realFontsDir, log: quiet, ...over });
 
 // The content repository has no year folders: `year` only documents the date of the work.
 async function addWork(year, slug, yaml, { image = true, collection = '' } = {}) {

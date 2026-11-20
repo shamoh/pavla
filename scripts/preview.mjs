@@ -29,13 +29,15 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import YAML from 'yaml';
 import { cornersYaml, detectFile, guidesProblems, masterSize, withCorners, writePreviews } from './lib/corners.mjs';
 import { CORNER_KEYS, EDGE_DEFAULTS, cornerShares, cornersProblems, cutsSheet, percent } from './lib/edges.mjs';
 import { IMAGE_EXTENSIONS, slugify, splitExt } from './lib/works.mjs';
+import { siteDirectory, sitePaths } from './lib/site-dir.mjs';
 
-const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// the settings and the previews folder of the site (SITE_DIR, scripts/lib/site-dir.mjs)
+const siteDir = siteDirectory();
 
 const isPhoto = (name) => !name.startsWith('.') && !name.startsWith('_') && IMAGE_EXTENSIONS.includes(splitExt(name).ext);
 
@@ -127,11 +129,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       throw new Error('--only-suspicious cannot be combined with --write: it would write just the doubtful corners');
     }
     if (args.includes('--out') && !opt('--out')) throw new Error('--out needs a folder');
-    const config = YAML.parse(await fs.readFile(path.join(siteRoot, 'site.config.yaml'), 'utf8'));
+    const config = YAML.parse(await fs.readFile(sitePaths(siteDir).config, 'utf8'));
     const edges = { ...EDGE_DEFAULTS, ...config.images?.edges };
     const wrong = guidesProblems(edges.guides);
     if (wrong.length) throw new Error(wrong[0]);
-    const outDir = path.resolve(cwd, opt('--out') ?? path.join(siteRoot, '.previews'));
+    const outDir = path.resolve(cwd, opt('--out') ?? sitePaths(siteDir).previews);
     const photos = await listMasters(path.resolve(cwd, target));
     if (!photos.length) throw new Error(`no photos in ${target}`);
     await fs.mkdir(outDir, { recursive: true });

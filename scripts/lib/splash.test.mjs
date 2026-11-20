@@ -30,7 +30,7 @@ test('splashLayout: the icon, the name and the tagline in the middle, inside the
 });
 
 test('renderSplash: the size of the screen, paper of the palette at the corner, ink in the middle of the name', async () => {
-  const homeSvg = await fs.readFile(new URL('../home-screen-icon.svg', import.meta.url));
+  const homeSvg = await fs.readFile(new URL('../../home-screen-icon.svg', import.meta.url));
   const fonts = await loadFonts();
   for (const scheme of SPLASH_SCHEMES) {
     const png = await renderSplash({ width: 375, height: 667, scheme }, { homeSvg, fonts, title: 'Pavla Kramolišová', tagline: 'Akvarely pro radost' });

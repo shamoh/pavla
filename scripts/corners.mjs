@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { editorPage, route, trustedRequest } from './lib/corner-editor.mjs';
 import { EDGE_DEFAULTS } from './lib/edges.mjs';
+import { siteDirectory, sitePaths } from './lib/site-dir.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -24,7 +25,7 @@ const port = Number(opt('--port') ?? 4327);
 try {
   if (!target && !process.env.CONTENT_DIR) throw new Error('no content repository: npm run corners -- <folder>, or CONTENT_DIR in .env');
   await fs.access(path.join(contentDir, 'tvorba'));
-  const config = YAML.parse(await fs.readFile(path.join(siteRoot, 'site.config.yaml'), 'utf8'));
+  const config = YAML.parse(await fs.readFile(sitePaths(siteDirectory()).config, 'utf8'));
   const edges = { ...EDGE_DEFAULTS, ...config.images?.edges };
   const page = editorPage(await fs.readFile(path.join(siteRoot, 'scripts', 'corners.html'), 'utf8'), edges);
   http.createServer((req, res) => {

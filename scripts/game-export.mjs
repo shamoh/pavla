@@ -6,7 +6,6 @@
 //   npm run game-export [-- --out <dir>] [-- --force]   (--force draws every picture again)
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { readTree } from './lib/content.mjs';
 import { EDGE_DEFAULTS } from './lib/edges.mjs';
@@ -14,9 +13,10 @@ import { contentExclusions, exclusionProblems, SKIP_KEY } from './lib/game-exclu
 import { GAME_EXPORT_DIR, photoRegion, writeGameExport } from './lib/game-export.mjs';
 import { readPlan } from './lib/game-plan.mjs';
 import { masterSize } from './lib/corners.mjs';
+import { readSiteConfig, siteDirectory } from './lib/site-dir.mjs';
 
-const siteDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const config = YAML.parse(await fs.readFile(path.join(siteDir, 'site.config.yaml'), 'utf8'));
+const siteDir = siteDirectory();
+const config = readSiteConfig(siteDir);
 const contentDir = process.env.CONTENT_DIR || config.images?.contentDir;
 if (!contentDir) throw new Error('Není nastavené, kde je obsahové repo: dej CONTENT_DIR=<cesta k němu> do .env');
 const args = process.argv.slice(2);

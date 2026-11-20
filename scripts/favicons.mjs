@@ -1,19 +1,22 @@
 // Makes public/favicon.ico from public/favicon.svg, the home screen icons (public/apple-touch-icon.png,
-// public/icon-<size>.png of site.webmanifest) from scripts/home-screen-icon.svg and the icons of the shortcuts
-// (public/shortcut-<id>.png) from scripts/shortcut-icons/<id>.svg (npm run favicons).
+// public/icon-<size>.png of site.webmanifest) from home-screen-icon.svg and the icons of the shortcuts
+// (public/shortcut-<id>.png) from scripts/shortcut-icons/<id>.svg (npm run favicons), all in the folder of the site
+// (SITE_DIR, scripts/lib/site-dir.mjs) except the shortcut SVGs of the code.
 // Run it after every change of any of these SVGs and commit the results.
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MANIFEST_SHORTCUTS, makeFavicons } from './lib/favicons.mjs';
+import { siteDirectory, sitePaths } from './lib/site-dir.mjs';
 
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
-const publicDir = path.join(scriptsDir, '..', 'public');
+const paths = sitePaths(siteDirectory());
+const publicDir = paths.public;
 const shortcutSvgs = Object.fromEntries(await Promise.all(MANIFEST_SHORTCUTS.map(async ({ id }) =>
   [id, await fs.readFile(path.join(scriptsDir, 'shortcut-icons', `${id}.svg`))])));
 const { ico, apple, manifest } = await makeFavicons(
   await fs.readFile(path.join(publicDir, 'favicon.svg')),
-  await fs.readFile(path.join(scriptsDir, 'home-screen-icon.svg')),
+  await fs.readFile(paths.homeScreenIcon),
   shortcutSvgs,
 );
 const files = { 'favicon.ico': ico, 'apple-touch-icon.png': apple, ...manifest };

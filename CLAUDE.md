@@ -13,6 +13,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Deploy: GitHub Actions → GitHub Pages, doména v `public/CNAME`.
 
 ## Data
+- **Složka webu** (`scripts/lib/site-dir.mjs`, `SITE_DIR`, výchozí kořen repa): `site.config.yaml`, `fonts/`, `mockups/`,
+  `home-screen-icon.svg`, `public/`, `content/`, `game/`, `binary.lock`, `dist/`. Cesty k nim jen přes `sitePaths`
+  (`readSiteConfig`), nikdy natvrdo z kořene kódu; ve `src/` kořen kódu z `process.cwd()` (build moduly přibalí jinam).
 - **Toto repo je veřejné, obsah je v odděleném soukromém obsahovém repu.** Jeho název, cestu ani odkazy na něj
   sem nikdy nepiš (kód, komentáře, README, CLAUDE.md, commity, texty pull requestů); piš jen „obsahové repo“
   / „the content repository“. Odkazy vedou jen z obsahového repa sem, nikdy obráceně. Lokálně ho pipeline najde

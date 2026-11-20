@@ -14,17 +14,17 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import opentype from 'opentype.js';
 import sharp from 'sharp';
 import YAML from 'yaml';
 import { ownText } from './rich-text.mjs';
 import { captionFacts } from './works.mjs';
 import { keepTogether } from './typography.mjs';
+import { CODE_ROOT, sitePaths } from './site-dir.mjs';
 
-const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-export const INSTAGRAM_SCENES_DIR = path.join(siteRoot, 'mockups/instagram');
-export const FONTS_DIR = path.join(siteRoot, 'fonts');
+// The studio scenes and fonts of the site in the root of the code (the real site); a run of the pipeline passes its own.
+export const INSTAGRAM_SCENES_DIR = sitePaths(CODE_ROOT).instagramScenes;
+export const FONTS_DIR = sitePaths(CODE_ROOT).fonts;
 
 /** Export suffixes after "<slug>-<id>" for the given palettes and scenes (details are added by the caller). */
 export const instagramSuffixes = (paletteIds, sceneNames) => [

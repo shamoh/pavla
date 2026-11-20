@@ -86,7 +86,7 @@ test('webManifest: name, short name under the icon, colours, relative addresses,
 test('the committed icons exist for every file of the manifest and the home screen SVG is the source', () => {
   const root = new URL('../../', import.meta.url);
   const shortcuts = MANIFEST_SHORTCUTS.flatMap(({ id }) => [`scripts/shortcut-icons/${id}.svg`, `public/${shortcutIconFile(id)}`]);
-  for (const file of ['scripts/home-screen-icon.svg', 'public/apple-touch-icon.png', ...MANIFEST_SIZES.map((s) => `public/${manifestIconFile(s)}`), ...shortcuts]) {
+  for (const file of ['home-screen-icon.svg', 'public/apple-touch-icon.png', ...MANIFEST_SIZES.map((s) => `public/${manifestIconFile(s)}`), ...shortcuts]) {
     assert.ok(fs.existsSync(new URL(file, root)), file);
   }
 });

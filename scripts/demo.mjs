@@ -23,6 +23,7 @@ import { DEMO_MARKER } from './lib/demo.mjs';
 import { PAGES_SUBDIR } from './lib/pages.mjs';
 import { OUTPUT_ROOTS } from './lib/site-images.mjs';
 import { run } from './process-images.mjs';
+import { sitePaths } from './lib/site-dir.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT_SUBDIRS = ['tvorba', 'fotky', 'roky', PAGES_SUBDIR];
@@ -57,7 +58,7 @@ export async function prepareDemo({
   log = console.log,
   contentOnly = false,
 } = {}) {
-  config ??= YAML.parse(await fs.readFile(path.join(siteDir, 'site.config.yaml'), 'utf8'));
+  config ??= YAML.parse(await fs.readFile(sitePaths(siteDir).config, 'utf8'));
   const recipe = YAML.parse(await fs.readFile(path.join(demoDir, 'images.yaml'), 'utf8')) ?? {};
   const broken = recipeProblems(recipe);
   if (broken.length) return { ok: false, problems: broken, created: [], assigned: [], processed: 0, skipped: 0, missing: [], pruned: [] };
@@ -85,7 +86,11 @@ export async function prepareDemo({
   }
 
   // 3. the same pipeline as for the real content, but it must only see test data
-  const result = await run({ contentDir, siteDir: dataDir, config, log, dataset: 'demo', gamePlan: true });
+  const places = sitePaths(siteDir);
+  const result = await run({
+    contentDir, siteDir: dataDir, config, log, dataset: 'demo', gamePlan: true,
+    scenesDir: places.mockups, instagramScenesDir: places.instagramScenes, fontsDir: places.fonts,
+  });
 
   // 4. ids and skeletons written by the pipeline go back to demo-content/, so they stay stable
   for (const f of await listYaml(contentDir)) {

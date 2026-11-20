@@ -13,23 +13,23 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { checkSiteImages, distFetch, evaluateSiteImages } from './lib/site-check.mjs';
 import { isNoindex, sitemapUrls, unlistedPages } from './lib/sitemap.mjs';
 import { pageProblems, problemText } from './lib/page-check.mjs';
 import { slashlessLinks } from './lib/page-links.mjs';
 import { inlineProblemText, inlineScriptProblems } from './lib/inline-targets.mjs';
+import { siteDirectory, sitePaths } from './lib/site-dir.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const distDir = path.resolve(process.argv[2] ?? (process.env.SITE_DATA_DIR ? path.join(process.env.SITE_DATA_DIR, 'dist') : path.join(root, 'dist')));
+const sitePlaces = sitePaths(siteDirectory());
+const distDir = path.resolve(process.argv[2] ?? (process.env.SITE_DATA_DIR ? path.join(process.env.SITE_DATA_DIR, 'dist') : sitePlaces.dist));
 try {
   await fs.access(path.join(distDir, 'index.html'));
 } catch {
   console.error(`✗ No built site in ${path.relative(process.cwd(), distDir) || '.'}: run "npm run build" first`);
   process.exit(1);
 }
-const config = YAML.parse(await fs.readFile(path.join(root, 'site.config.yaml'), 'utf8'));
+const config = YAML.parse(await fs.readFile(sitePlaces.config, 'utf8'));
 const result = evaluateSiteImages(await checkSiteImages(config.site.url, distFetch(distDir), { screenshots: false }));
 console.log(`${result.ok ? '✓' : '✗'} ${result.message}`);
 if (!result.ok) process.exitCode = 1;

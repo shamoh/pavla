@@ -76,12 +76,19 @@ pavla/                                      (toto repo, veřejné)
     fotky/<název>/                          ostatní fotky (O mně, Kontakt), jen obrázky + info.json
   mockups/                                  scény pro mockupy a jejich kalibrace (scenes.yaml)
   mockups/instagram/                        scény ateliéru pro Instagram (scenes.yaml, README.md se zadáními generátoru)
+  fonts/                                    písma popisků (Instagram, piny, úvodní obrazovky aplikace)
+  home-screen-icon.svg                      ikona webu na ploše telefonu (zdroj, viz Ikona webu)
+  game/detail-dne/                          trvalý stav hry Detail dne (plán dnů, rozbory obrázků; zapisuje pipeline)
   scripts/process-images.mjs                pipeline (npm run images)
   scripts/lib/                              logika pipeline a filtrů, každý modul má *.test.mjs
   scripts/lib/schema.mjs                    atributy popisů (díla, kolekce, fotky, roky, stránky): pořadí, výchozí hodnoty, komentáře
   src/                                      web (Astro stránky a komponenty)
   site.config.yaml                          jméno, kontakty, doména, nastavení pipeline
 ```
+
+Kód webu a pipeline (`scripts/`, `src/`, `demo-content/`) je od webu oddělený: všechno, co patří jednomu webu
+(`site.config.yaml`, `fonts/`, `mockups/`, `home-screen-icon.svg`, `public/`, `content/`, `game/`, `binary.lock`, `dist/`),
+čte ze **složky webu**, viz Složka webu (`SITE_DIR`).
 
 ## Adresy na webu
 
@@ -2200,7 +2207,7 @@ Ikona v záložce je `public/favicon.svg` (moderní prohlížeče): malý akvare
 kopce, pole a červený mák; okraje rozvlní filtr `feTurbulence`). V tmavém režimu prohlížeče (`prefers-color-scheme: dark`
 ve stylu přímo v SVG) je lístek tmavý (třída `sheet`), aby v tmavé liště záložek nesvítil; obrázek na něm zůstává.
 `favicon.ico` a starší prohlížeče mají vždy světlou podobu. Ikona na plochu telefonu má vlastní zdroj
-`scripts/home-screen-icon.svg`: týž obrázek přes celý čtverec, bez lístku a okraje, aby se v zaobleném čtverci
+`home-screen-icon.svg` ve složce webu: týž obrázek přes celý čtverec, bez lístku a okraje, aby se v zaobleném čtverci
 telefonu nezmenšil (mimo `public/`, nenasazuje se).
 `npm run favicons` (`scripts/favicons.mjs`, `scripts/lib/favicons.mjs`) z nich vyrobí:
 
@@ -2954,6 +2961,27 @@ kalendářní verzování (CalVer): verze **je** čas, kdy se web sestavil, ve f
   `version` v `src/lib/site.ts`, patička v `src/layouts/Base.astro`.
 - Vyzkoušení: `npm run build`, pak `grep -o '<time datetime[^<]*' dist/index.html`
   (nebo najeď myší na verzi v `npm run dev`).
+
+## Složka webu (`SITE_DIR`)
+
+Kód (pipeline, web, testy) čte všechno, co patří jednomu webu, ze složky webu (`scripts/lib/site-dir.mjs`:
+`siteDirectory`, `sitePaths`, `readSiteConfig`; nikde jinde se cesty k souborům webu neskládají):
+
+| Ve složce webu | Co to je | Kdo to čte |
+|---|---|---|
+| `site.config.yaml` | identita a nastavení webu | build (`astro.config.mjs`, `src/lib/site.ts`), pipeline, kontroly, nástroje |
+| `fonts/` | písma popisků | pipeline (Instagram, piny), úvodní obrazovky aplikace |
+| `mockups/`, `mockups/instagram/` | scény mockupů a ateliéru | pipeline, prototypy |
+| `home-screen-icon.svg` | ikona na plochu telefonu | `npm run favicons`, úvodní obrazovky aplikace |
+| `public/` | statické soubory (favicon, ikony, `CNAME`) a obrázky z pipeline | build, pipeline |
+| `content/`, `game/`, `binary.lock` | vyrobená data a trvalý stav | pipeline, build, pull request |
+| `dist/`, `.previews/` | postavený web, náhledy ořezu | build, `check:images`, `npm run preview` |
+
+Složku určí proměnná `SITE_DIR` (relativně k pracovní složce), bez ní je to kořen tohoto repa, kde dnes leží web
+Pavly. Kód ve `src/` bere kořen repa z pracovní složky (`process.cwd()`), ne z cesty modulu: build Astra moduly
+přibalí jinam. Pipeline (`run` v `process-images.mjs`) bere scény, písma a nastavení ze své `siteDir`, jen když je
+volající nepředá. Testovací web zatím přesměruje jen vyrobená data (`SITE_DATA_DIR=.demo/site`: `content/`,
+`public/`, `game/`, `dist/`), nastavení, písma a scény bere ze složky webu Pavly.
 
 ## Vývoj
 

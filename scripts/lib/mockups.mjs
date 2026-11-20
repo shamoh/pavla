@@ -4,12 +4,13 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import YAML from 'yaml';
 import { validSize } from './works.mjs';
+import { CODE_ROOT, sitePaths } from './site-dir.mjs';
 
-export const SCENES_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../mockups');
+/** The mockup scenes of the site in the root of the code (the real site); a run of the pipeline passes its own. */
+export const SCENES_DIR = sitePaths(CODE_ROOT).mockups;
 
 /** Works whose longer side is at most this many cm are "small": shelf instead of a second wall. */
 export const SMALL_CM = 35;

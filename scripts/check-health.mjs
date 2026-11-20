@@ -12,17 +12,17 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import YAML from 'yaml';
 import { collectSettings, compareSnapshots, settingsSnapshot } from './lib/repo-settings.mjs';
 import { findUnknownAttributes, findUnknownTechniques, findUntranslatedTags } from './lib/content.mjs';
 import { checkSiteImages, evaluateSiteImages } from './lib/site-check.mjs';
 import { evaluatePageTexts } from './lib/page-check.mjs';
 import { evaluateInlineScripts } from './lib/inline-targets.mjs';
+import { readSiteConfig, siteDirectory } from './lib/site-dir.mjs';
 import {
   DRY_RUNS, evaluateCheckToken, evaluateDeploy, evaluateGameAnalyses, evaluateGamePlan, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure,
 } from './lib/health.mjs';
 
-const config = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
+const config = readSiteConfig(siteDirectory());
 // The repository of the site (site.repository of site.config.yaml), e.g. "shamoh/pavla".
 const SITE_REPO = config.site.repository;
 if (!SITE_REPO) throw new Error('site.config.yaml: site.repository (owner/name of the repository of the site) is missing');

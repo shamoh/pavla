@@ -1,6 +1,6 @@
 // Icons for browsers and devices that do not use public/favicon.svg (npm run favicons): favicon.ico from it (old
 // browsers, feed readers and link previews ask for /favicon.ico), and the home screen icons from
-// scripts/home-screen-icon.svg (the same little painting over the whole square, without the sheet of paper, so it does
+// home-screen-icon.svg of the site (the same little painting over the whole square, without the sheet of paper, so it does
 // not shrink inside the rounded square of the phone): apple-touch-icon.png (iPhone and iPad; iOS ignores SVG icons and
 // fills transparency with black, hence the paper background under it) and icon-<size>.png of site.webmanifest (Android).
 import sharp from 'sharp';

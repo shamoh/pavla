@@ -4,7 +4,7 @@
 //     binary.lock; empty when there is none: the workflow then skips the pull request); the images went to their
 //     branch before (scripts/binary.mjs pack obsah/aktualizace_binary --push), the description names them too,
 //   - <body-file>: its Czech description.
-// Run from this repo's root. Used by the content workflow and by .github/workflows/dry-run.yml.
+// Run in the folder of the site (SITE_DIR, scripts/lib/site-dir.mjs; this repo's root by default). Used by the content workflow and by .github/workflows/dry-run.yml.
 //
 // Usage: node scripts/pull-request.mjs <body-file>
 
@@ -13,6 +13,7 @@ import fs from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { SITE_BINARY, readLock } from './lib/binary.mjs';
 import { changedBinaries, changedFiles, changedItems, pullRequestBody, pullRequestPaths, runFromEnv, stepOutput } from './lib/pull-request.mjs';
+import { siteDirectory } from './lib/site-dir.mjs';
 
 const bodyFile = process.argv[2];
 if (!bodyFile) {
@@ -20,7 +21,7 @@ if (!bodyFile) {
   process.exit(1);
 }
 
-const siteDir = process.cwd();
+const siteDir = siteDirectory();
 const paths = await pullRequestPaths(siteDir);
 // the images changed against main's (refs/remotes/origin/main_binary, fetched by `binary.mjs unpack`/`promote`;
 // none = every image is new), from the tree binary.lock names (written by `binary.mjs pack`)

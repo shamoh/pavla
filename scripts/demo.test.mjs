@@ -9,6 +9,7 @@ import YAML from 'yaml';
 import { prepareDemo } from './demo.mjs';
 import { pullRequestPaths } from './lib/pull-request.mjs';
 import { run } from './process-images.mjs';
+import { CODE_ROOT, sitePaths } from './lib/site-dir.mjs';
 
 const siteConfig = YAML.parse(await fs.readFile(new URL('../site.config.yaml', import.meta.url), 'utf8'));
 const config = {
@@ -30,6 +31,8 @@ beforeEach(async () => {
   outDir = path.join(tmp, '.demo');
   siteDir = path.join(tmp, 'pavla');
   await write(path.join(siteDir, 'public/favicon.svg'), '<svg/>');
+  // the mockup scenes and fonts of the real site
+  for (const place of ['mockups', 'fonts']) await fs.symlink(sitePaths(CODE_ROOT)[place], sitePaths(siteDir)[place]);
   await write(path.join(siteDir, 'public/CNAME'), 'pavla.kramolis.cz');
   await write(path.join(siteDir, 'public/tvorba/2026/x/info.json'), '{}'); // real generated data, must not be copied
   await write(path.join(demoDir, 'images.yaml'), YAML.stringify({

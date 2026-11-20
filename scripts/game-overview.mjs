@@ -11,10 +11,12 @@ import {
   LOOK_COUNTS, drawPixels, effectSettings, effectStrength, effectStyle, frameSource, gameFrame, gameLevels, gameLooks, waveRipple,
 } from './lib/detail-game.mjs';
 import { isoDay } from './lib/app-install.mjs';
+import { siteDirectory, sitePaths } from './lib/site-dir.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = path.join(root, '.prototypes', 'prehled-hry');
-const data = JSON.parse(await fs.readFile(path.join(root, 'dist/detail-dne/data.json'), 'utf8'));
+const sitePlaces = sitePaths(siteDirectory());
+const data = JSON.parse(await fs.readFile(path.join(sitePlaces.dist, 'detail-dne/data.json'), 'utf8'));
 const works = new Map(data.works.map((w) => [w.id, w]));
 const today = isoDay(new Date());
 /**
@@ -36,7 +38,7 @@ for (const look of gameLooks()) {
   examples.push({
     look: look.id, level: look.level, date: day.date, workId: work.id, title: work.title, url: work.url, ratio: work.ratio,
     crop: { x: puzzle.crop.x, y: puzzle.crop.y, size: puzzle.crop.size }, src: `img/${work.id}-${width}.webp`,
-    from: path.join(root, 'public', work.folder, `${width}.webp`),
+    from: path.join(sitePlaces.public, work.folder, `${width}.webp`),
   });
 }
 await fs.rm(out, { recursive: true, force: true });

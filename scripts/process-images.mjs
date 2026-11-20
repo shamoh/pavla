@@ -48,11 +48,12 @@
 //                                            automation on branches of the content repository)
 //         npm run images -- <slug>   (a single work; skips pruning)
 // Content location: CONTENT_DIR (locally from .env, see package.json), or images.contentDir in site.config.yaml.
+// Site location: SITE_DIR (scripts/lib/site-dir.mjs), without it the root of this repository.
 
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import sharp from 'sharp';
 import { COLOUR_ANALYSIS_SIZE, analyseColours, needsColours } from './lib/colors.mjs';
 import { isDeepStrictEqual } from 'node:util';
@@ -72,6 +73,7 @@ import { HOME_COPY, MODIFIED, UNCOLLECTED_COPY, collectionCopyPath, pageCopyPath
 import { coverProblems, coverShareSource } from './lib/covers.mjs';
 import { allTextProblems, commentedOutReview, placeholderProblems, prepareContent } from './lib/content.mjs';
 import { DEMO_MARKER, demoProblems } from './lib/demo.mjs';
+import { siteDirectory, sitePaths } from './lib/site-dir.mjs';
 import { loadScenes, pickScenes, renderMockup } from './lib/mockups.mjs';
 import { WATERMARK_LOOK, watermarkSvg } from './lib/watermark.mjs';
 import { rightsXmp } from './lib/image-rights.mjs';
@@ -111,8 +113,6 @@ const PIPELINE_VERSION = 9;
 const DRAFT_VERSION = 3;
 /** Bump when the share images of covers (shareCrop) are drawn differently, so all of them are drawn again once. */
 const SHARE_CROP_VERSION = 1;
-
-const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const exists = (p) => fs.access(p).then(() => true, () => false);
 /** Preview of an export folder on GitHub (scripts/lib/export-readme.mjs). */
@@ -465,6 +465,8 @@ async function removeEmptyDirs(root) {
 /**
  * Runs the whole pipeline. Returns a summary; throws on configuration errors.
  * Options: contentDir, siteDir, config, force, only (slugs), log, today, random, dataset, prepareOnly, gamePlan.
+ * `siteDir`: the folder of the site (scripts/lib/site-dir.mjs, default SITE_DIR or the root of the code); `config`,
+ * `scenesDir`, `instagramScenesDir` and `fontsDir` default to its settings, mockups, studio scenes and fonts.
  * `gamePlan` (the command line and `npm run demo`, off in tests): a full run also extends the plan of the days of the game
  * Detail dne (game/detail-dne/, scripts/lib/game-plan.mjs); a failure there is only logged, the game then computes.
  * `prepareOnly` stops after skeletons, ids, corners of the sheets, checks and the cut previews of drafts: nothing is
@@ -476,7 +478,7 @@ async function removeEmptyDirs(root) {
  */
 export async function run({
   contentDir,
-  siteDir = siteRoot,
+  siteDir = siteDirectory(),
   config,
   force = false,
   only = [],
@@ -494,7 +496,12 @@ export async function run({
   // how long the phases of the run take, in its log (a slow run on GitHub shows where its time goes)
   const runWatch = stopwatch();
   const logPhases = () => log(`⏱ run: ${formatLaps(runWatch.laps(), runWatch.total())}`);
-  config ??= YAML.parse(await fs.readFile(path.join(siteDir, 'site.config.yaml'), 'utf8'));
+  // the settings, the mockup scenes and the fonts of the site come from its folder unless given
+  const sitePlaces = sitePaths(siteDir);
+  config ??= YAML.parse(await fs.readFile(sitePlaces.config, 'utf8'));
+  scenesDir ??= sitePlaces.mockups;
+  instagramScenesDir ??= sitePlaces.instagramScenes;
+  fontsDir ??= sitePlaces.fonts;
   const img = config.images;
   const edges = { ...EDGE_DEFAULTS, ...img.edges };
   // meta_corners of the works by their master photo, for share images of covers that show a work (set below)

@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import YAML from 'yaml';
 import { PIN_FILE } from '../../scripts/lib/pinterest.mjs';
 import { coverCandidates, dateYear, detailKey, formatSizeCm, isOnSale, isValidId, orderDetails, workKey } from '../../scripts/lib/works.mjs';
 import { photoFocus } from '../../scripts/lib/photos.mjs';
@@ -12,6 +11,7 @@ import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
 import { QUIZ_LINE_KEYS } from '../../scripts/lib/schema.mjs';
 import { HOME_BUTTON, HOME_EMPTY_TEXT, HOME_HEADING, HOME_SHOW_BUTTON, HOME_TEXT, UNCOLLECTED_TEXT, homeEmptyClosing } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
+import { readSiteConfig, siteDirectory } from '../../scripts/lib/site-dir.mjs';
 import { NO_COLLECTION_TITLE } from '../../scripts/lib/gallery-filter.mjs';
 import { sortCollections } from '../../scripts/lib/collection-filter.mjs';
 import { measurementIdFor } from '../../scripts/lib/analytics.mjs';
@@ -22,13 +22,16 @@ import { colourSettings, workColourIds } from '../../scripts/lib/colors.mjs';
 import { colourProfile } from '../../scripts/lib/affinity.mjs';
 import { execSync } from 'node:child_process';
 
+// The repository, not the bundled module (the build moves it): the root of the code is the working directory.
 const root = process.cwd();
-// Generated data (content/ and public/): this repo for the real site, .demo/site for the test data (npm run demo).
-const dataRoot = process.env.SITE_DATA_DIR ? path.resolve(root, process.env.SITE_DATA_DIR) : root;
+/** The folder of the site (SITE_DIR, scripts/lib/site-dir.mjs): its settings, fonts, icons and data. */
+export const siteDir = siteDirectory({ codeRoot: root });
+// Generated data (content/ and public/): the folder of the site, .demo/site for the test data (npm run demo).
+const dataRoot = process.env.SITE_DATA_DIR ? path.resolve(root, process.env.SITE_DATA_DIR) : siteDir;
 /** Where the site data lies (content/ and public/), for pages that read its files themselves (the game Detail dne). */
 export const siteDataRoot = dataRoot;
 
-export const config = YAML.parse(fs.readFileSync(path.join(root, 'site.config.yaml'), 'utf8'));
+export const config = readSiteConfig(siteDir);
 export const site = config.site as {
   url: string; title: string; tagline: string; author: string;
   email: string; instagram: string; fler: string;
