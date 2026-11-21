@@ -9,9 +9,10 @@
 
 import { offersOption, pagingFromParams, pagingToParams } from './gallery-filter.mjs';
 import { matchesQuery, normalizeQuery, searchText } from './search.mjs';
+import { storageKey } from './storage-prefix.mjs';
 
 /** localStorage key of the page size picked on the collections overview (the gallery has its own). */
-export const COLLECTIONS_PAGE_SIZE_STORAGE_KEY = 'pavla.collections.perPage';
+export const COLLECTIONS_PAGE_SIZE_STORAGE_KEY = storageKey('collections.perPage');
 
 /**
  * Collections in the order of the overview: the one with the newest work first (a collection gets a new picture, it

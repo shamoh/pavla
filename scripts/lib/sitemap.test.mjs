@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { HIDDEN_SITE_ROBOTS } from './seo.mjs';
 import { STATIC_PAGES, isNoindex, sitemapEntries, sitemapUrls, sitemapXml, unlistedPages } from './sitemap.mjs';
 
 test('sitemapEntries: static pages, years, collections and works; never the short addresses of works', () => {
@@ -45,4 +46,15 @@ test('isNoindex: the robots meta with noindex, in any case and with other values
   assert.ok(isNoindex('<meta name="robots" content="noindex, follow">'));
   assert.ok(!isNoindex('<meta name="robots" content="index">'));
   assert.ok(!isNoindex('<p>noindex</p>'));
+  assert.ok(isNoindex('<META NAME="robots" CONTENT="NOINDEX">'));
+});
+
+test('isNoindex: the robots meta of a whole hidden site does not count, the noindex of the page next to it does', () => {
+  const hidden = `<meta name="robots" content="${HIDDEN_SITE_ROBOTS}" data-hidden-site>`;
+  assert.ok(!isNoindex(hidden));
+  assert.ok(!isNoindex(`<head>${hidden}<link rel="canonical" href="/"></head>`));
+  assert.ok(isNoindex(`<meta name="robots" content="noindex">${hidden}`));
+  assert.ok(isNoindex(`${hidden}<meta name="robots" content="noindex">`));
+  // the pages of the hidden site stay in the check of the sitemap
+  assert.deepEqual(unlistedPages([{ path: '/zapomenuta/', html: hidden }], ['https://web.test/']), ['/zapomenuta/']);
 });

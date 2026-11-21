@@ -13,6 +13,7 @@ import { AUTO, PALETTES } from './palettes.mjs';
 import { isOnSale } from './works.mjs';
 import { FAVORITES_ON, FEATURED_ON, galleryFilterPath } from './gallery-filter.mjs';
 import { CINEMA_LINK_SOURCES } from './analytics.mjs';
+import { storageKey } from './storage-prefix.mjs';
 
 /** The settings of the cinema when site.config.yaml leaves them out. */
 export const CINEMA_DEFAULTS = {
@@ -69,7 +70,7 @@ export function cinemaCard(work, { url, base, size, statusLabel }) {
  * Keys in localStorage: the captions picked (CAPTION_MODES), the interval and the colours of the cinema (its own,
  * never those of the pages); nothing stored = the defaults.
  */
-export const CINEMA_STORAGE_KEYS = { captions: 'pavla.cinema.captions', interval: 'pavla.cinema.interval', palette: 'pavla.cinema.palette' };
+export const CINEMA_STORAGE_KEYS = { captions: storageKey('cinema.captions'), interval: storageKey('cinema.interval'), palette: storageKey('cinema.palette') };
 
 /**
  * `?cinema=random`: the show starts with any work of the listing ("▶ Promítat", links); once a work is shown the address
@@ -112,7 +113,7 @@ export const SELECTION_LIST_TITLE = 'Tyto obrazy jako seznam (Můj výběr), odk
  * (it may only after a click, a tap or a key: fullscreenHint; any key does, F is the one known from video players),
  * `full` = in it (with keys: F leaves it, the show goes on in the window); none = nothing about it.
  */
-export const CINEMA_HINT_KEY = 'pavla.cinema.hinted';
+export const CINEMA_HINT_KEY = storageKey('cinema.hinted');
 export const HINT_MS = 4000;
 export function cinemaHint(touch, screen = '') {
   const moves = touch ? 'tahem do stran listovat · dolů obraz · nahoru kolekce · sevřením seznam' : '← → listovat · ↓ obraz · ↑ kolekce · S seznam · L oblíbené';

@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { PROTOTYPES, PROTOTYPE_FUNCTIONS, fillTemplate, gamePrototypeParts, prepareGame, prototypeConfig, prototypePlay, prototypeScenes, prototypeWorks, publicPath, writePrototypes } from './prototypes.mjs';
 import { gamePageHtml } from './detail-game-page.mjs';
+import { GAME_STORE } from './detail-game.mjs';
+import { DEFAULT_STORAGE_PREFIX } from './storage-prefix.mjs';
 import { COLUMN_DEFAULTS } from './view-layout.mjs';
 import { HOME_RECENT } from './home-view.mjs';
 import { TILE_MARK_DEFAULTS } from './tile-marks.mjs';
@@ -84,7 +86,7 @@ test('gamePrototypeParts: the look, the markup and the script of the game of the
   assert.equal(parts.GAME_HTML, gamePageHtml());
   assert.match(parts.GAME_CSS, /\.detail-game \.stage/);
   assert.match(parts.GAME_SCRIPT, /var DetailGame = /);
-  assert.ok(parts.GAME_SCRIPT.includes('pavla.detailDne.v2'), 'the code of the page itself');
+  assert.ok(parts.GAME_SCRIPT.includes(GAME_STORE.slice(GAME_STORE.indexOf('.') + 1)), 'the code of the page itself');
   assert.doesNotMatch(parts.GAME_SCRIPT, /<\/script/i);
   assert.doesNotThrow(() => new Function(parts.GAME_SCRIPT), 'runs without Node and without import.meta');
 });
@@ -104,6 +106,34 @@ test('prototypePlay: the data of the page of the game, the works with their page
   assert.deepEqual(play.plan, { days: {}, archive: [] });
   const planned = prototypePlay({ works, game: { prepared: {}, plan: { days: { 3: { easy: { targetId: 'c', optionIds: ['c'] } } }, archive: [] } }, site: 'https://example.cz' });
   assert.deepEqual(planned.works.map((w) => w.id), ['c'], 'the works of the plan too');
+});
+
+test('writePrototypes: the names of the browser with the prefix of the site, the default without one', () => {
+  const dataRoot = siteData();
+  for (const [config, prefix] of [[{ site: { storagePrefix: 'kacka' } }, 'kacka'], [{}, DEFAULT_STORAGE_PREFIX]]) {
+    const outDir = path.join(dataRoot, `.prototypes-${prefix}`);
+    const files = writePrototypes({ dataRoot, outDir, templatesDir, config, scenes: [scene(dataRoot)] });
+    for (const file of files) {
+      const html = fs.readFileSync(file, 'utf8');
+      assert.doesNotMatch(html, /STORAGE_PREFIX\*\//, `${file}: the prefix filled`);
+      assert.doesNotMatch(html, /pavla\./, `${file}: no name of one site written out`);
+    }
+    const cinema = fs.readFileSync(path.join(outDir, 'promitani.html'), 'utf8');
+    assert.ok(cinema.includes(`"${prefix}" + '.prototype.cinema'`), 'its own tuning');
+    assert.ok(cinema.includes(`"captions":"${prefix}.cinema.captions"`), 'the keys of the cinema of the site');
+    assert.ok(fs.readFileSync(path.join(outDir, 'oblibene.html'), 'utf8').includes(`"store":"${prefix}.favorites"`));
+  }
+  const parts = gamePrototypeParts(undefined, 'kacka');
+  assert.ok(parts.GAME_SCRIPT.includes('"kacka"'), 'the game bundled with the prefix of the site');
+});
+
+test('prototype templates: every name kept in the browser starts with the prefix of the site', () => {
+  for (const template of [...Object.values(PROTOTYPES), 'prehled-hry.html']) {
+    const html = fs.readFileSync(path.join(templatesDir, template), 'utf8');
+    assert.doesNotMatch(html, /localStorage\.(getItem|setItem)\(\s*['"`]/, template);
+    assert.doesNotMatch(html, /['"`]pavla[.-]/, template);
+    assert.doesNotMatch(html, /\b(Pavl[a-zěíuy]*|Libor[a-z]*)\b/, `${template}: no names of people`);
+  }
 });
 
 test('writePrototypes: both pages from the templates, valid scripts over the data', () => {

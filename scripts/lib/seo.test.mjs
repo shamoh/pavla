@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  artform, artworkLd, workPageLd, gamePageLd, authorId, imageObjectLd, breadcrumbLd, collectionPageLd, graphLd, jsonLdText, personLd, robotsTxt, summarize,
+  artform, artworkLd, workPageLd, gamePageLd, authorId, imageObjectLd, breadcrumbLd, collectionPageLd, graphLd, HIDDEN_SITE_ROBOTS, jsonLdText, personLd, robotsTxt, summarize,
   tagKeywords, verificationMeta, websiteLd, workDescription, workPageDescription, workPageTitle, yearPageDescription, YEAR_DESCRIPTION, fillTemplate,
 } from './seo.mjs';
 import { demoSiteConfig } from './test-support/demo-site.mjs';
@@ -115,6 +115,15 @@ test('verificationMeta and robotsTxt', () => {
   assert.deepEqual(verificationMeta(undefined), []);
   assert.deepEqual(verificationMeta({ pinterest: 'p1' }), [{ name: 'p:domain_verify', content: 'p1' }]);
   assert.equal(robotsTxt({ url: 'https://web.test/' }), 'User-agent: *\nAllow: /\n\nSitemap: https://web.test/sitemap.xml\n');
+  assert.equal(robotsTxt({ url: 'https://web.test/' }, { hidden: false }), robotsTxt({ url: 'https://web.test/' }));
+});
+
+test('robotsTxt and HIDDEN_SITE_ROBOTS: a hidden site (the test site) forbids everything and names no map', () => {
+  const txt = robotsTxt({ url: 'https://web.test/' }, { hidden: true });
+  assert.equal(txt, 'User-agent: *\nDisallow: /\n');
+  assert.doesNotMatch(txt, /Allow|Sitemap/);
+  assert.match(HIDDEN_SITE_ROBOTS, /noindex/);
+  assert.match(HIDDEN_SITE_ROBOTS, /nofollow/);
 });
 
 const slat = { ...work, id: 'rk9ct', title: 'Tetřevská slať', technique: 'akvarel', size_cm: [30, 42] };
@@ -187,16 +196,16 @@ test('workPageLd: an ItemPage about the work, relatedLink only with related work
   assert.equal('relatedLink' in workPageLd(site, { path: '/tvorba/2026/ovce-v39nd/', name: 'Ovce' }), false);
 });
 
-// The real site (site.config.yaml): what search engines get about the author and the year pages stays as it was.
-const realSite = demoSiteConfig().site;
-test('personLd and yearPageDescription of the real site', () => {
-  const person = personLd(realSite);
-  assert.equal(person.name, 'Pavla Kramolišová');
-  assert.equal(person.description, 'Amatérská malířka, která maluje pro radost, hlavně akvarelem; na procházkách skicuje i tužkou a brush penem.');
+// The test site (its site.config.yaml): what search engines get about the author and the year pages.
+const testSite = demoSiteConfig().site;
+test('personLd and yearPageDescription of the test site', () => {
+  const person = personLd(testSite);
+  assert.equal(person.name, 'Růženka Borůvková');
+  assert.equal(person.description, 'Vymyšlená malířka ukázkového webu z Mýtinky, maluje akvarelem a nejraději to, co najde v lese: maliny, borůvky a jahody i v zimě.');
   assert.deepEqual(person.knowsAbout, ['akvarel', 'kresba', 'skicování', 'plenér']);
-  assert.equal(yearPageDescription(undefined, 2026, realSite), 'Akvarely a kresby z roku 2026 – Pavla Kramolišová.');
-  assert.equal(yearPageDescription({ description: '' }, 2025, realSite), 'Akvarely a kresby z roku 2025 – Pavla Kramolišová.');
-  assert.equal(yearPageDescription({ description: 'Rok plenérů.' }, 2025, realSite), 'Rok plenérů.', 'the own description wins');
+  assert.equal(yearPageDescription(undefined, 2026, testSite), 'Akvarely a kresby z roku 2026 – Růženka Borůvková.');
+  assert.equal(yearPageDescription({ description: '' }, 2025, testSite), 'Akvarely a kresby z roku 2025 – Růženka Borůvková.');
+  assert.equal(yearPageDescription({ description: 'Rok plenérů.' }, 2025, testSite), 'Rok plenérů.', 'the own description wins');
 });
 
 test('personLd and yearPageDescription of another site: its own words, generic ones or none without them', () => {

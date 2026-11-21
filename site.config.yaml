@@ -11,6 +11,10 @@ site:
   knowsAbout: [akvarel, kresba, skicování, plenér]
   # Popis stránky roku pro vyhledávače, když roky/<rok>.yaml nemá vlastní; {year} = rok, {author} = author
   yearDescription: Akvarely a kresby z roku {year} – {author}.
+  # Předpona jmen, pod kterými si prohlížeč návštěvníka pamatuje oblíbené obrazy, barvy webu, postup ve hře a mezipaměti
+  # aplikace („pavla.favorites“, „pavla-images“); malá písmena a číslice, slova spojená „-“. Po zveřejnění webu neměnit:
+  # návštěvníci by přišli o to, co si jejich prohlížeč pamatoval. Prázdné = „web“.
+  storagePrefix: pavla
   repository: shamoh/pavla               # repo webu na GitHubu (vlastník/jméno), čte ho týdenní kontrola automatiky
   email: pavla@kramolis.cz
   location: Roztoky                       # kde Pavla žije a maluje, zobrazí se v Kontaktu; prázdné = nic
@@ -244,6 +248,12 @@ cinema:
     minPx: 50                  # kratší pohyb je ťuknutí
     flickPxPerMs: 0.5          # rychlost švihnutí (px/ms)
     pinch: 0.6                 # sevření dvou prstů na tento podíl jejich vzdálenosti = „Seznam“
+
+game:
+  # Přehled vzhledů hry Detail dne pro autorku (npm run game-overview): díla (id), která se v něm nikdy neukážou jako
+  # příklad vzhledu, např. když výřez z nich hned prozradí odpověď. Ve hře zůstávají (mimo hru = game: false v popisu
+  # díla). Prázdné = žádná.
+  overviewSkip: [wjgyb]   # Figura z kurzu III (akt)
 
 home:
   # Sloupce obrazů stejné výšky na úvodní stránce (galerie má své v gallery.columns): nižší sloupec nejdřív rozšíří

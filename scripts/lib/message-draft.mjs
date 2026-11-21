@@ -3,9 +3,10 @@
 // work and back keeps the text. Pure functions over a Storage-like object, used by src/lib/message-form.ts.
 
 import { defaultType } from './messages.mjs';
+import { storageKey } from './storage-prefix.mjs';
 
 /** Key in sessionStorage. */
-export const DRAFT_KEY = 'pavla.message';
+export const DRAFT_KEY = storageKey('message');
 
 /**
  * Looks of the panel: closed = only the launcher; compact = small panel in the corner; expanded = the same panel

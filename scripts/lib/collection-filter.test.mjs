@@ -99,7 +99,7 @@ test('overview state: year when offered, search, paging; written back without de
   assert.equal(overviewStateToParams(state).toString(), 'year=2025&q=plener&page=2&perPage=24');
   assert.deepEqual(overviewStateFromParams(new URLSearchParams('year=1990&page=all'), [2025], [12, 24]), { year: '', q: '', page: 'all', perPage: null });
   assert.equal(overviewStateToParams({ year: '', q: '', page: 1, perPage: null }).toString(), '');
-  assert.equal(COLLECTIONS_PAGE_SIZE_STORAGE_KEY, 'pavla.collections.perPage', 'apart from the gallery');
+  assert.equal(COLLECTIONS_PAGE_SIZE_STORAGE_KEY, 'web.collections.perPage', 'apart from the gallery');
 });
 
 test('matchesOverview: year and search in titles and descriptions; "Mimo kolekce" follows the year, never the search', () => {

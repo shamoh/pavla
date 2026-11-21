@@ -75,7 +75,7 @@ function runScript({ stored = null, dark = false, storage = true } = {}) {
     CustomEvent: class { constructor(_, { detail }) { this.detail = detail; } },
   };
   vm.runInNewContext(paletteScript(), context);
-  return { attrs, meta, store, events, api: window.pavlaPalette, listeners };
+  return { attrs, meta, store, events, api: window.sitePalette, listeners };
 }
 
 test('paletteScript: nothing stored = auto by the system; a stored choice wins; the bar colour follows', () => {

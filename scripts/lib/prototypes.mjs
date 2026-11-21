@@ -22,6 +22,7 @@ import { VIEWER_TEXT_MAX, autoHide } from './work-viewer.mjs';
 import { ownText } from './rich-text.mjs';
 import { summarize } from './seo.mjs';
 import { PALETTES, paletteCss, scopedPaletteCss } from './palettes.mjs';
+import { DEFAULT_STORAGE_PREFIX, STORAGE_PREFIX_GLOBAL, storagePrefixOf, withStoragePrefix } from './storage-prefix.mjs';
 import { SAMPLE_PICKS, SAMPLE_SIZE, gameData, prepareGame } from './detail-game-data.mjs';
 import { gamePageHtml } from './detail-game-page.mjs';
 import { AFFINITY_WEIGHTS, GAME_AFFINITY_SCALE, GAME_AFFINITY_WEIGHTS, techniqueFamily, workDistance } from './affinity.mjs';
@@ -148,16 +149,19 @@ export function prototypeWorks(dataRoot) {
 
 /**
  * The settings of site.config.yaml (`config`) a prototype starts from: the counts of the home page, columns and marks of
- * each place, the cinema; and the palettes of the site.
+ * each place, the cinema; and the palettes of the site. The names of the browser have the prefix of the site (site.storagePrefix).
  */
 export function prototypeConfig(config) {
+  const prefix = storagePrefixOf(config);
+  const named = (name) => withStoragePrefix(name, prefix);
+
   return {
     recent: homeRecent(config?.home?.recent),
     columns: { home: columnsFor(config, 'home'), gallery: columnsFor(config, 'gallery') },
     marks: { home: tileMarksFor(config, 'home'), gallery: tileMarksFor(config, 'gallery') },
     icons: Object.fromEntries(['star', ...SALE_ICONS].map((icon) => [icon, `<svg viewBox="0 0 24 24">${MARK_ICONS[icon]}</svg>`])),
     cinema: cinemaSettings(config),
-    cinemaKeys: CINEMA_STORAGE_KEYS,
+    cinemaKeys: Object.fromEntries(Object.entries(CINEMA_STORAGE_KEYS).map(([key, name]) => [key, named(name)])),
     // the palettes of the site: their CSS (data-palette on <html>) and the switcher
     paletteCss: paletteCss(),
     // the palettes of the cinema, on its own element (Cinema.astro)
@@ -168,7 +172,7 @@ export function prototypeConfig(config) {
     // the weights of how alike two works are: the similar works and the game (scripts/lib/affinity.mjs)
     affinity: { similar: AFFINITY_WEIGHTS, game: GAME_AFFINITY_WEIGHTS, gameScale: GAME_AFFINITY_SCALE },
     // the favourites: where the browser keeps them, the parameter of "Můj výběr" and the most works in its link
-    favorites: { store: FAVORITES_STORE, param: SELECTION_PARAM, linkMax: FAVORITES_LINK_MAX },
+    favorites: { store: named(FAVORITES_STORE), param: SELECTION_PARAM, linkMax: FAVORITES_LINK_MAX },
   };
 }
 
@@ -202,12 +206,13 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 /**
  * What the prototype of the game Detail dne (detail-dne.html) takes from the site, so it plays the same game: its look
  * (`GAME_CSS` = src/styles/detail-game.css), its markup (`GAME_HTML` = gamePageHtml) and its script (`GAME_SCRIPT` =
- * src/lib/detail-game.ts bundled with what it imports, the global `DetailGame` with startGame).
+ * src/lib/detail-game.ts bundled with what it imports, the global `DetailGame` with startGame, its names of the browser with
+ * the prefix `prefix` of the site as on the site).
  */
-export function gamePrototypeParts(root = ROOT) {
+export function gamePrototypeParts(root = ROOT, prefix = DEFAULT_STORAGE_PREFIX) {
   const { outputFiles } = buildSync({
     entryPoints: [path.join(root, 'src', 'lib', 'detail-game.ts')], bundle: true, write: false, format: 'iife', globalName: 'DetailGame',
-    platform: 'browser', target: 'es2022', charset: 'utf8', define: { 'import.meta.env.BASE_URL': '"/"' }, logLevel: 'silent',
+    platform: 'browser', target: 'es2022', charset: 'utf8', define: { 'import.meta.env.BASE_URL': '"/"', [STORAGE_PREFIX_GLOBAL]: JSON.stringify(prefix) }, logLevel: 'silent',
     // modules of Node imported by the shared libraries for their other functions: empty in the browser, as Vite does on the site
     external: ['node:*'], banner: { js: 'var require = () => ({});' },
   });
@@ -278,7 +283,9 @@ export function writePrototypes({ dataRoot, outDir, templatesDir, config, scenes
     play: prototypePlay({ works, game, site }),
     colors,
   };
-  const parts = gamePrototypeParts(root);
+  // the prefix of the names of the browser (site.storagePrefix): /*STORAGE_PREFIX*/ of the templates, as a JS string
+  const prefix = storagePrefixOf(config);
+  const parts = { ...gamePrototypeParts(root, prefix), STORAGE_PREFIX: JSON.stringify(prefix) };
   fs.mkdirSync(outDir, { recursive: true });
   return Object.entries(PROTOTYPES).map(([name, template]) => {
     const file = path.join(outDir, name);

@@ -627,7 +627,7 @@ const setup = viewSetup({ defaultView: DEFAULT_VIEW, linkKeys: ['view', 'tile', 
   // the page of a work or a collection reached from it leaves the address as it is (Back returns to the show).
   const listing = grid.dataset.listing!;
   // history entries added by opening the cinema carry this mark: closing it goes back instead of adding another
-  const CINEMA_OPENED = 'pavla-cinema';
+  const CINEMA_OPENED = 'site-cinema';
   const cinemaWorks = (): CinemaWork[] => cards.filter((_, i) => matchesFilters(works[i], state))
     .map((c) => ({ id: c.dataset.id!, collection: c.dataset.collection!, ...JSON.parse(c.dataset.cinema!) }));
   const cinema = createCinema(cinemaRoot, cinemaConf, JSON.parse(cinemaRoot.dataset.collections!), {

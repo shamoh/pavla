@@ -50,10 +50,10 @@ meta_pinterest: false
 
 # Trvalý kód obrazu: podle něj web pozná obraz i po přejmenování (krátká adresa /tvorba/<id>/).
 # Generuje ho pipeline, NIKDY neměnit. Hodí se napsat tužkou na zadní stranu obrazu.
-id: bamaa
+id: gzxzn
 
 # Den vzniku ve tvaru 2026-06-14. Rok z něj určuje rok obrazu na webu (stránka roku, adresa).
-date: 2003-06-08
+date: 2020-07-18
 
 # NEPOVINNÉ. Popis pro vyhledávače a náhled odkazu (Google, Facebook, WhatsApp): jedna nebo dvě věty, nejvýš
 # 160 znaků, bez formátování; na stránce se neukáže. Prázdné = začátek textu.
@@ -74,7 +74,7 @@ date: 2003-06-08
 # - true - ve výběru: přepínač „Doporučené“ v galerii; z 10 nejnovějších vybraných se náhodně střídají
 #   obrazy nahoře na úvodní stránce, stránce roku a na úvodu kolekce (bez cover)
 # - false - ne
-featured: false
+featured: true
 
 # NEPOVINNÉ. Odkaz na obraz na Fleru (https://www.fler.cz/…). U obrazu na prodej s ním web ukáže tlačítko „Koupit na Fleru“.
 # fler: https://www.fler.cz/zbozi/…
@@ -127,7 +127,7 @@ status: sold
 # support: papír Canson XL Aquarelle (300 g), 100% celulóza
 
 # Štítky pro filtr v galerii, např. [krajina, voda, plenér]. Prázdné = [].
-tags: [krajina, léto]
+tags: [les, léto, maliny]
 
 # Technika, podle ní se filtruje v galerii. Nejčastější možnosti jsou:
 # - akvarel
@@ -149,10 +149,10 @@ technique: akvarel
 #     (rozpracovaný obraz zůstane bez odkazu),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
 text: |
-  Obilné pole s cestou k lesu.
+  Košík u malinového křoví. Kdo se ptá, kde jsem, dostane odpověď: je na malinách.
 
 # Název obrazu, jak ho uvidí návštěvníci webu.
-title: Pole v červnu
+title: Je na malinách
 
 # NEPOVINNÉ. Soukromá poznámka, zůstane jen v tomto repu, na web se nikdy nedostane.
 # private_note: kde obraz visí, komu patří

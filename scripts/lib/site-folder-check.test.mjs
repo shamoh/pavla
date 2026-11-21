@@ -33,6 +33,12 @@ test('siteFileProblems: the files every site folder has, the fonts, the dark fav
   ]);
   fs.writeFileSync(path.join(dir, 'site.config.yaml'), 'site:\n  title: X\n');
   assert.match(siteFileProblems(dir).join(), /site\.config\.yaml: no site\.url/);
+  fs.writeFileSync(path.join(dir, 'site.config.yaml'), 'site:\n  url: https://web.test\n  storagePrefix: Pavla.web\n');
+  assert.deepEqual(siteFileProblems(dir).filter((p) => p.startsWith('site.config')), ['site.config.yaml: site.storagePrefix must be small letters and digits joined by "-", got "Pavla.web"']);
+  fs.writeFileSync(path.join(dir, 'site.config.yaml'), 'site:\n  url: https://web.test\n');
+  assert.deepEqual(siteFileProblems(dir).filter((p) => p.startsWith('site.config')), [], 'no prefix = the default');
+  fs.writeFileSync(path.join(dir, 'site.config.yaml'), 'site:\n  url: https://web.test\ngame:\n  overviewSkip: [Barbora III]\n');
+  assert.match(siteFileProblems(dir).join(), /site\.config\.yaml: game\.overviewSkip must be a list of ids/);
   fs.writeFileSync(path.join(dir, 'site.config.yaml'), 'site: [\n');
   assert.match(siteFileProblems(dir).join(), /site\.config\.yaml: /);
   // an empty folder: everything missing, the fonts too

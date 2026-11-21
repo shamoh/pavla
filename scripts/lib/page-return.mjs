@@ -11,12 +11,13 @@
 // on the overview).
 
 import { isValidId, isValidSlug } from './works.mjs';
+import { storageKey } from './storage-prefix.mjs';
 
 /** sessionStorage key: JSON { "<path>": "<query without ?>" }. */
-export const RETURN_STORAGE_KEY = 'pavla.return';
+export const RETURN_STORAGE_KEY = storageKey('return');
 
 /** sessionStorage key of the work or collection a visitor goes back from; the listing scrolls to its card and forgets it. */
-export const RETURN_FOCUS_KEY = 'pavla.return.focus';
+export const RETURN_FOCUS_KEY = storageKey('return.focus');
 
 /** The section (path under the site base) in which the memory holds. */
 export const RETURN_SCOPE = '/tvorba/';

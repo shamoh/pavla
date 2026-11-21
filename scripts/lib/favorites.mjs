@@ -6,8 +6,10 @@
 // FAVORITES_LINK_MAX) = a grey count with a tooltip instead of the link. The functions are self-contained (the prototype
 // oblibene.html takes them as text): the limits come as arguments.
 
+import { storageKey } from './storage-prefix.mjs';
+
 /** Where the favourites are kept in the browser. */
-export const FAVORITES_STORE = 'pavla.favorites';
+export const FAVORITES_STORE = storageKey('favorites');
 
 /** The parameter of the page "Můj výběr" with the ids of its works, joined by commas. */
 export const SELECTION_PARAM = 'obrazy';

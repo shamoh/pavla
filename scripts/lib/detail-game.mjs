@@ -11,7 +11,7 @@
  * ids of the looks of gameLooks that may cover the close-up, one picked for each day; every miss clears it a little.
  */
 /** Where the game keeps the progress of a player in localStorage (the game and the home page read it); a new format = a new key. */
-export const GAME_STORE = 'pavla.detailDne.v2';
+export const GAME_STORE = storageKey('detailDne.v2');
 
 export function gameLevels() {
   return [
@@ -55,6 +55,7 @@ export function gameLooks() {
 }
 
 import { GAME_AFFINITY_SCALE, GAME_AFFINITY_WEIGHTS, techniqueFamily, workDistance } from './affinity.mjs';
+import { storageKey } from './storage-prefix.mjs';
 
 /** The first day of the game (day 0, shown as #1). */
 export const GAME_EPOCH = '2026-11-01';

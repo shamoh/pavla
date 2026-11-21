@@ -147,7 +147,7 @@
   $('palettes').textContent = CONFIG.paletteCss;
 
   // ---- tuning: the values being looked for, remembered in this browser ----
-  const TUNING_KEY = 'pavla.prototype.cinema';
+  const TUNING_KEY = /*STORAGE_PREFIX*/ + '.prototype.cinema';
   const DEFAULTS = {
     defaultInterval: BASE.defaultInterval, fadeMs: BASE.fadeMs, controlsMs: BASE.controlsMs, marginPercent: BASE.marginPercent,
     fraction: BASE.swipe.fraction, minPx: BASE.swipe.minPx, flickPxPerMs: BASE.swipe.flickPxPerMs,

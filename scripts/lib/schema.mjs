@@ -757,8 +757,9 @@ export const PHOTO_SCHEMA = {
   fields: ordered([
     {
       key: 'alt',
-      doc: 'Co je na fotce (pro nevidomé a vyhledávače), např. „Pavla maluje v ateliéru“.',
+      doc: 'Co je na fotce (pro nevidomé a vyhledávače), např. „Stůl s barvami a štětci v ateliéru“.',
       value: '',
+      previous: ['Co je na fotce (pro nevidomé a vyhledávače), např. „Pavla maluje v ateliéru“.'],
     },
     { key: 'caption', commented: true, example: 'Na plenéru na Šumavě', doc: 'Popisek pod fotkou.', value: '', previous: ['Popisek pod fotkou, nepovinné.'] },
     {

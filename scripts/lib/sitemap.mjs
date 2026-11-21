@@ -45,8 +45,13 @@ export function sitemapXml(siteUrl, entries) {
 /** The addresses listed in a sitemap.xml. */
 export const sitemapUrls = (xml) => [...xml.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/g)].map((m) => m[1].replace(/&amp;/g, '&'));
 
-/** A page that asks search engines not to index it (the 404 page, short addresses of works, the thank-you page). */
-export const isNoindex = (html) => /<meta name="robots" content="[^"]*noindex/i.test(html);
+/**
+ * A page that asks search engines not to index it (the 404 page, short addresses of works, the thank-you page). The
+ * robots meta of a whole hidden site (data-hidden-site, seo.mjs HIDDEN_SITE_ROBOTS) does not count: its pages are
+ * checked as the pages of an indexed site.
+ */
+export const isNoindex = (html) => [...html.matchAll(/<meta name="robots"[^>]*>/gi)]
+  .some(([tag]) => /content="[^"]*noindex/i.test(tag) && !/data-hidden-site/i.test(tag));
 
 /**
  * Paths of built pages (`pages`: [{ path, html }], path like "/tvorba/2026/") that search engines may index but the

@@ -17,12 +17,16 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `home-screen-icon.svg`, `public/`, `content/`, `game/`, `binary.lock`, `dist/`. Cesty k nim jen přes `sitePaths`
   (`readSiteConfig`), nikdy natvrdo z kořene kódu; ve `src/` kořen kódu z `process.cwd()` (build moduly přibalí jinam).
   Načítání scén a písem nemá výchozí složku. Testovací web má vlastní složku `demo-content/site/` (`demo: true` =
-  `isDemoSite`: bez analytiky, formulář jen náhled), `npm run demo` ji složí do `.demo/site/` (`assembleSite`),
+  `isDemoSite`: bez analytiky, formulář jen náhled, skrytý vyhledávačům `hiddenFromSearch`: `robots.txt` `Disallow`,
+  `HIDDEN_SITE_ROBOTS` s `data-hidden-site`, který `isNoindex` nepočítá; vymyšlená autorka bez profilů a skutečných
+  adres, vymyšlené adresy jen `example.com` nebo s `demo-`), `npm run demo` ji složí do `.demo/site/` (`assembleSite`),
   `SITE_DIR=.demo/site` s ní staví a kontroluje. Testy kódu jen nad testovacím webem
   (`scripts/lib/test-support/demo-site.mjs`), musí projít i bez Pavliných souborů webu; data webu kontroluje
   `npm run check:site` (`scripts/lib/site-folder-check.mjs`: `SITE_FILES`, `mockupScenesProblems`,
   `studioScenesProblems`), v „Kontrole kódu“; nová kontrola dat webu sem, ne do testů.
   Nová scéna nebo binární soubor testovacího webu jen nutné minimum (historie gitu je navždy).
+  Jména v prohlížeči návštěvníka (`localStorage`, `sessionStorage`, mezipaměti) jen přes `storageKey` / `STORAGE_PREFIX`
+  (`scripts/lib/storage-prefix.mjs`, `site.storagePrefix`, Pavla `pavla`), nikdy natvrdo; klíče jmenované níže jsou Pavliny.
 - **Toto repo je veřejné, obsah je v odděleném soukromém obsahovém repu.** Jeho název, cestu ani odkazy na něj
   sem nikdy nepiš (kód, komentáře, README, CLAUDE.md, commity, texty pull requestů); piš jen „obsahové repo“
   / „the content repository“. Odkazy vedou jen z obsahového repa sem, nikdy obráceně. Lokálně ho pipeline najde

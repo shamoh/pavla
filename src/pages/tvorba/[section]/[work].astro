@@ -298,7 +298,7 @@ const story = textHtml(work.text);
 
   const address = (id = '') => location.pathname + location.search + (id ? `#${id}` : '');
   // history entries added by opening the viewer carry this mark: closing it goes back instead of adding another
-  const OPENED = 'pavla-viewer';
+  const OPENED = 'site-viewer';
 
   function open(i: number) {
     show(i);

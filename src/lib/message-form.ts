@@ -10,6 +10,7 @@ import {
 } from '../../scripts/lib/messages.mjs';
 import { EVENTS, trackEvent } from '../../scripts/lib/analytics.mjs';
 import { clearDraft, hasContent, loadDraft, newDraft, nextPanelState, saveDraft } from '../../scripts/lib/message-draft.mjs';
+import { storageKey } from '../../scripts/lib/storage-prefix.mjs';
 
 type Context = { kind: 'work' | 'page'; path: string; title: string; id?: string; year?: number; onSale?: boolean } | null;
 type PanelState = 'closed' | 'compact' | 'expanded' | 'minimized';
@@ -18,7 +19,7 @@ interface Draft { panel: PanelState; type: string; typeChosen: boolean; text: st
 /** Seconds the panel shows the thanks before it folds back to the launcher. */
 const THANKS_MS = 4000;
 /** The tip next to the launcher: once per tab, after a moment, for a few seconds. */
-const TIP_KEY = 'pavla.message.tip';
+const TIP_KEY = storageKey('message.tip');
 const TIP_DELAY_MS = 1500;
 const TIP_SHOW_MS = 6000;
 /** Phones hide the launcher while scrolling down (it would cover the pictures) and bring it back on the way up. */

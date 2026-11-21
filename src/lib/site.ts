@@ -287,6 +287,9 @@ export const colourChoices = colourSettings(config);
 
 export const analyticsId = measurementIdFor(config.analytics, { production: import.meta.env.PROD, demo: isDemoSite(config) });
 
+/** The site is hidden from search engines (the test site): robots.txt forbids everything, every page has noindex (seo.mjs). */
+export const hiddenFromSearch = isDemoSite(config);
+
 /**
  * Messages from visitors (scripts/lib/messages.mjs messagesSettings): `mode` 'live' = sent by Web3Forms, 'preview' = the
  * test data without a key (the form works, nothing is sent), null = no form; the keys are public by design.

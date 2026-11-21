@@ -117,7 +117,7 @@
 </style>
 
 <main>
-  <p class="eyebrow">Pro Pavlu · stav k <span data-generated></span></p>
+  <p class="eyebrow">Pro autorku · stav k <span data-generated></span></p>
   <h1>Detail dne pod lupou</h1>
   <p class="lede">Všechno, co hra dělá s výřezy z tvých obrazů: tři úrovně a <b>zkreslení</b> výřezu (mlha, mozaika, vlnění, jiné barvy…), z jakých dílů a s jakými čísly,
     a u každého zkreslení skutečná hádanka z posledních dnů, kterou si tu můžeš projít pokus po pokusu. U každého zkreslení napiš,
@@ -235,7 +235,7 @@
   <section id="otazky">
     <h2>Zeptej se</h2>
     <p>Když ti něco není jasné (co znamená číslo, proč je něco těžké, co by se stalo, kdyby…), napiš otázku. Odpovídá Claude,
-      zná všechna čísla z této stránky i tvoje poznámky. Odpovědi jsou jen vysvětlení, nic ve hře nemění; změny pak uděláme s Liborem.</p>
+      zná všechna čísla z této stránky i tvoje poznámky. Odpovědi jsou jen vysvětlení, nic ve hře nemění; změny pak udělá správce webu.</p>
     <div class="chat" data-chat-log aria-live="polite"></div>
     <form class="chat-form" data-chat-form>
       <textarea id="chat-question" data-chat-question placeholder="Například: Proč je Mozaika v lehké úrovni, když je těžká?"></textarea>
@@ -433,8 +433,10 @@ function lookWords(effect, colour, strength, settings = PAGE.settings) {
 const VERDICTS = [['nechat', 'Nechat'], ['lehci', 'Ulehčit'], ['tezsi', 'Ztížit'], ['jinam', 'Do jiné úrovně'], ['vyhodit', 'Vyhodit']];
 const notes = {};
 let store = null;
-const LOCAL = 'detail-dne-prehled-poznamky';
-try { Object.assign(notes, JSON.parse(localStorage.getItem(LOCAL) || '{}')); } catch { /* none */ }
+// with the prefix of the site (site.storagePrefix); notes kept under the name before it (until 2026-11-21) are read too
+const LOCAL = `${PAGE.storagePrefix}.prototype.gameOverview.notes`;
+const LOCAL_BEFORE = 'detail-dne-prehled-poznamky';
+try { Object.assign(notes, JSON.parse(localStorage.getItem(LOCAL) ?? localStorage.getItem(LOCAL_BEFORE) ?? '{}')); } catch { /* none */ }
 const timers = {};
 function saveNote(id) {
   notes[id] = { ...notes[id], updated: new Date().toISOString() };
@@ -445,7 +447,7 @@ function saveNote(id) {
   timers[id] = setTimeout(async () => {
     try {
       await store.doc(`ohlasy/${id}`).set(notes[id]);
-      $('[data-save-state]').textContent = 'Uloženo, Libor to uvidí.';
+      $('[data-save-state]').textContent = 'Uloženo, správce webu to uvidí.';
     } catch {
       $('[data-save-state]').textContent = 'Uložit se nepodařilo; poznámky zůstávají v tomto prohlížeči, pošli je tlačítkem dole.';
     }
@@ -657,13 +659,13 @@ function chatContext() {
   const s = PAGE.settings;
   const mine = ['obecne', ...PAGE.looks.map((k) => k.id)].map(noteLine).filter(Boolean);
   return [
-    'Jsi pomocník ve stránce, kde malířka Pavla Kramolišová (autorka obrazů) ladí denní hru Detail dne na svém webu. Ve hře hráč podle malého výřezu hádá, ze kterého z 9 obrazů je. Odpovídej Pavle česky, tykej, krátce a srozumitelně, bez programátorských slov. Vysvětluj, co znamenají čísla a jak se hra chová; nic neměníš, změny udělá její manžel Libor s Claudem. Když něco nevíš nebo to tu není, řekni to a navrhni, ať to napíše do poznámek. Nevymýšlej funkce, které hra nemá.',
+    `Jsi pomocník ve stránce, kde malířka ${PAGE.author} (autorka obrazů) ladí denní hru Detail dne na svém webu. Ve hře hráč podle malého výřezu hádá, ze kterého z 9 obrazů je. Odpovídej autorce česky, tykej, krátce a srozumitelně, bez programátorských slov. Vysvětluj, co znamenají čísla a jak se hra chová; nic neměníš, změny udělá správce webu s Claudem. Když něco nevíš nebo to tu není, řekni to a navrhni, ať to napíše do poznámek. Nevymýšlej funkce, které hra nemá.`,
     'Jak funguje kolo: první pokus má nejmenší výřez a nejsilnější zkreslení (100 %); po každém omylu se výřez oddálí a zkreslení zeslábne rovnoměrně; poslední pokus je bez zkreslení. Výřez nikdy neukáže okraj papíru, název ani podpis (8 % od okrajů, 18 % od spodku). Velikost výřezu dnes určuje jen úroveň, ne zkreslení (šlo by přidat).',
     `Čísla zkreslení při síle 100 % (podíl okna; okno na telefonu ~360 px): mlha ${s.mist} %, záclona tečky po ${s.rasterStep} % s poloměrem ${s.rasterDot} %, mozaika kostka ${s.pixelStep} % (${Math.round(100 / s.pixelStep)} kostek napříč), vlnění posun ${s.wave} %, posun barev ${s.hue}°.`,
     `Pravidla počtů: na úroveň ${PAGE.lookCounts.min} až ${PAGE.lookCounts.max} zkreslení, úrovně se liší nejvýš o ${PAGE.lookCounts.spread} (těžší nikdy méně), raději ladit a přidávat než vyřazovat; zkreslení se v úrovni střídají, nikdy dva dny po sobě stejné.`,
     'Úrovně:', ...levels, 'Zkreslení:', ...looks,
     `Laboratoř teď: ${EFFECTS[lab.effect]} + ${COLOURS[lab.colour]}, síla ${pct(lab.strength)}, výřez ${lab.size} %.`,
-    mine.length ? `Pavliny poznámky:\n${mine.join('\n')}` : 'Pavla zatím nic nepoznamenala.',
+    mine.length ? `Poznámky autorky:\n${mine.join('\n')}` : 'Autorka zatím nic nepoznamenala.',
   ].join('\n');
 }
 (async () => {
@@ -694,7 +696,7 @@ function chatContext() {
     const send = $('[data-chat-send]');
     send.disabled = true;
     history.push({ role: 'user', content: q });
-    const input = history.map((m, i) => (i === 0 ? { role: 'user', content: `${chatContext()}\n\nPavlina otázka: ${m.content}` } : m));
+    const input = history.map((m, i) => (i === 0 ? { role: 'user', content: `${chatContext()}\n\nOtázka autorky: ${m.content}` } : m));
     try {
       const { text } = await sample(input, { onText: ({ text: t }) => { if (t) { answer.classList.remove('wait'); answer.textContent = t; } } });
       answer.classList.remove('wait');
@@ -710,7 +712,7 @@ function chatContext() {
     }
   });
 })();
-$('[data-store-note]').textContent = 'Poznámky se ukládají jen v tomto prohlížeči; pošli je Liborovi tlačítkem výše.';
+$('[data-store-note]').textContent = 'Poznámky se ukládají jen v tomto prohlížeči; pošli je správci webu tlačítkem výše.';
 
 (async () => {
   const db = await window.claude?.use?.('db').catch(() => null);
@@ -724,12 +726,12 @@ $('[data-store-note]').textContent = 'Poznámky se ukládají jen v tomto prohl�
       if (!notes[doc.id] || (remote.updated || '') > (notes[doc.id].updated || '')) notes[doc.id] = { ...remote };
     }
     fillAll();
-    $('[data-save-state]').textContent = 'Poznámky se ukládají k této stránce, Libor je uvidí.';
-    $('[data-store-note]').textContent = 'Poznámky se ukládají k této stránce; Libor je uvidí i bez kopírování.';
+    $('[data-save-state]').textContent = 'Poznámky se ukládají k této stránce, správce webu je uvidí.';
+    $('[data-store-note]').textContent = 'Poznámky se ukládají k této stránce; správce webu je uvidí i bez kopírování.';
   }, () => {
     clearTimeout(timer);
     store = null;
-    $('[data-save-state]').textContent = 'Poznámky se ukládají jen v tomto prohlížeči; pošli je Liborovi tlačítkem dole.';
+    $('[data-save-state]').textContent = 'Poznámky se ukládají jen v tomto prohlížeči; pošli je správci webu tlačítkem dole.';
   });
 })();
 </script>

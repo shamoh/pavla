@@ -44,7 +44,7 @@ images:
   tvorba/demo-skicak-1998-2003/demo-stary-most.jpg: { size: [2000, 1400], palette: sediva, seed: 61 }
   tvorba/demo-skicak-1998-2003/demo-hruska.jpg: { size: [1400, 2000], palette: ovoce, seed: 62 }
   tvorba/demo-skicak-1998-2003/demo-dvur.jpg: { size: [2000, 1400], palette: sediva, seed: 63 }
-  tvorba/demo-skicak-1998-2003/demo-pole-v-cervnu.jpg: { size: [2400, 1800], palette: slunce, seed: 64 }
+  tvorba/demo-skicak-1998-2003/demo-jahody-v-zime.jpg: { size: [2400, 1800], palette: slunce, seed: 64 }
   tvorba/demo-zahrada-po-desti.jpg: { size: [1800, 2400], palette: kvetiny, seed: 65 }
   tvorba/demo-plener-krkonose-2006/demo-snezka-z-dalky.jpg: { size: [2400, 1600], palette: plener, seed: 66 }
   tvorba/demo-plener-krkonose-2006/demo-labsky-dul.jpg: { size: [1800, 2400], palette: voda, seed: 67 }
@@ -55,8 +55,8 @@ images:
   tvorba/demo-more-2014-2015/demo-skaly-u-more.jpg: { size: [2400, 1800], palette: voda, seed: 72 }
   tvorba/demo-more-2014-2015/demo-pristav.jpg: { size: [2000, 2000], palette: voda, seed: 73 }
   tvorba/demo-zatisi-2017-2020/demo-cibule.jpg: { size: [2000, 1400], palette: ovoce, seed: 74 }
-  tvorba/demo-zatisi-2017-2020/demo-hrnek-s-kvetinou.jpg: { size: [1400, 2000], palette: kvetiny, seed: 75 }
-  tvorba/demo-zatisi-2017-2020/demo-kosik-jablek.jpg: { size: [2400, 1800], palette: ovoce, seed: 76 }
+  tvorba/demo-zatisi-2017-2020/demo-hrnek-boruvek.jpg: { size: [1400, 2000], palette: kvetiny, seed: 75 }
+  tvorba/demo-zatisi-2017-2020/demo-je-na-malinach.jpg: { size: [2400, 1800], palette: ovoce, seed: 76 }
   tvorba/demo-tatry-2000/demo-strbske-pleso.jpg: { size: [2400, 1700], palette: voda, seed: 77 }
   tvorba/demo-tatry-2000/demo-gerlach.jpg: { size: [1700, 2400], palette: plener, seed: 78 }
   tvorba/demo-tatry-2000/demo-smrky-pod-stitem.jpg: { size: [1600, 2200], palette: sediva, seed: 79 }

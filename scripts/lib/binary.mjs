@@ -44,7 +44,7 @@ const exists = (p) => fs.access(p).then(() => true, () => false);
 
 /** A temporary index, so neither the index of the clone nor its working tree state is touched. */
 async function withIndex(fn) {
-  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-binary-'));
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'site-binary-'));
   try {
     return await fn({ GIT_INDEX_FILE: path.join(tmp, 'index') });
   } finally {

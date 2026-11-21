@@ -8,6 +8,8 @@ import { MANIFEST_SHORTCUTS, MANIFEST_SIZES, manifestIconFile, shortcutIconFile 
 import { CAPTION_FONTS, loadInstagramScenes, studioScenesProblems } from './instagram.mjs';
 import { loadScenes, mockupScenesProblems } from './mockups.mjs';
 import { readSiteConfig, sitePaths } from './site-dir.mjs';
+import { storagePrefixOf } from './storage-prefix.mjs';
+import { overviewSkips } from './game-overview.mjs';
 
 /** The files every site folder has, relative to it (the icons are made by npm run favicons). */
 export const SITE_FILES = [
@@ -20,7 +22,7 @@ export const SITE_FILES = [
 /** The fonts of the captions (loadFonts in instagram.mjs). */
 export const SITE_FONTS = Object.values(CAPTION_FONTS);
 
-/** What is wrong with the files of the site folder `siteDir` (no scene is loaded): missing files, a broken favicon. */
+/** What is wrong with the files of the site folder `siteDir` (no scene is loaded): missing files, a broken favicon, bad settings. */
 export function siteFileProblems(siteDir) {
   const problems = SITE_FILES.filter((file) => !fs.existsSync(path.join(siteDir, file))).map((file) => `missing ${file}`);
   problems.push(...SITE_FONTS.filter((font) => !fs.existsSync(path.join(sitePaths(siteDir).fonts, font))).map((font) => `missing fonts/${font}`));
@@ -32,7 +34,15 @@ export function siteFileProblems(siteDir) {
   }
   if (fs.existsSync(sitePaths(siteDir).config)) {
     try {
-      if (!readSiteConfig(siteDir)?.site?.url) problems.push('site.config.yaml: no site.url');
+      const config = readSiteConfig(siteDir);
+      if (!config?.site?.url) problems.push('site.config.yaml: no site.url');
+      for (const check of [storagePrefixOf, overviewSkips]) {
+        try {
+          check(config);
+        } catch (e) {
+          problems.push(`site.config.yaml: ${e.message}`);
+        }
+      }
     } catch (e) {
       problems.push(`site.config.yaml: ${e.message.split('\n')[0]}`);
     }

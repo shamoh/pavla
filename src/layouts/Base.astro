@@ -1,10 +1,10 @@
 ---
 import CodeJump from '../components/CodeJump.astro';
 import MessagePanel from '../components/MessagePanel.astro';
-import { analyticsId, hasFeaturedWorks, hasWorksOnSale, messages, site, url, version, type ShareImage } from '../lib/site';
+import { analyticsId, hasFeaturedWorks, hiddenFromSearch, hasWorksOnSale, messages, site, url, version, type ShareImage } from '../lib/site';
 import { favoritesShowPath, featuredShowPath, saleShowPath } from '../../scripts/lib/cinema.mjs';
 import { gtagConfigScript, gtagSrc } from '../../scripts/lib/analytics.mjs';
-import { jsonLdText, summarize, verificationMeta } from '../../scripts/lib/seo.mjs';
+import { HIDDEN_SITE_ROBOTS, jsonLdText, summarize, verificationMeta } from '../../scripts/lib/seo.mjs';
 import { pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
 import { contactLink, pageContext } from '../../scripts/lib/messages.mjs';
 import { PALETTES, paletteCss, paletteScript } from '../../scripts/lib/palettes.mjs';
@@ -57,6 +57,7 @@ const skipScope = skipHeaderScope(Astro.url.pathname, import.meta.env.BASE_URL);
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
+    {hiddenFromSearch && <meta name="robots" content={HIDDEN_SITE_ROBOTS} data-hidden-site />}
     {verificationMeta(site.verification).map((m) => <meta name={m.name} content={m.content} />)}
     <meta name="author" content={site.author} />
     <meta property="og:title" content={fullTitle} />

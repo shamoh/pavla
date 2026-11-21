@@ -10,12 +10,14 @@
 //   or for another phone browser (its menu), nothing on a computer without a prompt or inside the installed app.
 // - Inside the installed app (display-mode standalone) the header has "←" (iPhone has no Back of its own there).
 
+import { STORAGE_PREFIX, storageKey } from './storage-prefix.mjs';
+
 /** Address of the service worker and of the page shown offline, relative to the base of the site. */
 export const SW_FILE = 'sw.js';
 export const OFFLINE_PATH = 'offline/';
 
 /** Caches of the service worker; the prefix marks ours, so an update deletes only our old ones. */
-export const CACHE_PREFIX = 'pavla-';
+export const CACHE_PREFIX = `${STORAGE_PREFIX}-`;
 /** Most pictures kept for offline (the oldest are deleted first); a picture is some 50–300 kB. */
 export const IMAGE_CACHE_LIMIT = 400;
 /** Most pages kept for offline (one per address without its query: the filters are read by the page itself). */
@@ -181,7 +183,7 @@ export function backTarget({ pathname, referrer, origin, base = '/' }) {
 }
 
 /** localStorage key: the day (YYYY-MM-DD) Detail dne was last stored for offline (once a day is enough). */
-export const GAME_OFFLINE_KEY = 'pavla.app.gameOffline';
+export const GAME_OFFLINE_KEY = storageKey('app.gameOffline');
 
 /** Local day of `date` as YYYY-MM-DD, and the one `add` days later (the days of the game change at local midnight). */
 export function isoDay(date, add = 0) {

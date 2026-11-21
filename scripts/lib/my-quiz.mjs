@@ -6,6 +6,7 @@ import { chooseDecoys, gameFrame, gameHash, gameLevels, gameLooks, gameRandom, g
 import { levelFromParam, levelParam } from './detail-teaser.mjs';
 import { cropRect, touches } from './game-exclusions.mjs';
 import { workDistance } from './affinity.mjs';
+import { storageKey } from './storage-prefix.mjs';
 
 /** The pages: the editor of a work and the player (the address of a quiz; without it the page tells how to make one). */
 export const QUIZ_EDITOR_PATH = '/detail-dne/muj-kviz/';
@@ -17,7 +18,7 @@ export const QUIZ_DECOYS = 8;
 /** The most alike works kept for each work in the data of the quiz, to draw the offer from. */
 export const QUIZ_SIMILAR = 24;
 /** sessionStorage: the quiz opened (its address is cleaned right away) and its round, so a reload plays on. */
-export const QUIZ_STORE = 'pavla.myQuiz';
+export const QUIZ_STORE = storageKey('myQuiz');
 
 /** No view of a hand-picked close-up keeps away from the edges and the signature (the author chose the place herself). */
 export const QUIZ_SAFE = { margin: 0, bottom: 0 };

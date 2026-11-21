@@ -291,5 +291,17 @@ export function verificationMeta(verification = {}) {
   return Object.entries(names).filter(([key]) => verification?.[key]).map(([key, name]) => ({ name, content: String(verification[key]) }));
 }
 
-/** robots.txt: everything may be crawled, the map of the site is at /sitemap.xml. */
-export const robotsTxt = (site) => `User-agent: *\nAllow: /\n\nSitemap: ${absolute(site, '/sitemap.xml')}\n`;
+/**
+ * robots.txt: everything may be crawled, the map of the site is at /sitemap.xml. A site hidden from search engines
+ * (`hidden`: the test site, HIDDEN_SITE_ROBOTS) may not be crawled at all and names no map.
+ */
+export const robotsTxt = (site, { hidden = false } = {}) => (hidden
+  ? 'User-agent: *\nDisallow: /\n'
+  : `User-agent: *\nAllow: /\n\nSitemap: ${absolute(site, '/sitemap.xml')}\n`);
+
+/**
+ * The robots meta of every page of a site hidden from search engines (the test site, isDemoSite): neither the page nor
+ * its links. The attribute data-hidden-site tells it apart from the noindex of a single page (sitemap.mjs isNoindex),
+ * so the checks of the built pages treat the pages of a hidden site as if it were indexed.
+ */
+export const HIDDEN_SITE_ROBOTS = 'noindex, nofollow';

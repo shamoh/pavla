@@ -11,19 +11,20 @@ import {
   LOOK_COUNTS, drawPixels, effectSettings, effectStrength, effectStyle, frameSource, gameFrame, gameLevels, gameLooks, waveRipple,
 } from './lib/detail-game.mjs';
 import { isoDay } from './lib/app-install.mjs';
-import { siteDirectory, sitePaths } from './lib/site-dir.mjs';
+import { readSiteConfig, siteDirectory, sitePaths } from './lib/site-dir.mjs';
+import { storagePrefixOf } from './lib/storage-prefix.mjs';
+import { overviewSkips } from './lib/game-overview.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = path.join(root, '.prototypes', 'prehled-hry');
-const sitePlaces = sitePaths(siteDirectory());
+const siteDir = siteDirectory();
+const sitePlaces = sitePaths(siteDir);
+const siteConfig = readSiteConfig(siteDir);
 const data = JSON.parse(await fs.readFile(path.join(sitePlaces.dist, 'detail-dne/data.json'), 'utf8'));
 const works = new Map(data.works.map((w) => [w.id, w]));
 const today = isoDay(new Date());
-/**
- * Works never used as an example: something on them gives the answer away at once, not what the page wants to show
- * (rpxz5 Barbora III: two sheets with the ring binding of the sketchbook between them). The game itself still plays them.
- */
-const NOT_EXAMPLES = new Set(['rpxz5']);
+/** Works never used as an example (site.config.yaml game.overviewSkip); the game itself still plays them. */
+const NOT_EXAMPLES = overviewSkips(siteConfig);
 
 /** For every look the latest puzzle of the plan up to today that used it (the author may have played it). */
 const days = Object.values(data.plan.days).filter((d) => d.date <= today).sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -53,6 +54,9 @@ const page = {
   settings: effectSettings(),
   examples: examples.map(({ from, ...e }) => e),
   generated: today,
+  // the author (the page talks to her and about her) and the prefix of the names of the browser of the site
+  author: siteConfig.site?.author ?? '',
+  storagePrefix: storagePrefixOf(siteConfig),
 };
 // the game's own functions, as text: the page draws exactly what the game draws
 const functions = [effectSettings, effectStrength, effectStyle, waveRipple, gameFrame, frameSource, drawPixels].map((f) => f.toString()).join('\n\n');

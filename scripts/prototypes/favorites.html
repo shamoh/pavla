@@ -178,7 +178,7 @@
   const heart = (on) => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round">${HEART}</svg>`;
 
   // ---- the tuning, remembered in this browser (not the favourites: those are FAVORITES_STORE, as on the site) ----
-  const TUNING_KEY = 'pavla.prototype.favorites';
+  const TUNING_KEY = /*STORAGE_PREFIX*/ + '.prototype.favorites';
   const tuning = { palette: 'papir', colour: 'error', view: 'grid', phone: false, place: 'below', max: F.linkMax, over: 'grey', cinemaPlace: 'caption', tab: 'gallery', year: '', technique: '', work: WORKS[0]?.id, ...(() => { try { return JSON.parse(localStorage.getItem(TUNING_KEY)) ?? {}; } catch { return {}; } })() };
   const keep = () => { try { localStorage.setItem(TUNING_KEY, JSON.stringify(tuning)); } catch {} };
   let favorites = (() => { try { return readFavorites(localStorage.getItem(F.store)); } catch { return []; } })();

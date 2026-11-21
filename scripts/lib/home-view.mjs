@@ -12,6 +12,7 @@ import {
   VIEW_KINDS, balanceColumns, balanceGrid, columnCount, columnPlan, gridCards, homeScreen, orderColumns, homeSearch, homeShownCount, inlineScript, layoutHome, showViewOf,
   startHome, viewOf, viewSetup,
 } from './view-layout.mjs';
+import { storageKey } from './storage-prefix.mjs';
 
 // The functions of the inline script live in view-layout.mjs: they call each other, and only calls within one module
 // keep their plain names in the copied source text (the dev server rewrites calls of imported functions).
@@ -21,8 +22,8 @@ export { homeRemember, homeScreen, homeSearch, homeShownCount, layoutHome, start
 export const HOME_DEFAULT_VIEW = 'tiles';
 
 /** localStorage keys of the home page view, apart from those of the gallery. */
-export const HOME_VIEW_STORAGE_KEY = 'pavla.home.view';
-export const HOME_TILE_SIZE_STORAGE_KEY = 'pavla.home.tileSize';
+export const HOME_VIEW_STORAGE_KEY = storageKey('home.view');
+export const HOME_TILE_SIZE_STORAGE_KEY = storageKey('home.tileSize');
 
 /**
  * Screens with counts of their own, the first matching media query wins, otherwise `wide`: a phone (the same width as

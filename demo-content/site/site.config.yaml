@@ -1,42 +1,49 @@
 # Konfigurace testovacího webu (npm run demo): stejná pravidla jako site.config.yaml skutečného webu.
 
-# Testovací web: nikdy neměří návštěvnost (Google Analytics) a formulář zpráv je jen náhled (scripts/lib/site-dir.mjs isDemoSite).
+# Testovací web: nikdy neměří návštěvnost (Google Analytics), formulář zpráv je jen náhled a vyhledávače ho nesmí
+# procházet ani indexovat (robots.txt Disallow, noindex na každé stránce; scripts/lib/site-dir.mjs isDemoSite).
+# Autorka je vymyšlená: žádné skutečné jméno, adresa ani odkazy na profily (Instagram, Pinterest, Fler); kde funkce
+# potřebuje adresu, je zjevně vymyšlená (doména example.com, vyhrazená pro ukázky).
 demo: true
 
 site:
-  url: https://pavla.kramolis.cz         # musí sedět s public/CNAME
-  title: Pavla Kramolišová
-  tagline: Akvarely pro radost
-  author: Pavla Kramolišová
+  url: https://ukazka.example.com        # adresa ukázkového webu
+  title: Růženka Borůvková
+  tagline: Akvarely z Mýtinky a okolí
+  author: Růženka Borůvková
   # Autorka pro vyhledávače (strukturovaná data Person na každé stránce): jedna věta o ní a čím se zabývá; prázdné = nic
-  authorDescription: Amatérská malířka, která maluje pro radost, hlavně akvarelem; na procházkách skicuje i tužkou a brush penem.
+  authorDescription: "Vymyšlená malířka ukázkového webu z Mýtinky, maluje akvarelem a nejraději to, co najde v lese: maliny, borůvky a jahody i v zimě."
   knowsAbout: [akvarel, kresba, skicování, plenér]
   # Popis stránky roku pro vyhledávače, když roky/<rok>.yaml nemá vlastní; {year} = rok, {author} = author
   yearDescription: Akvarely a kresby z roku {year} – {author}.
-  repository: shamoh/pavla               # repo webu na GitHubu (vlastník/jméno), čte ho týdenní kontrola automatiky
-  email: pavla@kramolis.cz
-  location: Roztoky                       # kde Pavla žije a maluje, zobrazí se v Kontaktu; prázdné = nic
-  instagram: pavla.kramolisova
-  fler: ""   # URL obchůdku na Fleru (patička, Kontakt); prázdné = nic (zatím skryto, dřív https://www.fler.cz/shop/pk76376)
-  pinterest: https://cz.pinterest.com/pavlakramolisova/   # URL profilu na Pinterestu (patička a Kontakt vedou na jeho vytvořené piny); prázdné = nic
+  # Předpona jmen, pod kterými si prohlížeč návštěvníka pamatuje oblíbené obrazy, barvy webu, postup ve hře a mezipaměti
+  # aplikace („ukazka.favorites“, „ukazka-images“); malá písmena a číslice, slova spojená „-“. Po zveřejnění webu neměnit:
+  # návštěvníci by přišli o to, co si jejich prohlížeč pamatoval. Prázdné = „web“.
+  storagePrefix: ukazka
+  repository: shamoh/web-tvorba-engine   # repo webu na GitHubu (vlastník/jméno), čte ho týdenní kontrola automatiky
+  email: ruzenka@example.com
+  location: Mýtinka                        # kde autorka žije a maluje, zobrazí se v Kontaktu; prázdné = nic
+  instagram: ""                          # účet na Instagramu bez @ (patička, Kontakt); prázdné = nic
+  fler: ""   # URL obchůdku na Fleru (patička, Kontakt); prázdné = nic
+  pinterest: ""   # URL profilu na Pinterestu (patička a Kontakt vedou na jeho vytvořené piny); prázdné = nic
   verification:                          # ověření webu u vyhledávačů značkou <meta> (jen když ověřuješ touto cestou,
     google: ""                           #   DNS záznam ji nepotřebuje): kód z Google Search Console,
     bing: ""                             #   z Bing Webmaster Tools (msvalidate.01)
-    seznam: "pRmNbOEUVpe5jyTrqNiBs8sNsD5d9jP9"   #   ze Seznam Webmaster (seznam-wmt)
-    pinterest: "676735cc598a2480715a267ae46a16bf"   #   a z Pinterestu (p:domain_verify, ověření webu firemního účtu); prázdné = žádná značka
+    seznam: ""                           #   ze Seznam Webmaster (seznam-wmt)
+    pinterest: ""                        #   a z Pinterestu (p:domain_verify, ověření webu firemního účtu); prázdné = žádná značka
 
 analytics:
-  # Google Analytics 4 (služba pavla.kramolis.cz), měří jen produkční build skutečného webu,
+  # Google Analytics 4, měří jen produkční build skutečného webu,
   # ne `npm run dev` ani web z testovacích dat. Prázdné = bez statistik. Ukládá cookies _ga.
-  googleMeasurementId: G-HPZNHYZ2MQ
+  googleMeasurementId: ""
 
 messages:
   # Zprávy od návštěvníků (formulář na Kontaktu a panel „Napište mi“ na ostatních stránkách) posílá Web3Forms
   # e-mailem. accessKey = klíč z web3forms.com (veřejný, říká jen, kam zprávu doručit). Prázdné = bez formuláře
   # (Kontakt ukáže jen adresu). Web z testovacích dat ukáže vždy jen náhled, který nic neodesílá.
-  accessKey: 667747d9-fb8d-4d52-9af7-d622adef05a0
-  # Značka na začátku předmětu e-mailu („[pavla-web] Dotaz na obraz: …“), aby šly zprávy z webu filtrovat; prázdné = „web“
-  subjectTag: pavla-web
+  accessKey: ""
+  # Značka na začátku předmětu e-mailu („[ukazka-web] Dotaz na obraz: …“), aby šly zprávy z webu filtrovat; prázdné = „web“
+  subjectTag: ukazka-web
 
 instagramPost:
   # Text příspěvku na Instagram (README.md ve složce díla v export/instagram/, jen díla s meta_instagram: true):
@@ -68,12 +75,14 @@ instagramPost:
     tuš: ink
     # štítky
     akt: lifedrawing
+    borůvky: blueberries
     déšť: rain
     fantazie: fantasyart
     grafika: printmaking
     hory: mountains
     hrad: castle
     hudba: music
+    jahody: strawberries
     jaro: spring
     kostel: church
     krajina: landscape
@@ -85,6 +94,7 @@ instagramPost:
     léto: summer
     loď: boat
     louka: meadow
+    maliny: raspberries
     město: city
     mlha: fog
     moře: sea
@@ -144,12 +154,14 @@ pinterestKeywords:
     tuš: ink
     # štítky
     akt: life drawing
+    borůvky: blueberries
     déšť: rain
     fantazie: fantasy art
     grafika: printmaking
     hory: mountains
     hrad: castle
     hudba: music
+    jahody: strawberries
     jaro: spring
     kostel: church
     krajina: landscape
@@ -161,6 +173,7 @@ pinterestKeywords:
     léto: summer
     loď: boat
     louka: meadow
+    maliny: raspberries
     město: city
     mlha: fog
     moře: sea
@@ -247,6 +260,12 @@ cinema:
     flickPxPerMs: 0.5          # rychlost švihnutí (px/ms)
     pinch: 0.6                 # sevření dvou prstů na tento podíl jejich vzdálenosti = „Seznam“
 
+game:
+  # Přehled vzhledů hry Detail dne pro autorku (npm run game-overview): díla (id), která se v něm nikdy neukážou jako
+  # příklad vzhledu, např. když výřez z nich hned prozradí odpověď. Ve hře zůstávají (mimo hru = game: false v popisu
+  # díla). Prázdné = žádná.
+  overviewSkip: []
+
 home:
   # Sloupce obrazů stejné výšky na úvodní stránce (galerie má své v gallery.columns): nižší sloupec nejdřív rozšíří
   # mezery mezi obrazy, zbytek místa se rozdělí nad a pod sloupec. Chybějící = výchozí hodnota.
@@ -319,7 +338,7 @@ images:
   fler:
     longEdge: 2000
     quality: 90
-    watermark: Pavla Kramolišová, Roztoky   # podpis na fotkách pro Fler: jméno a místo, nikdy odkaz ven ani @účet (pravidla Fleru)
+    watermark: Růženka Borůvková, Mýtinka   # podpis na fotkách pro Fler: jméno a místo, nikdy odkaz ven ani @účet (pravidla Fleru)
     watermarkOpacity: 0.9                # krytí světlého písma podpisu (písmo webu, vpravo dole, scripts/lib/watermark.mjs)
     watermarkShadow: 0.6                 # krytí jeho měkkého tmavého stínu (čitelné na světlém i tmavém pozadí)
     background: "#ffffff"                # místo průhledného okolí díla (podlahy vně rohů listu)

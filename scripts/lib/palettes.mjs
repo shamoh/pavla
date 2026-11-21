@@ -4,6 +4,8 @@
 // The choice ("auto" = light or dark by the system) is kept in localStorage and applied by a small inline script
 // in <head> before the page is painted, so it never flashes. Used by src/layouts/Base.astro and PalettePicker.astro.
 
+import { storageKey } from './storage-prefix.mjs';
+
 /**
  * The palettes, in the order of the switcher. `scheme`: light or dark (form controls, scrollbars of the browser).
  * Tokens: paper = background, paper2 = surfaces (chips, hover), ink = text, inkSoft = quiet text, line = rules and
@@ -33,7 +35,7 @@ export const PALETTES = [
 /** The choice that follows the system: the first light palette by day, the first dark one at night. */
 export const AUTO = 'auto';
 /** Key in localStorage; nothing stored = AUTO. */
-export const PALETTE_KEY = 'pavla.palette';
+export const PALETTE_KEY = storageKey('palette');
 
 /** CSS custom property of a token: inkSoft -> --ink-soft, paper2 -> --paper-2. */
 export const tokenVar = (token) => `--${token.replace(/([a-z])([A-Z0-9])/g, '$1-$2').toLowerCase()}`;
@@ -147,7 +149,7 @@ export function scopedPaletteCss(selector, palettes = PALETTES) {
 /**
  * Inline script for <head>: reads the choice, sets data-palette (the palette shown) and data-palette-choice (what was
  * chosen, AUTO included) on <html>, the theme-color of the browser bar, follows the system while on AUTO, and offers
- * window.pavlaPalette.set(choice) to the switcher. Kept small and dependency free; it runs before anything else.
+ * window.sitePalette.set(choice) to the switcher. Kept small and dependency free; it runs before anything else.
  */
 export function paletteScript(palettes = PALETTES) {
   const data = palettes.map((p) => ({ id: p.id, dark: p.scheme === 'dark', bar: p.colors.paper }));
@@ -159,5 +161,5 @@ h.setAttribute('data-palette',p.id);h.setAttribute('data-palette-choice',c);
 var t=document.querySelector('meta[name="theme-color"]');if(t)t.setAttribute('content',p.bar);
 document.dispatchEvent(new CustomEvent('palettechange',{detail:{choice:c,palette:p.id}}))}
 apply();(m.addEventListener?m.addEventListener('change',function(){if(c===A)apply()}):0);
-window.pavlaPalette={get:function(){return c},set:function(v){c=find(v)?v:A;try{c===A?localStorage.removeItem(K):localStorage.setItem(K,c)}catch(e){}apply()}}})();`;
+window.sitePalette={get:function(){return c},set:function(v){c=find(v)?v:A;try{c===A?localStorage.removeItem(K):localStorage.setItem(K,c)}catch(e){}apply()}}})();`;
 }

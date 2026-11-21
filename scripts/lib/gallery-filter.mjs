@@ -6,6 +6,7 @@
 
 import { isOnSale } from './works.mjs';
 import { matchesQuery, normalizeQuery, searchText } from './search.mjs';
+import { storageKey } from './storage-prefix.mjs';
 
 /** Statuses of works the author does not have any more (sold or given away). */
 export const GONE_STATUSES = ['sold', 'gifted'];
@@ -309,7 +310,7 @@ export function pageLinks(page, pages, around = 1) {
 }
 
 /** localStorage key of the page size a visitor picked, remembered for their next visits. */
-export const PAGE_SIZE_STORAGE_KEY = 'pavla.gallery.perPage';
+export const PAGE_SIZE_STORAGE_KEY = storageKey('gallery.perPage');
 
 /**
  * Page size remembered from an earlier visit that should apply now, or null. It never overrides a link:
@@ -334,7 +335,7 @@ export const VIEWS = ['grid', 'tiles'];
 export const DEFAULT_VIEW = VIEWS[0];
 
 /** localStorage key of the view a visitor picked. */
-export const VIEW_STORAGE_KEY = 'pavla.gallery.view';
+export const VIEW_STORAGE_KEY = storageKey('gallery.view');
 
 // Every function taking `defaultView` serves the gallery (big pictures by default) and the home page (tiles by default,
 // scripts/lib/home-view.mjs) alike.
@@ -356,7 +357,7 @@ export function viewToParams(params, { view, tile }, defaultView = DEFAULT_VIEW)
 export const DEFAULT_TILE_PAGE_SIZES = [36, 72, 144];
 
 /** localStorage key of the page size a visitor picked for the tiles (the big pictures keep PAGE_SIZE_STORAGE_KEY). */
-export const TILE_PAGE_SIZE_STORAGE_KEY = 'pavla.gallery.tilesPerPage';
+export const TILE_PAGE_SIZE_STORAGE_KEY = storageKey('gallery.tilesPerPage');
 
 /** The page sizes offered in `view`: `sizes` { grid, tiles }. */
 export const viewPageSizes = (view, sizes) => (view === 'tiles' ? sizes.tiles : sizes.grid);
@@ -402,7 +403,7 @@ export function viewImageSizes(view, tile = DEFAULT_TILE_SIZE) {
 }
 
 /** localStorage key of the tile size a visitor picked. */
-export const TILE_SIZE_STORAGE_KEY = 'pavla.gallery.tileSize';
+export const TILE_SIZE_STORAGE_KEY = storageKey('gallery.tileSize');
 
 /** The tile size from URL search params: an offered one, otherwise the default. */
 export const tileSizeFromParams = (params) => (TILE_SIZES.includes(params.get('tile')) ? params.get('tile') : DEFAULT_TILE_SIZE);

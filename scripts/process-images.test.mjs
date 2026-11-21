@@ -1877,8 +1877,8 @@ test('web images of a work carry creator, copyright and its page (XMP), a new ti
   assert.ok(files.some((f) => f.startsWith('detail-')) && files.some((f) => /^og-[0-9a-f]{8}\.jpg$/.test(f)) && files.some((f) => f.startsWith('pin-')));
   for (const f of files) {
     const xmp = String((await sharp(path.join(dir, f)).metadata()).xmp ?? '');
-    assert.ok(xmp.includes('<rdf:li>Pavla Kramolišová</rdf:li>'), `${f}: creator`);
-    assert.ok(xmp.includes('© 2026 Pavla Kramolišová'), `${f}: copyright`);
+    assert.ok(xmp.includes('<rdf:li>Růženka Borůvková</rdf:li>'), `${f}: creator`);
+    assert.ok(xmp.includes('© 2026 Růženka Borůvková'), `${f}: copyright`);
     assert.ok(xmp.includes(`/tvorba/2026/rano-${id}/</xmpRights:WebStatement>`), `${f}: page`);
   }
   for (const f of (await fs.readdir(path.join(siteDir, 'public/fotky/portret'))).filter((x) => x.endsWith('.jpg'))) {

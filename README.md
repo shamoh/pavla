@@ -917,7 +917,12 @@ Kdokoli si z obrazu udělá jedno kolo hry a pošle ho odkazem. Web nic neuklád
 s ním (do dneška, obrázek v největší šířce jako ve hře) s proklikáním pokusů, laboratoř (efekt, barvy, síla, velikost
 výřezu, čísla efektů) a poznámky autorky ke každému vzhledu. Kreslí funkcemi hry vloženými jako text (`effectStyle`,
 `gameFrame`, `drawPixels`…), takže po změně nastavení stačí stránku přegenerovat. Zveřejňuje se jako stránka pro autorku
-(poznámky ukládá do jejího úložiště, jinak jen do prohlížeče s tlačítkem na zkopírování).
+(poznámky ukládá do jejího úložiště, jinak jen do prohlížeče s tlačítkem na zkopírování). Mluví s autorkou obecně
+(„Pro autorku“, změny udělá „správce webu“); jméno autorky pro pomocníka Claude je `site.author` ze `site.config.yaml`
+(`PAGE.author`), předpona jmen v prohlížeči `site.storagePrefix` (`PAGE.storagePrefix`). Díla, která se nikdy
+neukážou jako příklad vzhledu (výřez z nich hned prozradí odpověď), jsou `game.overviewSkip` ze `site.config.yaml`
+(seznam `id`, `overviewSkips` v `scripts/lib/game-overview.mjs`, kontroluje `npm run check:site`); ve hře zůstávají,
+mimo hru je dílo jen s `game: false` v popisu.
 
 Samostatné stránky pro hledání nastavení zobrazení děl, nad daty webu (`npm run prototypes`, `scripts/prototypes.mjs`,
 `scripts/lib/prototypes.mjs`, šablony `scripts/prototypes/*.html`): zapíše je do `.prototypes/` (mimo git; jinam
@@ -959,7 +964,7 @@ pro Instagram z `mockups/instagram/` (`prototypeScenes`), takže prototyp ukazuj
   `clear` = výřez s nejvíc kresbou, `confusing` = výřez, kterému se podobá nejvíc jiných děl (`confusingCrops`, jen do `maxConfusion`); ostatní díla
   zůstávají falešnými náhledy. Nápověda (`gameHint`: rok, technika nebo kolekce, jen lehká úroveň) přijde, jen když vyřadí nejvýš 2 náhledy; řekne, co vyřazuje, a na každém vyřazeném náhledu je jeho důvod (např. „z roku 2023“).
   Výhra: obraz se odhalí celý, padají kapky v barvách výřezu, telefon zavibruje, odkaz na další úroveň, dílo a kolekci, sdílení výsledku bez
-  prozrazení (`gameShareText`). Postup v `localStorage` (`pavla.prototype.detailGame.v4`, `finishRound`): kapky a hodnosti (`dropsFor`, `gameRank`),
+  prozrazení (`gameShareText`). Postup v `localStorage` (`<předpona>.prototype.detailGame.v7`, `finishRound`): kapky a hodnosti (`dropsFor`, `gameRank`),
   série dnů (více her za den = jeden den), Moje sbírka jako na webu (`gameCollection`, `collectionHtml`). Dole „Ladění prototypu“: den (den mimo dnešek = archiv s polovinou kapek a bez
   vlivu na sérii), vynucený vzhled z katalogu, paleta, Sbírka (skutečná, nebo vymyšleného hráče, který od dneška hraje každý den všechny
   úrovně a lehkou uhodne v 95 %, střední v 80 %, těžkou v 60 % kol: po týdnu, měsíci, čtvrt roce, roce; `simulatedRounds`, nic neukládá),
@@ -981,7 +986,7 @@ pro Instagram z `mockups/instagram/` (`prototypeScenes`), takže prototyp ukazuj
   velké obrazy / dlaždice, srdce v promítání v popisku / v horní liště, „Telefon“ (úzká stránka bez najetí myší: jen plná srdce), strop odkazu, nad stropem šedě s bublinou
   (výchozí) / skrýt, naplnit oblíbené náhodně. Řádek pod laděním ukazuje události, které by šly do GA (nic se neposílá):
   `favorite_add` / `favorite_remove` (`work_id`, `source` = `gallery` / `home` / `work` / `selection` / `cinema`, `FAVORITE_SOURCES`), `favorites_open`
-  (`count`, `own` = výběr jsou vlastní oblíbené, `ownSelection`). Ladění si prohlížeč pamatuje (`pavla.prototype.favorites`).
+  (`count`, `own` = výběr jsou vlastní oblíbené, `ownSelection`). Ladění si prohlížeč pamatuje (`<předpona>.prototype.favorites`).
 - `barvy.html` (šablona `colors.html`, prototyp, na webu ani v pipeline zatím nic): barvy obrazů (`scripts/lib/colors.mjs`)
   ze 160px WebP každého díla (`prototypeColors`, bez okraje listu a bez průhledného pozadí): papír z pásu u okraje
   (`paperFromEdge`, jen světlý a skoro šedý; obloha se za papír nebere), každý pixel vyvážený podle papíru v mřížce odstín ×
@@ -1016,7 +1021,7 @@ pro Instagram z `mockups/instagram/` (`prototypeScenes`), takže prototyp ukazuj
   spodní hrany díla proti liště, kde kamera stojí (na stole výška nad stolem, pohled dolů a poloha vůči středu listu;
   u stojanu výška nad lištou, vzdálenost před stojanem a úhel od čelního pohledu) a pod tím `prompt` scény = co po
   kameře chtělo zadání generátoru (`mockups/instagram/README.md`), ať jde obojí porovnat. Výsledek jako `lines:` a `camera: { … }` ke zkopírování do
-  `scenes.yaml`. Nastavení i hrany se pamatují v prohlížeči (`pavla.prototype.sceneCamera`), jen dokud má
+  `scenes.yaml`. Nastavení i hrany se pamatují v prohlížeči (`<předpona>.prototype.sceneCamera`), jen dokud má
   scéna ve `scenes.yaml` stejné `camera` a `lines` jako tehdy (po jejich změně a `npm run prototypes` platí nové). Vpravo nahoře u každé
   scény (drží se v rohu i při posunu stránky): „Pomocné čáry: zapnuto / vypnuto“ (vypnuto = jen scéna s dílem bez čar,
   fotky s prázdným listem a průhlednosti, jak ho umístí pipeline, mimo výřez 4:5 ztmavená; tloušťku papíru a stín kreslí až pipeline) a „Obnovit
@@ -1061,7 +1066,7 @@ pro Instagram z `mockups/instagram/` (`prototypeScenes`), takže prototyp ukazuj
   Tlačítko žádá o celou obrazovku (Fullscreen API; odkazem až po prvním kliknutí, ťuknutí nebo klávese; iPhone ji pro
   stránky nemá, zůstane okno) a promítání drží obrazovku rozsvícenou (Screen Wake Lock, ne v pauze). Stránky díla a
   kolekce prototyp jen oznámí. Panel „Ladění“ (klávesa `L`) mění prolnutí, dobu ovládání, okraj, styl, krytí a velikost
-  popisku, swipe a výchozí dobu obrazu, pamatuje si je (`pavla.prototype.cinema`); dole stav celé obrazovky,
+  popisku, swipe a výchozí dobu obrazu, pamatuje si je (`<předpona>.prototype.cinema`); dole stav celé obrazovky,
   wake locku a promítání. Z disku Chrome Fullscreen a wake lock nemusí povolit: `python3 -m http.server` v repu
   a `http://127.0.0.1:8000/.prototypes/promitani.html`.
 
@@ -1346,11 +1351,18 @@ složí složku testovacího webu `.demo/site/` z `demo-content/site/` (`assembl
 `fonts/` a `mockups/` nahradí, statické soubory `public/` přidá vedle vyrobených, nikdy `CNAME`) a spustí **stejnou pipeline**
 jako pro skutečná data s touto složkou webu (nastavení, scény a písma testovacího webu). Web pak běží s `SITE_DIR=.demo/site`
 (`src/lib/site.ts` a `astro.config.mjs` čtou nastavení i data odtud). Testovací web podle `demo: true` (`isDemoSite`)
-nikdy neměří návštěvnost a formulář zpráv je jen náhled.
+nikdy neměří návštěvnost, formulář zpráv je jen náhled a vyhledávače ho nesmí procházet ani indexovat (`hiddenFromSearch`
+v `src/lib/site.ts`: `robots.txt` jen `Disallow: /` bez mapy webu, `robotsTxt(site, { hidden })`; každá stránka
+`<meta name="robots" content="noindex, nofollow" data-hidden-site>`, `HIDDEN_SITE_ROBOTS` v `scripts/lib/seo.mjs`).
+Atribut `data-hidden-site` odliší tuto značku od `noindex` jednotlivé stránky (`isNoindex`), takže kontrola obrázků
+a mapy webu prochází stránky testovacího webu jako u indexovaného.
 Testovací web má vlastní kopie písem, ikon a podmnožinu scén (mockupy: jedna scéna z každé skupiny `living`, `wall`
 s vlastním plátnem, `hallway`, `shelf`, `desk`; ateliér: světlý stůl a stojan), aby kód šel ověřit bez složky skutečného
 webu; každá scéna zůstává v historii gitu navždy, proto jen tolik, kolik ukázka funkcí potřebuje. Nastavení testovacího
-webu je zatím kopie nastavení Pavlina webu (jen `demo: true`). Kódy (`id`) a kostry,
+webu je kopie nastavení Pavlina webu s vymyšlenou autorkou (Růženka Borůvková, Mýtinka): žádné skutečné jméno ani adresa,
+žádné odkazy na profily (`instagram`, `pinterest`, `fler` prázdné), žádné ověřovací kódy, měření ani klíč formuláře;
+kde funkce potřebuje adresu, je zjevně vymyšlená (`site.url` `https://ukazka.example.com`, e-mail na `example.com`,
+odkazy děl na Instagram a Fler s `demo-` v adrese). Kódy (`id`) a kostry,
 které pipeline doplní, se zapíšou zpět do `demo-content/`, aby zůstaly stálé. První
 příprava trvá kolem 1,5 minuty, další jen přegenerují změny.
 
@@ -2484,7 +2496,7 @@ Co kde vyzkoušet (adresy platí pro `npm run demo`):
 | obrázek pro sdílení kolekce | po `npm run images` otevři `public/tvorba/kolekce/*/_og/og-*.jpg` (1200 × 800, stejný výřez jako na stránce, jen u vlastní fotky, detailu a `cover` s ořezem; ořez 2:1 Ze zahrady leží na papíře); změň `focus` nebo `aspect` kolekce Ze zahrady, `npm run images`, v logu `→ og kolekce/…` a výřez se posune. Na stránce kolekce je v `<meta property="og:image">`. |
 | starý název atributu | v `demo-content/tvorba/demo-maky.yaml` přepiš `meta_draft:` na `draft:`, `npm run demo:prepare`: chyba „draft: přejmenováno na meta_draft, přejmenuj ho“, soubor se nezmění (pak vrať) |
 | `derived_` v obsahu | do `demo-content/tvorba/demo-maky.yaml` přidej `derived_x: 1`, `npm run demo:prepare`: chyba „derived_ attributes are made by the pipeline…“ (pak smaž) |
-| vyhledávače | po `npm run demo:build`: `.demo/site/dist/robots.txt`, `.demo/site/dist/sitemap.xml` (s `lastmod`), ve zdroji stránek `<meta name="description">` a `application/ld+json` (dílo `VisualArtwork` s `keywords` a `artform`, u Ráno u rybníka a Máků `sameAs` s odkazem na Instagram / Fler, výpisy `CollectionPage` s `keywords`, úvod `WebSite` + `Person`); 404 má `noindex` |
+| vyhledávače | po `npm run demo:build`: `.demo/site/dist/robots.txt` (`Disallow: /`; skutečný web po `npm run build` `dist/robots.txt` s `Allow` a mapou webu), ve zdroji každé stránky `<meta name="robots" content="noindex, nofollow" data-hidden-site>`, `.demo/site/dist/sitemap.xml` (s `lastmod`), ve zdroji stránek `<meta name="description">` a `application/ld+json` (dílo `VisualArtwork` s `keywords` a `artform`, u Ráno u rybníka a Máků `sameAs` s odkazem na Instagram / Fler, výpisy `CollectionPage` s `keywords`, úvod `WebSite` + `Person`); 404 má `noindex` |
 | chybějící obrázek | smaž v `.demo/site/dist/tvorba/*/*/` jeden obrázek, `SITE_DIR=.demo/site npm run check:images`: vypíše ho se stránkou a skončí kódem 1 |
 | vložený skript bez prvku | v `.demo/site/dist/index.html` smaž `data-view` u `id="recent"`, `SITE_DIR=.demo/site npm run check:images`: vypíše `viewGridBefore finds no earlier element with data-view` se stránkou a skončí kódem 1 |
 | chyby v popisu | např. `date: 14. 6. 2026`, `collection: plener` v popisu díla, podsložka v kolekci bez díla, dvě složky se stejnou adresou, popisek v `details:` k neexistující fotce, zveřejňované dílo, kolekce, rok, úvod nebo fotka s textem začínajícím `DOPLNIT`, `cover` s dílem z jiné kolekce nebo `focus: [120, 50]`: `npm run images` skončí chybou a nic nezapíše |
@@ -2847,7 +2859,8 @@ Co web dělá, aby mu vyhledávače rozuměly (`scripts/lib/seo.mjs`, `src/layou
   (`BreadcrumbList`). **Obraz na prodej uvádí jen dostupnost (`available` = InStock, `reserved` =
   LimitedAvailability), nikdy cenu** (rozhodnutí 2026-10; cena zůstává jen na stránce).
 - **Open Graph**: `og:url`, `og:site_name`, `og:locale` (`cs_CZ`), `og:type` (`article` u díla), obrázek pro sdílení.
-- **`/robots.txt`** (`src/pages/robots.txt.ts`): vše povoleno, odkaz na mapu webu `/sitemap.xml`.
+- **`/robots.txt`** (`src/pages/robots.txt.ts`): vše povoleno, odkaz na mapu webu `/sitemap.xml`; testovací web
+  (`hiddenFromSearch`) jen `Disallow: /` a každá jeho stránka `noindex, nofollow` (viz Testovací data).
 - **Stránka 404** (`src/pages/404.astro`): „Tento obraz ještě nebyl namalován“, tři obrazy z výběru autorky
   a odkazy na výběr a celou tvorbu; `noindex` a bez `canonical`. Krátké odkazy `/tvorba/<id>/` mají `noindex`
   a `canonical` na detail díla.
@@ -3025,6 +3038,20 @@ Testy kódu berou nastavení, písma, scény a ikonu testovacího webu (`scripts
 skutečného; projdou i v kopii kódu bez Pavliných souborů webu. Data webu (úplné scény, plátna, ikony, favicon, kamery
 podle zadání generátoru `promptCamera`, velikosti `mustFitCm`) kontroluje `npm run check:site` nad složkou `SITE_DIR`
 (viz *Kontrola dat webu*); její funkce mají testy nad testovacím webem a nad schválně rozbitými daty.
+
+**Co si pamatuje prohlížeč návštěvníka** (oblíbené, barvy, zobrazení a počty galerie, postup ve hře, rozepsaná zpráva,
+mezipaměti aplikace) má jména s předponou webu `site.storagePrefix` ze `site.config.yaml` (`scripts/lib/storage-prefix.mjs`):
+klíče `localStorage` a `sessionStorage` `<předpona>.<jméno>` (`storageKey`, např. `pavla.favorites`), mezipaměti service
+workeru `<předpona>-<druh>` (`CACHE_PREFIX`, např. `pavla-images`). Pavlin web `pavla`, testovací `ukazka`, bez nastavení
+`web`; jiný tvar (jen malá písmena a číslice, slova spojená `-`) ohlásí `npm run check:site` a build skončí chybou. Build
+předponu vloží do kódu (`vite.define` v `astro.config.mjs`, `STORAGE_PREFIX_GLOBAL`), mimo build (testy, pipeline,
+prototypy) platí výchozí `web`. Po zveřejnění webu ji neměnit: návštěvníci by přišli o to, co si jejich prohlížeč
+pamatoval. Žádné jméno v prohlížeči se nepíše natvrdo (test v `storage-prefix.test.mjs`). Prototypy (`npm run prototypes`,
+`npm run game-overview`) mají tatáž jména webu a vlastní `<předpona>.prototype.*`: šablona píše `/*STORAGE_PREFIX*/ + '.prototype.…'`
+(`writePrototypes` vloží předponu z nastavení webu, data přes `withStoragePrefix`, hru přibalí s `define`); přehled hry
+čte poznámky i pod starým jménem `detail-dne-prehled-poznamky`. U Pavly `pavla.prototype.*` jako dřív, uložené ladění
+zůstává. Technická jména bez předpony jsou obecná: `window.sitePalette` (přepínač
+barev), značky historie `site-cinema` a `site-viewer`.
 
 ## Vývoj
 

@@ -111,7 +111,7 @@
     { key: 'cy', label: 'Střed listu y', min: 0, max: 1, step: 1 },
     { key: 'sheetDeg', label: 'Nakreslený list pootočený (°)', min: -45, max: 45, step: 0.1 },
   ];
-  const STORE = 'pavla.prototype.sceneCamera';
+  const STORE = /*STORAGE_PREFIX*/ + '.prototype.sceneCamera';
   const load = () => { try { return JSON.parse(localStorage.getItem(STORE)) ?? {}; } catch { return {}; } };
   const save = (v) => { try { localStorage.setItem(STORE, JSON.stringify(v)); } catch { /* private window */ } };
   const memory = load();

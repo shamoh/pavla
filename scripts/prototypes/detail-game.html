@@ -52,7 +52,7 @@ const DATA = /*DATA*/{};
 // picks a look, a palette, a made-up collection (simulatedRounds) and any day, also the ones to come.
 (async () => {
 const { config: CONFIG, play: PLAY, public: PUBLIC } = DATA;
-const TUNING = 'pavla.prototype.detailGame.tuning.v1';
+const TUNING = /*STORAGE_PREFIX*/ + '.prototype.detailGame.tuning.v1';
 const LEVELS = gameLevels();
 const LOOKS = gameLooks();
 document.getElementById('palettes').textContent = CONFIG.paletteCss;
@@ -69,7 +69,7 @@ const game = await DetailGame.startGame(document.querySelector('.detail-game'), 
   data: PLAY,
   base: PLAY.site.replace(/\/$/, ''),
   pictures: PUBLIC,
-  store: 'pavla.prototype.detailGame.v7',
+  store: /*STORAGE_PREFIX*/ + '.prototype.detailGame.v7',
   look: () => (tuning.look === 'auto' ? null : tuning.look),
   collectionRounds: () => simulated,
   lastDay: Infinity,

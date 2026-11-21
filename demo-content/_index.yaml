@@ -31,7 +31,7 @@ button_show: ▶ Moje nejmilejší
 #     (rozpracovaný obraz zůstane bez odkazu),
 #   - [text](https://…) = odkaz na jiný web, [text](mailto:…) = odkaz na e-mail.
 empty_closing: |
-  Než je sem nahraji, co právě maluji, najdete [na Instagramu](https://www.instagram.com/pavla.kramolisova/).
+  Než je sem nahraji, co právě maluji, najdete [na Instagramu](https://www.instagram.com/).
 
 # Velká věta na úvodní stránce, dokud na webu není žádný obraz (místo velkého obrazu). Povinné.
 empty_text: Obrazy tu brzy přibudou.

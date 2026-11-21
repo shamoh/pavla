@@ -1,7 +1,7 @@
 ---
 // Colour switcher in the footer: "Automaticky" (light or dark by the system) and every palette of
 // scripts/lib/palettes.mjs as a small dot in its own paper colour. The choice is applied and remembered by the
-// inline script of Base.astro (window.pavlaPalette); this only shows the dots and passes the clicks on.
+// inline script of Base.astro (window.sitePalette); this only shows the dots and passes the clicks on.
 import { AUTO, PALETTES, resolvePalette } from '../../scripts/lib/palettes.mjs';
 
 const light = resolvePalette(AUTO, false).colors;
@@ -47,7 +47,7 @@ const options = [
   import { paletteEventParams } from '../../scripts/lib/palettes.mjs';
 
   type Api = { get(): string; set(choice: string): void };
-  const api = (window as unknown as { pavlaPalette?: Api }).pavlaPalette;
+  const api = (window as unknown as { sitePalette?: Api }).sitePalette;
   const dots = [...document.querySelectorAll<HTMLButtonElement>('[data-palette-option]')];
   function show(choice: string) {
     for (const d of dots) d.setAttribute('aria-pressed', String(d.dataset.paletteOption === choice));

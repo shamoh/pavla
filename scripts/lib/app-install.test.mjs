@@ -11,9 +11,9 @@ const strategy = (href, { method = 'GET', mode = 'cors', base = '/' } = {}) => r
 
 test('appCaches: pages and build files per build, pictures and fonts across builds, all with our prefix', () => {
   const c = appCaches('v26.1118.0930');
-  assert.deepEqual(c, { pages: 'pavla-pages-v26.1118.0930', files: 'pavla-files-v26.1118.0930', images: 'pavla-images', fonts: 'pavla-fonts' });
+  assert.deepEqual(c, { pages: 'web-pages-v26.1118.0930', files: 'web-files-v26.1118.0930', images: 'web-images', fonts: 'web-fonts' });
   assert.ok(Object.values(c).every((n) => n.startsWith(CACHE_PREFIX)));
-  assert.equal(appCaches('v1 <x>').pages, 'pavla-pages-v1x', 'only safe characters');
+  assert.equal(appCaches('v1 <x>').pages, 'web-pages-v1x', 'only safe characters');
   assert.throws(() => appCaches(''), /needs a version/);
 });
 
@@ -120,15 +120,15 @@ test('swScript: pictures from the cache at once and refreshed behind; build file
 
 test('swScript: a new build deletes our old caches but keeps pictures and caches of others', async () => {
   const w = runWorker(swScript('v2'));
-  for (const n of ['pavla-pages-v1', 'pavla-files-v1', 'pavla-images', 'jine-cache']) w.stores.set(n, new Map());
+  for (const n of ['web-pages-v1', 'web-files-v1', 'web-images', 'jine-cache']) w.stores.set(n, new Map());
   await new Promise((done) => w.listeners.activate({ waitUntil: (p) => p.then(done) }));
-  assert.deepEqual([...w.stores.keys()].sort(), ['jine-cache', 'pavla-images']);
+  assert.deepEqual([...w.stores.keys()].sort(), ['jine-cache', 'web-images']);
 });
 
 test('swScript: at most IMAGE_CACHE_LIMIT pictures, the oldest go first', async () => {
   const w = runWorker(swScript('v1'));
   for (let i = 0; i <= IMAGE_CACHE_LIMIT; i++) await w.respond(`/p/${i}.webp`);
-  const images = w.stores.get('pavla-images');
+  const images = w.stores.get('web-images');
   assert.equal(images.size, IMAGE_CACHE_LIMIT);
   assert.equal(images.has(`${ORIGIN}/p/0.webp`), false);
 });
