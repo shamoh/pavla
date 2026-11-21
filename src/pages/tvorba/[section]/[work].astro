@@ -13,7 +13,7 @@ import { EVENTS, MORE_METHODS } from '../../../../scripts/lib/analytics.mjs';
 import { galleryFilterPath, galleryLinkTitle } from '../../../../scripts/lib/gallery-filter.mjs';
 import { pinDescription } from '../../../../scripts/lib/pinterest.mjs';
 import { shareLinks } from '../../../../scripts/lib/share.mjs';
-import { artworkLd, breadcrumbLd, graphLd, workPageDescription, workPageLd, workPageTitle } from '../../../../scripts/lib/seo.mjs';
+import { absolute, artworkLd, breadcrumbLd, graphLd, workPageDescription, workPageLd, workPageTitle } from '../../../../scripts/lib/seo.mjs';
 import { defaultType, mailtoLink, workContext } from '../../../../scripts/lib/messages.mjs';
 import { MOCKUPS_NOTE, mockupCaption, mockupsHeading, viewId, workCaption } from '../../../../scripts/lib/work-viewer.mjs';
 import { cinemaSettings } from '../../../../scripts/lib/cinema.mjs';
@@ -70,9 +70,9 @@ const message = workContext({ ...work, onSale: isOnSale(work.status) }, path);
 // Without the form: an e-mail with the same subject as a message would have.
 const mail = site.email && mailtoLink(site.email, defaultType(message), message, messages.subjectTag);
 // "Sdílet": links to share the work (Pinterest saves its pin, or the share image, with a link to this page)
-const pageUrl = new URL(path, site.url).href;
+const pageUrl = absolute(site, path);
 const shares = shareLinks({
-  url: pageUrl, media: new URL(workPinImage(work).src, site.url).href, title: work.title,
+  url: pageUrl, media: absolute(site, workPinImage(work).src), title: work.title,
   description: [work.title, pinDescription(work, work.year, config.pinterestKeywords?.en)].filter(Boolean).join(' – '),
 });
 // Small line icons of the services (own drawings in the colour of the text, nothing loaded from them)
@@ -88,7 +88,7 @@ const ICONS: Record<string, string> = {
 };
 const icon = (name: string, size = 20) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
 const jsonLd = graphLd(
-  artworkLd(work, site, { path, image: new URL(share.src, site.url).href }),
+  artworkLd(work, site, { path, image: absolute(site, share.src) }),
   // the page about the work, with the pages of its related works ("Související obrazy")
   workPageLd(site, { path, name: workPageTitle(work, allWorks), relatedPaths: related.map((w) => `/tvorba/${w.year}/${w.key}/`) }),
   breadcrumbLd(site, [

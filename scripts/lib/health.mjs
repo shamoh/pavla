@@ -394,6 +394,12 @@ export const renewTokenText = (siteRepo) => [
   '3. Actions → Kontrola automatiky → Run workflow, ať se ověří, že je vše v pořádku.',
 ].join('\n');
 
+/** The start of the messages of the checks of the deployed test site (check-health.mjs --demo-url). */
+export const DEMO_LABEL = 'Ukázkový web';
+
+/** A check of another site than the one of the report: its message starts with `label` ("Ukázkový web: …"), the rest stays. */
+export const labelledCheck = (check, label) => ({ ...check, message: `${label}: ${check.message}` });
+
 /**
  * Markdown report for the run page and the issue. `token` is the first check; its renew steps (`renew` of evaluateToken)
  * follow when it fails.

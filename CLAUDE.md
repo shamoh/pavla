@@ -27,6 +27,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   Nová scéna nebo binární soubor testovacího webu jen nutné minimum (historie gitu je navždy).
   Jména v prohlížeči návštěvníka (`localStorage`, `sessionStorage`, mezipaměti) jen přes `storageKey` / `STORAGE_PREFIX`
   (`scripts/lib/storage-prefix.mjs`, `site.storagePrefix`, Pavla `pavla`), nikdy natvrdo; klíče jmenované níže jsou Pavliny.
+  Web smí ležet v podsložce adresy (`site.url` s cestou, testovací web na Pages enginu; `siteBase`, Astro `base`): odkazy
+  na stránky jen `url()`, celé adresy jen `absolute` / `siteAddress` (`scripts/lib/site-url.mjs`), nikdy `new URL('/…', site.url)`.
 - **Toto repo je veřejné, obsah je v odděleném soukromém obsahovém repu.** Jeho název, cestu ani odkazy na něj
   sem nikdy nepiš (kód, komentáře, README, CLAUDE.md, commity, texty pull requestů); piš jen „obsahové repo“
   / „the content repository“. Odkazy vedou jen z obsahového repa sem, nikdy obráceně. Lokálně ho pipeline najde
@@ -343,7 +345,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `evaluateMinutes` (`CHECK_TOKEN`; `dochazeji-minuty`, `placene-minuty`), první pondělí v měsíci
   nastavení obou rep proti uloženým exportům `evaluateSettings` (`compareSnapshots`, `nastaveni-se-zmenilo`); hlášky `pageProblems`
   jsou kódy s anglickým i českým textem `problemText`):
-  `scripts/check-health.mjs` + `scripts/lib/health.mjs`, spouští ji obsahové repo.
+  `scripts/check-health.mjs` + `scripts/lib/health.mjs`, spouští ji obsahové repo; `--demo-url` = tytéž kontroly
+  nasazeného webu i pro ukázku enginu (`deployedSiteChecks`, hlášky „Ukázkový web:“, `labelledCheck`).
   Workflow kontroluje `actionlint` (job `workflows` v `check.yml`); po každé úpravě workflow ho spusť i lokálně.
 - Nastavení repa na GitHubu jako kontrolní seznam: `node scripts/repo-settings.mjs <vlastník/repo> --out …`
   (`gh api`, jen čte; exporty v dokumentaci obsahového repa). Změna nastavení repa = export obnovit.

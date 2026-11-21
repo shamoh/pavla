@@ -7,7 +7,8 @@
 // Actions and the monthly comparison of the settings),
 // SETTINGS_DIR (the stored exports of the settings, <repo name>.json), `--settings` compares them on any day.
 // The images and the page texts of the deployed site are checked at site.url of site.config.yaml (`--site-url <url>` overrides it,
-// e.g. a locally served build).
+// e.g. a locally served build). `--demo-url <url>`: the same checks of the deployed test site (the demo of the engine on
+// GitHub Pages), its messages start with DEMO_LABEL.
 // Exit code 1 when something needs attention; the report goes to stdout, the run page and the step output.
 
 import fs from 'node:fs/promises';
@@ -18,8 +19,9 @@ import { checkSiteImages, evaluateSiteImages } from './lib/site-check.mjs';
 import { evaluatePageTexts } from './lib/page-check.mjs';
 import { evaluateInlineScripts } from './lib/inline-targets.mjs';
 import { readSiteConfig, siteDirectory } from './lib/site-dir.mjs';
+import { siteAddress } from './lib/site-url.mjs';
 import {
-  DRY_RUNS, evaluateCheckToken, evaluateDeploy, evaluateGameAnalyses, evaluateGamePlan, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure,
+  DEMO_LABEL, DRY_RUNS, evaluateCheckToken, evaluateDeploy, evaluateGameAnalyses, evaluateGamePlan, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure, labelledCheck,
 } from './lib/health.mjs';
 
 const config = readSiteConfig(siteDirectory());
@@ -107,27 +109,34 @@ const translations = process.env.CONTENT_DIR
   }), { siteRepo: SITE_REPO }))
   : evaluateUntranslatedTags(null);
 
-// Every image the pages of the deployed site refer to exists (a deploy without images, a pipeline that removed some).
-let site = null;
-const siteImages = await guarded('obrázky webu', async () => {
-  // a failed image is asked again twice, 3 s apart: one hiccup of GitHub Pages is no missing image
-  site = await checkSiteImages(textArg('--site-url') ?? config.site.url, fetch, { retries: 2, retryDelayMs: 3000 });
-  return evaluateSiteImages(site);
-});
-// The same pages have their own titles and descriptions and valid structured data (as npm run check:images checks
-// a build); not checked when the site could not be read.
-const pageTexts = evaluatePageTexts(site?.html ?? null);
-// Their inline scripts find their elements and every data-view is valid JSON (as npm run check:images checks a build),
-// on all pages read, also those with noindex.
-const inlineScripts = evaluateInlineScripts(site?.html ?? null);
+/** The checks of a deployed site at `siteUrl` (in this order in the report): images, page texts, inline scripts, plan of the game. */
+async function deployedSiteChecks(siteUrl) {
+  // Every image the pages of the deployed site refer to exists (a deploy without images, a pipeline that removed some).
+  let site = null;
+  const siteImages = await guarded('obrázky webu', async () => {
+    // a failed image is asked again twice, 3 s apart: one hiccup of GitHub Pages is no missing image
+    site = await checkSiteImages(siteUrl, fetch, { retries: 2, retryDelayMs: 3000 });
+    return evaluateSiteImages(site);
+  });
+  // The same pages have their own titles and descriptions and valid structured data (as npm run check:images checks
+  // a build); not checked when the site could not be read.
+  const pageTexts = evaluatePageTexts(site?.html ?? null);
+  // Their inline scripts find their elements and every data-view is valid JSON (as npm run check:images checks a build),
+  // on all pages read, also those with noindex.
+  const inlineScripts = evaluateInlineScripts(site?.html ?? null);
+  // The plan of the days of the game Detail dne reaches at least a week ahead (no game page = not checked).
+  const gamePlan = await guarded('plán hry Detail dne', async () => {
+    const res = await fetch(siteAddress(siteUrl, 'detail-dne/data.json'));
+    if (res.status === 404) return evaluateGamePlan(null);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return evaluateGamePlan(await res.json());
+  });
 
-// The plan of the days of the game Detail dne on the deployed site reaches at least a week ahead (no game page = not checked).
-const gamePlan = await guarded('plán hry Detail dne', async () => {
-  const res = await fetch(new URL('/detail-dne/data.json', textArg('--site-url') ?? config.site.url));
-  if (res.status === 404) return evaluateGamePlan(null);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return evaluateGamePlan(await res.json());
-});
+  return [siteImages, pageTexts, inlineScripts, gamePlan];
+}
+const siteChecks = await deployedSiteChecks(textArg('--site-url') ?? config.site.url);
+// the deployed test site, once the engine has it on GitHub Pages (the workflow passes its address)
+const demoChecks = textArg('--demo-url') ? (await deployedSiteChecks(textArg('--demo-url'))).map((c) => labelledCheck(c, DEMO_LABEL)) : [];
 
 // The kept analyses of the pictures of the game (game/detail-dne/analysis/ on main of the public repository of the site, not in
 // the sparse checkout): their sizes from the tree of main.
@@ -192,7 +201,7 @@ const settings = !monthly ? evaluateSettings(null, { reason: 'jen první ponděl
       return evaluateSettings(results, { siteRepo: SITE_REPO });
     });
 
-const report = formatReport(token, checkTokenState, runs, dryRun, deploy, pr, unknown, techniques, translations, siteImages, pageTexts, inlineScripts, gamePlan, gameAnalyses, sizes, minutes, settings);
+const report = formatReport(token, checkTokenState, runs, dryRun, deploy, pr, unknown, techniques, translations, ...siteChecks, ...demoChecks, gameAnalyses, sizes, minutes, settings);
 console.log(report.text);
 if (process.env.GITHUB_STEP_SUMMARY) await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, report.text);
 // codes: "[token-vyprsi] [obrazky-chybi]" for the title of the issue (e-mails filtered by code)

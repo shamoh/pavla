@@ -20,6 +20,7 @@ import { pageProblems, problemText } from './lib/page-check.mjs';
 import { slashlessLinks } from './lib/page-links.mjs';
 import { inlineProblemText, inlineScriptProblems } from './lib/inline-targets.mjs';
 import { siteDirectory, sitePaths } from './lib/site-dir.mjs';
+import { siteBase } from './lib/site-url.mjs';
 
 const sitePlaces = sitePaths(siteDirectory());
 const distDir = path.resolve(process.argv[2] ?? sitePlaces.dist);
@@ -30,11 +31,11 @@ try {
   process.exit(1);
 }
 const config = YAML.parse(await fs.readFile(sitePlaces.config, 'utf8'));
-const result = evaluateSiteImages(await checkSiteImages(config.site.url, distFetch(distDir), { screenshots: false }));
+const result = evaluateSiteImages(await checkSiteImages(config.site.url, distFetch(distDir, config.site.url), { screenshots: false }));
 console.log(`${result.ok ? '✓' : '✗'} ${result.message}`);
 if (!result.ok) process.exitCode = 1;
 
-/** Every built page as { path: "/tvorba/2026/", html }. */
+/** Every built page as { path: "/tvorba/2026/", html }; with the base of a site in a folder ("/folder/tvorba/2026/"). */
 async function builtPages(dir, prefix = '/') {
   const pages = [];
   for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
@@ -44,7 +45,7 @@ async function builtPages(dir, prefix = '/') {
   }
   return pages;
 }
-const pages = await builtPages(distDir);
+const pages = await builtPages(distDir, siteBase(config.site.url));
 const sitemap = await fs.readFile(path.join(distDir, 'sitemap.xml'), 'utf8').catch(() => '');
 const unlisted = unlistedPages(pages, sitemapUrls(sitemap));
 if (unlisted.length) {

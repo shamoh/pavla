@@ -30,6 +30,8 @@ test('siteHost: the address without scheme and slash', () => {
   assert.equal(siteHost('https://pavla.kramolis.cz'), 'pavla.kramolis.cz');
   assert.equal(siteHost('https://pavla.kramolis.cz/'), 'pavla.kramolis.cz');
   assert.equal(siteHost('pavla.kramolis.cz/'), 'pavla.kramolis.cz');
+  assert.equal(siteHost('https://shamoh.github.io/web-tvorba-engine'), 'shamoh.github.io/web-tvorba-engine', 'a site in a folder');
+  assert.equal(siteHost('https://shamoh.github.io/web-tvorba-engine/'), 'shamoh.github.io/web-tvorba-engine');
 });
 
 test('homography maps the corners exactly and its inverse undoes it', () => {

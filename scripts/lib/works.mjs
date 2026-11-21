@@ -3,6 +3,7 @@
 
 import path from 'node:path';
 import { TODO, WORK_SCHEMA, fieldKeys, optionProblems, publicKeys } from './schema.mjs';
+import { siteAddress } from './site-url.mjs';
 
 /** Characters used for work IDs: lowercase letters and digits without look-alikes (0/o, 1/l/i). */
 export const ID_ALPHABET = '23456789abcdefghjkmnpqrstuvwxyz';
@@ -230,7 +231,7 @@ export const workShortPath = (id) => `/tvorba/${id}/`;
  * protocol (e.g. "pavla.kramolis.cz/tvorba/mpugj/").
  */
 export function workCodeHint(id, siteUrl) {
-  const link = new URL(workShortPath(id), siteUrl);
+  const link = new URL(siteAddress(siteUrl, workShortPath(id)));
   return `Trvalý kód obrazu: platí i po přejmenování. Krátký odkaz: ${link.host}${link.pathname}`;
 }
 

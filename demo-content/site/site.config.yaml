@@ -7,7 +7,7 @@
 demo: true
 
 site:
-  url: https://ukazka.example.com        # adresa ukázkového webu
+  url: https://shamoh.github.io/web-tvorba-engine   # adresa ukázky: GitHub Pages enginu, web v podsložce adresy
   title: Růženka Borůvková
   tagline: Akvarely z Mýtinky a okolí
   author: Růženka Borůvková

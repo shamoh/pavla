@@ -11,6 +11,7 @@ import { coverCrop, parseCoverRef } from '../../scripts/lib/covers.mjs';
 import { QUIZ_LINE_KEYS } from '../../scripts/lib/schema.mjs';
 import { HOME_BUTTON, HOME_EMPTY_TEXT, HOME_HEADING, HOME_SHOW_BUTTON, HOME_TEXT, UNCOLLECTED_TEXT, homeEmptyClosing } from '../../scripts/lib/schema.mjs';
 import { buildVersion } from '../../scripts/lib/build-version.mjs';
+import { absolute } from '../../scripts/lib/seo.mjs';
 import { isDemoSite, readSiteConfig, siteDirectory } from '../../scripts/lib/site-dir.mjs';
 import { NO_COLLECTION_TITLE } from '../../scripts/lib/gallery-filter.mjs';
 import { sortCollections } from '../../scripts/lib/collection-filter.mjs';
@@ -503,7 +504,7 @@ export function photoImageUrl(name: string): string | null {
   const photo = getPhoto(name);
   if (!photo) return null;
   const width = [...photo.widths].filter((x) => x <= 1600).pop() ?? photo.widths[0];
-  return new URL(`/${photoDir(name)}/${width}.jpg`, site.url).href;
+  return absolute(site, `/${photoDir(name)}/${width}.jpg`);
 }
 
 /** Folder with the web images of a work (without base URL, for og:image etc.). */

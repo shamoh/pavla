@@ -370,6 +370,8 @@ test('workShortPath and workCodeHint: the short permanent address of a work and 
   assert.equal(workShortPath('mpugj'), '/tvorba/mpugj/');
   assert.equal(workCodeHint('mpugj', 'https://pavla.kramolis.cz'),
     'Trvalý kód obrazu: platí i po přejmenování. Krátký odkaz: pavla.kramolis.cz/tvorba/mpugj/');
+  assert.equal(workCodeHint('mpugj', 'https://shamoh.github.io/web-tvorba-engine'),
+    'Trvalý kód obrazu: platí i po přejmenování. Krátký odkaz: shamoh.github.io/web-tvorba-engine/tvorba/mpugj/', 'a site in a folder');
   assert.ok(workCodeHint('mpugj', 'https://example.org/').endsWith('example.org/tvorba/mpugj/'));
 });
 

@@ -5,7 +5,7 @@ import TextBlocks from '../components/TextBlocks.astro';
 import MessageForm from '../components/MessageForm.astro';
 import NameShades from '../components/NameShades.astro';
 import { getPage, messages, site } from '../lib/site';
-import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
+import { absolute, authorId, breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
 import { EVENTS } from '../../scripts/lib/analytics.mjs';
 import { mailtoLink } from '../../scripts/lib/messages.mjs';
 import { pinterestContactText, pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
@@ -26,7 +26,7 @@ const links = [
 const { description, blocks, locationLabel } = getPage('kontakt')!;
 // For search engines: the contact page of the author.
 const jsonLd = graphLd(
-  { '@type': 'ContactPage', '@id': new URL('/kontakt/', site.url).href, url: new URL('/kontakt/', site.url).href, name: `Kontakt – ${site.author}`, inLanguage: 'cs', about: { '@id': new URL('/#autorka', site.url).href } },
+  { '@type': 'ContactPage', '@id': absolute(site, '/kontakt/'), url: absolute(site, '/kontakt/'), name: `Kontakt – ${site.author}`, inLanguage: 'cs', about: { '@id': authorId(site) } },
   breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'Kontakt', path: '/kontakt/' }]),
 );
 ---

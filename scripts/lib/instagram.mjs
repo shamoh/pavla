@@ -30,9 +30,17 @@ export const instagramSuffixes = (paletteIds, sceneNames) => [
 
 export { captionFacts };
 
-/** "https://pavla.kramolis.cz/" -> "pavla.kramolis.cz" (the address in the caption). */
+/**
+ * The address in the caption, without the protocol and the slash at the end: "https://pavla.kramolis.cz/" ->
+ * "pavla.kramolis.cz", a site in a folder with its folder ("https://host.test/web/" -> "host.test/web").
+ */
 export const siteHost = (url) => {
-  try { return new URL(url).host; } catch { return String(url ?? '').replace(/^https?:\/\//, '').replace(/\/+$/, ''); }
+  try {
+    const { host, pathname } = new URL(url);
+    return `${host}${pathname}`.replace(/\/+$/, '');
+  } catch {
+    return String(url ?? '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  }
 };
 
 // ---------------------------------------------------------------- geometry

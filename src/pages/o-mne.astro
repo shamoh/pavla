@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import Photo from '../components/Photo.astro';
 import TextBlocks from '../components/TextBlocks.astro';
 import { getPage, photoImageUrl, site } from '../lib/site';
-import { breadcrumbLd, graphLd, personLd } from '../../scripts/lib/seo.mjs';
+import { absolute, authorId, breadcrumbLd, graphLd, personLd } from '../../scripts/lib/seo.mjs';
 
 // The texts are in stranky/o-mne.yaml of the content repository.
 const { description, blocks, closing } = getPage('o-mne')!;
@@ -11,7 +11,7 @@ const { description, blocks, closing } = getPage('o-mne')!;
 const placed = blocks.some((b) => 'photo' in b);
 // For search engines: a profile page about the author.
 const jsonLd = graphLd(
-  { '@type': 'ProfilePage', '@id': new URL('/o-mne/', site.url).href, url: new URL('/o-mne/', site.url).href, name: `O mně – ${site.author}`, inLanguage: 'cs', mainEntity: { '@id': new URL('/#autorka', site.url).href } },
+  { '@type': 'ProfilePage', '@id': absolute(site, '/o-mne/'), url: absolute(site, '/o-mne/'), name: `O mně – ${site.author}`, inLanguage: 'cs', mainEntity: { '@id': authorId(site) } },
   personLd(site, { image: photoImageUrl('portret') ?? undefined }),
   breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: 'O mně', path: '/o-mne/' }]),
 );

@@ -2703,6 +2703,12 @@ nepovinný), `CHECK_TOKEN` (spotřeba minut Actions a nastavení rep, nepovinný
   a nedostupné stránky. Adresa webu je `site.url` ze `site.config.yaml`, `--site-url <adresa>` ji
   přepíše (např. lokálně spuštěný web). Vyzkoušení: `node scripts/check-health.mjs --site-url <adresa>`
   (bez tokenů ohlásí i token; za proxy navíc `NODE_USE_ENV_PROXY=1`).
+  S `--demo-url <adresa>` udělá tytéž kontroly nasazeného webu (obrázky, texty stránek, vložené skripty, plán hry;
+  `deployedSiteChecks`) i pro testovací web nasazený jako ukázka (GitHub Pages enginu, web v podsložce adresy); jeho
+  hlášky začínají „Ukázkový web:“ (`DEMO_LABEL`, `labelledCheck` v `scripts/lib/health.mjs`), kódy hlášek zůstávají.
+  Vyzkoušení s lokálně spuštěnou ukázkou: `SITE_DIR=.demo/site npx astro preview`, pak
+  `node scripts/check-health.mjs --demo-url http://localhost:4321/web-tvorba-engine` (mapu webu s adresami Pages
+  lokálně nečte).
 - že stránky nasazeného webu (tytéž, které prošla kontrola obrázků, bez `noindex`) mají vlastní titulek a popis
   (žádné dvě stejné, popis nejvýš 160 znaků) a platná strukturovaná data (JSON-LD se schema.org a typem u každého
   uzlu): `evaluatePageTexts` ve `scripts/lib/page-check.mjs`, stejná pravidla jako `npm run check:images` u buildu,
@@ -2859,7 +2865,7 @@ Co web dělá, aby mu vyhledávače rozuměly (`scripts/lib/seo.mjs`, `src/layou
   (`BreadcrumbList`). **Obraz na prodej uvádí jen dostupnost (`available` = InStock, `reserved` =
   LimitedAvailability), nikdy cenu** (rozhodnutí 2026-10; cena zůstává jen na stránce).
 - **Open Graph**: `og:url`, `og:site_name`, `og:locale` (`cs_CZ`), `og:type` (`article` u díla), obrázek pro sdílení.
-- **`/robots.txt`** (`src/pages/robots.txt.ts`): vše povoleno, odkaz na mapu webu `/sitemap.xml`; testovací web
+- **`/robots.txt`** (`src/pages/robots.txt.ts`): vše povoleno, odkaz na mapu webu `/sitemap.xml` (u webu v podsložce ho vyhledávače nečtou); testovací web
   (`hiddenFromSearch`) jen `Disallow: /` a každá jeho stránka `noindex, nofollow` (viz Testovací data).
 - **Stránka 404** (`src/pages/404.astro`): „Tento obraz ještě nebyl namalován“, tři obrazy z výběru autorky
   a odkazy na výběr a celou tvorbu; `noindex` a bez `canonical`. Krátké odkazy `/tvorba/<id>/` mají `noindex`
@@ -3052,6 +3058,16 @@ pamatoval. Žádné jméno v prohlížeči se nepíše natvrdo (test v `storage-
 čte poznámky i pod starým jménem `detail-dne-prehled-poznamky`. U Pavly `pavla.prototype.*` jako dřív, uložené ladění
 zůstává. Technická jména bez předpony jsou obecná: `window.sitePalette` (přepínač
 barev), značky historie `site-cinema` a `site-viewer`.
+
+**Web v podsložce adresy.** `site.url` smí mít cestu: testovací web je `https://shamoh.github.io/web-tvorba-engine`
+(GitHub Pages enginu), Pavlin web je na vlastní doméně bez cesty. Cesta je základ všech stránek (`siteBase` v
+`scripts/lib/site-url.mjs`, `base` v `astro.config.mjs`, v kódu `import.meta.env.BASE_URL`): odkazy na stránky jen přes
+`url()` (`src/lib/site.ts`), celé adresy (náhledy pro sdílení, JSON-LD, mapa webu, kanál Pinterestu) přes `absolute`
+(`scripts/lib/seo.mjs`) nebo `siteAddress`, nikdy `new URL('/…', site.url)` (zahodilo by podsložku). Adresa v popiscích
+obrázků (`siteHost`) a krátký odkaz v bublině kódu (`workCodeHint`) podsložku nesou. Manifest a service worker mají
+relativní cesty a `BASE`. `npm run check:images` čte web v podsložce z `dist/` bez ní (`distFetch(dist, siteUrl)`)
+a začíná na jeho úvodní stránce. Pozor: `robots.txt` platí jen v kořeni hostitele, u webu v podsložce ho vyhledávače
+nečtou; testovací web před nimi chrání `noindex` na každé stránce.
 
 ## Vývoj
 

@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import { readSiteConfig, siteDirectory, sitePaths } from './scripts/lib/site-dir.mjs';
 import { STORAGE_PREFIX_GLOBAL, storagePrefixOf } from './scripts/lib/storage-prefix.mjs';
+import { siteBase } from './scripts/lib/site-url.mjs';
 
 // The folder of the site (SITE_DIR, scripts/lib/site-dir.mjs): its settings, static files and the built site.
 // `npm run demo` builds the test site from its folder .demo/site (SITE_DIR=.demo/site).
@@ -10,6 +11,8 @@ const paths = sitePaths(siteDir);
 
 export default defineConfig({
   site: config.site.url,
+  // a site in a folder of its host (site.url with a path, the test site on GitHub Pages): every page under it
+  base: siteBase(config.site.url),
   publicDir: paths.public,
   outDir: paths.dist,
   output: 'static',

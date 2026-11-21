@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DRY_RUNS, GAME_ANALYSIS_LIMITS, GAME_PLAN_MIN_DAYS, MINUTE_LIMITS, SIZE_LIMITS, evaluateCheckToken, evaluateDeploy, evaluateGameAnalyses, evaluateGamePlan, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure, parseExpiration, permissionsText,
+  DEMO_LABEL, DRY_RUNS, GAME_ANALYSIS_LIMITS, GAME_PLAN_MIN_DAYS, MINUTE_LIMITS, SIZE_LIMITS, evaluateCheckToken, evaluateDeploy, evaluateGameAnalyses, evaluateGamePlan, evaluateMinutes, evaluatePullRequest, evaluateRuns, evaluateSettings, evaluateSizes, evaluateToken, evaluateUnknownAttributes, evaluateUnknownTechniques, evaluateUntranslatedTags, formatReport, httpFailure, labelledCheck, parseExpiration, permissionsText,
 } from './health.mjs';
 
 // The repository of the site is named by site.repository of site.config.yaml; the exact texts for one repository.
@@ -388,4 +388,16 @@ test('the texts naming the repository of the site follow site.repository; withou
   assert.match(formatReport(evaluateToken({ status: 401 })).text, /u tokenu pro repo webu zvol Regenerate token/);
   assert.match(formatReport({ ok: false, message: 'token bad' }).text, /u tokenu pro repo webu zvol/, 'a failed token check without its steps gets the generic ones');
   assert.equal(evaluateToken({ status: 200, expiration: null, siteRepo }).renew, undefined, 'a working token needs no steps');
+});
+
+test('labelledCheck: the checks of the deployed test site in the report, their message starting with DEMO_LABEL, the codes kept', () => {
+  const missing = { ok: false, message: 'Na webu chybí 2 obrázky, na které odkazují jeho stránky: [obrazky-chybi]\n- /a.jpg' };
+  const demo = labelledCheck(missing, DEMO_LABEL);
+  assert.equal(demo.ok, false);
+  assert.equal(demo.message, 'Ukázkový web: Na webu chybí 2 obrázky, na které odkazují jeho stránky: [obrazky-chybi]\n- /a.jpg');
+  assert.equal(missing.message.startsWith('Na webu'), true, 'the check itself unchanged');
+  const report = formatReport({ ok: true, message: 'Token v pořádku.' }, { ok: true, message: 'Obrázky v pořádku.' }, demo);
+  assert.equal(report.ok, false);
+  assert.deepEqual(report.codes, ['obrazky-chybi']);
+  assert.match(report.text, /\n- ✗ Ukázkový web: Na webu chybí 2 obrázky/);
 });

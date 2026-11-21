@@ -160,6 +160,34 @@ test('checkSiteImages: a site without a sitemap is walked from its home page', a
   assert.deepEqual([r.pages, r.images, r.sitemap, r.missing.length], [1, 1, 0, 0]);
 });
 
+test('checkSiteImages: a site in a folder starts at its home page, its sitemap, feed and manifest inside the folder', async () => {
+  const { fetchFn, asked } = fakeSite({
+    '/web/': '<a href="/web/tvorba/">Tvorba</a><img src="/web/_cover/480.jpg">',
+    '/web/tvorba/': '<img src="/web/a.jpg">',
+    '/web/sitemap.xml': `<urlset><url><loc>${ORIGIN}/web/tvorba/</loc></url></urlset>`,
+  }, ['/web/_cover/480.jpg', '/web/a.jpg']);
+  const r = await checkSiteImages(`${ORIGIN}/web`, fetchFn);
+  assert.deepEqual([r.pages, r.images, r.missing.length, r.brokenPages.length], [2, 2, 0, 0]);
+  for (const file of ['sitemap.xml', 'pinterest.xml', 'site.webmanifest']) assert.ok(asked.includes(`GET /web/${file}`), file);
+  assert.ok(!asked.some((a) => a === 'GET /'), 'never the root of the host');
+});
+
+test('distFetch: a site in a folder (site.url with a path) lies in dist/ without the folder; outside it nothing', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dist-fetch-'));
+  await fs.mkdir(path.join(dir, 'o-mne'));
+  await fs.writeFile(path.join(dir, 'index.html'), 'home');
+  await fs.writeFile(path.join(dir, 'o-mne/index.html'), 'o mně');
+  const f = distFetch(dir, `${ORIGIN}/web`);
+  assert.equal(await (await f(`${ORIGIN}/web/`)).text(), 'home');
+  assert.equal(await (await f(`${ORIGIN}/web`)).text(), 'home');
+  assert.equal(await (await f(`${ORIGIN}/web/o-mne/`)).text(), 'o mně');
+  assert.equal((await f(`${ORIGIN}/o-mne/`)).status, 404, 'without the folder');
+  assert.equal((await f(`${ORIGIN}/`)).status, 404);
+  assert.equal((await f(`${ORIGIN}/webx/o-mne/`)).status, 404, 'another folder starting the same');
+  assert.equal(await (await distFetch(dir, `${ORIGIN}/`)(`${ORIGIN}/o-mne/`)).text(), 'o mně', 'a site on its own domain');
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
 test('distFetch: serves a built site like GitHub Pages: folders by index.html, 404 when missing, nothing outside', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dist-fetch-'));
   await fs.mkdir(path.join(dir, 'o-mne'));

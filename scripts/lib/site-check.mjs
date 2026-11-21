@@ -7,6 +7,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { sitemapUrls } from './sitemap.mjs';
 import { feedImages } from './pinterest.mjs';
+import { siteAddress, siteBase, siteRoot } from './site-url.mjs';
 
 const IMAGE_RE = /\.(avif|webp|jpe?g|png|gif|svg)$/i;
 const ATTR_RE = /\b(src|srcset|href|content)="([^"]*)"/g;
@@ -64,19 +65,19 @@ export function pageReferences(html, pageUrl, origin) {
  */
 export async function checkSiteImages(siteUrl, fetchFn, { maxPages = 1000, concurrency = 8, retries = 0, retryDelayMs = 3000, screenshots = true } = {}) {
   const origin = new URL(siteUrl).origin;
-  const queue = [pageKey(new URL('/', siteUrl).href)];
-  const map = await fetchFn(new URL('/sitemap.xml', siteUrl).href, { method: 'GET' });
+  const queue = [pageKey(siteRoot(siteUrl))];
+  const map = await fetchFn(siteAddress(siteUrl, 'sitemap.xml'), { method: 'GET' });
   const listed = map.ok ? sitemapUrls(await map.text()).filter((u) => new URL(u).origin === origin).map(pageKey) : [];
   for (const p of listed) if (!queue.includes(p)) queue.push(p);
   const seen = new Set(queue);
   const imageFrom = new Map();
   // the pins of the feed for Pinterest (scripts/lib/pinterest.mjs) are images of the site too
-  const feed = await fetchFn(new URL('/pinterest.xml', siteUrl).href, { method: 'GET' });
+  const feed = await fetchFn(siteAddress(siteUrl, 'pinterest.xml'), { method: 'GET' });
   if (feed.ok) {
     for (const i of feedImages(await feed.text())) if (new URL(i).origin === origin && !imageFrom.has(i)) imageFrom.set(i, 'pinterest.xml');
   }
   // the icons, the icons of the shortcuts and the screenshots of the manifest (installing the site as an app)
-  const manifestUrl = new URL('/site.webmanifest', siteUrl).href;
+  const manifestUrl = siteAddress(siteUrl, 'site.webmanifest');
   const manifest = await fetchFn(manifestUrl, { method: 'GET' });
   if (manifest.ok) {
     let parsed = null;
@@ -138,9 +139,13 @@ export function manifestImages(manifest, manifestUrl, { screenshots = true } = {
  * fetchFn over a built site in `distDir` (like GitHub Pages serves it): "/a/" and "/a" are /a/index.html, anything
  * else the file itself; a missing file is 404. For npm run check:images, no server needed.
  */
-export function distFetch(distDir) {
+export function distFetch(distDir, siteUrl) {
+  // the pages of a site in a folder of its host (site.url with a path) lie in dist/ without that folder
+  const base = siteUrl ? siteBase(siteUrl) : '/';
   return async (url) => {
-    let rel = decodeURIComponent(new URL(url).pathname);
+    const pathname = decodeURIComponent(new URL(url).pathname);
+    if (!`${pathname}/`.startsWith(base)) return { ok: false, status: 404, text: async () => '' };
+    let rel = pathname.slice(base.length - 1) || '/';
     if (rel.endsWith('/')) rel += 'index.html';
     else if (!path.extname(rel)) rel += '/index.html';
     const file = path.join(distDir, rel);

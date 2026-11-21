@@ -4,7 +4,7 @@
 import Base from '../layouts/Base.astro';
 import TextBlocks from '../components/TextBlocks.astro';
 import { getGenericPages, site } from '../lib/site';
-import { breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
+import { absolute, breadcrumbLd, graphLd } from '../../scripts/lib/seo.mjs';
 import { keepTogether } from '../../scripts/lib/typography.mjs';
 
 export function getStaticPaths() {
@@ -15,7 +15,7 @@ const { page } = Astro.props;
 const path = `/${Astro.params.page}/`;
 // For search engines: a web page of the author's site.
 const jsonLd = graphLd(
-  { '@type': 'WebPage', '@id': new URL(path, site.url).href, url: new URL(path, site.url).href, name: `${page.title} – ${site.author}`, inLanguage: 'cs' },
+  { '@type': 'WebPage', '@id': absolute(site, path), url: absolute(site, path), name: `${page.title} – ${site.author}`, inLanguage: 'cs' },
   breadcrumbLd(site, [{ name: 'Úvod', path: '/' }, { name: page.title, path }]),
 );
 ---

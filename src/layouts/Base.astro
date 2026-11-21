@@ -4,7 +4,7 @@ import MessagePanel from '../components/MessagePanel.astro';
 import { analyticsId, hasFeaturedWorks, hiddenFromSearch, hasWorksOnSale, messages, site, url, version, type ShareImage } from '../lib/site';
 import { favoritesShowPath, featuredShowPath, saleShowPath } from '../../scripts/lib/cinema.mjs';
 import { gtagConfigScript, gtagSrc } from '../../scripts/lib/analytics.mjs';
-import { HIDDEN_SITE_ROBOTS, jsonLdText, summarize, verificationMeta } from '../../scripts/lib/seo.mjs';
+import { HIDDEN_SITE_ROBOTS, absolute, jsonLdText, summarize, verificationMeta } from '../../scripts/lib/seo.mjs';
 import { pinterestProfileLink } from '../../scripts/lib/pinterest.mjs';
 import { contactLink, pageContext } from '../../scripts/lib/messages.mjs';
 import { PALETTES, paletteCss, paletteScript } from '../../scripts/lib/palettes.mjs';
@@ -34,7 +34,8 @@ const nav = [
   { href: '/o-mne/', label: 'O mně' },
   { href: '/kontakt/', label: 'Kontakt' },
 ];
-const ogImage = image ? new URL(image.src, site.url).href : undefined;
+// image.src is a path of the site (without the base of a site in a folder), the canonical address is the page itself
+const ogImage = image ? absolute(site, image.src) : undefined;
 const canonical = new URL(Astro.url.pathname, site.url).href;
 // "Napište mi": the panel in the corner and the footer link (to the contact page without JavaScript).
 const withMessages = Boolean(messages.mode) && messagePanel;
