@@ -204,6 +204,24 @@ texty se nesloučí). Texty a strukturovaná data nasazeného webu kontroluje st
 Testovací web: `SITE_DIR=.demo/site npm run check:images` po
 `npm run demo:build`; jiná složka: `npm run check:images -- <složka>`.
 
+**Kontrola dat webu** (`npm run check:site`, `scripts/check-site.mjs`, `scripts/lib/site-folder-check.mjs`): ověří
+složku webu (`SITE_DIR`, výchozí kořen repa), ne kód. Testy kódu (`npm test`) běží jen nad testovacím webem; data
+skutečného webu hlídá tahle kontrola, v „Kontrole kódu“ hned po testech. Kontroluje:
+
+- soubory, které kód ze složky webu čte (`SITE_FILES`: `site.config.yaml` s `site.url`, `home-screen-icon.svg`, oba
+  `scenes.yaml`, favicon, ikony aplikace a zkratek z `npm run favicons`), písma popisků (`SITE_FONTS` = `CAPTION_FONTS`)
+  a že favicon v tmavém režimu prohlížeče ztmavne,
+- scény mockupů (`mockupScenesProblems` v `scripts/lib/mockups.mjs`): scéna pro každou skupinu z `SLOTS`, všechny klíče
+  `SCENE_KEYS`, fotka se načte, kotva leží ve fotce, plátno jen se známými klíči a rozumnými hodnotami,
+- scény ateliéru (`studioScenesProblems` v `scripts/lib/instagram.mjs`): obě fotky stejně velké, rohy ve fotce, `mode`,
+  kamera vidí skutečný obdélník blízko nakresleným rohům z rozumného místa, hrany míří do úběžníků, tvar `lines`,
+  `camera`, `circles`, nastavení stolu (`bounds`, `center`, `tiltSign`) a stojanu (`ledge`, `axis`), `prompt`
+  s `promptCamera` a kamera v rozsahu zadání, velikosti `mustFitCm` (každá s každým `id` z `FIT_CHECK_IDS`) a dva stoly
+  pootáčejí dílo na opačné strany.
+
+Problémy vypíše a skončí kódem 1. Testovací web: `SITE_DIR=.demo/site npm run check:site` (nebo
+`npm run check:site -- demo-content/site`); Pavlin web trvá asi 15 s (umisťování velikostí na stoly).
+
 ### Filtry v galerii
 
 Všechny filtry jdou kombinovat (platí všechny najednou) a **každá změna se hned
@@ -1836,15 +1854,16 @@ nejdřív snímek s popiskem, pak panorama, scéna, detaily; README složky to t
     nejde, posune se po liště k nejbližšímu místu, kde to jde, nejvýš o `maxSlideCm`; když ani to ne, zůstane na ose
     a ohlásí se „Ke kontrole“ (`planPlacement`; `cut` = širší, než se na fotku vejde: „okraj ho ořízne“).
   - Všechna nastavení scén jsou s popisem v `mockups/instagram/scenes.yaml`. Nová scéna = dvojice fotek a záznam
-    tam (rohy listu, rekvizity, volná plocha, světlo); test `instagram.test.mjs` hlídá, že obě fotky mají stejný
-    rozměr a že se do stolů vejdou díla běžných velikostí.
+    tam (rohy listu, rekvizity, volná plocha, světlo); kontrola dat webu (`npm run check:site`) hlídá, že obě
+    fotky mají stejný rozměr a že se do stolů vejdou díla velikostí `mustFitCm` (u Pavly běžné velikosti; větší dílo
+    se jen ohlásí „Ke kontrole“).
   - Zadání, se kterými generátor scény vyrobil, jsou v `mockups/instagram/README.md`, i s porovnáním se spočítanou
     kamerou. Krátce ho má každá scéna v `scenes.yaml` jako `prompt` (ukazuje ho prototyp `kamera-scen.html`) a to,
     co z něj generátor dodržel, jako čísla `promptCamera` (`zenithDeg` [od, do], nepovinně `heightCm`,
     `zenithToleranceDeg`, `azimuthDeg` [od, do], `sheetDeg`, `fromAbove`). Test scén každého webu hlídá, že scéna
-    s `prompt` má i `promptCamera` a že kamera ze `sceneCamera` zůstane v jeho rozsahu (`promptCameraProblems`):
+    s `prompt` má i `promptCamera` a že kamera ze `sceneCamera` zůstane v jeho rozsahu (`promptCameraProblems`, `npm run check:site`):
     výška nad stolem nebo lištou ±25 %, zenit ±5° (nebo `zenithToleranceDeg`, stojan 7°), strana, ze které se dívá,
-    a pootočení nakresleného listu ±5°; neznámý klíč je chyba. Co generátor nedodržel (u tmavého stolu strana
+    a pootočení nakresleného listu ±5°; neznámý klíč je chyba. Testovací scény mají kopii zadání. Co generátor nedodržel (u tmavého stolu strana
     a pootočení listu), se do `promptCamera` nepíše. Kamera jen z rohů listu by test nesplnila u žádné scény.
 - **Panorama pro karusel** (`pano-1.jpg` … `pano-<N>.jpg`, `panoramaSlides`, `renderPanorama`): dílo přes celou
   výšku N snímků 4:5 vedle sebe (okraj `padding`), rozřezané na hranách snímků, na papíru první palety, bez textu. Karusel
@@ -2731,23 +2750,31 @@ vypisuje i `npm run check:images`. Stejně vložené skripty (`skript-bez-prvku`
 
 **Zkušební běh zpracování** (`.github/workflows/dry-run.yml` v tomto repu): každou neděli (den před
 týdenní kontrolou), po změně pipeline (`scripts/process-images.mjs`, `scripts/pull-request.mjs`,
-`scripts/lib/pull-request.mjs`, `scripts/demo.mjs`, samotného workflow) a ručně (*Actions → Zkušební běh
+`scripts/lib/pull-request.mjs`, `scripts/demo.mjs`, `scripts/binary.mjs`, složky testovacího webu
+`demo-content/site/`, samotného workflow) a ručně (*Actions → Zkušební běh
 zpracování → Run workflow*) projde celé zpracování obsahu na testovacích datech, aby se chyba ukázala dřív,
 než na ni narazí skutečný obsah:
 
-1. `node scripts/demo.mjs --content-only` postaví z `demo-content/` testovací obsah do `.demo/content` (bez pipeline),
+1. `node scripts/demo.mjs --content-only` postaví z `demo-content/` testovací obsah do `.demo/content` a složku
+   testovacího webu do `.demo/site` (bez pipeline); ta se pak stane gitovým repem s lokálním `origin` (holé repo
+   v `$RUNNER_TEMP`), jako checkout repa webu,
 2. pipeline jako na větvi (`npm run images -- --demo --prepare-only`) a jako na `main` (`npm run images -- --demo`;
-   `--demo` = obsah musí být testovací), výstupy jdou do checkoutu tohoto repa jako při skutečném běhu,
-3. pull request připraví stejný `scripts/pull-request.mjs` jako skutečné zpracování a `.github/dry-run-commit.sh`
+   `--demo` = obsah musí být testovací), výstupy jdou do složky testovacího webu (`SITE_DIR=.demo/site`), nikdy do
+   skutečného webu,
+3. obrázky zabalí `binary.mjs pack obsah/aktualizace_binary --dir "$SITE_DIR"` (bez `--push`), pull request připraví
+   stejný `scripts/pull-request.mjs` jako skutečné zpracování a `.github/dry-run-commit.sh` (ve složce testovacího webu)
    s jeho složkami udělá totéž co `peter-evans/create-pull-request`: `git add` a commit, **nic nepushne**
    a žádný pull request neotevře (souhrn běhu ukáže, jak by vypadal),
 4. dvakrát: nejdřív bez úvodních fotek kolekcí (žádné `public/tvorba/kolekce/<slug>/_cover`, jako teď u skutečného
    obsahu), pak s nimi (složky vzniknou).
 
-Nekontroluje pushe do obsahového repa ani token (to hlídá týdenní kontrola). Lokálně jde projít totéž
-na kopii repa (skutečné výstupy v `content/` a `public/` by přepsal):
-`git clone . /tmp/zkusebni && cd /tmp/zkusebni && npm ci && node scripts/demo.mjs --content-only`, pak
-`CONTENT_DIR=$PWD/.demo/content npm run images -- --demo` a `node scripts/pull-request.mjs /tmp/popis.md`.
+Nekontroluje pushe do obsahového repa ani token (to hlídá týdenní kontrola). Lokálně jde projít totéž (skutečný web
+nepřepíše, všechno je v `.demo/`): `node scripts/demo.mjs --content-only`, ve `.demo/site` `git init -q -b main`,
+`git add -A`, commit a `git remote add origin <holé repo>` s pushem `main`, pak
+`SITE_DIR=.demo/site CONTENT_DIR=$PWD/.demo/content npm run images -- --demo`,
+`node scripts/binary.mjs pack obsah/aktualizace_binary --dir .demo/site` a
+`SITE_DIR=.demo/site node scripts/pull-request.mjs /tmp/popis.md`. Repo `.demo/site` pak smaž (`npm run demo` ho jinak
+nechá ve složce testovacího webu).
 
 ## Pinterest
 
@@ -2995,9 +3022,9 @@ Testovací web má vlastní složku `.demo/site/` (složenou z `demo-content/sit
 staví, kontroluje a prototypuje testovací web.
 
 Testy kódu berou nastavení, písma, scény a ikonu testovacího webu (`scripts/lib/test-support/demo-site.mjs`), nikdy
-skutečného. Kontroly dat webu (úplné scény, plátna, ikony, favicon) běží nad testovacím webem i nad webem `SITE_DIR`
-(`checkedSiteDirs`), včetně kamer scén ateliéru podle zadání generátoru (`promptCamera`). Kontroly vázané na Pavliny
-scény ateliéru (jejich jména, velikosti jejích děl) běží jen nad webem `SITE_DIR` (`realSiteDir`).
+skutečného; projdou i v kopii kódu bez Pavliných souborů webu. Data webu (úplné scény, plátna, ikony, favicon, kamery
+podle zadání generátoru `promptCamera`, velikosti `mustFitCm`) kontroluje `npm run check:site` nad složkou `SITE_DIR`
+(viz *Kontrola dat webu*); její funkce mají testy nad testovacím webem a nad schválně rozbitými daty.
 
 ## Vývoj
 

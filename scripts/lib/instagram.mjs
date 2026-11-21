@@ -451,6 +451,71 @@ export function promptCameraProblems(scene, cam = sceneCamera(scene)) {
   return problems;
 }
 
+/** The ids a size of `mustFitCm` is placed with (a work turns and shifts by its id): all of them must fit. */
+export const FIT_CHECK_IDS = ['jujn2', 'gh8r2', 'v39nd', 'rk9ct', 'uw9vh'];
+
+const isPoint = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
+
+/**
+ * What is wrong with one studio scene of a site (npm run check:site): both photos in the same size, the corners
+ * inside, a known mode, a camera that sees a true rectangle close to the drawn corners from a sensible place, well
+ * formed edges, camera and circles, the settings of its mode, its prompt (promptCamera) and the sizes it must take
+ * (mustFitCm, on a table). A list of messages, empty = fine.
+ */
+export async function studioSceneProblems(s) {
+  const problems = [];
+  const [sheet, bg] = await Promise.all([s.sheetPath, s.path].map((file) => sharp(file).metadata().catch(() => null)));
+  if (!sheet || !bg) return [`${s.name}: its photos ${s.name}.jpg and ${s.name}-list.jpg must both load`];
+  if (bg.width !== sheet.width || bg.height !== sheet.height) problems.push(`${s.name}: ${s.name}.jpg and ${s.name}-list.jpg differ in size`);
+  for (const [corner, p] of Object.entries(s.corners ?? {})) {
+    if (!isPoint(p) || p[0] < 0 || p[1] < 0 || p[0] >= sheet.width || p[1] >= sheet.height) problems.push(`${s.name}: corner ${corner} outside the photo`);
+  }
+  if (['tl', 'tr', 'br', 'bl'].some((corner) => !s.corners?.[corner])) return [...problems, `${s.name}: corners need tl, tr, br and bl`];
+  if (!['lie', 'stand'].includes(s.mode)) return [...problems, `${s.name}: mode must be lie or stand`];
+  for (const axis of Object.keys(s.lines ?? {})) {
+    if (!['x', 'y'].includes(axis)) problems.push(`${s.name}: unknown lines.${axis}`);
+    else if (!s.lines[axis].every((line) => line.length === 2 && line.every(isPoint))) problems.push(`${s.name}: lines.${axis} must be pairs of points`);
+  }
+  if (s.camera) for (const key of ['focalMm', 'zenithDeg', 'azimuthDeg', 'distanceCm']) if (typeof s.camera[key] !== 'number') problems.push(`${s.name}: camera.${key} must be a number`);
+  for (const c of s.circles ?? []) if (!(c.length === 4 && c[2] > c[0] && c[3] > c[1])) problems.push(`${s.name}: a circle must be [x0, y0, x1, y1]`);
+  if (s.mode === 'lie') {
+    if (!(Array.isArray(s.bounds) && s.bounds.length === 4 && s.center)) problems.push(`${s.name}: a table needs bounds and center`);
+    if (![1, -1].includes(s.tiltSign)) problems.push(`${s.name}: tiltSign must be 1 or -1`);
+  } else if (!(s.ledge && s.axis)) problems.push(`${s.name}: an easel needs ledge and axis`);
+  if (problems.length) return problems;
+
+  const cam = sceneCamera(s);
+  // the drawn sheet: close to a true rectangle of this camera (generators draw it worse than the edges of the table)
+  if (cam.rms >= (cam.source === 'lines' ? 40 : 20)) problems.push(`${s.name}: the drawn corners are ${cam.rms.toFixed(1)} px from the sheet the camera sees`);
+  if (!(cam.zenithDeg < 70 && cam.distanceCm > 40 && cam.distanceCm < 400)) problems.push(`${s.name}: camera at an odd place (zenith ${cam.zenithDeg.toFixed(1)}°, ${cam.distanceCm.toFixed(0)} cm)`);
+  if (s.lines && cam.source !== 'camera' && !(cam.lineRms < 5)) problems.push(`${s.name}: edges ${cam.lineRms.toFixed(1)} px from their vanishing points`);
+  // a generated scene keeps its prompt: the short text (prompt) and what of it the generator kept to (promptCamera)
+  if (Boolean(s.promptCamera) !== Boolean(s.prompt)) problems.push(`${s.name}: prompt and promptCamera go together`);
+  problems.push(...promptCameraProblems(s, cam));
+  if (s.mustFitCm !== undefined) {
+    if (s.mode !== 'lie' || !Array.isArray(s.mustFitCm) || !s.mustFitCm.every(isPoint)) problems.push(`${s.name}: mustFitCm must be sizes [w, h] on a table`);
+    else {
+      const geo = sceneGeometry(s);
+      for (const size of s.mustFitCm) {
+        const misses = FIT_CHECK_IDS.filter((id) => !planPlacement(s, geo, size, id).fits);
+        if (misses.length) problems.push(`${s.name}: a work of ${size.join(' × ')} cm does not fit (ids ${misses.join(', ')})`);
+      }
+    }
+  }
+
+  return problems;
+}
+
+/** What is wrong with the studio scenes of a site: each scene, and two tables or more turn a work both ways. */
+export async function studioScenesProblems(scenes) {
+  const problems = [];
+  for (const s of scenes) problems.push(...await studioSceneProblems(s));
+  const tables = scenes.filter((s) => s.mode === 'lie');
+  if (tables.length >= 2 && new Set(tables.map((s) => s.tiltSign)).size < 2) problems.push('the tables turn a work the same way (tiltSign): give them opposite ones');
+
+  return problems;
+}
+
 /**
  * A sheet standing on a ledge: its lower edge is hidden behind the front rail, so the plane goes further down than
  * the visible sheet. How far (cm of the plane): the side edges of the sheet reach the top edge of the rail and go
@@ -678,13 +743,16 @@ async function imagesOf(scene) {
   return sceneImages.get(scene);
 }
 
+/** The font files of the captions in the fonts folder of a site. */
+export const CAPTION_FONTS = { serif: 'CormorantGaramond-Italic.ttf', sans: 'WorkSans-Regular.ttf' };
+
 /** The fonts of a site in `dir` (sitePaths(siteDir).fonts, bundled, so the captions look the same everywhere). */
 export async function loadFonts(dir) {
   const load = async (file) => {
     const b = await fs.readFile(path.join(dir, file));
     return opentype.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.length));
   };
-  return { serif: await load('CormorantGaramond-Italic.ttf'), sans: await load('WorkSans-Regular.ttf') };
+  return { serif: await load(CAPTION_FONTS.serif), sans: await load(CAPTION_FONTS.sans) };
 }
 
 const num = (v) => +v.toFixed(2);

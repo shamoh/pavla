@@ -7,11 +7,10 @@ import sharp from 'sharp';
 import {
   PAPER_DEFAULTS, captionFacts, captionLayout, circleRatio, detailLayout, detailSuffixes, fitCamera, focalPx, gridLayout, gridPosts, gridSuffixes, renderGrid, fitText, hashtag, homography, insetWork, instagramPost, instagramSuffixes, untranslatedWords, ledgeDepth, lineY, loadFonts, loadInstagramScenes, noise2, paperOf, project, unproject,
   panoramaSlides, EDGE_KINDS, facingDeg, panoramaSuffixes, planPlacement, quadFits, scenePlacement, renderCaption, renderPanorama, renderScene, renderStory, sceneGeometry, sceneWindow, siteHost,
-  sceneCamera, cameraFromAngles, cameraPlace, promptCameraProblems, cameraAngles, fitCameraToLines, lineMisfit, storyLayout, textPath, tiltDeg, workQuad,
+  sceneCamera, cameraFromAngles, cameraPlace, promptCameraProblems, studioSceneProblems, studioScenesProblems, FIT_CHECK_IDS, cameraAngles, fitCameraToLines, lineMisfit, storyLayout, textPath, tiltDeg, workQuad,
 } from './instagram.mjs';
 import { PALETTES } from './palettes.mjs';
-import { sitePaths } from './site-dir.mjs';
-import { DEMO_SITE, checkedSiteDirs, realSiteDir } from './test-support/demo-site.mjs';
+import { DEMO_SITE } from './test-support/demo-site.mjs';
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`);
 const square = [[100, 100], [500, 100], [500, 400], [100, 400]];
@@ -558,55 +557,50 @@ test('renderScene: the edge of the work (meta_edge): its side repeats its edge c
   await fs.rm(dir, { recursive: true, force: true });
 });
 
-test('the scenes of the studio of each site: complete settings and both photos with the same framing', async () => {
-  for (const siteDir of checkedSiteDirs()) {
-    const { scenes, text } = await loadInstagramScenes(sitePaths(siteDir).instagramScenes);
-    assert.ok(text.length > 0);
-    for (const s of scenes) await checkStudioScene(s);
-  }
+const demoStudioScenes = async () => (await loadInstagramScenes(DEMO_SITE.instagramScenes)).scenes;
+
+test('studioScenesProblems: the studio scenes of the test site are fine', async () => {
+  const { scenes, text } = await loadInstagramScenes(DEMO_SITE.instagramScenes);
+  assert.ok(text.length > 0 && scenes.length >= 2);
+  assert.deepEqual(await studioScenesProblems(scenes), []);
 });
 
-// The studio scenes of the real site: these three, made from the prompts of its mockups/instagram/README.md (its own
-// data, not the code: a check of the site, see docs of the steps towards more sites).
-const realStudioScenes = async () => (await loadInstagramScenes(sitePaths(realSiteDir()).instagramScenes)).scenes;
-
-test('the scenes of the studio of the real site: its three scenes, the two tables turn a work opposite ways', async () => {
-  const scenes = await realStudioScenes();
-  assert.deepEqual(scenes.map((s) => s.name), ['stul-tmavy', 'stul-svetly', 'stojan']);
-  const tables = scenes.filter((s) => s.mode === 'lie');
-  assert.equal(new Set(tables.map((s) => s.tiltSign)).size, 2, 'the two tables turn a work opposite ways');
+test('studioSceneProblems: every broken setting of a scene is a message, nothing passes quietly', async () => {
+  const scenes = await demoStudioScenes();
+  const table = scenes.find((s) => s.mode === 'lie'), easel = scenes.find((s) => s.mode === 'stand');
+  const problemsOf = async (scene) => (await studioSceneProblems(scene)).join('\n');
+  assert.match(await problemsOf({ ...table, corners: { ...table.corners, tl: [-5, 10] } }), /corner tl outside/);
+  assert.match(await problemsOf({ ...table, corners: { tl: table.corners.tl } }), /corners need/);
+  assert.match(await problemsOf({ ...table, mode: 'hang' }), /mode must be/);
+  assert.match(await problemsOf({ ...table, lines: { z: [] } }), /unknown lines\.z/);
+  assert.match(await problemsOf({ ...table, lines: { x: [[[0, 0]]] } }), /lines\.x must be pairs/);
+  assert.match(await problemsOf({ ...table, camera: { focalMm: 35 } }), /camera\.zenithDeg must be a number/);
+  assert.match(await problemsOf({ ...table, circles: [[10, 10, 5, 20]] }), /a circle must be/);
+  assert.match(await problemsOf({ ...table, bounds: undefined }), /a table needs bounds/);
+  assert.match(await problemsOf({ ...table, tiltSign: 0 }), /tiltSign must be/);
+  assert.match(await problemsOf({ ...easel, axis: undefined }), /an easel needs ledge and axis/);
+  assert.match(await problemsOf({ ...table, path: table.sheetPath.replace('-list', '-missing') }), /must both load/);
+  // the drawn corners far from any true rectangle of the camera
+  const { tl, tr, br, bl } = table.corners;
+  assert.match(await problemsOf({ ...table, lines: undefined, prompt: undefined, promptCamera: undefined, corners: { tl, tr: [tr[0], tr[1] - 300], br, bl } }), /drawn corners are/);
+  // a prompt goes with its numbers, and the numbers are checked
+  assert.match(await problemsOf({ ...table, promptCamera: undefined }), /prompt and promptCamera go together/);
+  assert.match(await problemsOf({ ...table, promptCamera: { zenithDeg: [80, 85] } }), /zenith/);
+  // the sizes a table must take: each with every id of FIT_CHECK_IDS
+  assert.match(await problemsOf({ ...table, mustFitCm: [[30, 30], [120, 90]] }), /a work of 120 × 90 cm does not fit \(ids jujn2, /);
+  assert.equal((await studioSceneProblems({ ...table, mustFitCm: [[30, 30], [120, 90]] })).length, 1, 'only the size that does not fit');
+  assert.match(await problemsOf({ ...easel, mustFitCm: [[30, 30]] }), /mustFitCm must be sizes/);
+  assert.match(await problemsOf({ ...table, mustFitCm: [30, 30] }), /mustFitCm must be sizes/);
+  assert.ok(FIT_CHECK_IDS.length >= 5 && new Set(FIT_CHECK_IDS).size === FIT_CHECK_IDS.length);
 });
 
-async function checkStudioScene(s) {
-  {
-    const sheet = await sharp(s.sheetPath).metadata(), bg = await sharp(s.path).metadata();
-    assert.deepEqual([bg.width, bg.height], [sheet.width, sheet.height], `${s.name}: same size`);
-    for (const [x, y] of Object.values(s.corners)) assert.ok(x >= 0 && y >= 0 && x < sheet.width && y < sheet.height, `${s.name}: corner inside`);
-    assert.ok(['lie', 'stand'].includes(s.mode), s.name);
-    assert.deepEqual(s.imageSize, [sheet.width, sheet.height], s.name);
-    // the camera sees a true rectangle of the sheet close to its drawn corners, from a sensible place
-    const cam = sceneCamera(s);
-    // the drawn sheet: close to a true rectangle of this camera (generators draw it worse than the edges of the table)
-    assert.ok(cam.rms < (cam.source === 'lines' ? 40 : 20), `${s.name}: rms ${cam.rms}`);
-    assert.ok(cam.zenithDeg < 70 && cam.distanceCm > 40 && cam.distanceCm < 400, s.name);
-    for (const axis of Object.keys(s.lines ?? {})) {
-      assert.ok(['x', 'y'].includes(axis), `${s.name}: lines.${axis}`);
-      for (const line of s.lines[axis]) assert.ok(line.length === 2 && line.every((p) => p.length === 2 && p.every(Number.isFinite)), `${s.name}: lines.${axis}`);
-    }
-    if (s.lines) assert.ok(cam.source === 'camera' || cam.lineRms < 5, `${s.name}: edges ${cam.lineRms} px from their vanishing points`);
-    if (s.camera) for (const key of ['focalMm', 'zenithDeg', 'azimuthDeg', 'distanceCm']) assert.equal(typeof s.camera[key], 'number', `${s.name}: camera.${key}`);
-    for (const c of s.circles ?? []) assert.ok(c.length === 4 && c[2] > c[0] && c[3] > c[1], `${s.name}: circle`);
-    // a generated scene keeps its prompt: the short text (prompt) and what of it the generator kept to (promptCamera)
-    assert.equal(Boolean(s.promptCamera), Boolean(s.prompt), `${s.name}: prompt and promptCamera together`);
-    assert.deepEqual(promptCameraProblems(s, cam), [], `${s.name}: the camera agrees with the prompt of the generator`);
-    if (s.mode === 'lie') {
-      assert.ok(Array.isArray(s.bounds) && s.bounds.length === 4 && s.center, s.name);
-      assert.ok([1, -1].includes(s.tiltSign), s.name);
-    } else {
-      assert.ok(s.ledge && s.axis, s.name);
-    }
-  }
-}
+test('studioScenesProblems: two tables turn a work opposite ways', async () => {
+  const table = (await demoStudioScenes()).find((s) => s.mode === 'lie');
+  const other = { ...table, name: 'druhy-stul', mustFitCm: undefined };
+  delete table.mustFitCm;
+  assert.match((await studioScenesProblems([table, { ...other, tiltSign: table.tiltSign }])).join(), /the same way/);
+  assert.deepEqual(await studioScenesProblems([table, { ...other, tiltSign: -table.tiltSign }]), []);
+});
 
 test('promptCameraProblems: the computed camera within what the prompt asked, else a message for each miss', async () => {
   const scene = (await loadInstagramScenes(DEMO_SITE.instagramScenes)).scenes.find((s) => s.name === 'stojan');
@@ -630,16 +624,6 @@ test('promptCameraProblems: the computed camera within what the prompt asked, el
   assert.match(asking({ ...exact, heigthCm: 20 }).join(), /unknown promptCamera\.heigthCm/);
   assert.match(asking({ heightCm: 20 }).join(), /zenithDeg must be/);
   assert.match(asking({ zenithDeg: [20, 20], azimuthDeg: 90 }).join(), /azimuthDeg must be/);
-});
-
-test('the scenes of the real site take every featured size of the site without covering props', async () => {
-  const scenes = await realStudioScenes();
-  for (const s of scenes.filter((x) => x.mode === 'lie')) {
-    const geo = sceneGeometry(s);
-    for (const [size, id] of [[[30, 30], 'jujn2'], [[38, 29], 'gh8r2'], [[42, 30], 'v39nd'], [[30, 42], 'rk9ct'], [[21, 15], 'uw9vh']]) {
-      assert.ok(planPlacement(s, geo, size, id).fits, `${s.name}: ${size.join('×')}`);
-    }
-  }
 });
 
 test('hashtag: no diacritics, spaces or punctuation, lower case', () => {

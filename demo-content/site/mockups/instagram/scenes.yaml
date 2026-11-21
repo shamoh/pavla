@@ -60,6 +60,8 @@
 #   minTiltDeg, maxTiltDeg   nahodilé pootočení podle id díla (velikost ve stupních) od výchozí polohy: dílo
 #                 natočené k divákovi, střední čára napříč obrazem na fotce vodorovně; obojí 0 = jen výchozí poloha)
 #   tiltSign      směr pootočení: 1 nebo -1 (dva stoly mají opačný, dílo tak leží jednou vlevo, jednou vpravo)
+#   mustFitCm     (nepovinné) velikosti děl [šířka, výška] v cm, které se na stůl musí vejít při každém nahodilém
+#                 pootočení (npm run check:site); větší dílo se jen ohlásí „Ke kontrole“
 #   maxExtraTiltDeg  o kolik víc smí hledání dílo pootočit, aby se vešlo (nikdy na druhou stranu; bez pootočení se nepoužije)
 #   bounds        volná část stolu [x0, y0, x1, y1]: dílo z ní nesmí vyčnívat
 #   props         obrysy rekvizit (mnohoúhelníky): dílo je nesmí zakrýt; propMarginPx = odstup od nich
@@ -84,6 +86,7 @@
   sheetCm: [40, 30]
   corners: { tl: [157, 633], tr: [850, 551], br: [957, 1011], bl: [202, 1113] }
   mode: lie
+  mustFitCm: [[30, 30], [38, 29], [42, 30], [30, 42], [21, 15]]       # běžné velikosti děl
   lines:                                                                   # hrany stolu (boční jsou mimo záběr)
     x:
       - [[300, 282], [743, 231]]                                           # zadní hrana desky (rovná část)

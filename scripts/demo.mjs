@@ -73,7 +73,8 @@ export async function assembleSite(source, target) {
  * Prepares the test data and runs the pipeline on them. Returns the pipeline result
  * ({ ok: false, problems } when the recipe is broken). Options: demoDir, outDir, siteSource (source of the folder
  * of the test site, demo-content/site/), config (default: its site.config.yaml), log,
- * contentOnly (only build .demo/content, do not run the pipeline; returns { ok: true, contentDir }).
+ * contentOnly (only build .demo/content and the folder of the test site .demo/site, do not run the pipeline; returns
+ * { ok: true, contentDir, siteDir }: the inputs of the dry run, .github/workflows/dry-run.yml).
  */
 export async function prepareDemo({
   demoDir = path.join(CODE_ROOT, 'demo-content'),
@@ -100,10 +101,10 @@ export async function prepareDemo({
     await fs.copyFile(path.join(demoDir, f), path.join(contentDir, f));
   }
   await renderDemoImages(recipe, contentDir);
-  if (contentOnly) return { ok: true, problems: [], contentDir };
 
   // 2. the folder of the test site: its settings, icons, fonts and scenes next to the generated test data
   await assembleSite(siteSource, dataDir);
+  if (contentOnly) return { ok: true, problems: [], contentDir, siteDir: dataDir };
   config ??= readSiteConfig(dataDir);
 
   // 3. the same pipeline as for the real content, but it must only see test data and the test site
@@ -128,7 +129,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const contentOnly = process.argv.includes('--content-only');
     const r = await prepareDemo({ contentOnly });
     r.problems.forEach((p) => console.error(`✗ ${p}`));
-    if (r.ok && contentOnly) console.log(`Test content ready in ${path.relative(process.cwd(), r.contentDir)}/.`);
+    if (r.ok && contentOnly) console.log(`Test content ready in ${path.relative(process.cwd(), r.contentDir)}/, the test site in ${path.relative(process.cwd(), r.siteDir)}/.`);
     else if (r.ok) console.log(`Test data ready in .demo/ (${r.processed} processed, ${r.skipped} unchanged).`);
     else process.exitCode = 1;
   } catch (e) {

@@ -9,6 +9,7 @@
     "corners": "node --env-file-if-exists=.env scripts/corners.mjs",
     "images": "node --env-file-if-exists=.env scripts/process-images.mjs",
     "check:images": "node scripts/check-images.mjs",
+    "check:site": "node scripts/check-site.mjs",
     "test": "node --test \"scripts/**/*.test.mjs\"",
     "demo:prepare": "node scripts/demo.mjs",
     "binary:pull": "node scripts/binary.mjs unpack",

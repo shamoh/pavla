@@ -34,14 +34,6 @@ test('sitePaths: everything of a site inside its folder', () => {
   });
 });
 
-test('the real site in the root of the code has every file the code reads from a site folder', () => {
-  const paths = sitePaths(CODE_ROOT);
-  for (const file of [paths.config, paths.homeScreenIcon, path.join(paths.mockups, 'scenes.yaml'), path.join(paths.instagramScenes, 'scenes.yaml'), path.join(paths.public, 'favicon.svg')]) {
-    assert.ok(fs.existsSync(file), file);
-  }
-  assert.ok(fs.readdirSync(paths.fonts).some((f) => f.endsWith('.ttf')), 'fonts');
-});
-
 test('readSiteConfig: site.config.yaml of the folder', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'site-dir-'));
   fs.writeFileSync(path.join(dir, SITE_CONFIG_FILE), 'site:\n  title: Ukázka\n');

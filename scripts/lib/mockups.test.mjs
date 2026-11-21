@@ -1,9 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
-import { CANVAS_DEFAULTS, canvasFrame, composeMockup, cropWindow, fits, frameGeometry, hashIndex, loadScenes, pickScenes, placement, renderMockup } from './mockups.mjs';
-import { sitePaths } from './site-dir.mjs';
-import { DEMO_SITE, checkedSiteDirs } from './test-support/demo-site.mjs';
+import { CANVAS_DEFAULTS, SCENE_KEYS, canvasFrame, composeMockup, cropWindow, fits, frameGeometry, hashIndex, loadScenes, mockupScenesProblems, pickScenes, placement, renderMockup } from './mockups.mjs';
+import { DEMO_SITE } from './test-support/demo-site.mjs';
 
 const scene = (name, group, maxCm = [100, 80], extra = {}) => ({
   name, group, maxCm, frameCm: 2, pxPerCm: 10, anchor: { x: 1200, bottom: 800 }, standing: ['shelf', 'desk'].includes(group), ...extra,
@@ -127,23 +126,24 @@ test('cropWindow never crops tighter than the minimum share, never wider than th
   assert.equal(cropWindow(2400, 1600, { left: 0, top: 0, width: 2000, height: 1000 }).width, 2400);
 });
 
-test('every scene in mockups/scenes.yaml of each site is complete and its file loads', async () => {
-  for (const siteDir of checkedSiteDirs()) await checkScenes(siteDir);
+test('mockupScenesProblems: the mockup scenes of the test site are fine', async () => {
+  const { scenes } = await loadScenes(DEMO_SITE.mockups);
+  assert.ok(scenes.length >= 4);
+  assert.deepEqual(await mockupScenesProblems(scenes), []);
 });
 
-async function checkScenes(siteDir) {
-  const { scenes: real } = await loadScenes(sitePaths(siteDir).mockups);
-  assert.ok(real.length >= 4);
-  const groups = new Set(real.map((s) => s.group));
-  for (const g of ['living', 'wall', 'hallway', 'shelf', 'desk']) assert.ok(groups.has(g), `no scene in group ${g}`);
-  for (const s of real) {
-    for (const key of ['name', 'label', 'group', 'pxPerCm', 'anchor', 'maxCm', 'frame', 'frameCm', 'light', 'shadow', 'source']) {
-      assert.ok(s[key] !== undefined, `${s.name}: ${key}`);
-    }
-    const { width, height } = await sharp(s.path).metadata();
-    assert.ok(s.anchor.x > 0 && s.anchor.x < width && s.anchor.bottom > 0 && s.anchor.bottom < height, s.name);
-  }
-}
+test('mockupScenesProblems: a missing group, key, photo, an anchor outside, an unknown or insane canvas', async () => {
+  const { scenes } = await loadScenes(DEMO_SITE.mockups);
+  const [first, ...rest] = scenes;
+  const problemsWith = async (scene) => (await mockupScenesProblems([scene, ...rest])).join('\n');
+  assert.match((await mockupScenesProblems(scenes.filter((s) => s.group !== 'desk'))).join(), /no scene in the group desk/);
+  assert.match(await problemsWith({ ...first, light: undefined, shadow: undefined }), new RegExp(`${first.name}: missing light, shadow`));
+  assert.match(await problemsWith({ ...first, path: `${first.path}.missing` }), /does not load/);
+  assert.match(await problemsWith({ ...first, anchor: { ...first.anchor, x: 99999 } }), /anchor outside the photo/);
+  assert.match(await problemsWith({ ...first, canvas: { frameCM: 1 } }), /unknown canvas\.frameCM/);
+  assert.match(await problemsWith({ ...first, canvas: { depthCm: 0 } }), /canvas needs/);
+  assert.deepEqual(SCENE_KEYS.filter((key) => first[key] === undefined), [], 'the test site has every key');
+});
 
 test('renderMockup produces an image in the scene aspect ratio', async () => {
   const { scenes: real } = await loadScenes(DEMO_SITE.mockups);
@@ -159,16 +159,6 @@ test('renderMockup with an aspect returns that aspect', async () => {
   const master = await sharp({ create: { width: 300, height: 400, channels: 3, background: '#c98' } }).jpeg().toBuffer();
   const { width, height } = await sharp(await renderMockup(master, [24, 32], real[0], { aspect: 4 / 5 })).metadata();
   assert.ok(Math.abs(width / height - 0.8) < 0.01);
-});
-
-test('every canvas of a scene in mockups/scenes.yaml of each site has only known keys and sane values', async () => {
-  const real = [];
-  for (const siteDir of checkedSiteDirs()) real.push(...(await loadScenes(sitePaths(siteDir).mockups)).scenes);
-  for (const s of real) {
-    for (const key of Object.keys(s.canvas ?? {})) assert.ok(key in CANVAS_DEFAULTS, `${s.name}: canvas.${key}`);
-    const c = canvasFrame(s);
-    assert.ok(c.frameCm >= 0 && c.gapCm >= 0 && c.depthCm > 0, s.name);
-  }
 });
 
 test('a canvas hangs without a mat: its middle is the work, a bare canvas has no frame around it', async () => {

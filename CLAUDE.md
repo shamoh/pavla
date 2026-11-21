@@ -19,7 +19,9 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   Načítání scén a písem nemá výchozí složku. Testovací web má vlastní složku `demo-content/site/` (`demo: true` =
   `isDemoSite`: bez analytiky, formulář jen náhled), `npm run demo` ji složí do `.demo/site/` (`assembleSite`),
   `SITE_DIR=.demo/site` s ní staví a kontroluje. Testy kódu jen nad testovacím webem
-  (`scripts/lib/test-support/demo-site.mjs`); kontroly dat webu nad `checkedSiteDirs`, Pavliny scény ateliéru `realSiteDir`.
+  (`scripts/lib/test-support/demo-site.mjs`), musí projít i bez Pavliných souborů webu; data webu kontroluje
+  `npm run check:site` (`scripts/lib/site-folder-check.mjs`: `SITE_FILES`, `mockupScenesProblems`,
+  `studioScenesProblems`), v „Kontrole kódu“; nová kontrola dat webu sem, ne do testů.
   Nová scéna nebo binární soubor testovacího webu jen nutné minimum (historie gitu je navždy).
 - **Toto repo je veřejné, obsah je v odděleném soukromém obsahovém repu.** Jeho název, cestu ani odkazy na něj
   sem nikdy nepiš (kód, komentáře, README, CLAUDE.md, commity, texty pull requestů); piš jen „obsahové repo“
@@ -83,7 +85,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `export/instagram/[<kolekce>/]<slug>/` (kopíruje `tvorba/`, `exportFolder`; složka je v otisku díla): `caption-<paleta>.jpg` (dílo
   na papíru každé palety s popiskem název / technika · rozměr · rok / adresa webu, písma z `fonts/` jako křivky přes
   `opentype.js`), `scene-<scéna>.jpg` (dílo ve scéně ateliéru `mockups/instagram/scenes.yaml`: kamera z rohů
-  prázdného listu `fitCamera` (ohnisko `focalMm` / podle kulatých věcí na stole `circles` / nejlepší shoda, 24–70 mm), přesněji z hran podkladu `lines` (`fitCameraToLines`: hrany míří do úběžníků), nebo ruční `camera` (`cameraFromAngles`; obojí se hledá v prototypu `kamera-scen.html`), zadání generátoru scén v `mockups/instagram/README.md`, co z něj generátor dodržel = `promptCamera` scény, test (`promptCameraProblems`, každý web) hlídá, že kamera zůstane v jeho rozsahu (nová nebo přegenerovaná scéna = zadání tam, `prompt` i `promptCamera` do `scenes.yaml`),
+  prázdného listu `fitCamera` (ohnisko `focalMm` / podle kulatých věcí na stole `circles` / nejlepší shoda, 24–70 mm), přesněji z hran podkladu `lines` (`fitCameraToLines`: hrany míří do úběžníků), nebo ruční `camera` (`cameraFromAngles`; obojí se hledá v prototypu `kamera-scen.html`), zadání generátoru scén v `mockups/instagram/README.md`, co z něj generátor dodržel = `promptCamera` scény, `npm run check:site` (`promptCameraProblems`) hlídá, že kamera zůstane v jeho rozsahu, a velikosti `mustFitCm` na stolech (nová nebo přegenerovaná scéna = zadání tam, `prompt` i `promptCamera` do `scenes.yaml`),
   dílo jako papír s tloušťkou `paper` (hrana podle `meta_edge` díla: `deckle` roztřepená / `cut` čistá / `canvas` plátno 2 cm, `EDGE_KINDS`; bok opakuje barvu okraje díla) (`PAPER_DEFAULTS`: vrstvy hrany, zvlnění, zvednuté okraje, kontaktní stín,
   volitelně podkladový list `underlayCm`), kreslené rovnou ve velikosti snímku, změna kreslení = zvýšit `SCENE_VERSION`; skutečné měřítko, stoly mimo rekvizity natočené k divákovi (`facingDeg`: vodorovně na fotce, ne podle hran stolu; nahodilé pootočení podle `id` od toho jen s `minTiltDeg`/`maxTiltDeg`), stojan na liště na ose (celý ve fotce a mimo `props`, jinak posun po liště nejvýš `maxSlideCm`, jinak „Ke kontrole“);
   jen se `size_cm`), `pano-<n>.jpg` (plynulý karusel: široké dílo přes celou výšku 2–3 snímků 4:5, počet ze `size_cm`
@@ -329,7 +331,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   `--only` (i s chybami a `--prepare-only`), celý, plný běh znovu na konci s `misfits`. Pull request připravuje
   `scripts/pull-request.mjs` (`scripts/lib/pull-request.mjs`, `OUTPUT_PATHS`); text PR nikdy nejmenuje obsahové repo.
   „Zkušební běh zpracování“ (`.github/workflows/dry-run.yml`, každou neděli na testovacích datech, nic nepushne)
-  prochází tytéž kroky: změna kroků zpracování obsahu = stejná změna ve `dry-run.yml`.
+  prochází tytéž kroky ve složce testovacího webu `.demo/site` (`SITE_DIR`, git repo s lokálním `origin`, nikdy
+  skutečný web): změna kroků zpracování obsahu = stejná změna ve `dry-run.yml`.
   Týdenní kontrola (token, selhané běhy, zkušební běh, nasazení, čekající PR, neznámé atributy, chybějící obrázky
   nasazeného webu `scripts/lib/site-check.mjs`, texty a JSON-LD jeho stránek `evaluatePageTexts`, vložené skripty všech jeho stránek `evaluateInlineScripts`, velikost obou rep
   a nasazeného webu proti limitům GitHubu `evaluateSizes` (od 70 % `blizi-se-limit`), minuty Actions soukromých rep
@@ -379,7 +382,7 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
   (`npm run app-screenshots`; nejsou v gitu: deploy je fotí jednou týdně do mezipaměti Actions a kopíruje do `dist/`;
   týdenní kontrola hlídá obrázky manifestu `manifestImages`). Přehled vzhledů hry pro autorku: `npm run game-overview`.
 - Patička nese verzi buildu `vRR.MMDD.HHMM` (pražský čas) s bublinou (datum, commit): `scripts/lib/build-version.mjs`.
-- „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` jen `npm test` + `npm run build`
+- „Kontrola kódu“ (`.github/workflows/check.yml`): u PR a pushe do `main` jen `npm test` + `npm run check:site` + `npm run build`
   + `npm run check:images` (obrázky, úplnost mapy webu `unlistedPages`, unikátní titulky a popisy a platné JSON-LD
   `pageProblems`, vložené skripty najdou svůj prvek a `data-view` mřížky je platné nastavení (`keys`, `views`, `tiles`) `inlineScriptProblems`; rychlé). Vložený skript nad prvkem před sebou vždy hledá prvek
   podle značky (`INLINE_TARGETS`: `viewGridBefore`/`data-view`, `pickBoxBefore`/`data-pick-box`), nikdy `previousElementSibling` skriptu. Stejný název nebo popis dvou děl řeší web sám (`workPageTitle`, `workPageDescription`).
@@ -415,8 +418,8 @@ Do tohoto repa (je veřejné) nepatří osobní ani provozní údaje (kdo web sp
 - Vodoznak pro Fler: text `images.fler.watermark` (jméno a místo), nikdy URL ani @handle (pravidla Fleru); světlé písmo webu se stínem (`scripts/lib/watermark.mjs`,
   `WATERMARK_LOOK` je v otisku díla na prodej).
 - Mockupy musí držet reálné měřítko podle `size_cm`.
-- Před commitem: `npm test`, `npm run build` a `npm run demo:build` musí projít; `npm run check:images` (a pro testovací
-  web `SITE_DIR=.demo/site npm run check:images`) ověří, že žádný obrázek, na který stránky odkazují, nechybí.
+- Před commitem: `npm test`, `npm run check:site`, `npm run build` a `npm run demo:build` musí projít; `npm run check:images`
+  (a pro testovací web `SITE_DIR=.demo/site npm run check:images`) ověří, že žádný obrázek, na který stránky odkazují, nechybí.
 - Odkazy na stránky webu vždy s lomítkem na konci (`/tvorba/`, `/tvorba/kolekce/?…`; GitHub Pages jinak přesměruje, dev server
   stránku obslouží bez něj): v kódu psát s lomítkem, texty obsahu přes `withTrailingSlash` (`scripts/lib/page-links.mjs`),
   `check:images` (`slashlessLinks`) odkaz bez lomítka odmítne. Stránky Tvorby a hra Detail dne se otevřou pod hlavičkou (`SKIP_HEADER_SCOPES`, `skipHeaderScript`; hra sama po vykreslení,

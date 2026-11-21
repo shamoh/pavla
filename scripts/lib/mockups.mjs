@@ -64,6 +64,31 @@ export const SLOTS = {
   large: [['living'], ['wall'], ['hallway']],
 };
 
+/** The keys every mockup scene must have. */
+export const SCENE_KEYS = ['name', 'label', 'group', 'pxPerCm', 'anchor', 'maxCm', 'frame', 'frameCm', 'light', 'shadow', 'source'];
+
+/**
+ * What is wrong with the mockup scenes of a site (npm run check:site): a scene for every group of SLOTS, every scene
+ * with all its keys, its photo loads and its anchor lies inside it, its canvas only with known keys and sane values.
+ * A list of messages, empty = fine.
+ */
+export async function mockupScenesProblems(scenes) {
+  const groups = new Set(scenes.map((s) => s.group));
+  const problems = [...new Set(Object.values(SLOTS).flat(2))].filter((g) => !groups.has(g)).map((g) => `no scene in the group ${g}`);
+  for (const s of scenes) {
+    const missing = SCENE_KEYS.filter((key) => s[key] === undefined);
+    if (missing.length) { problems.push(`${s.name}: missing ${missing.join(', ')}`); continue; }
+    const image = await sharp(s.path).metadata().catch(() => null);
+    if (!image) { problems.push(`${s.name}: its photo ${s.file} does not load`); continue; }
+    if (!(s.anchor.x > 0 && s.anchor.x < image.width && s.anchor.bottom > 0 && s.anchor.bottom < image.height)) problems.push(`${s.name}: anchor outside the photo`);
+    for (const key of Object.keys(s.canvas ?? {})) if (!(key in CANVAS_DEFAULTS)) problems.push(`${s.name}: unknown canvas.${key}`);
+    const c = canvasFrame(s);
+    if (!(c.frameCm >= 0 && c.gapCm >= 0 && c.depthCm > 0)) problems.push(`${s.name}: canvas needs frameCm ≥ 0, gapCm ≥ 0, depthCm > 0`);
+  }
+
+  return problems;
+}
+
 /**
  * Picks up to `count` different scenes for a work:
  *   small works (longer side ≤ SMALL_CM): a wall, a shelf and a desk,

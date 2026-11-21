@@ -1,13 +1,16 @@
 # Dry run of the content workflow (the one that runs the pipeline on the real content) on the test data (demo-content/):
-#   1. the test content is built from demo-content/ into .demo/content (like a checkout of the content repository),
+#   1. the test content is built from demo-content/ into .demo/content (like a checkout of the content repository)
+#      and the folder of the test site into .demo/site (SITE_DIR), made a git repository with a local origin (like a
+#      checkout of the repository of a site),
 #   2. the pipeline runs on it as on a branch (--prepare-only, with the cut previews of drafts smaller in export/draft/
-#      of the test content) and as on main, writing into this checkout,
-#   3. the images are packed into a commit of obsah/aktualizace_binary (scripts/binary.mjs pack, not pushed) and the
+#      of the test content) and as on main, writing into the test site,
+#   3. the images are packed into a commit of obsah/aktualizace_binary of the test site (scripts/binary.mjs pack, not
+#      pushed) and the
 #      pull request is prepared by the same script as the content workflow (scripts/pull-request.mjs) and its
 #      paths are added and committed the way peter-evans/create-pull-request does it,
 #   in two rounds: first without the cover photos of collections (so no public/tvorba/kolekce/<slug>/_cover exists, like
 #   before the first real cover photo), then with them (the folder appears).
-# Everything stays in the runner: nothing is pushed, no pull request is opened, the content repository is not needed.
+# Everything stays in the runner: nothing is pushed, no pull request is opened, no real site or content is touched.
 # It runs weekly, so a broken step shows up before real content hits it; the weekly health check
 # (scripts/check-health.mjs) reports a failed dry run.
 name: Zkušební běh zpracování
@@ -23,6 +26,7 @@ on:
       - 'scripts/lib/pull-request.mjs'
       - 'scripts/demo.mjs'
       - 'scripts/binary.mjs'
+      - 'demo-content/site/**'
       - 'scripts/lib/binary.mjs'
       - '.github/workflows/dry-run.yml'
       - '.github/dry-run-commit.sh'
@@ -40,6 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CONTENT_DIR: ${{ github.workspace }}/.demo/content
+      # the folder of the test site (scripts/lib/site-dir.mjs): the pipeline, binary.mjs and pull-request.mjs work on it
+      SITE_DIR: .demo/site
       # file names in the run summary link to the test data (.demo/content is a copy of demo-content/)
       CONTENT_BLOB_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/demo-content
     steps:
@@ -53,8 +59,20 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Test content (demo-content/ into .demo/content)
+      - name: Test content and the test site (demo-content/ into .demo/content and .demo/site)
         run: node scripts/demo.mjs --content-only
+
+      # what a checkout of the repository of a site is: a clone of main with an origin (binary.mjs asks it for branches)
+      - name: The test site as a site repository with a local origin
+        working-directory: .demo/site
+        run: |
+          git init -q --bare "$RUNNER_TEMP/site.git"
+          git init -q -b main
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "The test site before the content update"
+          git remote add origin "$RUNNER_TEMP/site.git"
+          git push -q origin main
 
       - name: Set the cover photos of collections aside
         run: |
@@ -74,9 +92,9 @@ jobs:
 
       - name: Pull request without collection cover photos (not opened)
         run: |
-          node scripts/binary.mjs pack obsah/aktualizace_binary
+          node scripts/binary.mjs pack obsah/aktualizace_binary --dir "$SITE_DIR"
           node scripts/pull-request.mjs "$RUNNER_TEMP/pr-body.md"
-          .github/dry-run-commit.sh "$RUNNER_TEMP/pr-body.md"
+          (cd "$SITE_DIR" && "$GITHUB_WORKSPACE/.github/dry-run-commit.sh" "$RUNNER_TEMP/pr-body.md")
 
       - name: Cover photos back, pipeline as on main again
         run: |
@@ -85,6 +103,6 @@ jobs:
 
       - name: Pull request with collection cover photos (not opened)
         run: |
-          node scripts/binary.mjs pack obsah/aktualizace_binary
+          node scripts/binary.mjs pack obsah/aktualizace_binary --dir "$SITE_DIR"
           node scripts/pull-request.mjs "$RUNNER_TEMP/pr-body.md"
-          .github/dry-run-commit.sh "$RUNNER_TEMP/pr-body.md"
+          (cd "$SITE_DIR" && "$GITHUB_WORKSPACE/.github/dry-run-commit.sh" "$RUNNER_TEMP/pr-body.md")

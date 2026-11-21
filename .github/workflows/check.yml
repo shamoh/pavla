@@ -1,4 +1,5 @@
-# Checks that nothing stopped working after a change of the code: unit tests, a build of the site from
+# Checks that nothing stopped working after a change of the code: unit tests, the data of the site folder
+# (npm run check:site: settings, icons, fonts, scenes), a build of the site from
 # the committed data and its images (the branch binary.lock names: main_binary, or obsah/aktualizace_binary for a
 # content pull request; scripts/binary.mjs), which also compiles every page template, its images and sitemap
 # (npm run check:images), and
@@ -48,6 +49,10 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      # the data of this site (settings, icons, fonts, scenes): the tests of the code run only on the test site
+      - name: Data of the site
+        run: npm run check:site
 
       # the images are not in main: the branch whose tree binary.lock names (an error when none has them)
       - name: Images of the site

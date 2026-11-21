@@ -19,7 +19,7 @@ const config = {
   images: { ...siteConfig.images, web: { widths: [40], quality: 70 }, mockups: { widths: [60] }, details: { widths: [30] }, photos: { widths: [40] }, fler: { ...siteConfig.images.fler, longEdge: 120 }, instagram: { ...siteConfig.images.instagram, width: 40, height: 50 }, og: { ...siteConfig.images.og, width: 60, height: 40 } },
 };
 
-let tmp, demoDir, outDir, siteDir, siteSource;
+let tmp, demoDir, outDir, siteSource;
 const write = async (file, text) => {
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, text);
@@ -31,14 +31,6 @@ beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'pavla-demo-'));
   demoDir = path.join(tmp, 'demo-content');
   outDir = path.join(tmp, '.demo');
-  // a checkout of the real site (dry run): its scenes and fonts, a domain and generated data
-  siteDir = path.join(tmp, 'pavla');
-  for (const place of ['mockups', 'fonts']) {
-    await fs.mkdir(siteDir, { recursive: true });
-    await fs.symlink(sitePaths(CODE_ROOT)[place], sitePaths(siteDir)[place]);
-  }
-  await write(path.join(siteDir, 'public/CNAME'), 'pavla.kramolis.cz');
-  await write(path.join(siteDir, 'public/tvorba/2026/x/info.json'), '{}');
   // the source of the folder of the test site: settings, icon, the scenes and fonts of the test site
   siteSource = path.join(demoDir, 'site');
   await write(sitePaths(siteSource).config, YAML.stringify(config));
@@ -80,35 +72,35 @@ test('prepareDemo builds the test data into .demo/ only and writes the assigned 
   const pages = await prepareDemo(opts());
   assert.equal(pages.ok, true, pages.problems.join('\n'));
   assert.equal(YAML.parse(await fs.readFile(path.join(outDir, 'site/content/stranky/kontakt.yaml'), 'utf8')).text, 'Testovací text.\n');
-  // the real site is untouched
-  assert.ok(!(await exists(path.join(siteDir, 'content'))));
   // second run: nothing to regenerate, the id stays
   const again = await prepareDemo(opts());
   assert.equal(again.processed, 0);
   assert.equal(YAML.parse(await fs.readFile(path.join(demoDir, 'tvorba/demo-rano.yaml'), 'utf8')).id, id);
 });
 
-test('dry run: content only, then the pipeline on the test data into a site repo, then the pull request paths', async () => {
+test('dry run: content and the test site only, then the pipeline on the test data into the test site as a repo, then the pull request paths', async () => {
   const r = await prepareDemo({ ...opts(), contentOnly: true });
   assert.equal(r.ok, true);
   assert.ok(await exists(path.join(outDir, 'content/tvorba/demo-rano.jpg')));
-  assert.ok(!(await exists(path.join(outDir, 'site'))), 'no pipeline run');
+  assert.equal(r.siteDir, path.join(outDir, 'site'));
+  assert.ok(await exists(sitePaths(r.siteDir).config), 'the folder of the test site is assembled');
+  assert.ok(!(await exists(path.join(r.siteDir, 'content'))), 'no pipeline run');
 
-  // like .github/workflows/dry-run.yml: `npm run images -- --demo` writes into the checkout of this repo
-  const git = (...args) => promisify(execFile)('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: siteDir });
+  // like .github/workflows/dry-run.yml: the folder of the test site is the checkout of a site repository
+  const git = (...args) => promisify(execFile)('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: r.siteDir });
   await git('init', '-q');
   await git('add', '-A');
-  await git('commit', '-q', '-m', 'site with real data');
-  assert.equal((await run({ contentDir: r.contentDir, siteDir, config, log: () => {}, dataset: 'demo' })).ok, true);
-  assert.equal((await run({ contentDir: r.contentDir, siteDir, config, log: () => {} })).ok, false, 'the real data set refuses test data');
+  await git('commit', '-q', '-m', 'the test site before the content update');
+  const siteConfig = readSiteConfig(r.siteDir);
+  assert.equal((await run({ contentDir: r.contentDir, siteDir: r.siteDir, config: siteConfig, log: () => {}, dataset: 'demo' })).ok, true);
+  assert.equal((await run({ contentDir: r.contentDir, siteDir: r.siteDir, config: siteConfig, log: () => {} })).ok, false, 'the real data set refuses test data');
 
   // the images are not in the pull request (their branch, scripts/binary.mjs): content/ only, no binary.lock packed here
-  const paths = await pullRequestPaths(siteDir);
+  const paths = await pullRequestPaths(r.siteDir);
   assert.deepEqual(paths, ['content']);
   await git('add', '--', ...paths);
   const { stdout } = await git('status', '--porcelain');
   assert.match(stdout, /^A {2}content\/tvorba\/demo-rano\.yaml$/m);
-  assert.ok(!(await exists(path.join(siteDir, 'public/tvorba/2026/x/info.json'))), 'the real work is pruned');
 });
 
 test('prepareDemo refuses works without "demo-" names, test data without the marker and a broken recipe', async () => {

@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { cornersFor, listMasters, sharesLine, suspiciousSummary, writeDetected } from './preview.mjs';
 import { PREVIEW_KINDS } from './lib/corners.mjs';
+import { DEMO_SITE_DIR } from './lib/test-support/demo-site.mjs';
 
 /** The preview files of one photo `key` (all PREVIEW_KINDS), sorted like readdir().sort(). */
 const kinds = (key) => PREVIEW_KINDS.map((k) => `${key}-${k}.jpg`).sort();
@@ -115,7 +116,8 @@ test('sharesLine and suspiciousSummary: the limit is the one given (images.edges
     + '    tl 1.0 % · 1.0 %, tr 0.0 % · 6.0 % !, br 2.0 % · 2.0 %, bl 2.5 % · 1.0 %\n');
 });
 
-const cli = (...args) => spawnSync(process.execPath, [fileURLToPath(new URL('./preview.mjs', import.meta.url)), ...args], { encoding: 'utf8', cwd: tmp, env: { ...process.env, INIT_CWD: tmp } });
+// the settings of the test site (images.edges), never of the real one
+const cli = (...args) => spawnSync(process.execPath, [fileURLToPath(new URL('./preview.mjs', import.meta.url)), ...args], { encoding: 'utf8', cwd: tmp, env: { ...process.env, INIT_CWD: tmp, SITE_DIR: DEMO_SITE_DIR } });
 
 test('npm run preview --only-suspicious: previews and output only of the photos with a suspicious corner', async () => {
   // a narrow floor, 2 % (fine), and a sheet askew whose top right corner lies 13 % down the photo (suspicious above

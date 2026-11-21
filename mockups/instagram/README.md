@@ -12,8 +12,8 @@ s čím porovnat kameru spočítanou z hran.
 ## Co z fotek spočítáme a co ze zadání sedí
 
 Generátor nestaví 3D scénu, zadání bere jen jako přání. Kamera se proto počítá z fotky (`sceneCamera`: hrany `lines`
-míří do úběžníků, nakreslený list určí místo a měřítko). Zadání slouží jako nezávislá kontrola: test
-scén ateliéru v `instagram.test.mjs` hlídá, že spočítaná kamera
+míří do úběžníků, nakreslený list určí místo a měřítko). Zadání slouží jako nezávislá kontrola: kontrola
+dat webu (`npm run check:site`) hlídá, že spočítaná kamera
 zůstane v rozsahu zadání, zapsaného u scény v `scenes.yaml` jako čísla `promptCamera` (`promptCameraProblems`). Kde
 generátor zadání nedodržel, `promptCamera` to nemá a tabulka to uvádí.
 
