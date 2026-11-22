@@ -15,7 +15,7 @@ site:
   # aplikace („pavla.favorites“, „pavla-images“); malá písmena a číslice, slova spojená „-“. Po zveřejnění webu neměnit:
   # návštěvníci by přišli o to, co si jejich prohlížeč pamatoval. Prázdné = „web“.
   storagePrefix: pavla
-  repository: shamoh/pavla-new           # repo webu na GitHubu (vlastník/jméno), čte ho týdenní kontrola automatiky
+  repository: shamoh/pavla               # repo webu na GitHubu (vlastník/jméno), čte ho týdenní kontrola automatiky
   email: pavla@kramolis.cz
   location: Roztoky                       # kde Pavla žije a maluje, zobrazí se v Kontaktu; prázdné = nic
   instagram: pavla.kramolisova
@@ -61,11 +61,13 @@ instagramPost:
     kresba fixem: markerdrawing
     kresba perem: pendrawing
     kresba tužkou: pencildrawing
+    "kresba tužkou, akvarel": pencilandwatercolor
     kresba uhlem: charcoaldrawing
     kvaš: gouache
     linoryt: linocut
     olej: oilpainting
     pastel: pastel
+    tisk: printmaking
     tisk z výšky: reliefprint
     tuš: ink
     # štítky
@@ -137,11 +139,13 @@ pinterestKeywords:
     kresba fixem: marker drawing
     kresba perem: pen drawing
     kresba tužkou: pencil drawing
+    "kresba tužkou, akvarel": pencil and watercolor
     kresba uhlem: charcoal drawing
     kvaš: gouache
     linoryt: linocut
     olej: oil painting
     pastel: pastel
+    tisk: print
     tisk z výšky: relief print
     tuš: ink
     # štítky
