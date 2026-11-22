@@ -1,0 +1,26 @@
+# "Deploy na GitHub Pages": the shared deploy of a site of the engine (site-deploy.yml) on every push to main: the images
+# of a merged content update become main's, the site is built with the version of the engine below and deployed.
+# The version of the engine = the tag after @ and engine-ref, always the same.
+name: Deploy na GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # binary.mjs promote: the images of a merged content update become main_binary
+  pages: write
+  id-token: write
+  actions: read   # needed by actions/deploy-pages since v4
+  issues: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    uses: shamoh/web-tvorba-engine/.github/workflows/site-deploy.yml@v1
+    with:
+      engine-ref: v1

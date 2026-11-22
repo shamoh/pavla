@@ -1,0 +1,11 @@
+.DS_Store
+.idea/
+# the built site, previews of cuts (made by the engine with SITE_DIR = this folder)
+dist/
+.previews/
+/mockups/export/
+# images of the site made by the pipeline: in the branch main_binary, not in main (engine: scripts/binary.mjs)
+/public/tvorba/
+/public/fotky/
+/public/_cover/
+/public/_og/

@@ -1,0 +1,29 @@
+# "Kontrola kódu": the shared check of a site of the engine (site-check.yml): its tests, the data of this site, a build
+# of the site with the version of the engine below and its images, sitemap and page texts. On every pull request it is
+# the required check of the ruleset on main ("check / check"), which the automatic merge of a content update waits for.
+# The version of the engine = the tag after @ and engine-ref, always the same.
+name: Kontrola kódu
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'content/**'
+      - 'binary.lock'
+      - '**/*.md'
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    uses: shamoh/web-tvorba-engine/.github/workflows/site-check.yml@v1
+    with:
+      engine-ref: v1

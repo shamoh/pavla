@@ -1,0 +1,339 @@
+# Centrální konfigurace webu a obrázkové pipeline.
+# Většinu věcí, které se budou měnit, najdeš tady.
+
+site:
+  url: https://pavla.kramolis.cz         # musí sedět s public/CNAME
+  title: Pavla Kramolišová
+  tagline: Akvarely pro radost
+  author: Pavla Kramolišová
+  # Autorka pro vyhledávače (strukturovaná data Person na každé stránce): jedna věta o ní a čím se zabývá; prázdné = nic
+  authorDescription: Amatérská malířka, která maluje pro radost, hlavně akvarelem; na procházkách skicuje i tužkou a brush penem.
+  knowsAbout: [akvarel, kresba, skicování, plenér]
+  # Popis stránky roku pro vyhledávače, když roky/<rok>.yaml nemá vlastní; {year} = rok, {author} = author
+  yearDescription: Akvarely a kresby z roku {year} – {author}.
+  # Předpona jmen, pod kterými si prohlížeč návštěvníka pamatuje oblíbené obrazy, barvy webu, postup ve hře a mezipaměti
+  # aplikace („pavla.favorites“, „pavla-images“); malá písmena a číslice, slova spojená „-“. Po zveřejnění webu neměnit:
+  # návštěvníci by přišli o to, co si jejich prohlížeč pamatoval. Prázdné = „web“.
+  storagePrefix: pavla
+  repository: shamoh/pavla-new           # repo webu na GitHubu (vlastník/jméno), čte ho týdenní kontrola automatiky
+  email: pavla@kramolis.cz
+  location: Roztoky                       # kde Pavla žije a maluje, zobrazí se v Kontaktu; prázdné = nic
+  instagram: pavla.kramolisova
+  fler: ""   # URL obchůdku na Fleru (patička, Kontakt); prázdné = nic (zatím skryto, dřív https://www.fler.cz/shop/pk76376)
+  pinterest: https://cz.pinterest.com/pavlakramolisova/   # URL profilu na Pinterestu (patička a Kontakt vedou na jeho vytvořené piny); prázdné = nic
+  verification:                          # ověření webu u vyhledávačů značkou <meta> (jen když ověřuješ touto cestou,
+    google: ""                           #   DNS záznam ji nepotřebuje): kód z Google Search Console,
+    bing: ""                             #   z Bing Webmaster Tools (msvalidate.01)
+    seznam: "pRmNbOEUVpe5jyTrqNiBs8sNsD5d9jP9"   #   ze Seznam Webmaster (seznam-wmt)
+    pinterest: "676735cc598a2480715a267ae46a16bf"   #   a z Pinterestu (p:domain_verify, ověření webu firemního účtu); prázdné = žádná značka
+
+analytics:
+  # Google Analytics 4 (služba pavla.kramolis.cz), měří jen produkční build skutečného webu,
+  # ne `npm run dev` ani web z testovacích dat. Prázdné = bez statistik. Ukládá cookies _ga.
+  googleMeasurementId: G-HPZNHYZ2MQ
+
+messages:
+  # Zprávy od návštěvníků (formulář na Kontaktu a panel „Napište mi“ na ostatních stránkách) posílá Web3Forms
+  # e-mailem. accessKey = klíč z web3forms.com (veřejný, říká jen, kam zprávu doručit). Prázdné = bez formuláře
+  # (Kontakt ukáže jen adresu). Web z testovacích dat ukáže vždy jen náhled, který nic neodesílá.
+  accessKey: 667747d9-fb8d-4d52-9af7-d622adef05a0
+  # Značka na začátku předmětu e-mailu („[pavla-web] Dotaz na obraz: …“), aby šly zprávy z webu filtrovat; prázdné = „web“
+  subjectTag: pavla-web
+
+instagramPost:
+  # Text příspěvku na Instagram (README.md ve složce díla v export/instagram/, jen díla s meta_instagram: true):
+  # název, popis, technika · rozměr · rok, „Obraz je na prodej.“ u díla na prodej, adresa webu a hashtagy.
+  # Česky: technika a štítky díla (bez diakritiky a mezer) + always.cs; anglicky: jejich překlady z `en` + always.en.
+  # Slovo bez překladu má jen český hashtag. Změna se projeví hned při dalším běhu (text se píše vždy znovu).
+  always:
+    cs: [umeni, malba]
+    en: [art, painting, artistsoninstagram]
+  en:
+    # techniky
+    akvarel: watercolor
+    akvarel a brush pen: watercolorandbrushpen
+    akvarel a fix: watercolorandmarker
+    akvarel a tuš: inkandwatercolor
+    akvarel a tužka: pencilandwatercolor
+    brush pen: brushpen
+    brush pen a fix: brushpendrawing
+    brush pen a pero: brushpendrawing
+    kresba fixem: markerdrawing
+    kresba perem: pendrawing
+    kresba tužkou: pencildrawing
+    kresba uhlem: charcoaldrawing
+    kvaš: gouache
+    linoryt: linocut
+    olej: oilpainting
+    pastel: pastel
+    tisk z výšky: reliefprint
+    tuš: ink
+    # štítky
+    akt: lifedrawing
+    déšť: rain
+    fantazie: fantasyart
+    grafika: printmaking
+    hory: mountains
+    hrad: castle
+    hudba: music
+    jaro: spring
+    kostel: church
+    krajina: landscape
+    kresba: drawing
+    květina: flower
+    květiny: flowers
+    kytky: flowers
+    les: forest
+    léto: summer
+    loď: boat
+    louka: meadow
+    město: city
+    mlha: fog
+    moře: sea
+    most: bridge
+    motýl: butterfly
+    nebe: sky
+    noc: night
+    opice: monkey
+    ovoce: fruit
+    pláž: beach
+    plenér: pleinair
+    plody: fruit
+    podzim: autumn
+    portrét: portrait
+    postavy: figures
+    ptáci: birds
+    řeka: river
+    skály: rocks
+    skica: sketch
+    sníh: snow
+    stavby: architecture
+    strom: tree
+    světla: lights
+    ulice: street
+    vesnice: village
+    vlny: waves
+    voda: water
+    západ slunce: sunset
+    zátiší: stilllife
+    zima: winter
+    zvířata: animals
+
+pinterestKeywords:
+  # Klíčová slova na konci popisu pinu (kanál /pinterest.xml a „Uložit na Pinterest“): technika a štítky díla česky,
+  # pak jejich anglické překlady odtud. Pinterest hledá podle slov, ne hashtagů: překlady jsou obyčejná slova s mezerami
+  # (na rozdíl od hashtagů v instagramPost.en). Slovo bez překladu je jen česky; u díla s meta_pinterest: true ho ukáže
+  # souhrn běhu v „Doporučení“.
+  en:
+    # techniky
+    akvarel: watercolor
+    akvarel a brush pen: watercolor and brush pen
+    akvarel a fix: watercolor and marker
+    akvarel a tuš: ink and watercolor
+    akvarel a tužka: pencil and watercolor
+    brush pen: brush pen
+    brush pen a fix: brush pen and marker drawing
+    brush pen a pero: brush pen and pen drawing
+    kresba fixem: marker drawing
+    kresba perem: pen drawing
+    kresba tužkou: pencil drawing
+    kresba uhlem: charcoal drawing
+    kvaš: gouache
+    linoryt: linocut
+    olej: oil painting
+    pastel: pastel
+    tisk z výšky: relief print
+    tuš: ink
+    # štítky
+    akt: life drawing
+    déšť: rain
+    fantazie: fantasy art
+    grafika: printmaking
+    hory: mountains
+    hrad: castle
+    hudba: music
+    jaro: spring
+    kostel: church
+    krajina: landscape
+    kresba: drawing
+    květina: flower
+    květiny: flowers
+    kytky: flowers
+    les: forest
+    léto: summer
+    loď: boat
+    louka: meadow
+    město: city
+    mlha: fog
+    moře: sea
+    most: bridge
+    motýl: butterfly
+    nebe: sky
+    noc: night
+    opice: monkey
+    ovoce: fruit
+    pláž: beach
+    plenér: plein air
+    plody: fruit
+    podzim: autumn
+    portrét: portrait
+    postavy: figures
+    ptáci: birds
+    řeka: river
+    skály: rocks
+    skica: sketch
+    sníh: snow
+    stavby: architecture
+    strom: tree
+    světla: lights
+    ulice: street
+    vesnice: village
+    vlny: waves
+    voda: water
+    západ slunce: sunset
+    zátiší: still life
+    zima: winter
+    zvířata: animals
+
+gallery:
+  pageSizes: [12, 24, 48]                # počty děl na stránku, které si návštěvník může vybrat; první je výchozí
+  tilePageSizes: [36, 72, 144]           # totéž pro zobrazení „Dlaždice“ (malé obrazy, víc na stránku)
+  columns:                               # sloupce obrazů stejné výšky v galerii, rocích a kolekcích (jako home.columns)
+    maxGap: 2
+    maxTop: 12
+    order: alternate
+  tileMarks:                             # značky přes obrazy v zobrazení „Dlaždice“ v galerii, rocích a kolekcích
+    # (u velkých obrazů je hvězdička u názvu a štítek stavu). Silueta v barvě písma palety s tenkým lemem barvy papíru.
+    # Chybějící = výchozí hodnota; úvodní stránka má své v home.tileMarks.
+    size: 10          # velikost v % šířky dlaždice …
+    min: 12           # … ale nejméně (px) …
+    max: 22           # … a nejvýš (px)
+    opacity: 90       # krytí v %
+    featured:         # hvězdička výběru autorky (featured: true)
+      corner: tl      # roh: tl = vlevo nahoře, tr = vpravo nahoře, bl = vlevo dole, br = vpravo dole
+      tiles: [s, m, l]  # na kterých velikostech dlaždic ([] = nikde)
+    sale:             # dílo na prodej (k prodeji nebo rezervováno)
+      corner: br
+      icon: cart      # cart = košík, tag = cenovka, bag = taška
+      tiles: [m, l]   # na malých dlaždicích jen hvězdička
+  colors:                                # filtr „Barva“ v galerii (zatím jen prototyp: npm run prototypes, .prototypes/barvy.html)
+    minShare: 12                         # obraz patří k barvě, když jí je aspoň tolik % jeho malované plochy (bez papíru)
+    # Barvy na výběr v tomto pořadí: id (do adresy ?color=, malá písmena bez diakritiky), název, odstín (#rrggbb = kolečko
+    # u volby a odstín, ke kterému se barvy obrazů přiřazují). Každá barevná plocha obrazu patří k nejbližšímu odstínu
+    # ze seznamu, takže seznam jde libovolně měnit, přidávat i ubírat (šedé plochy nepatří k žádné barvě).
+    families:
+      - { id: cervena, label: červená, color: '#c8423b' }
+      - { id: ruzova, label: růžová, color: '#d98aa8' }
+      - { id: oranzova, label: oranžová, color: '#e08a3c' }
+      - { id: zluta, label: žlutá, color: '#e3c34b' }
+      - { id: hneda, label: hnědá, color: '#7a5434' }
+      - { id: zelena, label: zelená, color: '#5f9a52' }
+      - { id: tyrkysova, label: tyrkysová, color: '#3e9c9a' }
+      - { id: modra, label: modrá, color: '#4472b0' }
+      - { id: fialova, label: fialová, color: '#8063a8' }
+
+cinema:
+  # Promítání obrazů výpisu přes celou obrazovku („▶ Promítat“ v galerii, roku a kolekci; scripts/lib/cinema.mjs,
+  # src/lib/cinema.ts; hodnoty hledá prototyp promitani.html, npm run prototypes). Chybějící = výchozí hodnota.
+  intervals: [5, 10, 15, 45, 180]   # jak dlouho (s) zůstane obraz, volby v ovládání (180 = „3 min“)
+  defaultInterval: 15          # výchozí z nich; do adresy se nepíše, zvolený si prohlížeč pamatuje
+  fadeMs: 1000                 # prolnutí do dalšího obrazu (ms)
+  controlsMs: 3000             # jak dlouho zůstane ovládání po pohybu myši nebo ťuknutí (ms)
+  captionMs: 4000              # popisky „na chvíli“ (výchozí): jak dlouho zůstane popisek obrazu, než zmizí (ms)
+  marginPercent: 0             # papír kolem obrazu, % kratší strany obrazovky
+  palette: noc                 # barvy promítání (papir, pergamen, noc, auto = podle systému), nezávisle na barvách webu;
+                               # návštěvník je v promítání přepne a pamatují se zvlášť (pavla.cinema.palette)
+  swipe:                       # krok prstem: aspoň tento podíl šířky obrazovky, nebo rychlé švihnutí
+    fraction: 0.2
+    minPx: 50                  # kratší pohyb je ťuknutí
+    flickPxPerMs: 0.5          # rychlost švihnutí (px/ms)
+    pinch: 0.6                 # sevření dvou prstů na tento podíl jejich vzdálenosti = „Seznam“
+
+game:
+  # Přehled vzhledů hry Detail dne pro autorku (npm run game-overview): díla (id), která se v něm nikdy neukážou jako
+  # příklad vzhledu, např. když výřez z nich hned prozradí odpověď. Ve hře zůstávají (mimo hru = game: false v popisu
+  # díla). Prázdné = žádná.
+  overviewSkip: [wjgyb]   # Figura z kurzu III (akt)
+
+home:
+  # Sloupce obrazů stejné výšky na úvodní stránce (galerie má své v gallery.columns): nižší sloupec nejdřív rozšíří
+  # mezery mezi obrazy, zbytek místa se rozdělí nad a pod sloupec. Chybějící = výchozí hodnota.
+  columns:
+    maxGap: 2         # nejširší mezera mezi obrazy jako násobek obvyklé (1 = mezery se nerozšiřují)
+    maxTop: 12        # největší místo nad prvním obrazem sloupce v px (zbytek zůstane dole)
+    order: alternate  # pořadí sloupců podle počtu obrazů: none = beze změny, alternate = plný a prázdný střídavě,
+                      # edges = nejplnější na krajích, center = nejplnější uprostřed
+  tileMarks:          # značky přes dlaždice na úvodní stránce (jako gallery.tileMarks): jen menší, průsvitnější hvězdička
+    size: 8
+    min: 10
+    max: 22
+    opacity: 60
+    featured: { corner: tl, tiles: [s, m, l] }
+    sale: { corner: br, icon: cart, tiles: [] }
+  # Kolik nejnovějších děl ukáže „Nejnovější“ na úvodní stránce v každém zobrazení (grid = velké obrazy,
+  # s / m / l = malé / střední / velké dlaždice), aby zabrala zhruba stejnou výšku. Chybějící = výchozí hodnota.
+  recent:
+    wide: { grid: 6, l: 20, m: 30, s: 63 }   # počítač: velké obrazy 3 × 2, dlaždice 5 × 4, 6 × 5, 9 × 7
+    tablet: { grid: 4, l: 16, m: 25, s: 49 } # tablet (do 1100 px): velké obrazy 2 × 2, dlaždice 4 × 4, 5 × 5, 7 × 7
+    phone: { grid: 3, l: 10, m: 24, s: 40 }  # telefon (do 640 px): 1 sloupec, dlaždice ve 2 / 3 / 4 sloupcích
+
+images:
+  # Originály fotek a popisy děl jsou v odděleném obsahovém repu (tvorba/, fotky/). Jeho cestu určuje
+  # proměnná CONTENT_DIR (lokálně v souboru .env, mimo git; viz README).
+  web:
+    widths: [480, 960, 1600, 2400]
+    quality: 82
+  mockups:
+    widths: [480, 960, 1600]             # velikosti mockupů na webu (výběr scén: mockups/scenes.yaml)
+  details:
+    widths: [480, 960, 1600, 2400]       # detailní fotky díla (tvorba/<rok>/<slug>/)
+  photos:
+    widths: [480, 960, 1600, 2400]       # ostatní fotky webu (fotky/ obsahového repa) a úvodní fotky kolekcí
+  og:                                    # obrázky pro sdílení (og:image), 3:2
+    width: 1200
+    height: 800
+    quality: 85
+    background: "#f4f1ea"                # dílo: celý obraz na papírovém pozadí (neořezává se)
+    padding: 0.06                        # okraj kolem díla (podíl výšky); kolekce: ořez jako na stránce
+  instagram:                             # exporty pro Instagram (jen díla s meta_instagram: true), viz README „Exporty“
+    width: 1080
+    height: 1350                         # 4:5, nejvíc místa ve feedu
+    quality: 92
+    padding: 0.025                       # snímek s popiskem: okraj kolem obrazu (podíl šířky); mřížka profilu ořízne ~3 % z boku
+    detailCropKeep: 0.75                 # detailní fotka vyplní snímek 4:5 výřezem, jen když z ní zůstane aspoň tolik;
+                                         #   jinak (např. dlouhý úzký pruh) leží celá na papíru
+    insetPercent: 0.5                    # obraz se pro Instagram ořízne o tolik % z každé strany (nedokonalé rohy listu
+                                         #   nechávají proužek podlahy); 0 = neořezávat
+    panorama:                            # plynulý karusel (pano-<n>.jpg): široký obraz přes celou výšku několika snímků za sebou
+      maxSlides: 3                       #   nejvýš tolik snímků
+      minGain: 1.4                       #   jen když je obraz aspoň tolikrát větší než na snímku s popiskem (jinak žádné panorama)
+    story:                               # příběh 9:16 (story.jpg): obraz s popiskem, pod ním volné místo na nálepku s odkazem
+      width: 1080
+      height: 1920
+      safeTop: 250                       #   volné nahoře (lišta s profilem), px
+      safeBottom: 340                    #   volné dole (pole pro odpověď), px
+      linkSpace: 220                     #   volné místo na nálepku s odkazem nad spodním okrajem, px
+    grid:                                # mřížka na profilu (grid-<pořadí>-<řádek>_<sloupec>.jpg, jen s meta_instagram_grid): dlaždice 3:4
+      gapPx: 8                           #   mezera mezi dlaždicemi na profilu v px dlaždice (≈ 1 bod na telefonu); v obraze
+                                         #   se vynechá, aby na sebe dlaždice navazovaly
+      minFill: 0.55                      #   zabere-li obraz méně z mřížky, souhrn běhu to ukáže v „Ke kontrole“
+    # scény ateliéru: mockups/instagram/scenes.yaml, písma popisku: fonts/
+  pinterest:                             # pin na Pinterest (pin.jpg na webu ve složce každého díla, „Uložit na Pinterest“;
+    width: 1000                          #   díla s meta_pinterest: true i v kanálu /pinterest.xml); obraz s popiskem, 2:3
+    height: 1500
+    quality: 90
+    padding: 0.04                        # okraj kolem obrazu (podíl šířky)
+    insetPercent: 0.5                    # ořez obrazu z každé strany v % (jako u Instagramu)
+  fler:
+    longEdge: 2000
+    quality: 90
+    watermark: Pavla Kramolišová, Roztoky   # podpis na fotkách pro Fler: jméno a místo, nikdy odkaz ven ani @účet (pravidla Fleru)
+    watermarkOpacity: 0.9                # krytí světlého písma podpisu (písmo webu, vpravo dole, scripts/lib/watermark.mjs)
+    watermarkShadow: 0.6                 # krytí jeho měkkého tmavého stínu (čitelné na světlém i tmavém pozadí)
+    background: "#ffffff"                # místo průhledného okolí díla (podlahy vně rohů listu)
+  edges:                                 # ořez podlahy podle rohů listu (meta_corners), viz README „Ořez podlahy“
+    feather: 0.01                        # šířka prolnutí hrany s pozadím (podíl kratší strany)
+    inset: 0.002                         # o kolik víc oříznout dovnitř listu (podíl kratší strany)
+    search: 0.1                          # jak daleko od okraje fotky hledat hranu listu (podíl rozměru)
+    suspicious: 0.05                     # roh, který ořízne víc (podíl šířky / výšky), je v náhledech podezřelý (červeně, !)
+    guides: [0.003, 0.006, 0.01, 0.015, 0.02, 0.025, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15]  # čáry náhledu -frames: podíl šířky / výšky od každého kraje fotky
