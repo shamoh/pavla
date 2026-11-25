@@ -24,6 +24,6 @@ permissions:
 
 jobs:
   check:
-    uses: shamoh/web-tvorba-engine/.github/workflows/site-check.yml@v5
+    uses: shamoh/web-tvorba-engine/.github/workflows/site-check.yml@v6
     with:
-      engine-ref: v5
+      engine-ref: v6
