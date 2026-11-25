@@ -21,6 +21,6 @@ concurrency:
 
 jobs:
   deploy:
-    uses: shamoh/web-tvorba-engine/.github/workflows/site-deploy.yml@v4
+    uses: shamoh/web-tvorba-engine/.github/workflows/site-deploy.yml@v5
     with:
-      engine-ref: v4
+      engine-ref: v5
